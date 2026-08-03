@@ -66,9 +66,12 @@ class OutputControlsTest {
     }
 
     @Test
-    void redactsEmailAddresses() {
+    void redactsEmailAddressesReferentially() {
         OutputControls controls = new OutputControls(4096, true);
-        assertFalse(controls.boundAndRedact("owner: alice@example.com").contains("alice@example.com"));
+        String out = controls.boundAndRedact("owner: alice@example.com; cc: alice@example.com");
+        assertFalse(out.contains("alice@example.com"));
+        assertTrue(out.contains("PERSON_1"));
+        assertEquals(2, out.split("PERSON_1", -1).length - 1);
     }
 
     @Test

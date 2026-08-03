@@ -17,6 +17,7 @@ import io.github.vaquarkhan.aegis.core.finops.SemanticCache;
 import io.github.vaquarkhan.aegis.core.finops.TokenBudget;
 import io.github.vaquarkhan.aegis.core.governance.Approval;
 import io.github.vaquarkhan.aegis.core.governance.CircuitBreaker;
+import io.github.vaquarkhan.aegis.core.governance.EgressConnect;
 import io.github.vaquarkhan.aegis.core.governance.EgressGuard;
 import io.github.vaquarkhan.aegis.core.governance.Exposure;
 import io.github.vaquarkhan.aegis.core.governance.OutputControls;
@@ -30,10 +31,13 @@ import io.github.vaquarkhan.aegis.core.integrity.VrpValidator;
 import io.github.vaquarkhan.aegis.core.interceptor.ArgumentSanitizeMutator;
 import io.github.vaquarkhan.aegis.core.interceptor.InterceptorChain;
 import io.github.vaquarkhan.aegis.core.observability.AuditLog;
+import io.github.vaquarkhan.aegis.core.observability.GenAiSpanObserver;
 import io.github.vaquarkhan.aegis.core.observability.Metrics;
 import io.github.vaquarkhan.aegis.core.observability.Trace;
+import io.github.vaquarkhan.aegis.core.router.RetrievalRouter;
 import io.github.vaquarkhan.aegis.core.router.TaxonomyRouter;
 import io.github.vaquarkhan.aegis.core.router.ToolManifestAggregator;
+import io.github.vaquarkhan.aegis.core.spi.PassThroughCredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.CallContext;
 import io.github.vaquarkhan.aegis.core.spi.CredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.EngineAdapter;
@@ -54,13 +58,18 @@ import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTrans
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.Filter;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import org.eclipse.jetty.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,7 +141,7 @@ public final class GatewayBootstrap {
         RateLimiter rateLimiter = new RateLimiter(cfg.rps());
         CircuitBreaker breaker = new CircuitBreaker(cfg.breakerFailures(), cfg.breakerResetMillis());
         PromptInjectionGuard injectionGuard = new PromptInjectionGuard(cfg.promptInjectionEnabled());
-        VrpValidator vrp = new VrpValidator(cfg.vrpEnabled(), cfg.vrpReceiptTtlMillis());
+        VrpValidator vrp = new VrpValidator(cfg.vrpEnabled(), cfg.vrpReceiptTtlMillis(), cfg.approvalSecret());
         TokenBudget budget = new TokenBudget(cfg.tokenBudgetDaily());
         SemanticCache cache = new SemanticCache(cfg.semanticCacheTtlMillis());
 
@@ -141,6 +150,7 @@ public final class GatewayBootstrap {
                 injectionGuard, vrp, executor, output, budget, cache)
                 .addMutator(new ArgumentSanitizeMutator())
                 .addObserver(new Trace())
+                .addObserver(new GenAiSpanObserver())
                 .addObserver(metrics)
                 .addObserver(audit);
 
@@ -149,8 +159,22 @@ public final class GatewayBootstrap {
         Map<String, CredentialResolver> resolvers =
                 credentialResolvers(adapters, aggregation.router());
 
+        Map<String, ToolDef> exposedTools = aggregation.tools();
+        String intentHint = System.getenv("MCP_GW_TOOL_INTENT");
+        if (intentHint != null && !intentHint.isBlank()) {
+            RetrievalRouter retrieval = new RetrievalRouter(aggregation.router());
+            List<ToolDef> pruned = retrieval.prune(exposedTools, intentHint);
+            Map<String, ToolDef> narrowed = new LinkedHashMap<>();
+            for (ToolDef t : pruned) {
+                narrowed.put(t.name(), t);
+            }
+            LOG.info("MCP_GW_TOOL_INTENT prune hint='{}' tools {} -> {}",
+                    intentHint, exposedTools.size(), narrowed.size());
+            exposedTools = narrowed;
+        }
+
         List<McpServerFeatures.SyncToolSpecification> toolSpecs =
-                buildToolSpecs(aggregation.tools(), exposure, chain, json, defaultCaller, resolvers);
+                buildToolSpecs(exposedTools, exposure, chain, json, defaultCaller, resolvers);
         List<McpServerFeatures.SyncResourceSpecification> resourceSpecs =
                 buildResourceSpecs(aggregation.resources(), output, audit, defaultCaller);
 
@@ -160,7 +184,7 @@ public final class GatewayBootstrap {
                 .build();
 
         AtomicReference<Server> httpServer = new AtomicReference<>();
-        OpsServlet ops = new OpsServlet(metrics, () -> true, audit);
+        OpsServlet ops = new OpsServlet(metrics, buildReadyCheck(cfg, aggregation), audit);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             LOG.info("shutdown: draining backend pool and http listener");
             // Fail the probes first so the load balancer stops sending work before the pool drains.
@@ -221,10 +245,10 @@ public final class GatewayBootstrap {
 
         Map<String, CredentialResolver> byEngine = new LinkedHashMap<>();
         for (EngineAdapter adapter : adapters) {
-            adapter.credentialResolver().ifPresent(r -> byEngine.put(adapter.engineId(), r));
-        }
-        if (byEngine.isEmpty()) {
-            return Map.of();
+            // Prefer adapter-specific resolvers; otherwise propagate caller outbound headers.
+            CredentialResolver resolver = adapter.credentialResolver()
+                    .orElse(PassThroughCredentialResolver.INSTANCE);
+            byEngine.put(adapter.engineId(), resolver);
         }
         Map<String, CredentialResolver> byTool = new LinkedHashMap<>();
         router.snapshot().forEach((toolName, engineId) -> {
@@ -437,6 +461,47 @@ public final class GatewayBootstrap {
         AuditLog audit = new AuditLog(Path.of(path.trim()));
         LOG.info("durable audit log enabled path={}", path.trim());
         return audit;
+    }
+
+    /**
+     * {@code /readyz} is ready when the catalog exposed at least one tool. When
+     * {@code MCP_GW_READY_URL} is set, that URL must also return HTTP 2xx (after SSRF pin).
+     */
+    static BooleanSupplier buildReadyCheck(
+            GatewayConfig cfg, ToolManifestAggregator.Aggregation aggregation) {
+        boolean hasTools = aggregation != null && aggregation.tools() != null && !aggregation.tools().isEmpty();
+        String readyUrl = System.getenv("MCP_GW_READY_URL");
+        if (readyUrl == null || readyUrl.isBlank()) {
+            readyUrl = cfg.adapterProperty("ops.readyUrl", "");
+        }
+        final String url = readyUrl == null || readyUrl.isBlank() ? null : readyUrl.trim();
+        if (url == null) {
+            return () -> hasTools;
+        }
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(2))
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
+        return () -> {
+            if (!hasTools) {
+                return false;
+            }
+            try {
+                EgressConnect.PinnedTarget pinned = EgressConnect.pin(url);
+                HttpRequest request = HttpRequest.newBuilder(pinned.requestUri())
+                        .timeout(Duration.ofSeconds(2))
+                        .GET()
+                        .build();
+                HttpResponse<Void> response = client.send(request, HttpResponse.BodyHandlers.discarding());
+                return response.statusCode() >= 200 && response.statusCode() < 300;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            } catch (Exception e) {
+                LOG.debug("readyz backend ping failed: {}", e.getMessage());
+                return false;
+            }
+        };
     }
 
     /** Applies the configured log level reflectively so the module does not compile against Logback. */

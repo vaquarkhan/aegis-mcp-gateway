@@ -10,6 +10,8 @@ import io.github.vaquarkhan.aegis.core.authz.OpaPdp;
 import io.github.vaquarkhan.aegis.core.authz.PolicyDecisionPoint;
 import io.github.vaquarkhan.aegis.core.spi.CallContext;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,11 +57,25 @@ class PolicyDecisionPointTest {
     }
 
     @Test
-    void cedarAndOpaStubsDenyEverything() {
+    void cedarLiteAndOpaFailClosedWithoutLiveBackend() {
         assertFalse(new CedarPdp("policy.cedar").allows(ops(), "list_jobs", Map.of()));
-        assertFalse(new OpaPdp("http://opa:8181/v1/data/aegis/allow")
+        assertFalse(new OpaPdp("http://127.0.0.1:9/v1/data/aegis/allow")
                 .allows(ops(), "list_jobs", Map.of()));
         assertFalse(new CedarPdp(null).allows(ctx("list_jobs", Map.of())));
+    }
+
+    @Test
+    void cedarLiteDenyFileAllowsUnlessMatched() throws Exception {
+        Path file = Files.createTempFile("cedar-lite", ".rules");
+        Files.writeString(file, "deny robot-* *\n");
+        try {
+            CedarPdp pdp = new CedarPdp(file.toString());
+            assertTrue(pdp.allows(ops(), "list_jobs", Map.of()));
+            assertFalse(pdp.allows(
+                    new CallerIdentity("robot-7", Set.of("*"), true), "list_jobs", Map.of()));
+        } finally {
+            Files.deleteIfExists(file);
+        }
     }
 
     @Test

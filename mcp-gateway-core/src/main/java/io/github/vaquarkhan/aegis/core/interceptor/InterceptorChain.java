@@ -224,6 +224,13 @@ public final class InterceptorChain {
 
         // Outbound: bound first so redaction sees the exact bytes that will be returned.
         String safe = runOutbound(body);
+        if (injectionGuard.scanOutbound(safe) != null) {
+            LOG.warn("outbound prompt-injection pattern detected for tool={}; withholding body", ctx.toolName());
+            return finish(ctx,
+                    Decision.deny(Decision.PROMPT_INJECTION, Decision.STEP_EXECUTE,
+                            "denied: PROMPT_INJECTION"),
+                    "denied: PROMPT_INJECTION", started);
+        }
         cache.put(ctx, body);
         if (tokenBudget.enabled()
                 && !tokenBudget.tryConsume(callerId, TokenBudget.estimateTokens(safe))) {

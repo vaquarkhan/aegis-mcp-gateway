@@ -141,6 +141,7 @@ applied. The complete key list lives in
 - [docs/operations.md](docs/operations.md) - auth, TLS, writes, HA limits
 - [docs/adapters.md](docs/adapters.md) - Flink, Kafka, Spark, Iceberg
 - [docs/DESIGN-apache-mcp-gateway.md](docs/DESIGN-apache-mcp-gateway.md) - architecture and design rationale
+- [docs/DESIGN-CONFORMANCE-0.1.md](docs/DESIGN-CONFORMANCE-0.1.md) - design vs 0.1.0 implementation matrix
 - [docs/LLD-apache-mcp-gateway.md](docs/LLD-apache-mcp-gateway.md) - low level design, deny codes, config keys
 - [docs/RESEARCH-centralized-mcp-gateway.md](docs/RESEARCH-centralized-mcp-gateway.md) - strategic analysis and standards mapping
 - [docs/CURSOR-BUILD-INSTRUCTIONS.md](docs/CURSOR-BUILD-INSTRUCTIONS.md) - scaffolding and build instructions

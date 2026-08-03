@@ -79,4 +79,13 @@ public final class PromptInjectionGuard {
         }
         return null;
     }
+
+    /**
+     * Scans a tool result body for injection / exfil patterns before it reaches the model.
+     *
+     * @return matched pattern text, or {@code null} when clean
+     */
+    public String scanOutbound(String body) {
+        return matchedPattern(body);
+    }
 }

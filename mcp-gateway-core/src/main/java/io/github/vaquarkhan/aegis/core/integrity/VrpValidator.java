@@ -11,17 +11,16 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Step 9. Validate-run-promote for destructive operations.
  *
  * <p>A destructive call must be preceded by an identical call with {@code dryRun=true}. The dry run
  * returns a receipt bound to the caller, the tool and a fingerprint of the arguments; the real run
- * must present that receipt. This makes "expire snapshots older than X" a two-phase operation where
- * the agent has to show the operator what would be destroyed before it is destroyed.
- *
- * <p>Receipts expire, so a receipt cannot be banked and replayed against a table whose state has
- * since changed.
+ * must present that receipt. When a signing secret is configured, the receipt id is an HMAC so a
+ * forged identifier cannot pass verification even if the in-memory map is empty (fail-closed).
  *
  * @author Viquar Khan
  */
@@ -34,16 +33,28 @@ public final class VrpValidator {
 
     private final boolean enabled;
     private final long receiptTtlMillis;
+    private final byte[] signingKey;
     private final SecureRandom rng = new SecureRandom();
     private final ConcurrentHashMap<String, Receipt> receipts = new ConcurrentHashMap<>();
 
     public VrpValidator(boolean enabled, long receiptTtlMillis) {
+        this(enabled, receiptTtlMillis, null);
+    }
+
+    public VrpValidator(boolean enabled, long receiptTtlMillis, String signingSecret) {
         this.enabled = enabled;
         this.receiptTtlMillis = receiptTtlMillis <= 0 ? 900_000L : receiptTtlMillis;
+        this.signingKey = (signingSecret == null || signingSecret.isBlank())
+                ? null
+                : signingSecret.getBytes(StandardCharsets.UTF_8);
     }
 
     public boolean enabled() {
         return enabled;
+    }
+
+    public boolean signedReceipts() {
+        return signingKey != null;
     }
 
     /** Only destructive tools are subject to validate-run-promote. */
@@ -58,14 +69,19 @@ public final class VrpValidator {
 
     /** Issues a receipt for a completed dry run and returns its identifier. */
     public String recordDryRun(CallContext ctx) {
-        byte[] raw = new byte[12];
-        rng.nextBytes(raw);
-        String id = B64.encodeToString(raw);
-        receipts.put(id, new Receipt(
-                ctx.caller() == null ? "-" : ctx.caller().callerId(),
-                ctx.toolName(),
-                fingerprint(ctx),
-                System.currentTimeMillis() + receiptTtlMillis));
+        String caller = ctx.caller() == null ? "-" : ctx.caller().callerId();
+        String fp = fingerprint(ctx);
+        long expiresAt = System.currentTimeMillis() + receiptTtlMillis;
+        String id;
+        if (signingKey == null) {
+            byte[] raw = new byte[12];
+            rng.nextBytes(raw);
+            id = B64.encodeToString(raw);
+        } else {
+            id = "vrp1." + B64.encodeToString(hmac((caller + "|" + ctx.toolName() + "|" + fp + "|" + expiresAt)
+                    .getBytes(StandardCharsets.UTF_8)));
+        }
+        receipts.put(id, new Receipt(caller, ctx.toolName(), fp, expiresAt));
         return id;
     }
 
@@ -94,7 +110,14 @@ public final class VrpValidator {
         if (!r.fingerprint.equals(fingerprint(ctx))) {
             return false;
         }
-        // Consume: a receipt authorises exactly one destructive run.
+        if (signingKey != null && id.startsWith("vrp1.")) {
+            String expected = "vrp1." + B64.encodeToString(hmac((r.callerId + "|" + r.toolName + "|"
+                    + r.fingerprint + "|" + r.expiresAt).getBytes(StandardCharsets.UTF_8)));
+            if (!MessageDigest.isEqual(
+                    expected.getBytes(StandardCharsets.UTF_8), id.getBytes(StandardCharsets.UTF_8))) {
+                return false;
+            }
+        }
         receipts.remove(id);
         return true;
     }
@@ -104,10 +127,6 @@ public final class VrpValidator {
         return receipts.size();
     }
 
-    /**
-     * Stable fingerprint of the governance relevant arguments. The dry-run marker and the receipt
-     * itself are excluded so the two phases of the same operation fingerprint identically.
-     */
     public static String fingerprint(CallContext ctx) {
         Map<String, Object> sorted = new TreeMap<>(ctx.arguments());
         sorted.remove(ARG_DRY_RUN);
@@ -122,6 +141,16 @@ public final class VrpValidator {
             return HexFormat.of().formatHex(md.digest(sb.toString().getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
             throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    private byte[] hmac(byte[] message) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(signingKey, "HmacSHA256"));
+            return mac.doFinal(message);
+        } catch (Exception e) {
+            throw new IllegalStateException("HMAC-SHA256 unavailable", e);
         }
     }
 

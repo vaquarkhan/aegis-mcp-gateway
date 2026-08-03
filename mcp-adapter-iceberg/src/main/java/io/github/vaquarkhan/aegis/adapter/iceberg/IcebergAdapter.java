@@ -2,7 +2,9 @@ package io.github.vaquarkhan.aegis.adapter.iceberg;
 
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
 import io.github.vaquarkhan.aegis.core.spi.CallContext;
+import io.github.vaquarkhan.aegis.core.spi.CredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.EngineAdapter;
+import io.github.vaquarkhan.aegis.core.spi.PassThroughCredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
@@ -11,6 +13,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -128,6 +131,11 @@ public final class IcebergAdapter implements EngineAdapter {
                 "application/json",
                 ctx -> client.get("/v1/namespaces"),
                 true));
+    }
+
+    @Override
+    public Optional<CredentialResolver> credentialResolver() {
+        return Optional.of(PassThroughCredentialResolver.INSTANCE);
     }
 
     @Override

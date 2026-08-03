@@ -485,11 +485,12 @@ on stdout.
 
 **PolicyDecisionPoint**: `allows(CallerIdentity, String tool, Map args)` with default
 `allows(CallContext)`. Builtin policy file lines: `deny tool <glob>`, `deny job <glob>`; missing
-file fails closed. Cedar/OPA stubs always deny.
+file fails closed. OPA posts to an http(s) data URL (fail-closed). Cedar uses cedar-lite deny
+files or the same HTTP contract; a full Cedar runtime is on the [ROADMAP](../ROADMAP.md).
 
 **RateLimiter**: `allow(callerId)` with a `ConcurrentHashMap` of one-second fixed windows.
 **CircuitBreaker**: per-tool CLOSED / OPEN / HALF_OPEN with a single half-open probe.
-**OutputControls**: `boundAndRedact` = bound first, then DLP redact (secrets, JWT, PEM, email, Bearer).
+**OutputControls**: `boundAndRedact` = bound first, then DLP redact (secrets, JWT, PEM, email → `PERSON_N`, Bearer).
 
 ## 6. Sequence: governed tools/call (end to end)
 
@@ -1219,11 +1220,13 @@ fail closed unless `dryRun=true`.
 | Flink adapter + embedded HTTP fakes | Implemented |
 | Kafka / Spark / Iceberg adapters + YAML | Live Admin/History/Livy/REST; Iceberg engine maintenance procedures still external |
 | Builtin PDP, approvals, breaker, egress, DLP | Implemented |
-| OAuth JWKS | Implemented; CIMD / SPIFFE remain fail-closed stubs |
-| Cedar / OPA evaluation | Deny-all stubs |
-| OpenTelemetry spans | Not shipped (Prometheus + audit yes) |
-| Redis shared rate/nonce / durable audit | Not shipped |
+| OAuth JWKS | Implemented; CIMD / SPIFFE refuse-start → [ROADMAP](../ROADMAP.md) 0.3 |
+| Cedar-lite / OPA HTTP evaluation | Implemented (fail-closed); full Cedar runtime → ROADMAP 0.3 |
+| OpenTelemetry SDK GenAI spans | Structured `gen_ai.*` logs shipped; OTel SDK bridge → ROADMAP 0.2 |
+| Redis shared rate/nonce / audit seal | Not shipped → ROADMAP 0.2 |
 | Shade jar / Docker / Helm | Shipped under `mcp-gateway-dist` |
+
+All other design differences: [ROADMAP.md](../ROADMAP.md).
 
 Strategic context, MCP 2026-07-28 / interceptor SEP mapping, Bastion compose notes, and Kafka
 KIP roadmap implications: see

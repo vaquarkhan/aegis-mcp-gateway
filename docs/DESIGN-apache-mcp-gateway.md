@@ -264,17 +264,20 @@ reference that dry-run receipt.
 
 ## 10. Open items for later releases
 
-- OAuth resource server validation with JWKS is implemented in 0.1.0 when
-  `MCP_GW_OAUTH_JWKS_URL` is set; without JWKS the filter stays fail-closed. See LLD section 8.
-- CIMD (client identity metadata document) verification is a stub.
-- SPIFFE mTLS peer verification is a stub that currently only reports whether it is configured.
-- `SemanticCache` is an in-memory map. A shared cache is out of scope for 0.1.0.
+All items below are **future roadmap**, not 0.1.0 defects. Canonical list and milestones:
+[ROADMAP.md](../ROADMAP.md).
+
+- OAuth multi-issuer / resource-indicator hardening (JWKS path already works in 0.1.0).
+- CIMD request authentication (mode refuses start today).
+- SPIFFE / SPIRE workload API mTLS (mode refuses start today).
+- Shared / semantic cache beyond in-process exact-match TTL.
 - Streamable HTTP intermediary headers (`Mcp-Method`, `Mcp-Name`, protocol version) for LB/WAF
   routing without body parse (MCP 2026-07-28 direction).
 - Protocol-level interceptor discovery (`interceptors/list`) only after SEP-2624 or its
   successor is accepted; Aegis keeps a gateway-local chain today (inspired by SEP-1763).
-- Externalized rate, nonce, and audit stores for multi-replica HA (LLD section 18).
-- OpenTelemetry span export alongside Prometheus metrics.
+- Externalized rate, nonce, and audit stores for multi-replica HA (LLD section 18) — milestone 0.2.
+- OpenTelemetry SDK GenAI span export (structured `gen_ai.*` logs already ship) — milestone 0.2.
+- Vault / RFC 8693 outbound credentials, Merkle VRP, MCP Tasks, A2A — see ROADMAP 0.2 / 0.3 / post-0.3.
 
 ## 11. Related documents
 

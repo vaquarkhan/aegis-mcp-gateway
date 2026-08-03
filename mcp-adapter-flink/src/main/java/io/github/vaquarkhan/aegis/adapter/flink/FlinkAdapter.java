@@ -3,7 +3,9 @@ package io.github.vaquarkhan.aegis.adapter.flink;
 import io.github.vaquarkhan.aegis.adapter.flink.client.SqlReadonlyGuard;
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
 import io.github.vaquarkhan.aegis.core.observability.Metrics;
+import io.github.vaquarkhan.aegis.core.spi.CredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.EngineAdapter;
+import io.github.vaquarkhan.aegis.core.spi.PassThroughCredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.ReadOnlyGuard;
 import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
@@ -58,6 +60,12 @@ public final class FlinkAdapter implements EngineAdapter {
     @Override
     public Optional<ReadOnlyGuard> readOnlyGuard() {
         return Optional.of(sqlGuard);
+    }
+
+    @Override
+    public Optional<CredentialResolver> credentialResolver() {
+        // Propagate per-caller Authorization when the admission layer bound one on the identity.
+        return Optional.of(PassThroughCredentialResolver.INSTANCE);
     }
 
     @Override

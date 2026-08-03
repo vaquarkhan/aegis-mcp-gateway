@@ -3,7 +3,9 @@ package io.github.vaquarkhan.aegis.adapter.spark;
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
 import io.github.vaquarkhan.aegis.core.governance.SqlReadonlyGuard;
 import io.github.vaquarkhan.aegis.core.spi.CallContext;
+import io.github.vaquarkhan.aegis.core.spi.CredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.EngineAdapter;
+import io.github.vaquarkhan.aegis.core.spi.PassThroughCredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.ReadOnlyGuard;
 import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
@@ -94,6 +96,11 @@ public final class SparkAdapter implements EngineAdapter {
     @Override
     public Optional<ReadOnlyGuard> readOnlyGuard() {
         return Optional.of(sqlGuard);
+    }
+
+    @Override
+    public Optional<CredentialResolver> credentialResolver() {
+        return Optional.of(PassThroughCredentialResolver.INSTANCE);
     }
 
     @Override

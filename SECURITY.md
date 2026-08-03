@@ -42,18 +42,18 @@ The gateway makes a small number of promises. A report is in scope when it break
 
 Out of scope: findings that depend on a configuration the gateway already refuses to start with,
 denial of service through resource exhaustion on a deliberately unlimited setting, and reports
-against the stub components listed below, which deny by design.
+against refuse-start auth modes (CIMD / SPIFFE) documented on the [ROADMAP](ROADMAP.md).
 
 ## Known limitations in 0.1.0
 
-These are documented gaps, not vulnerabilities. Each fails closed.
+These are documented gaps, not vulnerabilities. Fail-closed items and future work live on
+[ROADMAP.md](ROADMAP.md).
 
-- `MCP_GW_AUTH_MODE=cimd` and `MCP_GW_AUTH_MODE=spiffe` refuse to start an HTTP listener. The CIMD
-  document verifier is implemented and unit tested, but a metadata document names a client without
-  authenticating the request that presented it, so it cannot yet gate traffic on its own.
-- `MCP_GW_PDP=cedar` and `MCP_GW_PDP=opa` deny every call. Only `builtin` decides.
-- Approval nonces, rate limiter buckets and circuit breaker state are per process. Running more
-  than one replica weakens all three. See [docs/operations.md](docs/operations.md).
+- `MCP_GW_AUTH_MODE=cimd` and `MCP_GW_AUTH_MODE=spiffe` refuse to start an HTTP listener (→ 0.3).
+- Approval nonces, rate limiter buckets and circuit breaker state are per process. Multi-replica
+  weakens all three until HA shared state lands (→ 0.2). See [docs/operations.md](docs/operations.md).
+- Pass-through outbound credentials do not yet perform vault / RFC 8693 exchange (→ 0.2).
+- VRP HMAC receipts are not Merkle/Ed25519 source-vs-sink proofs (→ 0.3).
 
 ## Hardening checklist
 

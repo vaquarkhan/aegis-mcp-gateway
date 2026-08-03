@@ -91,11 +91,19 @@ public final class ToolManifestAggregator {
                 }
                 if (!integrity.verifyAndPin(tool)) {
                     warnings.add("tool " + name + " failed catalog integrity and was dropped");
+                    if (catalogFailClosed(cfg)) {
+                        throw new IllegalStateException(
+                                "MCP_GW_CATALOG_FAIL_CLOSED=true: tool catalog integrity failed for " + name);
+                    }
                     continue;
                 }
                 ToolOverlay ov = overlay.get(raw.name());
                 if (ov != null && !integrity.matchesExpected(tool, ov.schemaDigest())) {
                     warnings.add("tool " + name + " schema digest does not match tools.yaml pin");
+                    if (catalogFailClosed(cfg)) {
+                        throw new IllegalStateException(
+                                "MCP_GW_CATALOG_FAIL_CLOSED=true: schema digest mismatch for " + name);
+                    }
                     continue;
                 }
                 tools.put(name, tool);
@@ -124,6 +132,14 @@ public final class ToolManifestAggregator {
                 router,
                 Collections.unmodifiableSet(egress),
                 Collections.unmodifiableList(warnings));
+    }
+
+    private static boolean catalogFailClosed(GatewayConfig cfg) {
+        String env = System.getenv("MCP_GW_CATALOG_FAIL_CLOSED");
+        if (env != null && !env.isBlank()) {
+            return Boolean.parseBoolean(env.trim());
+        }
+        return cfg != null && cfg.adapterProperty("catalog.failClosed", "false").equalsIgnoreCase("true");
     }
 
     /** Applies a {@code tools.yaml} entry. Returns {@code null} when the overlay drops the tool. */

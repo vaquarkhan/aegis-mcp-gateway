@@ -8,7 +8,9 @@ import io.github.vaquarkhan.aegis.adapter.kafka.client.SchemaRegistryClient;
 import io.github.vaquarkhan.aegis.adapter.kafka.client.SchemaRegistryOps;
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
 import io.github.vaquarkhan.aegis.core.spi.CallContext;
+import io.github.vaquarkhan.aegis.core.spi.CredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.EngineAdapter;
+import io.github.vaquarkhan.aegis.core.spi.PassThroughCredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
@@ -19,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -117,6 +120,11 @@ public final class KafkaAdapter implements EngineAdapter {
                 "application/json",
                 ctx -> cluster(cfg).listTopics(),
                 true));
+    }
+
+    @Override
+    public Optional<CredentialResolver> credentialResolver() {
+        return Optional.of(PassThroughCredentialResolver.INSTANCE);
     }
 
     @Override
