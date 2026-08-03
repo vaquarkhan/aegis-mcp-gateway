@@ -1,0 +1,96 @@
+# Licensed to the Aegis MCP Gateway project under the Apache License, Version 2.0.
+# See the NOTICE file distributed with this work for additional information.
+# Author: Viquar Khan
+#
+# Flink tool manifest. Names, classes, descriptions and input schemas are declared here;
+# backends live in FlinkToolFactory. The gateway core filters registration by exposure,
+# write unlock, scope and policy, so this file lists the full catalog.
+engine: flink
+taxonomyClass: streaming
+tools:
+  - name: list_jobs
+    class: READ
+    description: List Flink jobs
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_job
+    class: READ
+    description: Get Flink job details
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"}},"required":["jobId"]}'
+  - name: get_job_status
+    class: READ
+    description: Get Flink job status
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"}},"required":["jobId"]}'
+  - name: get_job_exceptions
+    class: READ
+    description: Get Flink job exceptions
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"}},"required":["jobId"]}'
+  - name: get_job_metrics
+    class: READ
+    description: Get Flink job metrics
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"}},"required":["jobId"]}'
+  - name: list_checkpoints
+    class: READ
+    description: List Flink job checkpoints
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"}},"required":["jobId"]}'
+  - name: list_jars
+    class: READ
+    description: List uploaded jars
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: run_sql_readonly
+    class: READ
+    description: Execute read-only SQL via Flink SQL Gateway
+    inputSchema: '{"type":"object","properties":{"sql":{"type":"string"}},"required":["sql"]}'
+  - name: get_cluster_info
+    class: READ
+    description: Cluster overview (slots, TaskManagers, jobs)
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_taskmanagers
+    class: READ
+    description: List TaskManagers and resources
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_job_config
+    class: READ
+    description: Get Flink job configuration
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"}},"required":["jobId"]}'
+  - name: get_flink_config
+    class: READ
+    description: JobManager cluster configuration
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: trigger_savepoint
+    class: MUTATE
+    description: Trigger a savepoint
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"},"targetDirectory":{"type":"string"},"approvalToken":{"type":"string"}},"required":["jobId","approvalToken"]}'
+  - name: rescale_job
+    class: MUTATE
+    description: Rescale a Flink job
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"},"parallelism":{"type":"string"},"approvalToken":{"type":"string"}},"required":["jobId","parallelism","approvalToken"]}'
+  - name: upload_jar
+    class: MUTATE
+    description: Upload a jar (path must be under allow-listed directories)
+    inputSchema: '{"type":"object","properties":{"path":{"type":"string"},"approvalToken":{"type":"string"}},"required":["path","approvalToken"]}'
+  - name: run_jar
+    class: DESTRUCTIVE
+    description: Run an uploaded jar
+    inputSchema: '{"type":"object","properties":{"jarId":{"type":"string"},"entryClass":{"type":"string"},"programArgs":{"type":"string"},"parallelism":{"type":"string"},"approvalToken":{"type":"string"}},"required":["jarId","approvalToken"]}'
+  - name: stop_job
+    class: DESTRUCTIVE
+    description: Stop a job with savepoint
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"},"targetDirectory":{"type":"string"},"approvalToken":{"type":"string"}},"required":["jobId","approvalToken"]}'
+  - name: cancel_job
+    class: DESTRUCTIVE
+    description: Cancel a Flink job
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["jobId","approvalToken"]}'
+  - name: run_sql_ddl_dml
+    class: DESTRUCTIVE
+    description: Execute DDL or DML SQL via Flink SQL Gateway
+    inputSchema: '{"type":"object","properties":{"sql":{"type":"string"},"approvalToken":{"type":"string"}},"required":["sql","approvalToken"]}'
+resources:
+  - uri: flink://cluster/overview
+    name: cluster-overview
+    mimeType: application/json
+  - uri: flink://jobs
+    name: jobs
+    mimeType: application/json
+  - uri: flink://health
+    name: health
+    mimeType: application/json

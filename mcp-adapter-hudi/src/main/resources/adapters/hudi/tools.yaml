@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: hudi
+taxonomyClass: lakehouse
+tools:
+  - name: list_tables
+    class: READ
+    description: List Hudi tables via REST catalog facade
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_table
+    class: READ
+    description: Get Hudi table metadata
+    inputSchema: '{"type":"object","properties":{"table":{"type":"string"}},"required":["table"]}'
+  - name: run_clustering
+    class: MUTATE
+    description: Trigger Hudi clustering
+    inputSchema: '{"type":"object","properties":{"table":{"type":"string"},"approvalToken":{"type":"string"}},"required":["table","approvalToken"]}'
+  - name: run_compaction
+    class: DESTRUCTIVE
+    description: Trigger Hudi compaction
+    inputSchema: '{"type":"object","properties":{"table":{"type":"string"},"approvalToken":{"type":"string"}},"required":["table","approvalToken"]}'

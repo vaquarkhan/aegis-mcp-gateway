@@ -1,0 +1,16 @@
+# Author: Viquar Khan
+engine: doris
+taxonomyClass: olap
+tools:
+  - name: cluster_overview
+    class: READ
+    description: Doris FE HTTP overview
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_backends
+    class: READ
+    description: Show Doris backends
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: run_sql_readonly
+    class: READ
+    description: Doris SQL HTTP facade
+    inputSchema: '{"type":"object","properties":{"sql":{"type":"string"}},"required":["sql"]}'

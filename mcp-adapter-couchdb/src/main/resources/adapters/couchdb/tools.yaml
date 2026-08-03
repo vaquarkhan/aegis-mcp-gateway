@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: couchdb
+taxonomyClass: datastore
+tools:
+  - name: list_dbs
+    class: READ
+    description: List CouchDB databases
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_db
+    class: READ
+    description: Get CouchDB database info
+    inputSchema: '{"type":"object","properties":{"db":{"type":"string"}},"required":["db"]}'
+  - name: create_db
+    class: MUTATE
+    description: Create a CouchDB database
+    inputSchema: '{"type":"object","properties":{"db":{"type":"string"},"approvalToken":{"type":"string"}},"required":["db","approvalToken"]}'
+  - name: delete_db
+    class: DESTRUCTIVE
+    description: Delete a CouchDB database
+    inputSchema: '{"type":"object","properties":{"db":{"type":"string"},"approvalToken":{"type":"string"}},"required":["db","approvalToken"]}'

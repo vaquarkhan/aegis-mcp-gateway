@@ -1,0 +1,28 @@
+# Author: Viquar Khan
+engine: pulsar
+taxonomyClass: messaging
+tools:
+  - name: list_clusters
+    class: READ
+    description: List Pulsar clusters
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_tenants
+    class: READ
+    description: List Pulsar tenants
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_topics
+    class: READ
+    description: List topics in a namespace
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"}},"required":["namespace"]}'
+  - name: get_topic_stats
+    class: READ
+    description: Get Pulsar topic stats
+    inputSchema: '{"type":"object","properties":{"topic":{"type":"string"}},"required":["topic"]}'
+  - name: create_topic
+    class: MUTATE
+    description: Create a Pulsar topic
+    inputSchema: '{"type":"object","properties":{"topic":{"type":"string"},"approvalToken":{"type":"string"}},"required":["topic","approvalToken"]}'
+  - name: delete_topic
+    class: DESTRUCTIVE
+    description: Delete a Pulsar topic
+    inputSchema: '{"type":"object","properties":{"topic":{"type":"string"},"approvalToken":{"type":"string"}},"required":["topic","approvalToken"]}'

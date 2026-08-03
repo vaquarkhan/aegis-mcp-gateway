@@ -1,0 +1,52 @@
+# Author: Viquar Khan
+engine: iceberg
+taxonomyClass: lakehouse
+tools:
+  - name: list_namespaces
+    class: READ
+    description: List Iceberg namespaces
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_tables
+    class: READ
+    description: List tables in a namespace
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"}},"required":["namespace"]}'
+  - name: get_table
+    class: READ
+    description: Get Iceberg table metadata
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"},"table":{"type":"string"}},"required":["namespace","table"]}'
+  - name: get_table_metadata
+    class: READ
+    description: Get Iceberg table metadata (alias of get_table)
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"},"table":{"type":"string"}},"required":["namespace","table"]}'
+  - name: create_namespace
+    class: MUTATE
+    description: Create an Iceberg namespace
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"},"approvalToken":{"type":"string"}},"required":["namespace","approvalToken"]}'
+  - name: alter_table
+    class: MUTATE
+    description: Alter Iceberg table properties
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"},"table":{"type":"string"},"approvalToken":{"type":"string"}},"required":["namespace","table","approvalToken"]}'
+  - name: drop_table
+    class: DESTRUCTIVE
+    description: Drop an Iceberg table (VRP-gated)
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"},"table":{"type":"string"},"approvalToken":{"type":"string"},"dryRun":{"type":"boolean"}},"required":["namespace","table","approvalToken"]}'
+  - name: expire_snapshots
+    class: DESTRUCTIVE
+    description: Expire Iceberg snapshots (VRP-gated)
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"},"table":{"type":"string"},"approvalToken":{"type":"string"},"dryRun":{"type":"boolean"}},"required":["namespace","table","approvalToken"]}'
+  - name: remove_orphan_files
+    class: DESTRUCTIVE
+    description: Remove orphan files (VRP-gated)
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"},"table":{"type":"string"},"approvalToken":{"type":"string"},"dryRun":{"type":"boolean"}},"required":["namespace","table","approvalToken"]}'
+  - name: rewrite_data_files
+    class: DESTRUCTIVE
+    description: Rewrite data files (VRP-gated)
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"},"table":{"type":"string"},"approvalToken":{"type":"string"},"dryRun":{"type":"boolean"}},"required":["namespace","table","approvalToken"]}'
+  - name: commit_transaction
+    class: DESTRUCTIVE
+    description: Commit an Iceberg transaction (VRP-gated, see LLD section 14)
+    inputSchema: '{"type":"object","properties":{"namespace":{"type":"string"},"table":{"type":"string"},"approvalToken":{"type":"string"},"dryRun":{"type":"boolean"},"proof":{"type":"string"}},"required":["namespace","table","approvalToken"]}'
+  - name: dry_run_maintenance
+    class: READ
+    description: Read-only dry-run companion for destructive maintenance
+    inputSchema: '{"type":"object","properties":{"operation":{"type":"string"},"namespace":{"type":"string"},"table":{"type":"string"}},"required":["operation","namespace","table"]}'

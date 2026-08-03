@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: cassandra
+taxonomyClass: datastore
+tools:
+  - name: list_keyspaces
+    class: READ
+    description: List keyspaces via Cassandra Sidecar
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_tables
+    class: READ
+    description: List tables in a keyspace
+    inputSchema: '{"type":"object","properties":{"keyspace":{"type":"string"}},"required":["keyspace"]}'
+  - name: get_ring
+    class: READ
+    description: Cassandra ring health via Sidecar
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: drop_table
+    class: DESTRUCTIVE
+    description: Drop a Cassandra table via Sidecar SQL facade
+    inputSchema: '{"type":"object","properties":{"keyspace":{"type":"string"},"table":{"type":"string"},"approvalToken":{"type":"string"}},"required":["keyspace","table","approvalToken"]}'

@@ -1,0 +1,16 @@
+# Author: Viquar Khan
+engine: calcite
+taxonomyClass: query
+tools:
+  - name: get_status
+    class: READ
+    description: Calcite HTTP status
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: explain_sql
+    class: READ
+    description: Explain a SQL plan via HTTP facade
+    inputSchema: '{"type":"object","properties":{"sql":{"type":"string"}},"required":["sql"]}'
+  - name: run_sql_readonly
+    class: READ
+    description: Run read-only SQL via Calcite HTTP facade
+    inputSchema: '{"type":"object","properties":{"sql":{"type":"string"}},"required":["sql"]}'

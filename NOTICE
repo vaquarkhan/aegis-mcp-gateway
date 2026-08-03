@@ -1,0 +1,32 @@
+Aegis MCP Governance Gateway
+Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+This product includes software developed by the Aegis MCP Gateway project
+(https://github.com/vaquarkhan/aegis-mcp-gateway).
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use the files in this distribution except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This product bundles or depends on third-party software licensed as follows.
+
+- Model Context Protocol Java SDK (io.modelcontextprotocol.sdk:mcp)
+  Apache License, Version 2.0
+- Eclipse Jetty (org.eclipse.jetty.ee10:jetty-ee10-servlet)
+  Apache License, Version 2.0 and Eclipse Public License, Version 2.0
+- SLF4J (org.slf4j:slf4j-api)
+  MIT License
+- Logback (ch.qos.logback:logback-classic)
+  Eclipse Public License, Version 1.0 and GNU Lesser General Public License, Version 2.1
+- SnakeYAML (org.yaml:snakeyaml)
+  Apache License, Version 2.0
+- Apache Kafka clients (org.apache.kafka:kafka-clients)
+  Apache License, Version 2.0
+- JUnit Jupiter (org.junit.jupiter:junit-jupiter), test scope only
+  Eclipse Public License, Version 2.0
+
+Apache Flink, Apache Kafka, Apache Spark and Apache Iceberg are trademarks of
+The Apache Software Foundation. This project is not affiliated with, endorsed
+by, or sponsored by The Apache Software Foundation.

@@ -1,0 +1,13 @@
+# Author: Viquar Khan
+replicaCount: 1
+image:
+  repository: aegis-mcp-gateway
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8090
+env:
+  MCP_GW_TRANSPORT: http
+  MCP_GW_AUTH_MODE: tokenfile
+  MCP_GW_ADAPTERS: flink

@@ -1,0 +1,36 @@
+# Author: Viquar Khan
+engine: kafka
+taxonomyClass: messaging
+tools:
+  - name: list_topics
+    class: READ
+    description: List Kafka topics
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: describe_topic
+    class: READ
+    description: Describe a Kafka topic
+    inputSchema: '{"type":"object","properties":{"topic":{"type":"string"}},"required":["topic"]}'
+  - name: query_schema_registry
+    class: READ
+    description: Query Schema Registry for a subject
+    inputSchema: '{"type":"object","properties":{"subject":{"type":"string"}},"required":["subject"]}'
+  - name: inspect_dlq
+    class: READ
+    description: Inspect dead-letter queue topic samples
+    inputSchema: '{"type":"object","properties":{"topic":{"type":"string"}},"required":["topic"]}'
+  - name: create_topic
+    class: MUTATE
+    description: Create a Kafka topic
+    inputSchema: '{"type":"object","properties":{"topic":{"type":"string"},"partitions":{"type":"string"},"approvalToken":{"type":"string"}},"required":["topic","approvalToken"]}'
+  - name: alter_config
+    class: MUTATE
+    description: Alter topic or broker config
+    inputSchema: '{"type":"object","properties":{"resource":{"type":"string"},"approvalToken":{"type":"string"}},"required":["resource","approvalToken"]}'
+  - name: reset_offsets
+    class: DESTRUCTIVE
+    description: Reset consumer group offsets
+    inputSchema: '{"type":"object","properties":{"groupId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["groupId","approvalToken"]}'
+  - name: delete_records
+    class: DESTRUCTIVE
+    description: Delete records before an offset
+    inputSchema: '{"type":"object","properties":{"topic":{"type":"string"},"approvalToken":{"type":"string"}},"required":["topic","approvalToken"]}'

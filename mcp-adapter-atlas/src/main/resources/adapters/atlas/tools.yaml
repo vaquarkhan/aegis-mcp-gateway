@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: atlas
+taxonomyClass: metadata
+tools:
+  - name: list_typedefs
+    class: READ
+    description: List Atlas typedefs
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: search_entities
+    class: READ
+    description: Basic Atlas entity search
+    inputSchema: '{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}'
+  - name: get_entity
+    class: READ
+    description: Get Atlas entity by guid
+    inputSchema: '{"type":"object","properties":{"guid":{"type":"string"}},"required":["guid"]}'
+  - name: delete_entity
+    class: DESTRUCTIVE
+    description: Delete Atlas entity
+    inputSchema: '{"type":"object","properties":{"guid":{"type":"string"},"approvalToken":{"type":"string"}},"required":["guid","approvalToken"]}'

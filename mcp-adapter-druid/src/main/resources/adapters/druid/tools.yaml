@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: druid
+taxonomyClass: olap
+tools:
+  - name: list_datasources
+    class: READ
+    description: List Druid datasources
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_datasource
+    class: READ
+    description: Get Druid datasource metadata
+    inputSchema: '{"type":"object","properties":{"datasource":{"type":"string"}},"required":["datasource"]}'
+  - name: run_sql_readonly
+    class: READ
+    description: Run Druid SQL (read facade)
+    inputSchema: '{"type":"object","properties":{"sql":{"type":"string"}},"required":["sql"]}'
+  - name: disable_datasource
+    class: DESTRUCTIVE
+    description: Disable a Druid datasource
+    inputSchema: '{"type":"object","properties":{"datasource":{"type":"string"},"approvalToken":{"type":"string"}},"required":["datasource","approvalToken"]}'

@@ -1,0 +1,15 @@
+{
+  "_author": "Viquar Khan",
+  "mcpServers": {
+    "aegis": {
+      "command": "java",
+      "args": ["-jar", "REPLACE/WITH/aegis-mcp-gateway-0.1.0-all.jar"],
+      "env": {
+        "MCP_GW_TRANSPORT": "stdio",
+        "MCP_GW_ADAPTERS": "flink",
+        "FLINK_REST_URL": "http://localhost:8081",
+        "MCP_GW_LOG_LEVEL": "WARN"
+      }
+    }
+  }
+}

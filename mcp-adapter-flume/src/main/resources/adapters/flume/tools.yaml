@@ -1,0 +1,12 @@
+# Author: Viquar Khan
+engine: flume
+taxonomyClass: ingest
+tools:
+  - name: get_metrics
+    class: READ
+    description: Read Flume metrics JSON
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_health
+    class: READ
+    description: Flume agent health probe
+    inputSchema: '{"type":"object","properties":{}}'

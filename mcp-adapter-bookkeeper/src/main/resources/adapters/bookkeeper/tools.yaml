@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: bookkeeper
+taxonomyClass: logstore
+tools:
+  - name: bookie_info
+    class: READ
+    description: BookKeeper bookie info
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_bookies
+    class: READ
+    description: List BookKeeper bookies
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_ledgers
+    class: READ
+    description: List ledgers
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: delete_ledger
+    class: DESTRUCTIVE
+    description: Delete a ledger
+    inputSchema: '{"type":"object","properties":{"ledgerId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["ledgerId","approvalToken"]}'

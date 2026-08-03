@@ -1,0 +1,16 @@
+# Author: Viquar Khan
+engine: kudu
+taxonomyClass: datastore
+tools:
+  - name: list_tables
+    class: READ
+    description: List Kudu tables via REST facade
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_table
+    class: READ
+    description: Get Kudu table
+    inputSchema: '{"type":"object","properties":{"table":{"type":"string"}},"required":["table"]}'
+  - name: delete_table
+    class: DESTRUCTIVE
+    description: Delete a Kudu table
+    inputSchema: '{"type":"object","properties":{"table":{"type":"string"},"approvalToken":{"type":"string"}},"required":["table","approvalToken"]}'

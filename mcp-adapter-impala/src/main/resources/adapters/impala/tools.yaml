@@ -1,0 +1,16 @@
+# Author: Viquar Khan
+engine: impala
+taxonomyClass: query
+tools:
+  - name: get_metrics
+    class: READ
+    description: Impala /metrics
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_queries
+    class: READ
+    description: Impala queries page JSON facade
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: cancel_query
+    class: DESTRUCTIVE
+    description: Cancel an Impala query
+    inputSchema: '{"type":"object","properties":{"queryId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["queryId","approvalToken"]}'

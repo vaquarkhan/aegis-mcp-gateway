@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: zookeeper
+taxonomyClass: coordination
+tools:
+  - name: ruok
+    class: READ
+    description: ZooKeeper ruok admin command
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: stat
+    class: READ
+    description: ZooKeeper stat
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_children
+    class: READ
+    description: List znode children via REST facade
+    inputSchema: '{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}'
+  - name: delete_znode
+    class: DESTRUCTIVE
+    description: Delete a znode
+    inputSchema: '{"type":"object","properties":{"path":{"type":"string"},"approvalToken":{"type":"string"}},"required":["path","approvalToken"]}'

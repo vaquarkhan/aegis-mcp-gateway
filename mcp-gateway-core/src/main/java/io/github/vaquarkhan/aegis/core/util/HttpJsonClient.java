@@ -1,0 +1,117 @@
+/*
+ * Licensed to the Aegis MCP Gateway project under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.github.vaquarkhan.aegis.core.util;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Minimal JDK HTTP JSON helper for engine adapters. Failures become {@link IllegalStateException}
+ * so the gateway circuit breaker observes a real backend error.
+ *
+ * @author Viquar Khan
+ */
+public final class HttpJsonClient {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HttpJsonClient.class);
+
+    private final String baseUrl;
+    private final HttpClient http;
+    private final Duration timeout;
+
+    public HttpJsonClient(String baseUrl) {
+        this(baseUrl, Duration.ofSeconds(15));
+    }
+
+    public HttpJsonClient(String baseUrl, Duration timeout) {
+        String u = baseUrl == null ? "" : baseUrl.trim();
+        while (u.endsWith("/")) {
+            u = u.substring(0, u.length() - 1);
+        }
+        this.baseUrl = u;
+        this.timeout = timeout == null ? Duration.ofSeconds(15) : timeout;
+        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+    }
+
+    public String baseUrl() {
+        return baseUrl;
+    }
+
+    public String get(String path) {
+        return send("GET", path, null);
+    }
+
+    public String post(String path, String jsonBody) {
+        return send("POST", path, jsonBody == null ? "{}" : jsonBody);
+    }
+
+    public String put(String path, String jsonBody) {
+        return send("PUT", path, jsonBody == null ? "{}" : jsonBody);
+    }
+
+    public String delete(String path) {
+        return send("DELETE", path, null);
+    }
+
+    private String send(String method, String path, String jsonBody) {
+        String p = path == null || path.isEmpty() ? "" : (path.startsWith("/") ? path : "/" + path);
+        try {
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + p))
+                    .timeout(timeout)
+                    .header("Accept", "application/json");
+            switch (method) {
+                case "GET" -> builder.GET();
+                case "DELETE" -> builder.DELETE();
+                case "POST" -> {
+                    builder.header("Content-Type", "application/json");
+                    builder.POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8));
+                }
+                case "PUT" -> {
+                    builder.header("Content-Type", "application/json");
+                    builder.PUT(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8));
+                }
+                default -> throw new IllegalStateException("unsupported method " + method);
+            }
+            HttpResponse<String> resp = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() >= 400) {
+                throw new IllegalStateException("HTTP " + resp.statusCode() + ": " + truncate(resp.body()));
+            }
+            return resp.body() == null ? "" : resp.body();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("http request interrupted", e);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            LOG.warn("http {} failed path={} msg={}", method, p, e.getMessage());
+            throw new IllegalStateException("backend error: " + e.getMessage(), e);
+        }
+    }
+
+    private static String truncate(String body) {
+        if (body == null) {
+            return "";
+        }
+        return body.length() <= 300 ? body : body.substring(0, 300);
+    }
+}

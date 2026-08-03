@@ -1,0 +1,24 @@
+# Author: Viquar Khan
+engine: nifi
+taxonomyClass: dataflow
+tools:
+  - name: get_about
+    class: READ
+    description: NiFi about / version
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_process_groups
+    class: READ
+    description: List root process groups
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_process_group
+    class: READ
+    description: Get a process group
+    inputSchema: '{"type":"object","properties":{"groupId":{"type":"string"}},"required":["groupId"]}'
+  - name: start_process_group
+    class: MUTATE
+    description: Start a process group
+    inputSchema: '{"type":"object","properties":{"groupId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["groupId","approvalToken"]}'
+  - name: stop_process_group
+    class: DESTRUCTIVE
+    description: Stop a process group
+    inputSchema: '{"type":"object","properties":{"groupId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["groupId","approvalToken"]}'

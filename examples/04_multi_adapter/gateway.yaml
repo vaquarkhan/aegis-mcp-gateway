@@ -1,0 +1,7 @@
+# Author: Viquar Khan
+transport: stdio
+writeEnabled: false
+rps: 10
+toolTimeoutMillis: 30000
+maxBytes: 65536
+egressAllowHosts: localhost,127.0.0.1

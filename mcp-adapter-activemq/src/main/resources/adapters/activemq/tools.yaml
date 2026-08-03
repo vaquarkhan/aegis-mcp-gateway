@@ -1,0 +1,16 @@
+# Author: Viquar Khan
+engine: activemq
+taxonomyClass: messaging
+tools:
+  - name: get_broker
+    class: READ
+    description: Read ActiveMQ broker Jolokia MBean
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_queues
+    class: READ
+    description: List ActiveMQ queues via Jolokia search
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: purge_queue
+    class: DESTRUCTIVE
+    description: Purge an ActiveMQ queue
+    inputSchema: '{"type":"object","properties":{"queue":{"type":"string"},"approvalToken":{"type":"string"}},"required":["queue","approvalToken"]}'

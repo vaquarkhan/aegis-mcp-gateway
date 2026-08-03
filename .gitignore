@@ -1,0 +1,83 @@
+# Author: Viquar Khan
+# Maven build outputs (all modules)
+target/
+**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+**/bom.json
+**/bom.xml
+
+# Gradle (in case of tooling experiments)
+.gradle/
+build/
+**/build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+.factorypath
+.apt_generated/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# VS Code / Cursor IDE
+.vscode/
+*.code-workspace
+.cursor/
+.cursorignore
+*.cursor*
+docs/CURSOR-BUILD-INSTRUCTIONS.md
+**/CURSOR-BUILD-INSTRUCTIONS.md
+CURSOR-BUILD-INSTRUCTIONS.md
+
+# JVM crash and profiling output
+hs_err_pid*
+replay_pid*
+*.hprof
+*.jfr
+
+# OS noise
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Local secrets and runtime state (never commit)
+*.env
+.env
+.env.*
+*.p12
+*.jks
+*.pem
+*.key
+auth-tokens.txt
+tokens.txt
+caller-credentials.txt
+local-gateway.yaml
+local-tools.yaml
+logs/

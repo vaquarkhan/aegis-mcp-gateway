@@ -1,0 +1,24 @@
+# Author: Viquar Khan
+engine: spark
+taxonomyClass: batch
+tools:
+  - name: list_applications
+    class: READ
+    description: List Spark History applications
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_application
+    class: READ
+    description: Get Spark application details from History Server
+    inputSchema: '{"type":"object","properties":{"appId":{"type":"string"}},"required":["appId"]}'
+  - name: run_sql_readonly
+    class: READ
+    description: Guarded read-only SQL via Spark Connect or Thrift
+    inputSchema: '{"type":"object","properties":{"sql":{"type":"string"}},"required":["sql"]}'
+  - name: submit_batch
+    class: DESTRUCTIVE
+    description: Submit a Livy batch job
+    inputSchema: '{"type":"object","properties":{"file":{"type":"string"},"approvalToken":{"type":"string"}},"required":["file","approvalToken"]}'
+  - name: kill_application
+    class: DESTRUCTIVE
+    description: Kill a Livy or YARN application
+    inputSchema: '{"type":"object","properties":{"appId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["appId","approvalToken"]}'

@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: hadoop
+taxonomyClass: storage
+tools:
+  - name: list_status
+    class: READ
+    description: WebHDFS LISTSTATUS
+    inputSchema: '{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}'
+  - name: get_file_status
+    class: READ
+    description: WebHDFS GETFILESTATUS
+    inputSchema: '{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}'
+  - name: mkdirs
+    class: MUTATE
+    description: WebHDFS MKDIRS
+    inputSchema: '{"type":"object","properties":{"path":{"type":"string"},"approvalToken":{"type":"string"}},"required":["path","approvalToken"]}'
+  - name: delete_path
+    class: DESTRUCTIVE
+    description: WebHDFS DELETE
+    inputSchema: '{"type":"object","properties":{"path":{"type":"string"},"approvalToken":{"type":"string"}},"required":["path","approvalToken"]}'

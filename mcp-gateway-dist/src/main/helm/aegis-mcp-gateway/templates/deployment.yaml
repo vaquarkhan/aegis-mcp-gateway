@@ -1,0 +1,26 @@
+# Author: Viquar Khan
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-mcp-gateway
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: aegis-mcp-gateway
+  template:
+    metadata:
+      labels:
+        app: aegis-mcp-gateway
+    spec:
+      containers:
+        - name: gateway
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          env:
+{{- range $k, $v := .Values.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+{{- end }}

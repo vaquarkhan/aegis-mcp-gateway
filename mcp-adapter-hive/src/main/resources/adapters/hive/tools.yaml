@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: hive
+taxonomyClass: query
+tools:
+  - name: get_webui
+    class: READ
+    description: HiveServer2 Web UI root
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_sessions
+    class: READ
+    description: List HiveServer2 sessions (HS2 HTTP)
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: run_sql_readonly
+    class: READ
+    description: Submit read-only SQL via HTTP SQL facade
+    inputSchema: '{"type":"object","properties":{"sql":{"type":"string"}},"required":["sql"]}'
+  - name: kill_query
+    class: DESTRUCTIVE
+    description: Kill a Hive query
+    inputSchema: '{"type":"object","properties":{"queryId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["queryId","approvalToken"]}'

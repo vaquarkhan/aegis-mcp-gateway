@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: ozone
+taxonomyClass: objectstore
+tools:
+  - name: get_service
+    class: READ
+    description: Ozone OM HTTP root
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_volumes
+    class: READ
+    description: List Ozone volumes via HTTP facade
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_buckets
+    class: READ
+    description: List Ozone buckets
+    inputSchema: '{"type":"object","properties":{"volume":{"type":"string"}},"required":["volume"]}'
+  - name: delete_bucket
+    class: DESTRUCTIVE
+    description: Delete an Ozone bucket
+    inputSchema: '{"type":"object","properties":{"volume":{"type":"string"},"bucket":{"type":"string"},"approvalToken":{"type":"string"}},"required":["volume","bucket","approvalToken"]}'

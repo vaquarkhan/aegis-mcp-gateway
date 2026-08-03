@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: hbase
+taxonomyClass: datastore
+tools:
+  - name: cluster_version
+    class: READ
+    description: HBase REST cluster version
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_tables
+    class: READ
+    description: List HBase tables
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_table_schema
+    class: READ
+    description: Get HBase table schema
+    inputSchema: '{"type":"object","properties":{"table":{"type":"string"}},"required":["table"]}'
+  - name: delete_table
+    class: DESTRUCTIVE
+    description: Delete an HBase table
+    inputSchema: '{"type":"object","properties":{"table":{"type":"string"},"approvalToken":{"type":"string"}},"required":["table","approvalToken"]}'

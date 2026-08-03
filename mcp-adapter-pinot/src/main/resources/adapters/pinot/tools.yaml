@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: pinot
+taxonomyClass: olap
+tools:
+  - name: list_tables
+    class: READ
+    description: List Pinot tables
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_table
+    class: READ
+    description: Get Pinot table config
+    inputSchema: '{"type":"object","properties":{"table":{"type":"string"}},"required":["table"]}'
+  - name: list_tenants
+    class: READ
+    description: List Pinot tenants
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: delete_table
+    class: DESTRUCTIVE
+    description: Delete a Pinot table
+    inputSchema: '{"type":"object","properties":{"table":{"type":"string"},"approvalToken":{"type":"string"}},"required":["table","approvalToken"]}'

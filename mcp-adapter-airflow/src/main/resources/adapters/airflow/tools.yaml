@@ -1,0 +1,24 @@
+# Author: Viquar Khan
+engine: airflow
+taxonomyClass: orchestration
+tools:
+  - name: get_health
+    class: READ
+    description: Airflow health
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_dags
+    class: READ
+    description: List DAGs
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_dag
+    class: READ
+    description: Get a DAG
+    inputSchema: '{"type":"object","properties":{"dagId":{"type":"string"}},"required":["dagId"]}'
+  - name: trigger_dag
+    class: MUTATE
+    description: Trigger a DAG run
+    inputSchema: '{"type":"object","properties":{"dagId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["dagId","approvalToken"]}'
+  - name: delete_dag
+    class: DESTRUCTIVE
+    description: Delete a DAG
+    inputSchema: '{"type":"object","properties":{"dagId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["dagId","approvalToken"]}'

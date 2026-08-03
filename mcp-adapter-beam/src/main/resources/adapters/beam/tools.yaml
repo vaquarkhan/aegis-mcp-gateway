@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: beam
+taxonomyClass: pipeline
+tools:
+  - name: list_jobs
+    class: READ
+    description: List Beam Job API jobs
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_job
+    class: READ
+    description: Get a Beam job
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"}},"required":["jobId"]}'
+  - name: get_job_metrics
+    class: READ
+    description: Get Beam job metrics
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"}},"required":["jobId"]}'
+  - name: cancel_job
+    class: DESTRUCTIVE
+    description: Cancel a Beam job
+    inputSchema: '{"type":"object","properties":{"jobId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["jobId","approvalToken"]}'

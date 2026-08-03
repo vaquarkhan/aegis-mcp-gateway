@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: ignite
+taxonomyClass: datastore
+tools:
+  - name: get_version
+    class: READ
+    description: Ignite REST version
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_caches
+    class: READ
+    description: List Ignite caches
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: cache_size
+    class: READ
+    description: Ignite cache size
+    inputSchema: '{"type":"object","properties":{"cache":{"type":"string"}},"required":["cache"]}'
+  - name: destroy_cache
+    class: DESTRUCTIVE
+    description: Destroy an Ignite cache
+    inputSchema: '{"type":"object","properties":{"cache":{"type":"string"},"approvalToken":{"type":"string"}},"required":["cache","approvalToken"]}'

@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: superset
+taxonomyClass: bi
+tools:
+  - name: list_databases
+    class: READ
+    description: List Superset databases
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_datasets
+    class: READ
+    description: List Superset datasets
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_charts
+    class: READ
+    description: List Superset charts
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: delete_chart
+    class: DESTRUCTIVE
+    description: Delete a Superset chart
+    inputSchema: '{"type":"object","properties":{"chartId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["chartId","approvalToken"]}'

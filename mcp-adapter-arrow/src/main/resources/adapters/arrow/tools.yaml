@@ -1,0 +1,16 @@
+# Author: Viquar Khan
+engine: arrow
+taxonomyClass: analytics
+tools:
+  - name: list_flights
+    class: READ
+    description: List Arrow Flight datasets via HTTP facade
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: get_flight
+    class: READ
+    description: Get Flight info
+    inputSchema: '{"type":"object","properties":{"ticket":{"type":"string"}},"required":["ticket"]}'
+  - name: do_action
+    class: MUTATE
+    description: Invoke a Flight action
+    inputSchema: '{"type":"object","properties":{"action":{"type":"string"},"approvalToken":{"type":"string"}},"required":["action","approvalToken"]}'

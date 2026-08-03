@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: solr
+taxonomyClass: search
+tools:
+  - name: system_info
+    class: READ
+    description: Solr system info
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_collections
+    class: READ
+    description: List Solr collections
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: query
+    class: READ
+    description: Query a Solr collection
+    inputSchema: '{"type":"object","properties":{"collection":{"type":"string"},"q":{"type":"string"}},"required":["collection","q"]}'
+  - name: delete_collection
+    class: DESTRUCTIVE
+    description: Delete a Solr collection
+    inputSchema: '{"type":"object","properties":{"collection":{"type":"string"},"approvalToken":{"type":"string"}},"required":["collection","approvalToken"]}'

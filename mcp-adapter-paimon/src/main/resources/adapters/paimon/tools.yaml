@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: paimon
+taxonomyClass: lakehouse
+tools:
+  - name: list_databases
+    class: READ
+    description: List Paimon databases
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_tables
+    class: READ
+    description: List Paimon tables
+    inputSchema: '{"type":"object","properties":{"database":{"type":"string"}},"required":["database"]}'
+  - name: get_table
+    class: READ
+    description: Get Paimon table
+    inputSchema: '{"type":"object","properties":{"database":{"type":"string"},"table":{"type":"string"}},"required":["database","table"]}'
+  - name: drop_table
+    class: DESTRUCTIVE
+    description: Drop a Paimon table
+    inputSchema: '{"type":"object","properties":{"database":{"type":"string"},"table":{"type":"string"},"approvalToken":{"type":"string"}},"required":["database","table","approvalToken"]}'

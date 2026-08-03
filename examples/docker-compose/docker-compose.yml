@@ -1,0 +1,19 @@
+# Author: Viquar Khan
+services:
+  aegis:
+    image: eclipse-temurin:17-jre
+    working_dir: /opt/aegis
+    volumes:
+      - ../../mcp-gateway-dist/target/aegis-mcp-gateway-0.1.0-all.jar:/opt/aegis/aegis-mcp-gateway.jar:ro
+      - ../02_http_tokenfile/tokens.example.txt:/opt/aegis/tokens.txt:ro
+    environment:
+      MCP_GW_TRANSPORT: http
+      MCP_GW_HTTP_HOST: 0.0.0.0
+      MCP_GW_HTTP_PORT: "8090"
+      MCP_GW_AUTH_MODE: tokenfile
+      MCP_GW_AUTH_TOKENS_FILE: /opt/aegis/tokens.txt
+      MCP_GW_ADAPTERS: flink
+      FLINK_REST_URL: http://host.docker.internal:8081
+    ports:
+      - "8090:8090"
+    entrypoint: ["java", "-jar", "/opt/aegis/aegis-mcp-gateway.jar"]

@@ -1,0 +1,20 @@
+# Author: Viquar Khan
+engine: ranger
+taxonomyClass: governance
+tools:
+  - name: list_services
+    class: READ
+    description: List Ranger services
+    inputSchema: '{"type":"object","properties":{}}'
+  - name: list_policies
+    class: READ
+    description: List Ranger policies for a service
+    inputSchema: '{"type":"object","properties":{"service":{"type":"string"}},"required":["service"]}'
+  - name: get_policy
+    class: READ
+    description: Get a Ranger policy
+    inputSchema: '{"type":"object","properties":{"policyId":{"type":"string"}},"required":["policyId"]}'
+  - name: delete_policy
+    class: DESTRUCTIVE
+    description: Delete a Ranger policy
+    inputSchema: '{"type":"object","properties":{"policyId":{"type":"string"},"approvalToken":{"type":"string"}},"required":["policyId","approvalToken"]}'
