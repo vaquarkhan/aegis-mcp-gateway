@@ -134,8 +134,10 @@ Operational notes:
   audience therefore cannot unlock destructive tools by accident.
 - HMAC signed tokens are refused outright, so a published JWKS key can never be reached as a shared
   secret.
-- Without `MCP_GW_OAUTH_JWKS_URL` the gateway refuses to start on HTTP. Issuer and audience alone
-  describe the tokens you would like to see but give the gateway no way to verify one.
+- Without `MCP_GW_OAUTH_JWKS_URL` (and issuer + audience) the gateway refuses to start when
+  `MCP_GW_AUTH_MODE=oauth`. A bare `MCP_GW_HTTP_BEARER_TOKEN` does **not** satisfy oauth mode.
+- Set `MCP_GW_AUDIT_FILE=/var/log/aegis/audit.log` for an append-only durable hash chain; probe
+  integrity with `GET /audit/verify`.
 - A token with no `scope` or `scp` claim yields an identity with no resource scopes, which reaches
   only tools that bind no resource. Map scopes in your authorization server rather than relying on
   a scope-less token.

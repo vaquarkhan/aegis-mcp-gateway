@@ -154,8 +154,10 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) and
 
 Reference / deep backends: `flink`, `kafka`, `spark`, `iceberg`.
 
-HTTP/REST scaffolds (JDK `HttpJsonClient`; failures propagate to the breaker). Enable explicitly
-with `MCP_GW_ADAPTERS` so agents do not see every engine at once.
+HTTP/REST scaffolds (JDK `HttpJsonClient`; failures propagate to the breaker). These are **not**
+full native clients: they compile, register tools, and call a configured URL. Enable explicitly
+with `MCP_GW_ADAPTERS` so agents do not see every engine at once. Depth work is tracked on the
+roadmap; only Flink, Kafka, Spark, and Iceberg claim reference-backend status in 0.1.0.
 
 | Adapter | Taxonomy | Env URL | Notes |
 | --- | --- | --- | --- |

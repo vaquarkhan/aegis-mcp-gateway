@@ -1,21 +1,6 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.core.transport;
 
+import io.github.vaquarkhan.aegis.core.observability.AuditLog;
 import io.github.vaquarkhan.aegis.core.observability.Metrics;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,11 +11,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 /**
- * Operational endpoints: {@code /healthz}, {@code /readyz} and {@code /metrics}.
+ * Operational endpoints: {@code /healthz}, {@code /readyz}, {@code /metrics} and
+ * {@code /audit/verify}.
  *
  * <p>These sit outside the MCP authentication filter so an orchestrator can probe the process
  * without holding a bearer token. Nothing sensitive is exposed: liveness and readiness are
- * booleans, and the metrics surface is counters and latencies only.
+ * booleans, metrics are counters, and audit verify returns only chain integrity.
  *
  * @author Viquar Khan
  */
@@ -40,11 +26,17 @@ public final class OpsServlet extends HttpServlet {
 
     private final transient Metrics metrics;
     private final transient BooleanSupplier readyCheck;
+    private final transient AuditLog audit;
     private final AtomicBoolean live = new AtomicBoolean(true);
 
     public OpsServlet(Metrics metrics, BooleanSupplier readyCheck) {
+        this(metrics, readyCheck, null);
+    }
+
+    public OpsServlet(Metrics metrics, BooleanSupplier readyCheck, AuditLog audit) {
         this.metrics = metrics == null ? new Metrics() : metrics;
         this.readyCheck = readyCheck == null ? () -> true : readyCheck;
+        this.audit = audit;
     }
 
     /** Marks the process as not live, used by the shutdown hook to fail probes during drain. */
@@ -65,6 +57,17 @@ public final class OpsServlet extends HttpServlet {
             }
             case "/metrics" -> write(resp, 200, "text/plain; version=0.0.4; charset=utf-8",
                     metrics.toPrometheus());
+            case "/audit/verify" -> {
+                if (audit == null) {
+                    write(resp, 200, "application/json",
+                            "{\"ok\":true,\"durable\":false,\"note\":\"in-memory only\"}");
+                } else {
+                    boolean ok = audit.verifyDurableChain();
+                    boolean durable = audit.durableFile() != null;
+                    write(resp, ok ? 200 : 503, "application/json",
+                            "{\"ok\":" + ok + ",\"durable\":" + durable + ",\"size\":" + audit.size() + "}");
+                }
+            }
             default -> resp.setStatus(404);
         }
     }

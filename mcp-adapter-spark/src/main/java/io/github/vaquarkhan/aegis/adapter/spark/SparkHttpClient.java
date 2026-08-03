@@ -1,22 +1,6 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package io.github.vaquarkhan.aegis.adapter.spark;
 
+import io.github.vaquarkhan.aegis.core.governance.EgressConnect;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -31,7 +15,8 @@ import org.slf4j.LoggerFactory;
  * dependency, so the adapter stays independent of the cluster version.
  *
  * <p>Any non 2xx status or transport failure is rethrown as {@link IllegalStateException} so the
- * gateway circuit breaker observes a real backend failure.
+ * gateway circuit breaker observes a real backend failure. Redirects are never followed; each
+ * request is pinned to a resolved non-denied IP.
  *
  * @author Viquar Khan
  */
@@ -51,7 +36,13 @@ public final class SparkHttpClient {
             u = u.substring(0, u.length() - 1);
         }
         this.baseUrl = u;
-        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+        this.http = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
+        if (!this.baseUrl.isBlank()) {
+            EgressConnect.pin(this.baseUrl + "/");
+        }
     }
 
     public String baseUrl() {
@@ -73,9 +64,11 @@ public final class SparkHttpClient {
     private String send(String method, String path, String jsonBody, Duration timeout) {
         String p = path == null || path.isEmpty() ? "" : path.startsWith("/") ? path : "/" + path;
         try {
-            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + p))
+            EgressConnect.PinnedTarget pinned = EgressConnect.pin(URI.create(baseUrl + p));
+            HttpRequest.Builder builder = HttpRequest.newBuilder(pinned.requestUri())
                     .timeout(timeout)
-                    .header("Accept", "application/json");
+                    .header("Accept", "application/json")
+                    ;
             switch (method) {
                 case "GET" -> builder.GET();
                 case "DELETE" -> builder.DELETE();
@@ -93,6 +86,8 @@ public final class SparkHttpClient {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("spark backend request interrupted", e);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             String reason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             LOG.warn("spark http {} failed path={} msg={}", method, p, reason);

@@ -1,19 +1,3 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,6 +18,14 @@ class OutputControlsTest {
         String out = controls.boundAndRedact("0123456789abcdefghij");
         assertTrue(out.startsWith("0123456789abcdef"));
         assertTrue(out.endsWith(OutputControls.TRUNCATION_MARKER));
+    }
+
+    @Test
+    void truncatesByUtf8BytesNotChars() {
+        OutputControls controls = new OutputControls(5, false);
+        String out = controls.bound("\u4e00\u4e01\u4e02");
+        assertTrue(out.endsWith(OutputControls.TRUNCATION_MARKER));
+        assertEquals("\u4e00" + OutputControls.TRUNCATION_MARKER, out);
     }
 
     @Test

@@ -1,19 +1,3 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.adapter.spark;
 
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
@@ -65,6 +49,7 @@ public final class SparkAdapter implements EngineAdapter {
         SparkHttpClient history = new SparkHttpClient(historyUrl(cfg));
         SparkHttpClient livy = new SparkHttpClient(livyUrl(cfg));
         String sqlUrl = sqlUrl(cfg);
+        SparkHttpClient sql = sqlUrl == null ? null : new SparkHttpClient(sqlUrl);
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_applications", ToolClass.READ, "List Spark History applications",
                 "{\"type\":\"object\",\"properties\":{}}",
@@ -75,16 +60,16 @@ public final class SparkAdapter implements EngineAdapter {
         tools.add(tool("run_sql_readonly", ToolClass.READ, "Guarded read-only SQL via HTTP SQL gateway",
                 "{\"type\":\"object\",\"properties\":{\"sql\":{\"type\":\"string\"}},\"required\":[\"sql\"]}",
                 ctx -> {
-                    String sql = Inputs.requireSql(arg(ctx, "sql"), cfg.maxSqlChars());
-                    if (!sqlGuard.isReadOnly(sql)) {
+                    String sqlText = Inputs.requireSql(arg(ctx, "sql"), cfg.maxSqlChars());
+                    if (!sqlGuard.isReadOnly(sqlText)) {
                         throw new Inputs.InvalidInput("SQL_NOT_READONLY");
                     }
-                    if (sqlUrl == null) {
+                    if (sql == null) {
                         throw new Inputs.InvalidInput(
                                 "SQL_BACKEND_NOT_CONFIGURED: set spark.sql.http.url or SPARK_SQL_HTTP_URL to a "
                                         + "read-only SQL endpoint; Spark Connect and Thrift clients are not bundled");
                     }
-                    return new SparkHttpClient(sqlUrl).post("", "{\"sql\":\"" + Inputs.jsonEscape(sql) + "\"}");
+                    return sql.post("", "{\"sql\":\"" + Inputs.jsonEscape(sqlText) + "\"}");
                 }));
         tools.add(tool("submit_batch", ToolClass.DESTRUCTIVE, "Submit a Livy batch job",
                 "{\"type\":\"object\",\"properties\":{\"file\":{\"type\":\"string\"},\"className\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"file\",\"approvalToken\"]}",

@@ -1,19 +1,3 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.core.config;
 
 import io.github.vaquarkhan.aegis.core.yaml.YamlManifestLoader;
@@ -368,6 +352,23 @@ public final class GatewayConfig {
                     "MCP_GW_WRITE_ENABLED=true requires MCP_GW_APPROVAL_SECRET (fail-closed)");
         }
         if (TRANSPORT_HTTP.equals(transport)) {
+            if (AUTH_OAUTH.equals(authMode)) {
+                if (oauthIssuer == null || oauthIssuer.isBlank()
+                        || oauthAudience == null || oauthAudience.isBlank()
+                        || oauthJwksUrl == null || oauthJwksUrl.isBlank()) {
+                    throw new IllegalArgumentException(
+                            "MCP_GW_AUTH_MODE=oauth requires MCP_GW_OAUTH_ISSUER, MCP_GW_OAUTH_AUDIENCE and "
+                                    + "MCP_GW_OAUTH_JWKS_URL (fail-closed)");
+                }
+            } else if (AUTH_TOKENFILE.equals(authMode)) {
+                boolean hasFile = authTokensFile != null && !authTokensFile.isBlank();
+                boolean hasBearer = httpBearerToken != null && !httpBearerToken.isBlank();
+                if (!hasFile && !hasBearer) {
+                    throw new IllegalArgumentException(
+                            "MCP_GW_AUTH_MODE=tokenfile requires MCP_GW_AUTH_TOKENS_FILE or "
+                                    + "MCP_GW_HTTP_BEARER_TOKEN (fail-closed)");
+                }
+            }
             if (!httpAuthConfigured()) {
                 throw new IllegalArgumentException(
                         "MCP_GW_TRANSPORT=http requires an inbound credential: MCP_GW_HTTP_BEARER_TOKEN, "
@@ -423,21 +424,20 @@ public final class GatewayConfig {
     /**
      * True when an inbound credential source is configured for the HTTP transport.
      *
-     * <p>OAuth counts only once a JWKS URL is present as well. Issuer and audience alone describe
-     * the tokens the gateway would like to see but give it no way to verify one, so accepting that
-     * pairing would let a deployment start believing it is authenticated when it can admit nobody.
+     * <p>When {@code authMode=oauth}, only issuer + audience + JWKS count. A bare bearer token must
+     * not satisfy oauth mode, or a deployment could start believing it is an OAuth resource server
+     * while admitting nobody (or the wrong credential path).
      */
     public boolean httpAuthConfigured() {
+        if (AUTH_OAUTH.equals(authMode)) {
+            return oauthIssuer != null && !oauthIssuer.isBlank()
+                    && oauthAudience != null && !oauthAudience.isBlank()
+                    && oauthJwksUrl != null && !oauthJwksUrl.isBlank();
+        }
         if (httpBearerToken != null && !httpBearerToken.isBlank()) {
             return true;
         }
-        if (authTokensFile != null && !authTokensFile.isBlank()) {
-            return true;
-        }
-        return AUTH_OAUTH.equals(authMode)
-                && oauthIssuer != null && !oauthIssuer.isBlank()
-                && oauthAudience != null && !oauthAudience.isBlank()
-                && oauthJwksUrl != null && !oauthJwksUrl.isBlank();
+        return authTokensFile != null && !authTokensFile.isBlank();
     }
 
     /** Writes are only unlocked when both the flag and the approval secret are present. */

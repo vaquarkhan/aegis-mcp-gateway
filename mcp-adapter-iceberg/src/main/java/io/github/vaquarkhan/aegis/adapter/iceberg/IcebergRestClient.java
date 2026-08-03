@@ -1,21 +1,6 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.adapter.iceberg;
 
+import io.github.vaquarkhan.aegis.core.governance.EgressConnect;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -43,7 +28,13 @@ public final class IcebergRestClient {
             u = u.substring(0, u.length() - 1);
         }
         this.baseUrl = u;
-        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+        this.http = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
+        if (!this.baseUrl.isBlank()) {
+            EgressConnect.pin(this.baseUrl + "/");
+        }
     }
 
     public String get(String path) {
@@ -61,9 +52,11 @@ public final class IcebergRestClient {
     private String send(String method, String path, String jsonBody) {
         String p = path == null || path.isEmpty() ? "/" : (path.startsWith("/") ? path : "/" + path);
         try {
-            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + p))
+            EgressConnect.PinnedTarget pinned = EgressConnect.pin(URI.create(baseUrl + p));
+            HttpRequest.Builder builder = HttpRequest.newBuilder(pinned.requestUri())
                     .timeout(Duration.ofSeconds(30))
-                    .header("Accept", "application/json");
+                    .header("Accept", "application/json")
+                    ;
             switch (method) {
                 case "GET" -> builder.GET();
                 case "DELETE" -> builder.DELETE();

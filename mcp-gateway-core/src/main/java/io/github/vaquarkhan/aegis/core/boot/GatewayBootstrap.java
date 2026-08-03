@@ -1,19 +1,3 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.core.boot;
 
 import io.github.vaquarkhan.aegis.core.auth.BearerAuthFilter;
@@ -123,12 +107,22 @@ public final class GatewayBootstrap {
         List<EngineAdapter> adapters = AdapterRegistry.discover(cfg);
 
         Map<String, YamlManifestLoader.ToolOverlay> overlay = loadOverlay(cfg);
-        ToolCatalogIntegrity integrity = new ToolCatalogIntegrity(new DigestRegistry());
+        Map<String, String> catalogPins = new LinkedHashMap<>();
+        for (Map.Entry<String, YamlManifestLoader.ToolOverlay> e : overlay.entrySet()) {
+            String digest = e.getValue().schemaDigest();
+            if (digest != null && !digest.isBlank()) {
+                catalogPins.put(e.getKey(), digest.trim());
+            }
+        }
+        if (!catalogPins.isEmpty()) {
+            LOG.info("loaded durable tool digest pins={} from MCP_GW_TOOLS_CATALOG", catalogPins.size());
+        }
+        ToolCatalogIntegrity integrity = new ToolCatalogIntegrity(new DigestRegistry(catalogPins));
         ToolManifestAggregator.Aggregation aggregation =
                 new ToolManifestAggregator(integrity, overlay).aggregate(adapters, cfg);
 
         Metrics metrics = new Metrics();
-        AuditLog audit = new AuditLog();
+        AuditLog audit = buildAuditLog();
         OutputControls output = new OutputControls(cfg.maxBytes(), cfg.dlpEnabled());
         TimeoutExecutor executor = new TimeoutExecutor();
         Exposure exposure = new Exposure(cfg);
@@ -166,7 +160,7 @@ public final class GatewayBootstrap {
                 .build();
 
         AtomicReference<Server> httpServer = new AtomicReference<>();
-        OpsServlet ops = new OpsServlet(metrics, () -> true);
+        OpsServlet ops = new OpsServlet(metrics, () -> true, audit);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             LOG.info("shutdown: draining backend pool and http listener");
             // Fail the probes first so the load balancer stops sending work before the pool drains.
@@ -432,6 +426,17 @@ public final class GatewayBootstrap {
             throw new IllegalArgumentException(
                     "MCP_GW_TOOLS_CATALOG unreadable: " + path + " (" + e.getMessage() + ")", e);
         }
+    }
+
+    /** Optional durable audit file from {@code MCP_GW_AUDIT_FILE}. */
+    private static AuditLog buildAuditLog() {
+        String path = System.getenv("MCP_GW_AUDIT_FILE");
+        if (path == null || path.isBlank()) {
+            return new AuditLog();
+        }
+        AuditLog audit = new AuditLog(Path.of(path.trim()));
+        LOG.info("durable audit log enabled path={}", path.trim());
+        return audit;
     }
 
     /** Applies the configured log level reflectively so the module does not compile against Logback. */

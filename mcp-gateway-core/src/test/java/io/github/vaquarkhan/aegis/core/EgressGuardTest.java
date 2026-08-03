@@ -1,25 +1,10 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.vaquarkhan.aegis.core.governance.EgressGuard;
@@ -52,10 +37,29 @@ class EgressGuardTest {
             "255.255.255.255",
             "fe80::1",
             "fd00:ec2::254",
-            "239.1.1.1"
+            "239.1.1.1",
+            "2852039166",
+            "0xa9fea9fe",
+            "0251.0376.0251.0376"
     })
     void unconditionalDenyList(String host) {
         assertTrue(EgressGuard.isDeniedHost(host), host);
+    }
+
+    @Test
+    void deniesAlternateEncodingsEvenUnderWildcard() {
+        EgressGuard guard = new EgressGuard(Set.of("*"));
+        assertFalse(guard.isAllowed("http://2852039166/"));
+        assertFalse(guard.isAllowed("http://0xA9FEA9FE/"));
+        assertFalse(guard.isAllowed("http://0251.0376.0251.0376/"));
+    }
+
+    @Test
+    void connectPinRejectsMetadataLiteral() {
+        assertThrows(IllegalArgumentException.class,
+                () -> io.github.vaquarkhan.aegis.core.governance.EgressConnect.pin("http://169.254.169.254/"));
+        assertThrows(IllegalArgumentException.class,
+                () -> io.github.vaquarkhan.aegis.core.governance.EgressConnect.pin("http://2852039166/"));
     }
 
     @Test

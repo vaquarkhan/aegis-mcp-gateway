@@ -1,21 +1,6 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.core.util;
 
+import io.github.vaquarkhan.aegis.core.governance.EgressConnect;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -28,6 +13,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Minimal JDK HTTP JSON helper for engine adapters. Failures become {@link IllegalStateException}
  * so the gateway circuit breaker observes a real backend error.
+ *
+ * <p>Redirects are never followed. Each request is DNS-resolved and pinned to a non-denied IP
+ * before connect so alternate encodings and rebinding cannot reach cloud metadata.
  *
  * @author Viquar Khan
  */
@@ -50,7 +38,14 @@ public final class HttpJsonClient {
         }
         this.baseUrl = u;
         this.timeout = timeout == null ? Duration.ofSeconds(15) : timeout;
-        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+        this.http = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
+        if (!this.baseUrl.isBlank()) {
+            // Fail closed at construction when the configured backend is itself denied.
+            EgressConnect.pin(this.baseUrl.endsWith("/") ? this.baseUrl : this.baseUrl + "/");
+        }
     }
 
     public String baseUrl() {
@@ -76,9 +71,12 @@ public final class HttpJsonClient {
     private String send(String method, String path, String jsonBody) {
         String p = path == null || path.isEmpty() ? "" : (path.startsWith("/") ? path : "/" + path);
         try {
-            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + p))
+            URI logical = URI.create(baseUrl + p);
+            EgressConnect.PinnedTarget pinned = EgressConnect.pin(logical);
+            HttpRequest.Builder builder = HttpRequest.newBuilder(pinned.requestUri())
                     .timeout(timeout)
-                    .header("Accept", "application/json");
+                    .header("Accept", "application/json")
+                    ;
             switch (method) {
                 case "GET" -> builder.GET();
                 case "DELETE" -> builder.DELETE();

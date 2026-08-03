@@ -1,22 +1,8 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.core.governance;
 
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -31,8 +17,10 @@ import java.util.Set;
  *   <li>An unconditional deny list covering cloud instance metadata endpoints and link-local,
  *       multicast, unspecified and broadcast address space. No configuration can re-enable these,
  *       because reaching {@code 169.254.169.254} is how a confused deputy harvests cloud
- *       credentials.</li>
- *   <li>An allow list. When it is non-empty, only listed hosts are reachable.</li>
+ *       credentials. Literal hosts are checked after IPv4 alternate encodings (decimal, hex,
+ *       octal) are canonicalized; hostnames are resolved and every address is checked. DNS
+ *       rebinding after the check still requires connect-time IP pinning (not implemented here).
+ *   <li>An allow list. When it is non-empty, only listed hosts are reachable.
  * </ol>
  *
  * @author Viquar Khan
@@ -115,17 +103,184 @@ public final class EgressGuard {
         if (ALWAYS_DENIED_HOSTS.contains(host)) {
             return true;
         }
-        // IPv4 link-local, which is where every major cloud publishes instance metadata.
         if (host.startsWith("169.254.")) {
             return true;
         }
-        // IPv6 link-local and unique local address space.
         if (host.startsWith("fe80:") || host.startsWith("fc00:") || host.startsWith("fd00:")) {
             return true;
         }
-        // IPv4 multicast 224.0.0.0/4 and reserved 240.0.0.0/4.
+
+        InetAddress literal = parseIpLiteral(host);
+        if (literal != null) {
+            return isUnconditionallyDeniedAddress(literal);
+        }
+
         int firstOctet = leadingOctet(host);
-        return firstOctet >= 224;
+        if (firstOctet >= 224) {
+            return true;
+        }
+
+        try {
+            for (InetAddress addr : InetAddress.getAllByName(host)) {
+                if (isUnconditionallyDeniedAddress(addr)) {
+                    return true;
+                }
+            }
+        } catch (UnknownHostException e) {
+            // Cannot prove the name is dangerous without resolution; string checks already ran.
+        }
+        return false;
+    }
+
+    /**
+     * Addresses that must never be egress targets, even under a {@code *} allow list. Site-local
+     * and loopback are not included here: operators put those hosts on the allow list deliberately.
+     */
+    static boolean isUnconditionallyDeniedAddress(InetAddress addr) {
+        if (addr == null) {
+            return true;
+        }
+        if (addr.isLinkLocalAddress() || addr.isAnyLocalAddress() || addr.isMulticastAddress()) {
+            return true;
+        }
+        byte[] raw = addr.getAddress();
+        if (raw.length == 4) {
+            int b0 = raw[0] & 0xff;
+            int b1 = raw[1] & 0xff;
+            if (b0 == 169 && b1 == 254) {
+                return true;
+            }
+            if (b0 == 0 || b0 >= 224) {
+                return true;
+            }
+            if (b0 == 100 && b1 == 100) {
+                // Alibaba metadata 100.100.100.200 and neighbours in that /16 used for metadata.
+                return raw[2] == 100;
+            }
+        }
+        String host = addr.getHostAddress();
+        if (host != null) {
+            String lower = host.toLowerCase(Locale.ROOT);
+            if (ALWAYS_DENIED_HOSTS.contains(lower) || lower.startsWith("fd00:ec2:")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Parses IPv4/IPv6 literals including alternate IPv4 encodings (decimal, hex, octal, dotted).
+     * Returns null when {@code host} is not a literal (callers may then DNS-resolve).
+     */
+    static InetAddress parseIpLiteral(String host) {
+        if (host == null || host.isBlank()) {
+            return null;
+        }
+        if (host.indexOf(':') >= 0) {
+            try {
+                // Bracket-free IPv6 or already normalized.
+                return InetAddress.getByAddress(InetAddress.getByName(host).getAddress());
+            } catch (UnknownHostException e) {
+                return null;
+            }
+        }
+        byte[] v4 = parseIpv4Bytes(host);
+        if (v4 == null) {
+            return null;
+        }
+        try {
+            return InetAddress.getByAddress(v4);
+        } catch (UnknownHostException e) {
+            return null;
+        }
+    }
+
+    /**
+     * IPv4 text forms: dotted-decimal, dotted-octal/hex mix, single 32-bit decimal, single hex.
+     * Returns null when the string is not an IPv4 literal.
+     */
+    static byte[] parseIpv4Bytes(String host) {
+        if (host == null || host.isEmpty()) {
+            return null;
+        }
+        if (host.indexOf('.') < 0) {
+            Long value = parseUnsignedIpv4Number(host);
+            if (value == null || value < 0 || value > 0xffff_ffffL) {
+                return null;
+            }
+            return intToBytes(value.intValue());
+        }
+        String[] parts = host.split("\\.", -1);
+        if (parts.length == 0 || parts.length > 4) {
+            return null;
+        }
+        long[] nums = new long[parts.length];
+        for (int i = 0; i < parts.length; i++) {
+            Long n = parseUnsignedIpv4Number(parts[i]);
+            if (n == null) {
+                return null;
+            }
+            nums[i] = n;
+        }
+        long addr;
+        if (parts.length == 4) {
+            for (long n : nums) {
+                if (n > 255) {
+                    return null;
+                }
+            }
+            addr = (nums[0] << 24) | (nums[1] << 16) | (nums[2] << 8) | nums[3];
+        } else if (parts.length == 3) {
+            if (nums[0] > 255 || nums[1] > 255 || nums[2] > 0xffff) {
+                return null;
+            }
+            addr = (nums[0] << 24) | (nums[1] << 16) | nums[2];
+        } else if (parts.length == 2) {
+            if (nums[0] > 255 || nums[1] > 0xff_ffff) {
+                return null;
+            }
+            addr = (nums[0] << 24) | nums[1];
+        } else {
+            if (nums[0] > 0xffff_ffffL) {
+                return null;
+            }
+            addr = nums[0];
+        }
+        return intToBytes((int) addr);
+    }
+
+    private static Long parseUnsignedIpv4Number(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        String s = raw.toLowerCase(Locale.ROOT);
+        try {
+            if (s.startsWith("0x")) {
+                if (s.length() == 2) {
+                    return null;
+                }
+                return Long.parseLong(s.substring(2), 16);
+            }
+            // Leading 0 => octal when remaining digits are 0-7 (browser/URL SSRF style).
+            if (s.length() > 1 && s.startsWith("0") && s.chars().allMatch(c -> c >= '0' && c <= '7')) {
+                return Long.parseLong(s, 8);
+            }
+            if (!s.chars().allMatch(Character::isDigit)) {
+                return null;
+            }
+            return Long.parseLong(s, 10);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static byte[] intToBytes(int value) {
+        return new byte[] {
+            (byte) ((value >>> 24) & 0xff),
+            (byte) ((value >>> 16) & 0xff),
+            (byte) ((value >>> 8) & 0xff),
+            (byte) (value & 0xff)
+        };
     }
 
     /** Extracts the host component from a bare host, {@code host:port} or a full URL. */
@@ -144,7 +299,6 @@ public final class EgressGuard {
                 if (h != null) {
                     return h.toLowerCase(Locale.ROOT);
                 }
-                // URI.getHost returns null for some malformed authorities; fall through.
             } catch (IllegalArgumentException e) {
                 return null;
             }
@@ -173,32 +327,12 @@ public final class EgressGuard {
         return value.isEmpty() ? null : value.toLowerCase(Locale.ROOT);
     }
 
-    /** Leading dotted-quad octet, or -1 when the host is not an IPv4 literal. */
+    /** Leading dotted-quad octet, or -1 when the host is not an IPv4 dotted literal. */
     private static int leadingOctet(String host) {
-        int dot = host.indexOf('.');
-        if (dot <= 0) {
+        byte[] v4 = parseIpv4Bytes(host);
+        if (v4 == null) {
             return -1;
         }
-        String head = host.substring(0, dot);
-        if (head.isEmpty() || head.length() > 3) {
-            return -1;
-        }
-        for (int i = 0; i < head.length(); i++) {
-            if (!Character.isDigit(head.charAt(i))) {
-                return -1;
-            }
-        }
-        // Only treat it as an IPv4 literal when the last label is numeric too.
-        int lastDot = host.lastIndexOf('.');
-        String tail = host.substring(lastDot + 1);
-        if (tail.isEmpty()) {
-            return -1;
-        }
-        for (int i = 0; i < tail.length(); i++) {
-            if (!Character.isDigit(tail.charAt(i))) {
-                return -1;
-            }
-        }
-        return Integer.parseInt(head);
+        return v4[0] & 0xff;
     }
 }

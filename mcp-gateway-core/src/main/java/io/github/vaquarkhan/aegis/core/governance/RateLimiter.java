@@ -1,23 +1,9 @@
-/*
- * Licensed to the Aegis MCP Gateway project under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.github.vaquarkhan.aegis.core.governance;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Step 6. Fixed window per-second rate limiter, one window per caller.
@@ -26,6 +12,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * caller shares. A fixed window is deliberate: the gateway wants a hard, easily explained limit
  * that an operator can reason about from a single number, not a smoothed rate that can burst.
  *
+ * <p>Stale windows are swept periodically so distinct OAuth subjects cannot grow {@code windows}
+ * without bound for the process lifetime.
+ *
  * @author Viquar Khan
  */
 public final class RateLimiter {
@@ -33,8 +22,13 @@ public final class RateLimiter {
     /** Bucket key used when a call arrives without a resolved caller. */
     public static final String ANONYMOUS = "-";
 
+    private static final long WINDOW_MILLIS = 1000L;
+    private static final long STALE_AFTER_MILLIS = 2000L;
+    private static final int SWEEP_EVERY = 64;
+
     private final int maxPerSecond;
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
+    private final AtomicInteger admitsSinceSweep = new AtomicInteger();
 
     public RateLimiter(int maxPerSecond) {
         this.maxPerSecond = maxPerSecond;
@@ -42,7 +36,12 @@ public final class RateLimiter {
 
     /** Consumes one permit from the caller's window. */
     public boolean allow(String callerId) {
-        return windows.computeIfAbsent(key(callerId), k -> new Window()).tryAcquire(maxPerSecond);
+        boolean ok = windows.computeIfAbsent(key(callerId), k -> new Window()).tryAcquire(maxPerSecond);
+        if (admitsSinceSweep.incrementAndGet() >= SWEEP_EVERY) {
+            admitsSinceSweep.set(0);
+            sweepStale();
+        }
+        return ok;
     }
 
     /**
@@ -79,6 +78,18 @@ public final class RateLimiter {
         return windows.size();
     }
 
+    /** Removes caller windows whose fixed second started more than two seconds ago. */
+    public void sweepStale() {
+        long cutoff = System.currentTimeMillis() - STALE_AFTER_MILLIS;
+        Iterator<Map.Entry<String, Window>> it = windows.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, Window> e = it.next();
+            if (e.getValue().isStale(cutoff)) {
+                it.remove();
+            }
+        }
+    }
+
     private static String key(String callerId) {
         return (callerId == null || callerId.isBlank()) ? ANONYMOUS : callerId;
     }
@@ -91,7 +102,7 @@ public final class RateLimiter {
 
         synchronized boolean tryAcquire(int maxPerSecond) {
             long now = System.currentTimeMillis();
-            if (now - startMillis >= 1000L) {
+            if (now - startMillis >= WINDOW_MILLIS) {
                 startMillis = now;
                 count = 0;
             }
@@ -104,6 +115,10 @@ public final class RateLimiter {
 
         synchronized int used() {
             return count;
+        }
+
+        synchronized boolean isStale(long cutoffMillis) {
+            return startMillis < cutoffMillis;
         }
     }
 }
