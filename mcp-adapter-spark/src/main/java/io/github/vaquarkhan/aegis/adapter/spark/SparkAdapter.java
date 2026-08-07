@@ -11,14 +11,20 @@ import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Spark batch adapter. History Server reads, Livy batch submit and Livy batch kill are live over
@@ -33,6 +39,8 @@ import java.util.function.Function;
 public final class SparkAdapter implements EngineAdapter {
 
     private static final int MAX_FILE_REF_CHARS = 1024;
+
+    private static final McpJsonMapper JSON = new JacksonMcpJsonMapper(JsonMapper.builder().build());
 
     private final SqlReadonlyGuard sqlGuard = new SqlReadonlyGuard();
 
@@ -54,13 +62,17 @@ public final class SparkAdapter implements EngineAdapter {
         SparkHttpClient sql = sqlUrl == null ? null : new SparkHttpClient(sqlUrl);
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_applications", ToolClass.READ, "List Spark History applications",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> history.get("/api/v1/applications")));
         tools.add(tool("get_application", ToolClass.READ, "Get Spark application details from History Server",
-                "{\"type\":\"object\",\"properties\":{\"appId\":{\"type\":\"string\"}},\"required\":[\"appId\"]}",
+                new JsonSchema("object", Map.of(
+                        "appId", Map.of("type", "string")),
+                        List.of("appId"), null, null, null),
                 ctx -> history.get("/api/v1/applications/" + Inputs.requireId(arg(ctx, "appId")))));
         tools.add(tool("run_sql_readonly", ToolClass.READ, "Guarded read-only SQL via HTTP SQL gateway",
-                "{\"type\":\"object\",\"properties\":{\"sql\":{\"type\":\"string\"}},\"required\":[\"sql\"]}",
+                new JsonSchema("object", Map.of(
+                        "sql", Map.of("type", "string")),
+                        List.of("sql"), null, null, null),
                 ctx -> {
                     String sqlText = Inputs.requireSql(arg(ctx, "sql"), cfg.maxSqlChars());
                     if (!sqlGuard.isReadOnly(sqlText)) {
@@ -71,13 +83,24 @@ public final class SparkAdapter implements EngineAdapter {
                                 "SQL_BACKEND_NOT_CONFIGURED: set spark.sql.http.url or SPARK_SQL_HTTP_URL to a "
                                         + "read-only SQL endpoint; Spark Connect and Thrift clients are not bundled");
                     }
-                    return sql.post("", "{\"sql\":\"" + Inputs.jsonEscape(sqlText) + "\"}");
+                    try {
+                        return sql.post("", JSON.writeValueAsString(Map.of("sql", sqlText)));
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Failed to serialize SQL request body", e);
+                    }
                 }));
         tools.add(tool("submit_batch", ToolClass.DESTRUCTIVE, "Submit a Livy batch job",
-                "{\"type\":\"object\",\"properties\":{\"file\":{\"type\":\"string\"},\"className\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"file\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of(
+                        "file", Map.of("type", "string"),
+                        "className", Map.of("type", "string"),
+                        "approvalToken", Map.of("type", "string")),
+                        List.of("file", "approvalToken"), null, null, null),
                 ctx -> livy.post("/batches", submitBody(ctx))));
         tools.add(tool("kill_application", ToolClass.DESTRUCTIVE, "Kill a Livy batch application",
-                "{\"type\":\"object\",\"properties\":{\"appId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"appId\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of(
+                        "appId", Map.of("type", "string"),
+                        "approvalToken", Map.of("type", "string")),
+                        List.of("appId", "approvalToken"), null, null, null),
                 ctx -> livy.delete("/batches/" + Inputs.requireId(arg(ctx, "appId")))));
         return tools;
     }
@@ -131,12 +154,22 @@ public final class SparkAdapter implements EngineAdapter {
     /** Livy batch request body. Only the fields the caller supplied are sent. */
     private static String submitBody(CallContext ctx) {
         String file = requireFileRef(arg(ctx, "file"));
-        StringBuilder sb = new StringBuilder("{\"file\":\"").append(Inputs.jsonEscape(file)).append('"');
         String className = arg(ctx, "className");
-        if (className != null && !className.isBlank()) {
-            sb.append(",\"className\":\"").append(Inputs.jsonEscape(Inputs.requireId(className))).append('"');
+        if (className == null || className.isBlank()) {
+            className = null;
+        } else {
+            className = Inputs.requireId(className);
         }
-        return sb.append('}').toString();
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("file", file);
+        if (className != null) {
+            body.put("className", className);
+        }
+        try {
+            return JSON.writeValueAsString(body);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize Livy submit body", e);
+        }
     }
 
     /**
@@ -172,9 +205,13 @@ public final class SparkAdapter implements EngineAdapter {
         }
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {
