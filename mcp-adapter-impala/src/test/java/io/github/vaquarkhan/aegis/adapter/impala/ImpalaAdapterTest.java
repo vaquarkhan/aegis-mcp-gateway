@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.modelcontextprotocol.json.McpJsonMapper;
@@ -15,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 /** @author Viquar Khan */
 class ImpalaAdapterTest {
@@ -27,7 +27,7 @@ class ImpalaAdapterTest {
 
     @Test
     void emptySchemaHasNoRequired() throws Exception {
-        JsonSchema schema = new JsonSchema("object", Map.of(), List.of(), null, null, null);
+        JsonSchema schema = new JsonSchema("object", Map.of(), null, null, null, null);
         JsonNode node = parse(schema);
         assertEquals("object", node.get("type").asText());
         assertFalse(node.has("required"));

@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.github.vaquarkhan.aegis.core.auth.CallerIdentity;
@@ -28,6 +27,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 /** @author Viquar Khan */
 class IcebergAdapterTest {
@@ -40,7 +40,7 @@ class IcebergAdapterTest {
 
     @Test
     void emptySchemaHasNoRequired() throws Exception {
-        JsonSchema schema = new JsonSchema("object", Map.of(), List.of(), null, null, null);
+        JsonSchema schema = new JsonSchema("object", Map.of(), null, null, null, null);
         JsonNode node = parse(schema);
         assertEquals("object", node.get("type").asText());
         assertFalse(node.has("required"));
