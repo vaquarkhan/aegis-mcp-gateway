@@ -76,7 +76,11 @@ public final class SparkAdapter implements EngineAdapter {
                                 "SQL_BACKEND_NOT_CONFIGURED: set spark.sql.http.url or SPARK_SQL_HTTP_URL to a "
                                         + "read-only SQL endpoint; Spark Connect and Thrift clients are not bundled");
                     }
-                    return sql.post("", JacksonUtils.getMapper().writeValueAsString(new SqlRequest(sqlText)));
+                    try {
+                        return sql.post("", JacksonUtils.getMapper().writeValueAsString(new SqlRequest(sqlText)));
+                    } catch (tools.jackson.core.JacksonException e) {
+                        throw new IllegalStateException("Failed to serialize SQL request body", e);
+                    }
                 }));
         tools.add(tool("submit_batch", ToolClass.DESTRUCTIVE, "Submit a Livy batch job",
                 new InputSchema("object", SchemaProperties.fileClassNameAndApprovalToken(), List.of("file", "approvalToken")),
@@ -137,7 +141,9 @@ public final class SparkAdapter implements EngineAdapter {
     private static String submitBody(CallContext ctx) {
         String file = requireFileRef(arg(ctx, "file"));
         String className = arg(ctx, "className");
-        if (className != null && !className.isBlank()) {
+        if (className == null || className.isBlank()) {
+            className = null;
+        } else {
             className = Inputs.requireId(className);
         }
         try {
