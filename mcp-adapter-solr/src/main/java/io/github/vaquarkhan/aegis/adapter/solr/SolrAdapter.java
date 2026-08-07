@@ -1,6 +1,8 @@
 package io.github.vaquarkhan.aegis.adapter.solr;
 
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
+import io.github.vaquarkhan.aegis.core.jsonschema.InputSchema;
+import io.github.vaquarkhan.aegis.core.jsonschema.SchemaProperties;
 import io.github.vaquarkhan.aegis.core.spi.CallContext;
 import io.github.vaquarkhan.aegis.core.spi.EngineAdapter;
 import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
@@ -8,6 +10,7 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.github.vaquarkhan.aegis.core.util.JacksonUtils;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,16 +40,16 @@ public final class SolrAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("system_info", ToolClass.READ, "Solr system info",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new InputSchema("object", SchemaProperties.empty(), null),
                 ctx -> client.get("/admin/info/system?wt=json")));
         tools.add(tool("list_collections", ToolClass.READ, "List Solr collections",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new InputSchema("object", SchemaProperties.empty(), null),
                 ctx -> client.get("/admin/collections?action=LIST&wt=json")));
         tools.add(tool("query", ToolClass.READ, "Query a Solr collection",
-                "{\"type\":\"object\",\"properties\":{\"collection\":{\"type\":\"string\"},\"q\":{\"type\":\"string\"}},\"required\":[\"collection\",\"q\"]}",
+                new InputSchema("object", SchemaProperties.collectionAndQ(), List.of("collection", "q")),
                 ctx -> client.get("/" + Inputs.requireId(arg(ctx, "collection")) + "/select?q=" + Inputs.requirePath(arg(ctx, "q") == null || arg(ctx, "q").isBlank() ? "*:*" : arg(ctx, "q")) + "&wt=json")));
         tools.add(tool("delete_collection", ToolClass.DESTRUCTIVE, "Delete a Solr collection",
-                "{\"type\":\"object\",\"properties\":{\"collection\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"collection\",\"approvalToken\"]}",
+                new InputSchema("object", SchemaProperties.collectionAndApprovalToken(), List.of("collection", "approvalToken")),
                 ctx -> client.get("/admin/collections?action=DELETE&name=" + Inputs.requireId(arg(ctx, "collection")) + "&wt=json")));
         return tools;
     }
@@ -77,9 +80,13 @@ public final class SolrAdapter implements EngineAdapter {
                 cfg.adapterProperty("SOLR_URL", "http://localhost:8983/solr"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, InputSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JacksonUtils.getMapper().writeValueAsString(schema), backend);
+        } catch (tools.jackson.core.JacksonException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

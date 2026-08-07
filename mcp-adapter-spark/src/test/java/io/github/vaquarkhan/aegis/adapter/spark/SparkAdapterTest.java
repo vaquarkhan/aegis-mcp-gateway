@@ -1,6 +1,7 @@
 package io.github.vaquarkhan.aegis.adapter.spark;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -8,10 +9,15 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.github.vaquarkhan.aegis.core.auth.CallerIdentity;
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
+import io.github.vaquarkhan.aegis.core.jsonschema.InputSchema;
+import io.github.vaquarkhan.aegis.core.jsonschema.SchemaProperties;
+import io.github.vaquarkhan.aegis.core.jsonschema.SqlRequest;
+import io.github.vaquarkhan.aegis.core.jsonschema.SubmitRequest;
 import io.github.vaquarkhan.aegis.core.spi.CallContext;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.github.vaquarkhan.aegis.core.util.JacksonUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -23,6 +29,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** @author Viquar Khan */
 class SparkAdapterTest {
@@ -183,6 +191,94 @@ class SparkAdapterTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    private static final ObjectMapper MAPPER = JacksonUtils.getMapper();
+
+    @Test
+    void emptySchemaSerializesCorrectly() throws Exception {
+        InputSchema schema = new InputSchema("object", SchemaProperties.empty(), null);
+        JsonNode node = MAPPER.readTree(MAPPER.writeValueAsString(schema));
+
+        assertEquals("object", node.get("type").asText());
+        assertTrue(node.get("properties").isEmpty());
+        assertFalse(node.has("required"));
+    }
+
+    @Test
+    void getApplicationSchemaSerializesCorrectly() throws Exception {
+        InputSchema schema = new InputSchema("object", SchemaProperties.appIdOnly(), List.of("appId"));
+        JsonNode node = MAPPER.readTree(MAPPER.writeValueAsString(schema));
+
+        assertEquals("object", node.get("type").asText());
+        assertEquals("string", node.get("properties").get("appId").get("type").asText());
+        assertEquals(1, node.get("properties").size());
+        assertEquals(1, node.get("required").size());
+        assertEquals("appId", node.get("required").get(0).asText());
+    }
+
+    @Test
+    void runSqlReadonlySchemaSerializesCorrectly() throws Exception {
+        InputSchema schema = new InputSchema("object", SchemaProperties.sqlOnly(), List.of("sql"));
+        JsonNode node = MAPPER.readTree(MAPPER.writeValueAsString(schema));
+
+        assertEquals("object", node.get("type").asText());
+        assertEquals("string", node.get("properties").get("sql").get("type").asText());
+        assertEquals(1, node.get("properties").size());
+        assertEquals("sql", node.get("required").get(0).asText());
+    }
+
+    @Test
+    void submitBatchSchemaSerializesCorrectly() throws Exception {
+        InputSchema schema = new InputSchema("object",
+                SchemaProperties.fileClassNameAndApprovalToken(), List.of("file", "approvalToken"));
+        JsonNode node = MAPPER.readTree(MAPPER.writeValueAsString(schema));
+
+        assertEquals("object", node.get("type").asText());
+        assertEquals("string", node.get("properties").get("file").get("type").asText());
+        assertEquals("string", node.get("properties").get("className").get("type").asText());
+        assertEquals("string", node.get("properties").get("approvalToken").get("type").asText());
+        assertEquals(3, node.get("properties").size());
+        assertEquals(2, node.get("required").size());
+        assertEquals("file", node.get("required").get(0).asText());
+        assertEquals("approvalToken", node.get("required").get(1).asText());
+    }
+
+    @Test
+    void killApplicationSchemaSerializesCorrectly() throws Exception {
+        InputSchema schema = new InputSchema("object",
+                SchemaProperties.appIdAndApprovalToken(), List.of("appId", "approvalToken"));
+        JsonNode node = MAPPER.readTree(MAPPER.writeValueAsString(schema));
+
+        assertEquals("object", node.get("type").asText());
+        assertEquals("string", node.get("properties").get("appId").get("type").asText());
+        assertEquals("string", node.get("properties").get("approvalToken").get("type").asText());
+        assertEquals(2, node.get("properties").size());
+        assertEquals("appId", node.get("required").get(0).asText());
+        assertEquals("approvalToken", node.get("required").get(1).asText());
+    }
+
+    @Test
+    void submitRequestSerializesWithClassName() throws Exception {
+        JsonNode node = MAPPER.readTree(MAPPER.writeValueAsString(new SubmitRequest("s3a://jobs/etl.jar", "com.example.Etl")));
+
+        assertEquals("s3a://jobs/etl.jar", node.get("file").asText());
+        assertEquals("com.example.Etl", node.get("className").asText());
+    }
+
+    @Test
+    void submitRequestOmitsNullClassName() throws Exception {
+        JsonNode node = MAPPER.readTree(MAPPER.writeValueAsString(new SubmitRequest("s3a://jobs/etl.jar", null)));
+
+        assertEquals("s3a://jobs/etl.jar", node.get("file").asText());
+        assertFalse(node.has("className"));
+    }
+
+    @Test
+    void sqlRequestSerializesCorrectly() throws Exception {
+        JsonNode node = MAPPER.readTree(MAPPER.writeValueAsString(new SqlRequest("select 1")));
+
+        assertEquals("select 1", node.get("sql").asText());
     }
 
     private static GatewayConfig livyConfig(int port) {

@@ -2,6 +2,10 @@ package io.github.vaquarkhan.aegis.adapter.spark;
 
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
 import io.github.vaquarkhan.aegis.core.governance.SqlReadonlyGuard;
+import io.github.vaquarkhan.aegis.core.jsonschema.InputSchema;
+import io.github.vaquarkhan.aegis.core.jsonschema.SchemaProperties;
+import io.github.vaquarkhan.aegis.core.jsonschema.SqlRequest;
+import io.github.vaquarkhan.aegis.core.jsonschema.SubmitRequest;
 import io.github.vaquarkhan.aegis.core.spi.CallContext;
 import io.github.vaquarkhan.aegis.core.spi.CredentialResolver;
 import io.github.vaquarkhan.aegis.core.spi.EngineAdapter;
@@ -11,6 +15,7 @@ import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.github.vaquarkhan.aegis.core.util.JacksonUtils;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -54,13 +59,13 @@ public final class SparkAdapter implements EngineAdapter {
         SparkHttpClient sql = sqlUrl == null ? null : new SparkHttpClient(sqlUrl);
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_applications", ToolClass.READ, "List Spark History applications",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new InputSchema("object", SchemaProperties.empty(), null),
                 ctx -> history.get("/api/v1/applications")));
         tools.add(tool("get_application", ToolClass.READ, "Get Spark application details from History Server",
-                "{\"type\":\"object\",\"properties\":{\"appId\":{\"type\":\"string\"}},\"required\":[\"appId\"]}",
+                new InputSchema("object", SchemaProperties.appIdOnly(), List.of("appId")),
                 ctx -> history.get("/api/v1/applications/" + Inputs.requireId(arg(ctx, "appId")))));
         tools.add(tool("run_sql_readonly", ToolClass.READ, "Guarded read-only SQL via HTTP SQL gateway",
-                "{\"type\":\"object\",\"properties\":{\"sql\":{\"type\":\"string\"}},\"required\":[\"sql\"]}",
+                new InputSchema("object", SchemaProperties.sqlOnly(), List.of("sql")),
                 ctx -> {
                     String sqlText = Inputs.requireSql(arg(ctx, "sql"), cfg.maxSqlChars());
                     if (!sqlGuard.isReadOnly(sqlText)) {
@@ -71,13 +76,13 @@ public final class SparkAdapter implements EngineAdapter {
                                 "SQL_BACKEND_NOT_CONFIGURED: set spark.sql.http.url or SPARK_SQL_HTTP_URL to a "
                                         + "read-only SQL endpoint; Spark Connect and Thrift clients are not bundled");
                     }
-                    return sql.post("", "{\"sql\":\"" + Inputs.jsonEscape(sqlText) + "\"}");
+                    return sql.post("", JacksonUtils.getMapper().writeValueAsString(new SqlRequest(sqlText)));
                 }));
         tools.add(tool("submit_batch", ToolClass.DESTRUCTIVE, "Submit a Livy batch job",
-                "{\"type\":\"object\",\"properties\":{\"file\":{\"type\":\"string\"},\"className\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"file\",\"approvalToken\"]}",
+                new InputSchema("object", SchemaProperties.fileClassNameAndApprovalToken(), List.of("file", "approvalToken")),
                 ctx -> livy.post("/batches", submitBody(ctx))));
         tools.add(tool("kill_application", ToolClass.DESTRUCTIVE, "Kill a Livy batch application",
-                "{\"type\":\"object\",\"properties\":{\"appId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"appId\",\"approvalToken\"]}",
+                new InputSchema("object", SchemaProperties.appIdAndApprovalToken(), List.of("appId", "approvalToken")),
                 ctx -> livy.delete("/batches/" + Inputs.requireId(arg(ctx, "appId")))));
         return tools;
     }
@@ -131,12 +136,15 @@ public final class SparkAdapter implements EngineAdapter {
     /** Livy batch request body. Only the fields the caller supplied are sent. */
     private static String submitBody(CallContext ctx) {
         String file = requireFileRef(arg(ctx, "file"));
-        StringBuilder sb = new StringBuilder("{\"file\":\"").append(Inputs.jsonEscape(file)).append('"');
         String className = arg(ctx, "className");
         if (className != null && !className.isBlank()) {
-            sb.append(",\"className\":\"").append(Inputs.jsonEscape(Inputs.requireId(className))).append('"');
+            className = Inputs.requireId(className);
         }
-        return sb.append('}').toString();
+        try {
+            return JacksonUtils.getMapper().writeValueAsString(new SubmitRequest(file, className));
+        } catch (tools.jackson.core.JacksonException e) {
+            throw new IllegalStateException("Failed to serialize Livy submit body", e);
+        }
     }
 
     /**
@@ -172,9 +180,13 @@ public final class SparkAdapter implements EngineAdapter {
         }
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, InputSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JacksonUtils.getMapper().writeValueAsString(schema), backend);
+        } catch (tools.jackson.core.JacksonException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {
