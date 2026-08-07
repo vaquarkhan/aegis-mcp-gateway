@@ -12,7 +12,7 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
 import io.modelcontextprotocol.json.McpJsonMapper;
-import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
 import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import java.io.IOException;
 import java.net.URI;
@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Spark batch adapter. History Server reads, Livy batch submit and Livy batch kill are live over
@@ -40,7 +39,11 @@ public final class SparkAdapter implements EngineAdapter {
 
     private static final int MAX_FILE_REF_CHARS = 1024;
 
-    private static final McpJsonMapper JSON = new JacksonMcpJsonMapper(JsonMapper.builder().build());
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     private final SqlReadonlyGuard sqlGuard = new SqlReadonlyGuard();
 

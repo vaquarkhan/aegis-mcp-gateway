@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.modelcontextprotocol.json.McpJsonMapper;
-import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
 import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import java.util.List;
 import java.util.Map;
@@ -15,12 +15,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 
 /** @author Viquar Khan */
 class SolrAdapterTest {
 
-    private static final McpJsonMapper JSON = new JacksonMcpJsonMapper(JsonMapper.builder().build());
+    private static final McpJsonMapper JSON = new JacksonMcpJsonMapperSupplier().get();
 
     @Test
     void taxonomyAndTools() {

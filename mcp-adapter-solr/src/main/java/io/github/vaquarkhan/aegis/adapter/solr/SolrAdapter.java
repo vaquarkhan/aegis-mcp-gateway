@@ -9,8 +9,7 @@ import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
 import io.modelcontextprotocol.json.McpJsonMapper;
-import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
-import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
 import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import java.io.IOException;
 import java.net.URI;
@@ -19,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Apache Solr adapter. Talks to the configured HTTP/REST surface; failures propagate for the breaker.
@@ -28,7 +26,11 @@ import tools.jackson.databind.json.JsonMapper;
  */
 public final class SolrAdapter implements EngineAdapter {
 
-    private static final McpJsonMapper JSON = new JacksonMcpJsonMapper(JsonMapper.builder().build());
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
