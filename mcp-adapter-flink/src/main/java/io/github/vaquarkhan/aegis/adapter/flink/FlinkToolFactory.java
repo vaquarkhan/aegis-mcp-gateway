@@ -186,6 +186,10 @@ public final class FlinkToolFactory {
         return b;
     }
 
+    public boolean isHealthy() {
+        return flink.ping() && gateway.ping();
+    }
+
     private String health() {
         boolean restOk = flink.ping();
         boolean gatewayOk = gateway.ping();

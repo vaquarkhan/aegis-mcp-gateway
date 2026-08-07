@@ -43,4 +43,26 @@ public interface EngineAdapter {
      * {@code MCP_GW_EGRESS_ALLOW_HOSTS}; anything outside the union is denied at step 5.
      */
     Set<String> egressAllowHosts(GatewayConfig cfg);
+
+    /**
+     * Direct operational health probe for the gateway/router to verify backend liveness.
+     */
+    default boolean healthCheck(GatewayConfig cfg) {
+        return true;
+    }
+
+    /**
+     * Set of operational capabilities enabled on the connected cluster
+     * (e.g., {@code REST_API}, {@code SQL_GATEWAY}, {@code JAR_UPLOAD}).
+     */
+    default Set<String> capabilities(GatewayConfig cfg) {
+        return Set.of();
+    }
+
+    /**
+     * Dialect-specific system prompts attached to MCP context for LLM guidance.
+     */
+    default List<PromptDef> prompts(GatewayConfig cfg) {
+        return List.of();
+    }
 }
