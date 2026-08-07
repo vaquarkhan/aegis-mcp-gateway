@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.github.vaquarkhan.aegis.core.auth.CallerIdentity;
@@ -13,6 +14,9 @@ import io.github.vaquarkhan.aegis.core.spi.CallContext;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -27,6 +31,20 @@ import org.junit.jupiter.api.Test;
 
 /** @author Viquar Khan */
 class IcebergAdapterTest {
+
+    private static final McpJsonMapper JSON = new JacksonMcpJsonMapperSupplier().get();
+
+    private JsonNode parse(JsonSchema schema) throws Exception {
+        return JSON.readValue(JSON.writeValueAsString(schema), JsonNode.class);
+    }
+
+    @Test
+    void emptySchemaHasNoRequired() throws Exception {
+        JsonSchema schema = new JsonSchema("object", Map.of(), List.of(), null, null, null);
+        JsonNode node = parse(schema);
+        assertEquals("object", node.get("type").asText());
+        assertFalse(node.has("required"));
+    }
 
     @Test
     void taxonomyAndDestructiveTools() {

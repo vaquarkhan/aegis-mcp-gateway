@@ -9,6 +9,10 @@ import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +36,12 @@ public final class IcebergAdapter implements EngineAdapter {
 
     private static final int MAX_PROPERTY_VALUE_CHARS = 1024;
 
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
+
     @Override
     public String engineId() {
         return "iceberg";
@@ -47,13 +57,14 @@ public final class IcebergAdapter implements EngineAdapter {
         IcebergRestClient client = new IcebergRestClient(catalogUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_namespaces", ToolClass.READ, "List Iceberg namespaces",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/v1/namespaces")));
         tools.add(tool("list_tables", ToolClass.READ, "List tables in a namespace",
-                "{\"type\":\"object\",\"properties\":{\"namespace\":{\"type\":\"string\"}},\"required\":[\"namespace\"]}",
+                new JsonSchema("object", Map.of("namespace", Map.of("type", "string")), List.of("namespace"), null, null, null),
                 ctx -> client.get("/v1/namespaces/" + Inputs.requireNamespace(arg(ctx, "namespace")) + "/tables")));
-        String tableSchema = "{\"type\":\"object\",\"properties\":{\"namespace\":{\"type\":\"string\"},"
-                + "\"table\":{\"type\":\"string\"}},\"required\":[\"namespace\",\"table\"]}";
+        JsonSchema tableSchema = new JsonSchema("object",
+                Map.of("namespace", Map.of("type", "string"), "table", Map.of("type", "string")),
+                List.of("namespace", "table"), null, null, null);
         Function<CallContext, String> readTable = ctx -> {
             String ns = Inputs.requireNamespace(arg(ctx, "namespace"));
             String table = Inputs.requireTable(arg(ctx, "table"));
@@ -63,18 +74,18 @@ public final class IcebergAdapter implements EngineAdapter {
         tools.add(tool("get_table_metadata", ToolClass.READ,
                 "Get Iceberg table metadata (alias of get_table)", tableSchema, readTable));
         tools.add(tool("create_namespace", ToolClass.MUTATE, "Create an Iceberg namespace",
-                "{\"type\":\"object\",\"properties\":{\"namespace\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"namespace\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("namespace", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("namespace", "approvalToken"), null, null, null),
                 ctx -> client.post("/v1/namespaces",
                         createNamespaceBody(Inputs.requireNamespace(arg(ctx, "namespace"))))));
         tools.add(tool("alter_table", ToolClass.MUTATE, "Alter Iceberg table properties",
-                "{\"type\":\"object\",\"properties\":{\"namespace\":{\"type\":\"string\"},\"table\":{\"type\":\"string\"},\"properties\":{\"type\":\"object\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"namespace\",\"table\",\"properties\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("namespace", Map.of("type", "string"), "table", Map.of("type", "string"), "properties", Map.of("type", "object"), "approvalToken", Map.of("type", "string")), List.of("namespace", "table", "properties", "approvalToken"), null, null, null),
                 ctx -> {
                     String ns = Inputs.requireNamespace(arg(ctx, "namespace"));
                     String table = Inputs.requireTable(arg(ctx, "table"));
                     return client.post("/v1/namespaces/" + ns + "/tables/" + table, setPropertiesBody(ctx));
                 }));
         tools.add(tool("drop_table", ToolClass.DESTRUCTIVE, "Drop an Iceberg table (VRP-gated)",
-                "{\"type\":\"object\",\"properties\":{\"namespace\":{\"type\":\"string\"},\"table\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"},\"dryRun\":{\"type\":\"boolean\"}},\"required\":[\"namespace\",\"table\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("namespace", Map.of("type", "string"), "table", Map.of("type", "string"), "approvalToken", Map.of("type", "string"), "dryRun", Map.of("type", "boolean")), List.of("namespace", "table", "approvalToken"), null, null, null),
                 ctx -> {
                     String ns = Inputs.requireNamespace(arg(ctx, "namespace"));
                     String table = Inputs.requireTable(arg(ctx, "table"));
@@ -85,7 +96,7 @@ public final class IcebergAdapter implements EngineAdapter {
                 }));
         for (String op : List.of("expire_snapshots", "remove_orphan_files", "rewrite_data_files")) {
             tools.add(tool(op, ToolClass.DESTRUCTIVE, op + " (VRP-gated; engine procedure)",
-                    "{\"type\":\"object\",\"properties\":{\"namespace\":{\"type\":\"string\"},\"table\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"},\"dryRun\":{\"type\":\"boolean\"}},\"required\":[\"namespace\",\"table\",\"approvalToken\"]}",
+                    new JsonSchema("object", Map.of("namespace", Map.of("type", "string"), "table", Map.of("type", "string"), "approvalToken", Map.of("type", "string"), "dryRun", Map.of("type", "boolean")), List.of("namespace", "table", "approvalToken"), null, null, null),
                     ctx -> {
                         String ns = Inputs.requireNamespace(arg(ctx, "namespace"));
                         String table = Inputs.requireTable(arg(ctx, "table"));
@@ -98,7 +109,7 @@ public final class IcebergAdapter implements EngineAdapter {
         }
         tools.add(tool("commit_transaction", ToolClass.DESTRUCTIVE,
                 "Commit an Iceberg transaction (VRP-gated)",
-                "{\"type\":\"object\",\"properties\":{\"namespace\":{\"type\":\"string\"},\"table\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"},\"dryRun\":{\"type\":\"boolean\"},\"commitJson\":{\"type\":\"string\"}},\"required\":[\"namespace\",\"table\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("namespace", Map.of("type", "string"), "table", Map.of("type", "string"), "approvalToken", Map.of("type", "string"), "dryRun", Map.of("type", "boolean"), "commitJson", Map.of("type", "string")), List.of("namespace", "table", "approvalToken"), null, null, null),
                 ctx -> {
                     String ns = Inputs.requireNamespace(arg(ctx, "namespace"));
                     String table = Inputs.requireTable(arg(ctx, "table"));
@@ -112,7 +123,7 @@ public final class IcebergAdapter implements EngineAdapter {
                     return client.post("/v1/namespaces/" + ns + "/tables/" + table, body);
                 }));
         tools.add(tool("dry_run_maintenance", ToolClass.READ, "Read-only dry-run companion for destructive maintenance",
-                "{\"type\":\"object\",\"properties\":{\"operation\":{\"type\":\"string\"},\"namespace\":{\"type\":\"string\"},\"table\":{\"type\":\"string\"}},\"required\":[\"operation\",\"namespace\",\"table\"]}",
+                new JsonSchema("object", Map.of("operation", Map.of("type", "string"), "namespace", Map.of("type", "string"), "table", Map.of("type", "string")), List.of("operation", "namespace", "table"), null, null, null),
                 ctx -> {
                     String op = Inputs.requireId(arg(ctx, "operation"));
                     String ns = Inputs.requireNamespace(arg(ctx, "namespace"));
@@ -214,9 +225,13 @@ public final class IcebergAdapter implements EngineAdapter {
                 + "\",\"table\":\"" + Inputs.jsonEscape(table) + "\"}";
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

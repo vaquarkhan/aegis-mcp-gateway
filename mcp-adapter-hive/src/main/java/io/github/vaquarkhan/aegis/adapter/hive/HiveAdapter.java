@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class HiveAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class HiveAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("get_webui", ToolClass.READ, "HiveServer2 Web UI root",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/")));
         tools.add(tool("list_sessions", ToolClass.READ, "List HiveServer2 sessions (HS2 HTTP)",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/sessions")));
         tools.add(tool("run_sql_readonly", ToolClass.READ, "Submit read-only SQL via HTTP SQL facade",
-                "{\"type\":\"object\",\"properties\":{\"sql\":{\"type\":\"string\"}},\"required\":[\"sql\"]}",
+                new JsonSchema("object", Map.of("sql", Map.of("type", "string")), List.of("sql"), null, null, null),
                 ctx -> client.post("/sql", "{\"sql\":\"" + Inputs.jsonEscape(Inputs.requireSql(arg(ctx, "sql"), cfg.maxSqlChars())) + "\"}")));
         tools.add(tool("kill_query", ToolClass.DESTRUCTIVE, "Kill a Hive query",
-                "{\"type\":\"object\",\"properties\":{\"queryId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"queryId\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("queryId", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("queryId", "approvalToken"), null, null, null),
                 ctx -> client.delete("/queries/" + Inputs.requireId(arg(ctx, "queryId")))));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class HiveAdapter implements EngineAdapter {
                 cfg.adapterProperty("HIVE_SERVER2_HTTP_URL", "http://localhost:10002"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

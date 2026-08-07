@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class ZookeeperAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class ZookeeperAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("ruok", ToolClass.READ, "ZooKeeper ruok admin command",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/commands/ruok")));
         tools.add(tool("stat", ToolClass.READ, "ZooKeeper stat",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/commands/stats")));
         tools.add(tool("list_children", ToolClass.READ, "List znode children via REST facade",
-                "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}",
+                new JsonSchema("object", Map.of("path", Map.of("type", "string")), List.of("path"), null, null, null),
                 ctx -> client.get("/znodes/v1" + (arg(ctx, "path") == null || arg(ctx, "path").isBlank() ? "/" : Inputs.requirePath(arg(ctx, "path"))))));
         tools.add(tool("delete_znode", ToolClass.DESTRUCTIVE, "Delete a znode",
-                "{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"path\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("path", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("path", "approvalToken"), null, null, null),
                 ctx -> client.delete("/znodes/v1" + Inputs.requirePath(arg(ctx, "path")))));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class ZookeeperAdapter implements EngineAdapter {
                 cfg.adapterProperty("ZOOKEEPER_REST_URL", "http://localhost:9998"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {
