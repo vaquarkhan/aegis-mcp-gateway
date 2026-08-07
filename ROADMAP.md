@@ -51,10 +51,19 @@ All design differences not listed above are deferred here.
 4. **OAuth hardening** — multi-issuer / resource-indicator (broader RFC 8707 surface) as needed for
    real IdPs.
 5. **Audit seal / rotate** — durable hash-chain seal and rotation story beyond `MCP_GW_AUDIT_FILE`.
-6. **CI supply chain** — maven-enforcer, CVE scan, SBOM artifact publish, Cosign/SLSA as CI-side.
+6. **CI supply chain** — maven-enforcer, CVE scan, Cosign/SLSA; optionally promote CycloneDX
+   SBOM from `-Prelease` into the always-on `package` phase; Apache RAT for license headers.
 7. **Spark Connect (optional)** — native client behind a feature flag; keep HTTP SQL path.
 8. **Kafka mutate depth** — selected Admin mutate paths beyond the current surface.
 9. **Egress true IP pin (optional)** — stronger post-resolve pinning where the JDK allows it.
+
+### Bootstrap / IP clearance (pre-vote, not a 0.1 blocker)
+
+- **Apache-2.0 file headers** — apply a plain author-named Apache-2.0 header to every `*.java`
+  (and practical `pom.xml` files) before donation; switch to the standard ASF header at
+  incubation. Until then LICENSE/NOTICE cover the tree; RAT is not yet enforced.
+- **SBOM default path** — either keep wording as “release profile (`-Prelease`)” or move
+  `cyclonedx-maven-plugin` out of the release profile so plain `mvn package` emits `bom.xml`.
 
 ### Milestone 0.3 — differentiated proofs, auth modes, routing
 

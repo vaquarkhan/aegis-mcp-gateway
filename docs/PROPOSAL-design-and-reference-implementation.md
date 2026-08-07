@@ -69,11 +69,11 @@ end to end design document. The interceptor chain in brief:
 The reference implementation is a Java multi module Maven project that builds green and is
 tested.
 
-- 36 Maven modules: a gateway core, four in depth engine adapters (Flink, Kafka, Spark,
-  Iceberg), a set of thinner adapters for the wider Apache data platform, and a shaded
-  runnable distribution.
+- A root reactor plus 35 child Maven modules (gateway core, 33 adapters, one shaded
+  distribution): four in-depth engine adapters (Flink, Kafka, Spark, Iceberg), thinner
+  adapters for the wider Apache data platform, and `mcp-gateway-dist`.
 - Builds with JDK 21, runs on JDK 17 or newer, Maven 3.9 or newer.
-- 300 unit and integration tests across 55 test suites, all passing, zero failures and zero
+- 309 unit and integration tests across 57 test suites, all passing, zero failures and zero
   errors on a clean build.
 
 ### 4.1 Implemented and working
@@ -100,25 +100,25 @@ tested.
 
 ### 4.2 Fail closed stubs (deny rather than pretend)
 
-These select a real object that denies, so denial is always the safe answer while the
-implementation is completed:
+These select a real object that denies, or refuse to start, so denial is always the safe answer
+while the fuller implementation is completed:
 
-- Cedar and OPA external policy engines deny every call; only the builtin PDP decides.
 - CIMD authentication verifies a document but does not yet authenticate a request; that
   auth mode refuses to start.
 - SPIFFE mTLS peer authentication denies all peers; that auth mode refuses to start.
 
 ### 4.3 Partial or deferred
 
-- Per caller outbound credential propagation to the engine is specified and the SPI exists,
-  but no adapter maps caller identity to a downstream credential yet, so outbound calls use
-  a shared service identity. This is a priority item.
-- The integrity gate ships as a dry run receipt (a hashed argument fingerprint with a TTL),
-  not yet the fuller verifiable reconciliation proof in the design.
-- Semantic tool selection uses simple term overlap and is not yet wired into the request
-  path; taxonomy routing is a lookup today.
-- OpenTelemetry spans, agent to agent flows, externalized high availability state, and
-  asynchronous long running tasks are designed and on the roadmap, not implemented.
+- Live OPA HTTP evaluation and cedar-lite deny files ship; a full Cedar runtime and vault /
+  RFC 8693 outbound credential exchange remain on the roadmap. Pass-through
+  `Authorization` headers are wired for Flink, Kafka, Spark, and Iceberg.
+- The integrity gate ships as a dry-run receipt (hashed argument fingerprint with TTL, optional
+  HMAC), not yet the fuller verifiable reconciliation proof in the design.
+- Semantic tool selection can prune at boot via `MCP_GW_TOOL_INTENT`; per-request embeddings
+  and richer taxonomy routing remain on the roadmap.
+- OpenTelemetry SDK GenAI span export, agent-to-agent flows, externalized high-availability
+  state, and asynchronous long-running tasks are designed and on the roadmap (structured
+  `gen_ai.*` logs already ship).
 
 ## 5. Design to code conformance
 
@@ -126,17 +126,17 @@ implementation is completed:
 | --- | --- |
 | Interceptor chain, first denial wins, stable deny codes | Implemented |
 | Read only by default, explicit write unlock | Implemented |
-| Approval tokens, single use, scope and time bound | Implemented |
+| Approval tokens, single use, scope and time bound | Implemented (canonical base64url) |
 | Per caller identity and scope, OAuth RS, token file | Implemented |
 | Egress and SSRF defense with resolved IP checks | Implemented |
 | Rate limiter, circuit breaker, timeout, output redaction | Implemented |
 | Tamper evident audit, Prometheus metrics | Implemented |
-| Tool catalog integrity (digest drift detection) | Implemented (drops drifting tools with a warning) |
+| Tool catalog integrity (digest drift detection) | Implemented (optional fail-closed startup) |
 | Builtin PDP | Implemented |
-| Cedar and OPA PDP | Fail closed stub |
-| CIMD and SPIFFE auth | Fail closed stub |
-| Per caller outbound credentials | Partial, SPI only |
-| Verifiable reconciliation proof | Partial, dry run receipt |
+| OPA PDP (HTTP) / Cedar-lite | Implemented (fail-closed); full Cedar → roadmap |
+| CIMD and SPIFFE auth | Fail closed refuse-start |
+| Per caller outbound credentials | Pass-through done; vault / token exchange → roadmap |
+| Verifiable reconciliation proof | Partial, dry-run + optional HMAC receipt |
 | Semantic routing, OpenTelemetry, A2A, HA state, async tasks | Deferred |
 
 About 35 design items are fully present; roughly 20 are stubbed, partial, or deferred, and
@@ -146,10 +146,11 @@ those are the roadmap.
 
 | Phase | Focus |
 | --- | --- |
-| Controls to green | Complete Cedar and OPA engines, CIMD and SPIFFE identity, and per caller outbound identity |
+| Controls to green | CIMD and SPIFFE identity, vault / RFC 8693 outbound credentials, full Cedar runtime (optional) |
 | Depth and breadth | Deepen the thin adapters; grow per engine contributors |
-| Hardening | OpenTelemetry spans, verifiable integrity proof, semantic routing wired into the path, externalized HA state, asynchronous tasks |
-| Community | Diverse, multi organization contributor base and a cadence of releases |
+| Hardening | OpenTelemetry SDK spans, verifiable integrity proof, semantic routing on the request path, externalized HA state, asynchronous tasks |
+| Community | Diverse, multi-organization contributor base and a cadence of releases |
+| Bootstrap / IP | Author Apache-2.0 file headers + RAT; CycloneDX on default package or keep `-Prelease` wording |
 
 ## 7. Language and technology choices
 

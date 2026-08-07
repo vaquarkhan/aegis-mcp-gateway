@@ -57,12 +57,22 @@ public final class Approval {
         if (dot <= 0 || dot >= token.length() - 1) {
             return false;
         }
+        String payloadPart = token.substring(0, dot);
+        String sigPart = token.substring(dot + 1);
         byte[] payloadBytes;
         byte[] providedSig;
         try {
-            payloadBytes = B64D.decode(token.substring(0, dot));
-            providedSig = B64D.decode(token.substring(dot + 1));
+            payloadBytes = B64D.decode(payloadPart);
+            providedSig = B64D.decode(sigPart);
         } catch (IllegalArgumentException e) {
+            return false;
+        }
+        // Reject non-canonical base64url so each token has exactly one valid encoding. Without
+        // this, the unused trailing bits of the final signature character let a different token
+        // string decode to the same signature bytes (encoding malleability). Re-encoding and
+        // comparing forces a single canonical form before the constant-time HMAC check.
+        if (!B64.encodeToString(payloadBytes).equals(payloadPart)
+                || !B64.encodeToString(providedSig).equals(sigPart)) {
             return false;
         }
         if (!MessageDigest.isEqual(hmac(payloadBytes), providedSig)) {
