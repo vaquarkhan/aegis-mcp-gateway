@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class DorisAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,13 +47,13 @@ public final class DorisAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("cluster_overview", ToolClass.READ, "Doris FE HTTP overview",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/api/bootstrap")));
         tools.add(tool("list_backends", ToolClass.READ, "Show Doris backends",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/rest/v1/system?path=//backends")));
         tools.add(tool("run_sql_readonly", ToolClass.READ, "Doris SQL HTTP facade",
-                "{\"type\":\"object\",\"properties\":{\"sql\":{\"type\":\"string\"}},\"required\":[\"sql\"]}",
+                new JsonSchema("object", Map.of("sql", Map.of("type", "string")), List.of("sql"), null, null, null),
                 ctx -> client.post("/api/query/default_cluster/information_schema", "{\"stmt\":\"" + Inputs.jsonEscape(Inputs.requireSql(arg(ctx, "sql"), cfg.maxSqlChars())) + "\"}")));
         return tools;
     }
@@ -74,9 +84,13 @@ public final class DorisAdapter implements EngineAdapter {
                 cfg.adapterProperty("DORIS_FE_HTTP_URL", "http://localhost:8030"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {
