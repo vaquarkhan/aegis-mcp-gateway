@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class BookkeeperAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class BookkeeperAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("bookie_info", ToolClass.READ, "BookKeeper bookie info",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/api/v1/bookie/info")));
         tools.add(tool("list_bookies", ToolClass.READ, "List BookKeeper bookies",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/api/v1/bookie/list_bookies")));
         tools.add(tool("list_ledgers", ToolClass.READ, "List ledgers",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/api/v1/ledger/list")));
         tools.add(tool("delete_ledger", ToolClass.DESTRUCTIVE, "Delete a ledger",
-                "{\"type\":\"object\",\"properties\":{\"ledgerId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"ledgerId\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("ledgerId", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("ledgerId", "approvalToken"), null, null, null),
                 ctx -> client.delete("/api/v1/ledger/delete?ledger_id=" + Inputs.requireId(arg(ctx, "ledgerId")))));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class BookkeeperAdapter implements EngineAdapter {
                 cfg.adapterProperty("BOOKKEEPER_HTTP_URL", "http://localhost:8000"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

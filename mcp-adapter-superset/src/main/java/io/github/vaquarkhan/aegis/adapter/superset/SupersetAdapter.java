@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class SupersetAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,19 @@ public final class SupersetAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_databases", ToolClass.READ, "List Superset databases",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/api/v1/database/")));
         tools.add(tool("list_datasets", ToolClass.READ, "List Superset datasets",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/api/v1/dataset/")));
         tools.add(tool("list_charts", ToolClass.READ, "List Superset charts",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/api/v1/chart/")));
         tools.add(tool("delete_chart", ToolClass.DESTRUCTIVE, "Delete a Superset chart",
-                "{\"type\":\"object\",\"properties\":{\"chartId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"chartId\",\"approvalToken\"]}",
+                new JsonSchema("object",
+                        Map.of("chartId", Map.of("type", "string"),
+                                "approvalToken", Map.of("type", "string")),
+                        List.of("chartId", "approvalToken"), null, null, null),
                 ctx -> client.delete("/api/v1/chart/" + Inputs.requireId(arg(ctx, "chartId")))));
         return tools;
     }
@@ -77,9 +90,13 @@ public final class SupersetAdapter implements EngineAdapter {
                 cfg.adapterProperty("SUPERSET_URL", "http://localhost:8088"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

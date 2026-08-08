@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class IgniteAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class IgniteAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("get_version", ToolClass.READ, "Ignite REST version",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/ignite?cmd=version")));
         tools.add(tool("list_caches", ToolClass.READ, "List Ignite caches",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/ignite?cmd=top")));
         tools.add(tool("cache_size", ToolClass.READ, "Ignite cache size",
-                "{\"type\":\"object\",\"properties\":{\"cache\":{\"type\":\"string\"}},\"required\":[\"cache\"]}",
+                new JsonSchema("object", Map.of("cache", Map.of("type", "string")), List.of("cache"), null, null, null),
                 ctx -> client.get("/ignite?cmd=size&cacheName=" + Inputs.requireId(arg(ctx, "cache")))));
         tools.add(tool("destroy_cache", ToolClass.DESTRUCTIVE, "Destroy an Ignite cache",
-                "{\"type\":\"object\",\"properties\":{\"cache\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"cache\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("cache", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("cache", "approvalToken"), null, null, null),
                 ctx -> client.get("/ignite?cmd=destcache&cacheName=" + Inputs.requireId(arg(ctx, "cache")))));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class IgniteAdapter implements EngineAdapter {
                 cfg.adapterProperty("IGNITE_REST_URL", "http://localhost:8080"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

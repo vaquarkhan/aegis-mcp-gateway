@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class OzoneAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class OzoneAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("get_service", ToolClass.READ, "Ozone OM HTTP root",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/")));
         tools.add(tool("list_volumes", ToolClass.READ, "List Ozone volumes via HTTP facade",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/v1/volumes")));
         tools.add(tool("list_buckets", ToolClass.READ, "List Ozone buckets",
-                "{\"type\":\"object\",\"properties\":{\"volume\":{\"type\":\"string\"}},\"required\":[\"volume\"]}",
+                new JsonSchema("object", Map.of("volume", Map.of("type", "string")), List.of("volume"), null, null, null),
                 ctx -> client.get("/v1/volumes/" + Inputs.requireId(arg(ctx, "volume")) + "/buckets")));
         tools.add(tool("delete_bucket", ToolClass.DESTRUCTIVE, "Delete an Ozone bucket",
-                "{\"type\":\"object\",\"properties\":{\"volume\":{\"type\":\"string\"},\"bucket\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"volume\",\"bucket\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("volume", Map.of("type", "string"), "bucket", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("volume", "bucket", "approvalToken"), null, null, null),
                 ctx -> client.delete("/v1/volumes/" + Inputs.requireId(arg(ctx, "volume")) + "/buckets/" + Inputs.requireId(arg(ctx, "bucket")))));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class OzoneAdapter implements EngineAdapter {
                 cfg.adapterProperty("OZONE_OM_HTTP_URL", "http://localhost:9874"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {
