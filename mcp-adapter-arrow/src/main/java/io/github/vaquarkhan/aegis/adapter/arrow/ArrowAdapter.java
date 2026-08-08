@@ -89,7 +89,7 @@ public final class ArrowAdapter implements EngineAdapter {
         try {
             return new ToolDef(name, cls, desc, JSON_MAPPER.writeValueAsString(schema), backend);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to serialize JsonSchema for tool: " + name, e);
+            throw new IllegalStateException("Failed to serialize JsonSchema for tool: " + name, e);
         }
     }
 

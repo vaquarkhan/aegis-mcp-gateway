@@ -94,7 +94,7 @@ public final class CalciteAdapter implements EngineAdapter {
             String json = JSON_MAPPER.writeValueAsString(schema);
             return new ToolDef(name, cls, desc, json, backend);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to serialize JsonSchema for tool " + name, e);
+            throw new IllegalStateException("Failed to serialize JsonSchema for tool " + name, e);
         }
     }
 
