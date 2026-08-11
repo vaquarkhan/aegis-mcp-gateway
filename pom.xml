@@ -40,39 +40,39 @@
 
   <modules>
     <module>mcp-gateway-core</module>
-    <module>mcp-adapter-flink</module>
-    <module>mcp-adapter-kafka</module>
-    <module>mcp-adapter-spark</module>
-    <module>mcp-adapter-iceberg</module>
-    <module>mcp-adapter-pulsar</module>
-    <module>mcp-adapter-activemq</module>
-    <module>mcp-adapter-nifi</module>
-    <module>mcp-adapter-beam</module>
-    <module>mcp-adapter-storm</module>
-    <module>mcp-adapter-flume</module>
-    <module>mcp-adapter-hudi</module>
-    <module>mcp-adapter-paimon</module>
-    <module>mcp-adapter-hive</module>
-    <module>mcp-adapter-pinot</module>
-    <module>mcp-adapter-druid</module>
-    <module>mcp-adapter-doris</module>
-    <module>mcp-adapter-calcite</module>
-    <module>mcp-adapter-impala</module>
-    <module>mcp-adapter-hadoop</module>
-    <module>mcp-adapter-hbase</module>
-    <module>mcp-adapter-cassandra</module>
-    <module>mcp-adapter-kudu</module>
-    <module>mcp-adapter-ignite</module>
-    <module>mcp-adapter-bookkeeper</module>
-    <module>mcp-adapter-ozone</module>
-    <module>mcp-adapter-airflow</module>
-    <module>mcp-adapter-zookeeper</module>
-    <module>mcp-adapter-solr</module>
-    <module>mcp-adapter-superset</module>
-    <module>mcp-adapter-arrow</module>
-    <module>mcp-adapter-ranger</module>
-    <module>mcp-adapter-atlas</module>
-    <module>mcp-adapter-couchdb</module>
+    <module>adapters/mcp-adapter-flink</module>
+    <module>adapters/mcp-adapter-kafka</module>
+    <module>adapters/mcp-adapter-spark</module>
+    <module>adapters/mcp-adapter-iceberg</module>
+    <module>adapters/mcp-adapter-pulsar</module>
+    <module>adapters/mcp-adapter-activemq</module>
+    <module>adapters/mcp-adapter-nifi</module>
+    <module>adapters/mcp-adapter-beam</module>
+    <module>adapters/mcp-adapter-storm</module>
+    <module>adapters/mcp-adapter-flume</module>
+    <module>adapters/mcp-adapter-hudi</module>
+    <module>adapters/mcp-adapter-paimon</module>
+    <module>adapters/mcp-adapter-hive</module>
+    <module>adapters/mcp-adapter-pinot</module>
+    <module>adapters/mcp-adapter-druid</module>
+    <module>adapters/mcp-adapter-doris</module>
+    <module>adapters/mcp-adapter-calcite</module>
+    <module>adapters/mcp-adapter-impala</module>
+    <module>adapters/mcp-adapter-hadoop</module>
+    <module>adapters/mcp-adapter-hbase</module>
+    <module>adapters/mcp-adapter-cassandra</module>
+    <module>adapters/mcp-adapter-kudu</module>
+    <module>adapters/mcp-adapter-ignite</module>
+    <module>adapters/mcp-adapter-bookkeeper</module>
+    <module>adapters/mcp-adapter-ozone</module>
+    <module>adapters/mcp-adapter-airflow</module>
+    <module>adapters/mcp-adapter-zookeeper</module>
+    <module>adapters/mcp-adapter-solr</module>
+    <module>adapters/mcp-adapter-superset</module>
+    <module>adapters/mcp-adapter-arrow</module>
+    <module>adapters/mcp-adapter-ranger</module>
+    <module>adapters/mcp-adapter-atlas</module>
+    <module>adapters/mcp-adapter-couchdb</module>
     <module>mcp-gateway-dist</module>
   </modules>
 
