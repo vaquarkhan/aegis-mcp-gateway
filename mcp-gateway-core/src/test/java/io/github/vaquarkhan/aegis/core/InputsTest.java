@@ -80,4 +80,12 @@ class InputsTest {
         assertEquals("\\u0001", Inputs.jsonEscape("\u0001"));
         assertEquals("", Inputs.jsonEscape(null));
     }
+
+    @Test
+    void validatesPathsAndRejectsTraversal() {
+        assertEquals("v1/status", Inputs.requirePath("v1/status"));
+        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requirePath("a/../b"));
+        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requirePath("../etc/passwd"));
+        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requirePath(null));
+    }
 }
