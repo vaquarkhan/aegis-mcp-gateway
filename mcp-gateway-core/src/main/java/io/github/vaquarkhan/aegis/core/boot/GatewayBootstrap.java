@@ -177,10 +177,12 @@ public final class GatewayBootstrap {
                 buildToolSpecs(exposedTools, exposure, chain, json, defaultCaller, resolvers);
         List<McpServerFeatures.SyncResourceSpecification> resourceSpecs =
                 buildResourceSpecs(aggregation.resources(), output, audit, defaultCaller);
-
+        List<McpServerFeatures.SyncPromptSpecification> promptSpecs =
+                buildPromptSpecs(adapters);
         McpSchema.ServerCapabilities caps = McpSchema.ServerCapabilities.builder()
                 .tools(true)
                 .resources(false, false)
+                .prompts(true)
                 .build();
 
         AtomicReference<Server> httpServer = new AtomicReference<>();
@@ -212,6 +214,7 @@ public final class GatewayBootstrap {
                     .capabilities(caps)
                     .tools(toolSpecs)
                     .resources(resourceSpecs)
+                    .prompts(promptSpecs)
                     .build();
             Server server = StreamableHttpTransport.start(
                     cfg.httpHost(),
@@ -231,6 +234,7 @@ public final class GatewayBootstrap {
                     .capabilities(caps)
                     .tools(toolSpecs)
                     .resources(resourceSpecs)
+                    .prompts(promptSpecs)
                     .build();
             StdioBoot.await();
         }
@@ -523,5 +527,35 @@ public final class GatewayBootstrap {
         } catch (Exception e) {
             // The binder may not be Logback, for example in tests. Leave the level alone.
         }
+    }
+
+    /** Aggregates prompt definitions across adapters into MCP server specifications. */
+    static List<McpServerFeatures.SyncPromptSpecification> buildPromptSpecs(List<EngineAdapter> adapters) {
+        List<McpServerFeatures.SyncPromptSpecification> promptSpecs = new ArrayList<>();
+
+        for (EngineAdapter adapter : adapters) {
+            if (adapter.prompts() == null) {
+                continue;
+            }
+            for (io.github.vaquarkhan.aegis.core.spi.PromptDef def : adapter.prompts()) {
+                McpSchema.Prompt prompt = McpSchema.Prompt.builder()
+                        .name(def.id())
+                        .description(def.description())
+                        .build();
+
+                promptSpecs.add(McpServerFeatures.SyncPromptSpecification.builder()
+                        .prompt(prompt)
+                        .getHandler((exchange, request) -> new McpSchema.GetPromptResult(
+                                def.description(),
+                                List.of(new McpSchema.PromptMessage(
+                                        McpSchema.Role.USER,
+                                        new McpSchema.TextContent(def.template())
+                                ))
+                        ))
+                        .build());
+            }
+        }
+        LOG.info("registered prompts={}", promptSpecs.size());
+        return promptSpecs;
     }
 }

@@ -93,8 +93,9 @@ public final class FlinkAdapter implements EngineAdapter {
     public List<PromptDef> prompts(GatewayConfig cfg) {
         return List.of(
                 new PromptDef(
-                        "flink-sql-dialect",
-                        "Guidelines for writing streaming and batch queries using Flink SQL dialect"
+                        "flink-job-diagnostics",
+                        "Prompt template for inspecting Apache Flink job status and backpressure metrics",
+                        "Analyze the health of Flink job '{{jobId}}'. Check checkpoint completion rates, task manager liveness, and backpressure metrics across subtasks."
                 )
         );
     }

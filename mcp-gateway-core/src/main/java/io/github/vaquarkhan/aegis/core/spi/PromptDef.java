@@ -12,7 +12,7 @@ public final class PromptDef {
     private final String description;
     private final String template;
 
-    PromptDef(
+    public PromptDef(
             String id,
             String description,
             String template
