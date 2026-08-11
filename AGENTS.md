@@ -66,7 +66,7 @@ generative-tooling guidance - https://www.apache.org/legal/generative-tooling.ht
 
   | Tool | Version / plan | Output-terms checked vs OSD? | Notes |
   | --- | --- | --- | --- |
-  | Cursor | &lt;fill&gt; | &lt;yes/no + date&gt; | &lt;link to reviewed Cursor terms&gt; |
+  | Cursor | Pro (2026) | Yes — 2026-08-11 | Cursor's terms assign ownership of generated output to the user and place no restrictions on the output inconsistent with the Open Source Definition. Terms reviewed: https://cursor.com/terms-of-service |
 
 - **Code scanning is the provenance mechanism (not review):** before the first Apache release, run a
   scanner (e.g. SCANOSS - https://github.com/scanoss - or FOSSA - https://fossa.com/) over the codebase,
