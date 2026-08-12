@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class ArrowAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON_MAPPER = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,13 +47,13 @@ public final class ArrowAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_flights", ToolClass.READ, "List Arrow Flight datasets via HTTP facade",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/flights")));
         tools.add(tool("get_flight", ToolClass.READ, "Get Flight info",
-                "{\"type\":\"object\",\"properties\":{\"ticket\":{\"type\":\"string\"}},\"required\":[\"ticket\"]}",
+                new JsonSchema("object", Map.of("ticket", Map.of("type", "string")), List.of("ticket"), null, null, null),
                 ctx -> client.get("/flights/" + Inputs.requireId(arg(ctx, "ticket")))));
         tools.add(tool("do_action", ToolClass.MUTATE, "Invoke a Flight action",
-                "{\"type\":\"object\",\"properties\":{\"action\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"action\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("action", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("action", "approvalToken"), null, null, null),
                 ctx -> client.post("/actions/" + Inputs.requireId(arg(ctx, "action")), "{}")));
         return tools;
     }
@@ -74,9 +84,13 @@ public final class ArrowAdapter implements EngineAdapter {
                 cfg.adapterProperty("ARROW_FLIGHT_HTTP_URL", "http://localhost:8815"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON_MAPPER.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize JsonSchema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

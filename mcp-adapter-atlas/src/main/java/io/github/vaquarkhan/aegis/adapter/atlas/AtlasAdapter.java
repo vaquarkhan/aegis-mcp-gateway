@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class AtlasAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class AtlasAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_typedefs", ToolClass.READ, "List Atlas typedefs",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/api/atlas/v2/types/typedefs")));
         tools.add(tool("search_entities", ToolClass.READ, "Basic Atlas entity search",
-                "{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"}},\"required\":[\"query\"]}",
+                new JsonSchema("object", Map.of("query", Map.of("type", "string")), List.of("query"), null, null, null),
                 ctx -> client.get("/api/atlas/v2/search/basic?query=" + Inputs.requireId(arg(ctx, "query")))));
         tools.add(tool("get_entity", ToolClass.READ, "Get Atlas entity by guid",
-                "{\"type\":\"object\",\"properties\":{\"guid\":{\"type\":\"string\"}},\"required\":[\"guid\"]}",
+                new JsonSchema("object", Map.of("guid", Map.of("type", "string")), List.of("guid"), null, null, null),
                 ctx -> client.get("/api/atlas/v2/entity/guid/" + Inputs.requireId(arg(ctx, "guid")))));
         tools.add(tool("delete_entity", ToolClass.DESTRUCTIVE, "Delete Atlas entity",
-                "{\"type\":\"object\",\"properties\":{\"guid\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"guid\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("guid", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("guid", "approvalToken"), null, null, null),
                 ctx -> client.delete("/api/atlas/v2/entity/guid/" + Inputs.requireId(arg(ctx, "guid")))));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class AtlasAdapter implements EngineAdapter {
                 cfg.adapterProperty("ATLAS_URL", "http://localhost:21000"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

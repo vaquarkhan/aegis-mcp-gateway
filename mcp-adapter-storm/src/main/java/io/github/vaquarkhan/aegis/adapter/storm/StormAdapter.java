@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class StormAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class StormAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("cluster_summary", ToolClass.READ, "Storm cluster summary",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/api/v1/cluster/summary")));
         tools.add(tool("list_topologies", ToolClass.READ, "List Storm topologies",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/api/v1/topology/summary")));
         tools.add(tool("get_topology", ToolClass.READ, "Get Storm topology details",
-                "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"]}",
+                new JsonSchema("object", Map.of("id", Map.of("type", "string")), List.of("id"), null, null, null),
                 ctx -> client.get("/api/v1/topology/" + Inputs.requireId(arg(ctx, "id")))));
         tools.add(tool("kill_topology", ToolClass.DESTRUCTIVE, "Kill a Storm topology",
-                "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"id\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("id", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("id", "approvalToken"), null, null, null),
                 ctx -> client.post("/api/v1/topology/" + Inputs.requireId(arg(ctx, "id")) + "/kill/0", "{}")));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class StormAdapter implements EngineAdapter {
                 cfg.adapterProperty("STORM_UI_URL", "http://localhost:8080"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

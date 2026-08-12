@@ -1,6 +1,7 @@
 package io.github.vaquarkhan.aegis.adapter.spark;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,6 +13,9 @@ import io.github.vaquarkhan.aegis.core.spi.CallContext;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -23,6 +27,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 /** @author Viquar Khan */
 class SparkAdapterTest {
@@ -183,6 +188,78 @@ class SparkAdapterTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    private static final McpJsonMapper JSON = new JacksonMcpJsonMapperSupplier().get();
+
+    @Test
+    void emptySchemaSerializesCorrectly() throws Exception {
+        JsonNode node = parse(new JsonSchema("object", Map.of(), null, null, null, null));
+
+        assertEquals("object", node.get("type").asText());
+        assertTrue(node.get("properties").isEmpty());
+        assertFalse(node.has("required"));
+    }
+
+    @Test
+    void getApplicationSchemaSerializesCorrectly() throws Exception {
+        JsonNode node = parse(new JsonSchema("object", Map.of(
+                "appId", Map.of("type", "string")),
+                List.of("appId"), null, null, null));
+
+        assertEquals("object", node.get("type").asText());
+        assertEquals("string", node.get("properties").get("appId").get("type").asText());
+        assertEquals(1, node.get("properties").size());
+        assertEquals("appId", node.get("required").get(0).asText());
+    }
+
+    @Test
+    void runSqlReadonlySchemaSerializesCorrectly() throws Exception {
+        JsonNode node = parse(new JsonSchema("object", Map.of(
+                "sql", Map.of("type", "string")),
+                List.of("sql"), null, null, null));
+
+        assertEquals("object", node.get("type").asText());
+        assertEquals("string", node.get("properties").get("sql").get("type").asText());
+        assertEquals(1, node.get("required").size());
+        assertEquals("sql", node.get("required").get(0).asText());
+    }
+
+    @Test
+    void submitBatchSchemaSerializesCorrectly() throws Exception {
+        JsonNode node = parse(new JsonSchema("object", Map.of(
+                "file", Map.of("type", "string"),
+                "className", Map.of("type", "string"),
+                "approvalToken", Map.of("type", "string")),
+                List.of("file", "approvalToken"), null, null, null));
+
+        assertEquals("object", node.get("type").asText());
+        assertEquals("string", node.get("properties").get("file").get("type").asText());
+        assertEquals("string", node.get("properties").get("className").get("type").asText());
+        assertEquals("string", node.get("properties").get("approvalToken").get("type").asText());
+        assertEquals(3, node.get("properties").size());
+        assertEquals(2, node.get("required").size());
+        assertEquals("file", node.get("required").get(0).asText());
+        assertEquals("approvalToken", node.get("required").get(1).asText());
+    }
+
+    @Test
+    void killApplicationSchemaSerializesCorrectly() throws Exception {
+        JsonNode node = parse(new JsonSchema("object", Map.of(
+                "appId", Map.of("type", "string"),
+                "approvalToken", Map.of("type", "string")),
+                List.of("appId", "approvalToken"), null, null, null));
+
+        assertEquals("object", node.get("type").asText());
+        assertEquals("string", node.get("properties").get("appId").get("type").asText());
+        assertEquals("string", node.get("properties").get("approvalToken").get("type").asText());
+        assertEquals(2, node.get("properties").size());
+        assertEquals("appId", node.get("required").get(0).asText());
+        assertEquals("approvalToken", node.get("required").get(1).asText());
+    }
+
+    private JsonNode parse(JsonSchema schema) throws Exception {
+        return JSON.readValue(JSON.writeValueAsString(schema), JsonNode.class);
     }
 
     private static GatewayConfig livyConfig(int port) {

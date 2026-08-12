@@ -88,16 +88,13 @@ class HudiAdapterTest {
 
     @Test
     void baseUrlResolutionHierarchy() {
-
         assertEquals("http://localhost:8080", HudiAdapter.baseUrl(GatewayConfig.builder().defaults().build()));
-
 
         GatewayConfig envCfg = GatewayConfig.builder()
                 .defaults()
                 .adapterProperties(Map.of("HUDI_URL", "http://fallback-hudi:8080"))
                 .build();
         assertEquals("http://fallback-hudi:8080", HudiAdapter.baseUrl(envCfg));
-
 
         GatewayConfig priorityCfg = GatewayConfig.builder()
                 .defaults()

@@ -80,7 +80,7 @@ class PolicyDecisionPointTest {
 
     @Test
     void nullContextIsDeniedEvenByAPermissiveEngine() {
-        assertFalse(PolicyDecisionPoint.allowAll().allows((CallContext) null));
+        assertFalse(PolicyDecisionPoint.allowAll().allows(null));
         assertTrue(PolicyDecisionPoint.allowAll().allows(ops(), "anything", Map.of()));
     }
 }

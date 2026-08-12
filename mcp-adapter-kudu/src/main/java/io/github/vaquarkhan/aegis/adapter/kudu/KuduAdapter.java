@@ -13,7 +13,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.io.IOException;
 import java.util.function.Function;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
 
 /**
  * Apache Kudu adapter. Talks to the configured HTTP/REST surface; failures propagate for the breaker.
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class KuduAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,13 +47,13 @@ public final class KuduAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_tables", ToolClass.READ, "List Kudu tables via REST facade",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/tables")));
         tools.add(tool("get_table", ToolClass.READ, "Get Kudu table",
-                "{\"type\":\"object\",\"properties\":{\"table\":{\"type\":\"string\"}},\"required\":[\"table\"]}",
+                new JsonSchema("object", Map.of("table", Map.of("type", "string")), List.of("table"), null, null, null),
                 ctx -> client.get("/tables/" + Inputs.requireTable(arg(ctx, "table")))));
         tools.add(tool("delete_table", ToolClass.DESTRUCTIVE, "Delete a Kudu table",
-                "{\"type\":\"object\",\"properties\":{\"table\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"table\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("table", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("table", "approvalToken"), null, null, null),
                 ctx -> client.delete("/tables/" + Inputs.requireTable(arg(ctx, "table")))));
         return tools;
     }
@@ -74,9 +84,13 @@ public final class KuduAdapter implements EngineAdapter {
                 cfg.adapterProperty("KUDU_REST_URL", "http://localhost:8050"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {
