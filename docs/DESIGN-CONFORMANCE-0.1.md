@@ -67,7 +67,7 @@ Status legend:
 | Trace id (MDC) + Prometheus `/metrics` | **Done** | Hand-rolled counters |
 | GenAI-shaped span logs | **Done** | OTel SDK bridge → **0.2** |
 | `/readyz` catalog + optional URL ping | **Done** | — |
-| CycloneDX SBOM plugin | **Done** | CI enforce + CVE → **0.2** |
+| CycloneDX SBOM plugin | **Done** | Produced by the release build (`-Prelease`); CI enforce + CVE → **0.2** |
 | maven-enforcer / Cosign / SLSA / CI | **Roadmap** | **0.2** |
 
 ---

@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class CassandraAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class CassandraAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_keyspaces", ToolClass.READ, "List keyspaces via Cassandra Sidecar",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/api/v1/cassandra/native/keyspaces")));
         tools.add(tool("list_tables", ToolClass.READ, "List tables in a keyspace",
-                "{\"type\":\"object\",\"properties\":{\"keyspace\":{\"type\":\"string\"}},\"required\":[\"keyspace\"]}",
+                new JsonSchema("object", Map.of("keyspace", Map.of("type", "string")), List.of("keyspace"), null, null, null),
                 ctx -> client.get("/api/v1/cassandra/native/keyspaces/" + Inputs.requireNamespace(arg(ctx, "keyspace")) + "/tables")));
         tools.add(tool("get_ring", ToolClass.READ, "Cassandra ring health via Sidecar",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/api/v1/cassandra/native/token-ranges")));
         tools.add(tool("drop_table", ToolClass.DESTRUCTIVE, "Drop a Cassandra table via Sidecar SQL facade",
-                "{\"type\":\"object\",\"properties\":{\"keyspace\":{\"type\":\"string\"},\"table\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"keyspace\",\"table\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("keyspace", Map.of("type", "string"), "table", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("keyspace", "table", "approvalToken"), null, null, null),
                 ctx -> client.delete("/api/v1/cassandra/native/keyspaces/" + Inputs.requireNamespace(arg(ctx, "keyspace")) + "/tables/" + Inputs.requireTable(arg(ctx, "table")))));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class CassandraAdapter implements EngineAdapter {
                 cfg.adapterProperty("CASSANDRA_SIDECAR_URL", "http://localhost:9043"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,16 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class CalciteAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON_MAPPER = defaultJsonMapper();
+    private static final JsonSchema EMPTY_SCHEMA =
+            new JsonSchema("object", Map.of(), null, null, null, null);
+    private static final JsonSchema SQL_SCHEMA =
+            new JsonSchema("object", Map.of("sql", Map.of("type", "string")), List.of("sql"), null, null, null);
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,13 +51,13 @@ public final class CalciteAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("get_status", ToolClass.READ, "Calcite HTTP status",
-                "{\"type\":\"object\",\"properties\":{}}",
+                EMPTY_SCHEMA,
                 ctx -> client.get("/")));
         tools.add(tool("explain_sql", ToolClass.READ, "Explain a SQL plan via HTTP facade",
-                "{\"type\":\"object\",\"properties\":{\"sql\":{\"type\":\"string\"}},\"required\":[\"sql\"]}",
+                SQL_SCHEMA,
                 ctx -> client.post("/explain", "{\"sql\":\"" + Inputs.jsonEscape(Inputs.requireSql(arg(ctx, "sql"), cfg.maxSqlChars())) + "\"}")));
         tools.add(tool("run_sql_readonly", ToolClass.READ, "Run read-only SQL via Calcite HTTP facade",
-                "{\"type\":\"object\",\"properties\":{\"sql\":{\"type\":\"string\"}},\"required\":[\"sql\"]}",
+                SQL_SCHEMA,
                 ctx -> client.post("/sql", "{\"sql\":\"" + Inputs.jsonEscape(Inputs.requireSql(arg(ctx, "sql"), cfg.maxSqlChars())) + "\"}")));
         return tools;
     }
@@ -74,9 +88,14 @@ public final class CalciteAdapter implements EngineAdapter {
                 cfg.adapterProperty("CALCITE_HTTP_URL", "http://localhost:8080"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            String json = JSON_MAPPER.writeValueAsString(schema);
+            return new ToolDef(name, cls, desc, json, backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize JsonSchema for tool " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

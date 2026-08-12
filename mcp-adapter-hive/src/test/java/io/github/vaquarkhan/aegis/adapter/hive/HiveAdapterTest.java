@@ -88,7 +88,6 @@ class HiveAdapterTest {
 
     @Test
     void baseUrlResolutionHierarchy() {
-        
         assertEquals("http://localhost:10002", HiveAdapter.baseUrl(GatewayConfig.builder().defaults().build()));
 
         GatewayConfig envCfg = GatewayConfig.builder()

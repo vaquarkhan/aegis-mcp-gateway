@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class BeamAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class BeamAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_jobs", ToolClass.READ, "List Beam Job API jobs",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/v1/jobs")));
         tools.add(tool("get_job", ToolClass.READ, "Get a Beam job",
-                "{\"type\":\"object\",\"properties\":{\"jobId\":{\"type\":\"string\"}},\"required\":[\"jobId\"]}",
+                new JsonSchema("object", Map.of("jobId", Map.of("type", "string")), List.of("jobId"), null, null, null),
                 ctx -> client.get("/v1/jobs/" + Inputs.requireId(arg(ctx, "jobId")))));
         tools.add(tool("get_job_metrics", ToolClass.READ, "Get Beam job metrics",
-                "{\"type\":\"object\",\"properties\":{\"jobId\":{\"type\":\"string\"}},\"required\":[\"jobId\"]}",
+                new JsonSchema("object", Map.of("jobId", Map.of("type", "string")), List.of("jobId"), null, null, null),
                 ctx -> client.get("/v1/jobs/" + Inputs.requireId(arg(ctx, "jobId")) + "/metrics")));
         tools.add(tool("cancel_job", ToolClass.DESTRUCTIVE, "Cancel a Beam job",
-                "{\"type\":\"object\",\"properties\":{\"jobId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"jobId\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("jobId", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("jobId", "approvalToken"), null, null, null),
                 ctx -> client.post("/v1/jobs/" + Inputs.requireId(arg(ctx, "jobId")) + ":cancel", "{}")));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class BeamAdapter implements EngineAdapter {
                 cfg.adapterProperty("BEAM_JOB_SERVER_URL", "http://localhost:8099"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {
