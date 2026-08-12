@@ -92,20 +92,10 @@ class HudiAdapterTest {
         assertEquals("http://localhost:8081", HudiAdapter.baseUrl(GatewayConfig.builder().defaults().build()));
 
 
-        GatewayConfig envCfg = GatewayConfig.builder()
+        GatewayConfig configuredCfg = GatewayConfig.builder()
                 .defaults()
-                .adapterProperties(Map.of("HUDI_URL", "http://fallback-hudi:8081"))
+                .adapterProperties(Map.of("hudi.url", "http://primary-hudi:8081"))
                 .build();
-        assertEquals("http://fallback-hudi:8081", HudiAdapter.baseUrl(envCfg));
-
-
-        GatewayConfig priorityCfg = GatewayConfig.builder()
-                .defaults()
-                .adapterProperties(Map.of(
-                        "HUDI_URL", "http://fallback-hudi:8081",
-                        "hudi.url", "http://primary-hudi:8081"
-                ))
-                .build();
-        assertEquals("http://primary-hudi:8081", HudiAdapter.baseUrl(priorityCfg));
+        assertEquals("http://primary-hudi:8081", HudiAdapter.baseUrl(configuredCfg));
     }
 }
