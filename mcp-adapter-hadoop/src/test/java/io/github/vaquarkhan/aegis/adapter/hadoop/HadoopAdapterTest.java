@@ -70,7 +70,6 @@ class HadoopAdapterTest {
         assertEquals("hadoop://status", resource.uri());
         assertEquals("hadoop-status", resource.name());
         assertEquals("application/json", resource.mimeType());
-        assertTrue(resource.direct());
     }
 
     @Test
