@@ -88,18 +88,21 @@ class HiveAdapterTest {
 
     @Test
     void baseUrlResolutionHierarchy() {
+        
         assertEquals("http://localhost:10002", HiveAdapter.baseUrl(GatewayConfig.builder().defaults().build()));
+
 
         GatewayConfig envCfg = GatewayConfig.builder()
                 .defaults()
-                .adapterProperties(Map.of("HIVE_WEBUI_URL", "http://fallback-hive:10002"))
+                .adapterProperties(Map.of("HIVE_URL", "http://fallback-hive:10002"))
                 .build();
         assertEquals("http://fallback-hive:10002", HiveAdapter.baseUrl(envCfg));
+
 
         GatewayConfig priorityCfg = GatewayConfig.builder()
                 .defaults()
                 .adapterProperties(Map.of(
-                        "HIVE_WEBUI_URL", "http://fallback-hive:10002",
+                        "HIVE_URL", "http://fallback-hive:10002",
                         "hive.url", "http://primary-hive:10002"
                 ))
                 .build();
