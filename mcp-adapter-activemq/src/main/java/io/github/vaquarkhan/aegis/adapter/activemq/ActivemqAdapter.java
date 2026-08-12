@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class ActivemqAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,13 +47,13 @@ public final class ActivemqAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("get_broker", ToolClass.READ, "Read ActiveMQ broker Jolokia MBean",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=localhost")));
         tools.add(tool("list_queues", ToolClass.READ, "List ActiveMQ queues via Jolokia search",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/api/jolokia/search/org.apache.activemq:type=Broker,brokerName=*,destinationType=Queue,destinationName=*")));
         tools.add(tool("purge_queue", ToolClass.DESTRUCTIVE, "Purge an ActiveMQ queue",
-                "{\"type\":\"object\",\"properties\":{\"queue\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"queue\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("queue", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("queue", "approvalToken"), null, null, null),
                 ctx -> client.post("/api/jolokia", "{\"type\":\"exec\",\"mbean\":\"org.apache.activemq:type=Broker,brokerName=localhost,destinationType=Queue,destinationName=" + Inputs.jsonEscape(Inputs.requireId(arg(ctx, "queue"))) + "\",\"operation\":\"purge\"}")));
         return tools;
     }
@@ -74,9 +84,13 @@ public final class ActivemqAdapter implements EngineAdapter {
                 cfg.adapterProperty("ACTIVEMQ_API_URL", "http://localhost:8161"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

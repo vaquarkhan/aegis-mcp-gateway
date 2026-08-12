@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class DruidAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class DruidAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_datasources", ToolClass.READ, "List Druid datasources",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), null, null, null, null),
                 ctx -> client.get("/druid/coordinator/v1/datasources")));
         tools.add(tool("get_datasource", ToolClass.READ, "Get Druid datasource metadata",
-                "{\"type\":\"object\",\"properties\":{\"datasource\":{\"type\":\"string\"}},\"required\":[\"datasource\"]}",
+                new JsonSchema("object", Map.of("datasource", Map.of("type", "string")), List.of("datasource"), null, null, null),
                 ctx -> client.get("/druid/coordinator/v1/datasources/" + Inputs.requireId(arg(ctx, "datasource")))));
         tools.add(tool("run_sql_readonly", ToolClass.READ, "Run Druid SQL (read facade)",
-                "{\"type\":\"object\",\"properties\":{\"sql\":{\"type\":\"string\"}},\"required\":[\"sql\"]}",
+                new JsonSchema("object", Map.of("sql", Map.of("type", "string")), List.of("sql"), null, null, null),
                 ctx -> client.post("/druid/v2/sql", "{\"query\":\"" + Inputs.jsonEscape(Inputs.requireSql(arg(ctx, "sql"), cfg.maxSqlChars())) + "\"}")));
         tools.add(tool("disable_datasource", ToolClass.DESTRUCTIVE, "Disable a Druid datasource",
-                "{\"type\":\"object\",\"properties\":{\"datasource\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"datasource\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("datasource", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("datasource", "approvalToken"), null, null, null),
                 ctx -> client.delete("/druid/coordinator/v1/datasources/" + Inputs.requireId(arg(ctx, "datasource")))));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class DruidAdapter implements EngineAdapter {
                 cfg.adapterProperty("DRUID_ROUTER_URL", "http://localhost:8888"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

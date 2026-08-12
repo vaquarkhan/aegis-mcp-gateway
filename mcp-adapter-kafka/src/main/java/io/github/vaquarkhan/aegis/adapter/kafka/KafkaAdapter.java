@@ -25,6 +25,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 
 /**
  * Kafka messaging adapter backed by the Kafka {@code AdminClient}, a Schema Registry HTTP client and
@@ -49,6 +53,12 @@ public final class KafkaAdapter implements EngineAdapter {
 
     private static final int DEFAULT_DLQ_MAX_RECORDS = 5;
     private static final int MAX_CONFIG_VALUE_CHARS = 1024;
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     private final KafkaClusterOps injectedCluster;
     private final SchemaRegistryOps injectedRegistry;
@@ -83,31 +93,30 @@ public final class KafkaAdapter implements EngineAdapter {
     public List<ToolDef> tools(GatewayConfig cfg) {
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_topics", ToolClass.READ, "List Kafka topics",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> cluster(cfg).listTopics()));
         tools.add(tool("describe_topic", ToolClass.READ, "Describe a Kafka topic",
-                "{\"type\":\"object\",\"properties\":{\"topic\":{\"type\":\"string\"}},\"required\":[\"topic\"]}",
+                new JsonSchema("object", Map.of("topic", Map.of("type", "string")), List.of("topic"), null, null, null),
                 ctx -> cluster(cfg).describeTopic(Inputs.requireTopic(arg(ctx, "topic")))));
         tools.add(tool("query_schema_registry", ToolClass.READ, "Query Schema Registry for a subject",
-                "{\"type\":\"object\",\"properties\":{\"subject\":{\"type\":\"string\"}},\"required\":[\"subject\"]}",
+                new JsonSchema("object", Map.of("subject", Map.of("type", "string")), List.of("subject"), null, null, null),
                 ctx -> registry(cfg).latestVersion(Inputs.requireId(arg(ctx, "subject")))));
         tools.add(tool("inspect_dlq", ToolClass.READ, "Inspect dead-letter queue topic samples",
-                "{\"type\":\"object\",\"properties\":{\"topic\":{\"type\":\"string\"},"
-                        + "\"maxRecords\":{\"type\":\"string\"}},\"required\":[\"topic\"]}",
+                new JsonSchema("object", Map.of("topic", Map.of("type", "string"), "maxRecords", Map.of("type", "string")), List.of("topic"), null, null, null),
                 ctx -> dlq(cfg).sampleTail(
                         Inputs.requireTopic(arg(ctx, "topic")), maxRecords(cfg, arg(ctx, "maxRecords")))));
         tools.add(tool("create_topic", ToolClass.MUTATE, "Create a Kafka topic",
-                "{\"type\":\"object\",\"properties\":{\"topic\":{\"type\":\"string\"},\"partitions\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"topic\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("topic", Map.of("type", "string"), "partitions", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("topic", "approvalToken"), null, null, null),
                 ctx -> cluster(cfg).createTopic(
                         Inputs.requireTopic(arg(ctx, "topic")), partitions(arg(ctx, "partitions")))));
         tools.add(tool("alter_config", ToolClass.MUTATE, "Alter topic or broker config",
-                "{\"type\":\"object\",\"properties\":{\"resource\":{\"type\":\"string\"},\"configs\":{\"type\":\"object\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"resource\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("resource", Map.of("type", "string"), "configs", Map.of("type", "object"), "approvalToken", Map.of("type", "string")), List.of("resource", "approvalToken"), null, null, null),
                 ctx -> cluster(cfg).alterTopicConfig(Inputs.requireId(arg(ctx, "resource")), configs(ctx))));
         tools.add(tool("reset_offsets", ToolClass.DESTRUCTIVE, "Reset consumer group offsets to earliest",
-                "{\"type\":\"object\",\"properties\":{\"groupId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"groupId\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("groupId", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("groupId", "approvalToken"), null, null, null),
                 ctx -> cluster(cfg).resetOffsets(Inputs.requireId(arg(ctx, "groupId")))));
         tools.add(tool("delete_records", ToolClass.DESTRUCTIVE, "Delete records before the end offset of every partition",
-                "{\"type\":\"object\",\"properties\":{\"topic\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"topic\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("topic", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("topic", "approvalToken"), null, null, null),
                 ctx -> cluster(cfg).deleteRecords(Inputs.requireTopic(arg(ctx, "topic")))));
         return tools;
     }
@@ -236,9 +245,13 @@ public final class KafkaAdapter implements EngineAdapter {
         return cfg.adapterProperty(envKey, def);
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

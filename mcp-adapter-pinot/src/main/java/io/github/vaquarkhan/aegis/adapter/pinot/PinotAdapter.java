@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class PinotAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class PinotAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_tables", ToolClass.READ, "List Pinot tables",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/tables")));
         tools.add(tool("get_table", ToolClass.READ, "Get Pinot table config",
-                "{\"type\":\"object\",\"properties\":{\"table\":{\"type\":\"string\"}},\"required\":[\"table\"]}",
+                new JsonSchema("object", Map.of("table", Map.of("type", "string")), List.of("table"), null, null, null),
                 ctx -> client.get("/tables/" + Inputs.requireTable(arg(ctx, "table")))));
         tools.add(tool("list_tenants", ToolClass.READ, "List Pinot tenants",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/tenants")));
         tools.add(tool("delete_table", ToolClass.DESTRUCTIVE, "Delete a Pinot table",
-                "{\"type\":\"object\",\"properties\":{\"table\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"table\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("table", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("table", "approvalToken"), null, null, null),
                 ctx -> client.delete("/tables/" + Inputs.requireTable(arg(ctx, "table")))));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class PinotAdapter implements EngineAdapter {
                 cfg.adapterProperty("PINOT_CONTROLLER_URL", "http://localhost:9000"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

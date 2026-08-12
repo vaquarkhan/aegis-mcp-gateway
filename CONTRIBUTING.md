@@ -27,8 +27,9 @@ mvn -q -pl mcp-gateway-core -am test
 
 - Java 17. Four space indent, 110 column soft limit, no tabs.
 - UTF-8 without a byte order mark. LF or CRLF are both fine; do not mix them inside one file.
-- Every source file carries the Apache license header used by the existing files, and every public
-  type carries a Javadoc comment ending with `@author`.
+- Every contributed source file should carry an Apache-2.0 license header (author-named until
+  ASF donation; see [ROADMAP.md](ROADMAP.md) bootstrap / IP clearance). Every public type carries
+  a Javadoc comment ending with `@author`.
 - Never write to `System.out`. On the stdio transport stdout carries MCP JSON-RPC frames and one
   stray `println` corrupts the session. Log through SLF4J, which is wired to stderr.
 - Comments explain intent, constraints and trade-offs. Do not narrate what the next line does.

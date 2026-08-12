@@ -8,6 +8,10 @@ import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
 import io.github.vaquarkhan.aegis.core.util.HttpJsonClient;
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class NifiAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,19 +47,19 @@ public final class NifiAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("get_about", ToolClass.READ, "NiFi about / version",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/flow/about")));
         tools.add(tool("list_process_groups", ToolClass.READ, "List root process groups",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/flow/process-groups/root")));
         tools.add(tool("get_process_group", ToolClass.READ, "Get a process group",
-                "{\"type\":\"object\",\"properties\":{\"groupId\":{\"type\":\"string\"}},\"required\":[\"groupId\"]}",
+                new JsonSchema("object", Map.of("groupId", Map.of("type", "string")), List.of("groupId"), null, null, null),
                 ctx -> client.get("/process-groups/" + Inputs.requireId(arg(ctx, "groupId")))));
         tools.add(tool("start_process_group", ToolClass.MUTATE, "Start a process group",
-                "{\"type\":\"object\",\"properties\":{\"groupId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"groupId\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("groupId", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("groupId", "approvalToken"), null, null, null),
                 ctx -> client.put("/flow/process-groups/" + Inputs.requireId(arg(ctx, "groupId")), "{\"id\":\"" + Inputs.jsonEscape(Inputs.requireId(arg(ctx, "groupId"))) + "\",\"state\":\"RUNNING\"}")));
         tools.add(tool("stop_process_group", ToolClass.DESTRUCTIVE, "Stop a process group",
-                "{\"type\":\"object\",\"properties\":{\"groupId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"groupId\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("groupId", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("groupId", "approvalToken"), null, null, null),
                 ctx -> client.put("/flow/process-groups/" + Inputs.requireId(arg(ctx, "groupId")), "{\"id\":\"" + Inputs.jsonEscape(Inputs.requireId(arg(ctx, "groupId"))) + "\",\"state\":\"STOPPED\"}")));
         return tools;
     }
@@ -80,9 +90,13 @@ public final class NifiAdapter implements EngineAdapter {
                 cfg.adapterProperty("NIFI_API_URL", "http://localhost:8080/nifi-api"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

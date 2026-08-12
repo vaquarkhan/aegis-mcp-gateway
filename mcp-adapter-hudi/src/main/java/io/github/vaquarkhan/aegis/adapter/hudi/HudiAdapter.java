@@ -13,6 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.util.function.Function;
 
 /**
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class HudiAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,16 +47,16 @@ public final class HudiAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("list_tables", ToolClass.READ, "List Hudi tables via REST catalog facade",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/v1/tables")));
         tools.add(tool("get_table", ToolClass.READ, "Get Hudi table metadata",
-                "{\"type\":\"object\",\"properties\":{\"table\":{\"type\":\"string\"}},\"required\":[\"table\"]}",
+                new JsonSchema("object", Map.of("table", Map.of("type", "string")), List.of("table"), null, null, null),
                 ctx -> client.get("/v1/tables/" + Inputs.requireTable(arg(ctx, "table")))));
         tools.add(tool("run_clustering", ToolClass.MUTATE, "Trigger Hudi clustering",
-                "{\"type\":\"object\",\"properties\":{\"table\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"table\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("table", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("table", "approvalToken"), null, null, null),
                 ctx -> client.post("/v1/tables/" + Inputs.requireTable(arg(ctx, "table")) + "/clustering", "{}")));
         tools.add(tool("run_compaction", ToolClass.DESTRUCTIVE, "Trigger Hudi compaction",
-                "{\"type\":\"object\",\"properties\":{\"table\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"table\",\"approvalToken\"]}",
+                new JsonSchema("object", Map.of("table", Map.of("type", "string"), "approvalToken", Map.of("type", "string")), List.of("table", "approvalToken"), null, null, null),
                 ctx -> client.post("/v1/tables/" + Inputs.requireTable(arg(ctx, "table")) + "/compaction", "{}")));
         return tools;
     }
@@ -77,9 +87,13 @@ public final class HudiAdapter implements EngineAdapter {
                 cfg.adapterProperty("HUDI_REST_URL", "http://localhost:8081"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {

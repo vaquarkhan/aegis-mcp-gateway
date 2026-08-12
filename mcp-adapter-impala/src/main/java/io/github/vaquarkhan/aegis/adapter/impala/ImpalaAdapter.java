@@ -13,6 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapperSupplier;
+import io.modelcontextprotocol.spec.McpSchema.JsonSchema;
+import java.io.IOException;
 import java.util.function.Function;
 
 /**
@@ -21,6 +25,12 @@ import java.util.function.Function;
  * @author Viquar Khan
  */
 public final class ImpalaAdapter implements EngineAdapter {
+
+    private static final McpJsonMapper JSON = defaultJsonMapper();
+
+    private static McpJsonMapper defaultJsonMapper() {
+        return new JacksonMcpJsonMapperSupplier().get();
+    }
 
     @Override
     public String engineId() {
@@ -37,13 +47,16 @@ public final class ImpalaAdapter implements EngineAdapter {
         HttpJsonClient client = new HttpJsonClient(baseUrl(cfg));
         List<ToolDef> tools = new ArrayList<>();
         tools.add(tool("get_metrics", ToolClass.READ, "Impala /metrics",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/metrics")));
         tools.add(tool("list_queries", ToolClass.READ, "Impala queries page JSON facade",
-                "{\"type\":\"object\",\"properties\":{}}",
+                new JsonSchema("object", Map.of(), List.of(), null, null, null),
                 ctx -> client.get("/queries?json")));
         tools.add(tool("cancel_query", ToolClass.DESTRUCTIVE, "Cancel an Impala query",
-                "{\"type\":\"object\",\"properties\":{\"queryId\":{\"type\":\"string\"},\"approvalToken\":{\"type\":\"string\"}},\"required\":[\"queryId\",\"approvalToken\"]}",
+                new JsonSchema("object",
+                        Map.of("queryId", Map.of("type", "string"),
+                                "approvalToken", Map.of("type", "string")),
+                        List.of("queryId", "approvalToken"), null, null, null),
                 ctx -> client.post("/cancel_query?query_id=" + Inputs.requireId(arg(ctx, "queryId")), "{}")));
         return tools;
     }
@@ -74,9 +87,13 @@ public final class ImpalaAdapter implements EngineAdapter {
                 cfg.adapterProperty("IMPALA_HTTP_URL", "http://localhost:25000"));
     }
 
-    private static ToolDef tool(String name, ToolClass cls, String desc, String schema,
+    private static ToolDef tool(String name, ToolClass cls, String desc, JsonSchema schema,
                                 Function<CallContext, String> backend) {
-        return new ToolDef(name, cls, desc, schema, backend);
+        try {
+            return new ToolDef(name, cls, desc, JSON.writeValueAsString(schema), backend);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to serialize schema for tool: " + name, e);
+        }
     }
 
     private static String arg(CallContext ctx, String key) {
