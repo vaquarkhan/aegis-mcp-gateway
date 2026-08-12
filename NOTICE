@@ -13,7 +13,7 @@ You may obtain a copy of the License at
 This product bundles or depends on third-party software licensed as follows.
 
 - Model Context Protocol Java SDK (io.modelcontextprotocol.sdk:mcp)
-  Apache License, Version 2.0
+  MIT License
 - Eclipse Jetty (org.eclipse.jetty.ee10:jetty-ee10-servlet)
   Apache License, Version 2.0 and Eclipse Public License, Version 2.0
 - SLF4J (org.slf4j:slf4j-api)
