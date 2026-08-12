@@ -70,7 +70,7 @@ class HudiAdapterTest {
 
         GatewayConfig customConfig = GatewayConfig.builder()
                 .defaults()
-                .adapterProperties(Map.of("hudi.url", "http://hudi-service.prod.internal:8080"))
+                .adapterProperties(Map.of("hudi.url", "http://hudi-service.prod.internal:8081"))
                 .build();
         Set<String> customHosts = adapter.egressAllowHosts(customConfig);
         assertEquals(Set.of("hudi-service.prod.internal"), customHosts);
@@ -88,21 +88,24 @@ class HudiAdapterTest {
 
     @Test
     void baseUrlResolutionHierarchy() {
-        assertEquals("http://localhost:8080", HudiAdapter.baseUrl(GatewayConfig.builder().defaults().build()));
+        
+        assertEquals("http://localhost:8081", HudiAdapter.baseUrl(GatewayConfig.builder().defaults().build()));
+
 
         GatewayConfig envCfg = GatewayConfig.builder()
                 .defaults()
-                .adapterProperties(Map.of("HUDI_URL", "http://fallback-hudi:8080"))
+                .adapterProperties(Map.of("HUDI_URL", "http://fallback-hudi:8081"))
                 .build();
-        assertEquals("http://fallback-hudi:8080", HudiAdapter.baseUrl(envCfg));
+        assertEquals("http://fallback-hudi:8081", HudiAdapter.baseUrl(envCfg));
+
 
         GatewayConfig priorityCfg = GatewayConfig.builder()
                 .defaults()
                 .adapterProperties(Map.of(
-                        "HUDI_URL", "http://fallback-hudi:8080",
-                        "hudi.url", "http://primary-hudi:8080"
+                        "HUDI_URL", "http://fallback-hudi:8081",
+                        "hudi.url", "http://primary-hudi:8081"
                 ))
                 .build();
-        assertEquals("http://primary-hudi:8080", HudiAdapter.baseUrl(priorityCfg));
+        assertEquals("http://primary-hudi:8081", HudiAdapter.baseUrl(priorityCfg));
     }
 }
