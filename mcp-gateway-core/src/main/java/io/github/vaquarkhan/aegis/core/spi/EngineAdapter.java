@@ -43,4 +43,11 @@ public interface EngineAdapter {
      * {@code MCP_GW_EGRESS_ALLOW_HOSTS}; anything outside the union is denied at step 5.
      */
     Set<String> egressAllowHosts(GatewayConfig cfg);
+
+    /**
+     * Dialect-specific system prompts attached to MCP context for LLM guidance.
+     */
+    default List<PromptDef> prompts(GatewayConfig cfg) {
+        return List.of();
+    }
 }
