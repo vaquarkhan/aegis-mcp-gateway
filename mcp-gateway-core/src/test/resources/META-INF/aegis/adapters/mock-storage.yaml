@@ -1,0 +1,30 @@
+version: "1.0"
+engineId: "mock-storage"
+taxonomyClass: "storage"
+description: "Mock storage engine adapter for unit testing scanner"
+configuration:
+  baseUrl:
+    propertyCascade:
+      - "mock.url"
+      - "MOCK_STORAGE_URL"
+    default: "http://localhost:8080"
+tools:
+  - name: "list_files"
+    securityClass: "READ_ONLY"
+    description: "Lists files in directory"
+    inputSchema:
+      type: "object"
+      properties:
+        path:
+          type: "string"
+    endpoint:
+      method: "GET"
+      path: "/list${input.path}"
+resources:
+  - uri: "mock://status"
+    name: "Mock Status"
+    mimeType: "application/json"
+    directRead: true
+    endpoint:
+      method: "GET"
+      path: "/status"
