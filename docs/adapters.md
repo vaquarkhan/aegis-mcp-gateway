@@ -63,9 +63,11 @@ resources a destructive tool binds to most often. Give `ops-bot` the job ids it 
 and nothing else.
 
 `upload_jar` and `run_jar` are the sharpest tools in the project. Set
-`MCP_FLINK_JAR_UPLOAD_ALLOW_DIRS` (or `flink.jar.upload.allow.dirs`) so a jar can only come from a
-directory you control, and keep the jar allow list narrow. Running an arbitrary jar on a Flink cluster is remote code execution by
-design; the allow lists are what make it an operation rather than an exploit.
+`MCP_FLINK_JAR_UPLOAD_ALLOW_DIRS` (or `flink.jar.upload.allow.dirs`) so a
+jar can only come from a directory you control, and keep the jar allow
+list narrow. Running an arbitrary jar on a Flink cluster is remote code
+execution by design; the allow lists are what make it an operation rather
+than an exploit.
 
 ## Apache Kafka
 
