@@ -2,8 +2,11 @@ package io.github.vaquarkhan.aegis.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.vaquarkhan.aegis.core.util.Inputs;
+
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -66,9 +69,18 @@ class InputsTest {
 
     @Test
     void jarUploadFailsClosedWithoutAllowList() {
-        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath("/tmp/app.jar", Set.of()));
-        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath("/tmp/app.jar", null));
-        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath(null, Set.of("/tmp")));
+        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath("/tmp/app.jar", Set.of(), ""));
+        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath("/tmp/app.jar", null,""));
+        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath(null, Set.of("/tmp"),""));
+    }
+
+    @Test
+    void testRequireJarPathThrowsWhenUnconfigured() {
+        Inputs.InvalidInput ex = assertThrows(
+                Inputs.InvalidInput.class,
+                () -> Inputs.requireJarPath("/path/to/app.jar", Set.of(), "MCP_FLINK_JAR_UPLOAD_ALLOW_DIRS")
+        );
+        assertTrue(ex.getMessage().contains("MCP_FLINK_JAR_UPLOAD_ALLOW_DIRS"));
     }
 
     @Test
