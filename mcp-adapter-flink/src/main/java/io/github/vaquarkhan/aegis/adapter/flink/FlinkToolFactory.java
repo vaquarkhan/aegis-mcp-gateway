@@ -175,7 +175,7 @@ public final class FlinkToolFactory {
                 "/jobs/" + jobId(ctx) + "/rescaling?parallelism=" + Inputs.requireInt(arg(ctx, "parallelism")),
                 "{}"));
         b.put("upload_jar", ctx ->
-                flink.uploadJar(Inputs.requireJarPath(arg(ctx, "path"), FlinkConfigKeys.jarUploadAllowDirs(cfg))));
+                flink.uploadJar(Inputs.requireJarPath(arg(ctx, "path"), FlinkConfigKeys.jarUploadAllowDirs(cfg),"MCP_FLINK_JAR_UPLOAD_ALLOW_DIRS / MCP_GW_JAR_UPLOAD_ALLOW_DIRS")));
 
         b.put("cancel_job", ctx -> flink.patch("/jobs/" + jobId(ctx), "{\"mode\":\"cancel\"}"));
         b.put("stop_job", ctx -> flink.post("/jobs/" + jobId(ctx) + "/stop", targetDirectoryBody(ctx)));

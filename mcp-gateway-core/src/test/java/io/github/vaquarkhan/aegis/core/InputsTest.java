@@ -66,9 +66,9 @@ class InputsTest {
 
     @Test
     void jarUploadFailsClosedWithoutAllowList() {
-        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath("/tmp/app.jar", Set.of()));
-        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath("/tmp/app.jar", null));
-        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath(null, Set.of("/tmp")));
+        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath("/tmp/app.jar", Set.of(),""));
+        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath("/tmp/app.jar", null,""));
+        assertThrows(Inputs.InvalidInput.class, () -> Inputs.requireJarPath(null, Set.of("/tmp"),""));
     }
 
     @Test

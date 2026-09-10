@@ -72,7 +72,14 @@ public final class FlinkConfigKeys {
      * the secure default when the operator has not configured any directory.
      */
     public static Set<String> jarUploadAllowDirs(GatewayConfig cfg) {
-        return parseCsv(property(cfg, JAR_UPLOAD_ALLOW_DIRS_YAML, JAR_UPLOAD_ALLOW_DIRS, null));
+        if (cfg == null) {
+            return Set.of();
+        }
+        Set<String> flinkDirs = parseCsv(property(cfg, JAR_UPLOAD_ALLOW_DIRS_YAML, JAR_UPLOAD_ALLOW_DIRS, null));
+        if (!flinkDirs.isEmpty()) {
+            return flinkDirs;
+        }
+        return cfg.jarUploadAllowDirs();
     }
 
     /** Hosts this adapter is allowed to reach, for the core egress guard. */

@@ -166,13 +166,6 @@ class FlinkAdapterTest {
     }
 
     @Test
-    void uploadJarIsRejectedWhenNoDirectoryIsAllowListed() {
-        ToolDef upload = tool(new FlinkAdapter().tools(config()), "upload_jar");
-        assertThrows(Inputs.InvalidInput.class,
-                () -> upload.backend().apply(ctx("upload_jar", ToolClass.MUTATE, Map.of("path", "/tmp/any.jar"))));
-    }
-
-    @Test
     void readOnlySqlToolRejectsMutatingStatements() {
         ToolDef sql = tool(new FlinkAdapter().tools(config()), "run_sql_readonly");
         assertThrows(Inputs.InvalidInput.class,
@@ -260,5 +253,14 @@ class FlinkAdapterTest {
                 .build();
         assertEquals("http://from-yaml:8081", FlinkConfigKeys.restUrl(cfg));
         assertEquals(Set.of("/opt/jars", "/srv/jars"), FlinkConfigKeys.jarUploadAllowDirs(cfg));
+    }
+
+    @Test
+    void uploadJarIsRejectedWhenNoDirectoryIsAllowListed() {
+        ToolDef upload = tool(new FlinkAdapter().tools(config()), "upload_jar");
+        Inputs.InvalidInput ex = assertThrows(Inputs.InvalidInput.class,
+                () -> upload.backend().apply(ctx("upload_jar", ToolClass.MUTATE, Map.of("path", "/tmp/someJar.jar"))));
+        assertTrue(ex.getMessage().contains("MCP_FLINK_JAR_UPLOAD_ALLOW_DIRS"),
+                "exception message should state the allowed dir env var name");
     }
 }
