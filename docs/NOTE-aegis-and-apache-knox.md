@@ -121,6 +121,21 @@ on the shape of the declarative definition, before the SPI hardens, so the proje
 than run parallel schemas. (The "16 of 33" figure is from Larry's review; it is not re-counted in
 this repository.)
 
+## Relationships with existing MCP servers
+
+The proxy-first direction is meant to compose with MCP servers that already exist, not replace
+them. Greg noted the Foundation already runs a few MCP servers, and where an engine or project
+ships its own MCP surface the intent is for Aegis to sit in front of it for governance (identity,
+scope, policy, approval, egress, redaction, audit) rather than reimplement the tools. A declarative
+server definition is how an existing server is brought under governance without new code.
+
+There is also adjacent work in the ASF to coordinate with rather than duplicate. Apache ShenYu
+ships an MCP plugin (raised by Yu Xiao on the dev list), which is a gateway-plus-MCP surface in a
+different domain. It is worth a look for prior art and possible alignment. More broadly, no Apache
+data engine has shipped an official MCP server yet, so the plan is to lead with the governed proxy
+and the four deep adapters, and to compose with an engine's own MCP server if and when it appears
+rather than block on it.
+
 ## How the chains line up
 
 Knox assembles its chain per topology from declarative service definitions. The usual default policy
