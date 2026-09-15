@@ -2,13 +2,13 @@
 
 Author: Viquar Khan
 
-Status: working note for incubator / Knox coordination (dev-list discussion with Larry McCay,
-mentor). Not a second source of truth for SPI or deny codes; those remain in code and
-[DESIGN-CONFORMANCE-0.1.md](DESIGN-CONFORMANCE-0.1.md). Where this note proposes timing or shape
-changes versus [ROADMAP.md](../ROADMAP.md), those are discussion points for the community until the
-roadmap is updated together.
+Status: working note for incubator / Knox coordination (including discussion with mentor Larry
+McCay and the wider dev list). Not a second source of truth for SPI or deny codes; those remain in
+code and [DESIGN-CONFORMANCE-0.1.md](DESIGN-CONFORMANCE-0.1.md). Where this note proposes timing or
+shape changes versus [ROADMAP.md](../ROADMAP.md), those are discussion points for the community until
+the roadmap is updated together.
 
-This is my working note for the incubator discussion with Larry and the wider dev list. I wanted
+This is my working note for the incubator discussion with mentors and the wider dev list. I wanted
 one place that shows how the Aegis governance chain lines up with the Knox provider chain, what we
 can usefully reuse from Knox instead of rebuilding, and how the plan is evolving as we align on a
 declarative, config-driven proxy.
@@ -28,75 +28,80 @@ Aegis. The middle column is the set of capabilities Knox has already built and h
 plans to reuse rather than write from scratch. The rendered diagram is
 [assets/aegis-knox-relationship.png](assets/aegis-knox-relationship.png).
 
-## Design direction from the dev-list discussion
+## Design direction
 
-This section summarizes the direction that came out of the dev-list discussion, in particular
-Larry's review of the repository as mentor, and the shared direction we are working toward.
-Larry's feedback has been especially helpful and has reshaped the plan in a constructive way. The
-points below frame the rest of this note; details of timing and packaging remain open for community
-input.
+This section summarizes the direction that has emerged from repository due diligence against Knox,
+the current Aegis tree, and the incubator / dev-list conversation. Mentor feedback and community
+input have been constructive; the points below frame the rest of this note. Details of timing and
+packaging remain open for community review. Where a bullet echoes a theme already on the list
+(for example a shift toward declarative server definitions), it is stated as proposed design
+direction from that analysis, not as a verbatim transcript of any one review.
 
 ### The starting point
 
-Larry's review observed that the first cut of Aegis looked like one large MCP server, with a
-separate hand-written set of tools for each data engine built into the project, and it flagged two
-real problems with that shape.
+Looking at the first cut of Aegis as one large MCP server, with a separate hand-written set of tools
+for each data engine built into the project, two structural problems stand out.
 
 1. It does not scale. Keeping a hand-written adapter current with every engine's API across many
    release trains is a treadmill, and that cost is already visible in practice.
 2. It duplicates effort. The moment an engine ships its own MCP server, a bespoke adapter for it
    becomes something to track and potentially overlap with.
 
-The suggestion was to concentrate on the governance and security value, the traditional gateway job,
-and to move away from carrying bespoke per-engine integration as the primary growth path. That
-guidance is the lead we are following, and the points below are where the discussion currently
+The natural response is to concentrate on the governance and security value, the traditional
+gateway job, and to move away from carrying bespoke per-engine integration as the primary growth
+path. That is the lead this note follows, and the points below are where the analysis currently
 stands.
 
 ### 1. Lead with a config-driven MCP server proxy
 
-Larry suggested discovering and integrating MCP servers over the MCP protocol itself, driven by
-configuration rather than code. That is the direction we are leading with. The proposal is to pull
-the thin adapters out of the growth path and put a declarative, config-driven proxy in front of
-downstream MCP servers, so adding a server becomes a definition file rather than a new Maven
-module. It is the same kind of move Knox made when it went from writing code for every new service
-to a declarative service definition model.
+Due diligence on Knox's own history, and on how MCP servers are showing up in the wild, points to
+discovering and integrating MCP servers over the MCP protocol itself, driven by configuration
+rather than code. That is the direction we are leading with. The proposal is to pull the thin
+adapters out of the growth path and put a declarative, config-driven proxy in front of downstream
+MCP servers, so adding a server becomes a definition file rather than a new Maven module. It is the
+same kind of move Knox made when it went from writing code for every new service to a declarative
+service definition model. (A declarative governance-context model is also the direction already
+described on the incubator list.)
 
 ### 2. A break-glass path and mashup servers
 
-Larry suggested a way to stand up a server where none exists, and possibly to combine several
-servers into one. That fits well, and we can place break-glass and mashup definitions on the same
-declarative model. One complementary piece worth discussing with the community is whether the four
-deep adapters (Flink, Kafka, Spark, Iceberg) remain as a governance reference bar, not only as a
-break-glass fallback: they show what tool-aware governance looks like when the gateway understands
-the operation, and they give the proxy path something concrete to measure against. Keeping the data
-platform as an early proving ground also seems useful, because hard cases live there (destructive
-schema changes, bulk data leaving the building, personal data in a query result). If the design
-holds against those, it is more likely to hold elsewhere.
+Analysis of the proxy-first path also suggests a way to stand up a server where none exists, and
+possibly to combine several servers into one. That fits well, and we can place break-glass and
+mashup definitions on the same declarative model. One complementary piece worth discussing with the
+community is whether the four deep adapters (Flink, Kafka, Spark, Iceberg) remain as a governance
+reference bar, not only as a break-glass fallback: they show what tool-aware governance looks like
+when the gateway understands the operation, and they give the proxy path something concrete to
+measure against. Keeping the data platform as an early proving ground also seems useful, because
+hard cases live there (destructive schema changes, bulk data leaving the building, personal data in
+a query result). If the design holds against those, it is more likely to hold elsewhere.
 
 ### 3. OAuth discovery and delegated agentic identity
 
-Larry pointed at Knox's RFC 8693 token exchange with an actor chain, which keeps the record of who
-is acting on behalf of whom through the whole call. That lines up with the 0.2 credential work.
-Today Aegis forwards the caller's `Authorization` header via `PassThroughCredentialResolver`, which
-is the classic confused deputy and is what the MCP spec advises against. Proxying and identity are
-really one design: a gateway that discovers a server and forwards a token is unsafe until identity
-is re-minted at the boundary. Knox already does that reminting, so the preference is to build on
-those mechanisms rather than invent a parallel path.
+Knox's RFC 8693 token exchange with an actor chain is a strong fit for the 0.2 credential work: it
+keeps the record of who is acting on behalf of whom through the whole call. Today Aegis forwards
+the caller's `Authorization` header via `PassThroughCredentialResolver`, which is the classic
+confused deputy and is what the MCP spec advises against. Proxying and identity are really one
+design: a gateway that discovers a server and forwards a token is unsafe until identity is
+re-minted at the boundary. Knox already does that reminting, so the preference is to build on those
+mechanisms rather than invent a parallel path.
 
 ### 4. Authorization at the tool and resource level
 
-Larry suggested fine-grained access at the tool and resource level rather than the server level,
-with Apache Ranger as an authorization provider. Aegis already decides per tool call, so this fits
-the way the chain works without needing a rebuild of that step. The shared plan is to consult Ranger
-as the policy decision point, so agent access can honor the organization's live data-access policies
-instead of a second, parallel set. Today the Ranger module is still a thin adapter (engine as tool
-target); flipping it into a PDP backend is the proposed work item, not something already shipped.
+Fine-grained access at the tool and resource level, rather than only at the server level, fits how
+Aegis already decides per tool call, so this does not need a rebuild of that step. Consulting
+Apache Ranger as a policy decision point is an attractive ecosystem option so agent access can honor
+the organization's live data-access policies instead of a second, parallel set. Today the Aegis
+Ranger module is still a thin adapter (engine as tool target); flipping it into a PDP backend is the
+proposed work item, not something already shipped. Note that Knox may ship a `ranger` service
+definition that proxies Ranger's Admin API; that is not the same as Ranger-as-PDP. Authorization of
+Knox through Ranger lives in the Ranger-side plugin (`ranger-knox-plugin`). The same pattern is what
+this note proposes for Aegis step 3.
 
 ### 5. An MCP server catalog
 
-Larry suggested a user-facing catalog for discovery, with an API and a UI. It sits comfortably on
-top of the declarative model and the authorization decisions, and it can follow the patterns Knox
-already has in its admin API, admin UI, and homepage.
+A user-facing catalog for discovery, with an API and a UI, sits comfortably on top of the
+declarative model and the authorization decisions. It can follow the patterns Knox already has in
+its admin API, admin UI, and homepage, rather than inventing an operator surface from nothing.
 
 ## Aligning proxy-first with tool-aware governance
 
@@ -109,11 +114,10 @@ to verify rather than facts to trust. Tool poisoning and rug pulls can live in t
 responses and slip past static checks; pinning each tool and rechecking when its definition changes
 is one practical way to catch that class of problem.
 
-The discussion landed on a complementary approach rather than an either-or choice. Governance
-context can live in the declarative MCP server definition, so the proxy need not be blind. That
-definition can carry the per-tool class, scope, egress, redaction, and a pinned schema digest. With
-that, proxy-first and tool-aware governance reinforce each other, and that combination is the
-centerpiece of the shared direction.
+The complementary approach is to put governance context in the declarative MCP server definition, so
+the proxy need not be blind. That definition can carry the per-tool class, scope, egress, redaction,
+and a pinned schema digest. With that, proxy-first and tool-aware governance reinforce each other,
+and that combination is the centerpiece of the shared direction.
 
 0.1.0 already pins digests for registered tools (`ToolCatalogIntegrity` / `DigestRegistry`, optional
 `MCP_GW_TOOLS_CATALOG` and `MCP_GW_CATALOG_FAIL_CLOSED`). Extending that to discovered proxied tools
@@ -121,11 +125,12 @@ is proposed 0.2 integrity work, building on what is already in the tree.
 
 ## A coordination point
 
-Larry noted that 16 of the 33 engines in the list already have Knox service definitions, including
-all four deep ones. That is a strong reason to coordinate early on a shared identity and
-authorization layer, and on the shape of the declarative definition, before the SPI hardens, so the
-projects can reuse rather than drift into parallel schemas. (The "16 of 33" figure is from Larry's
-review; this repository has not independently re-counted it.)
+Independent cross-check of the Aegis adapter list against current Knox service definitions shows
+about 16 to 17 of the 33 engines already have Knox coverage, including all four deep adapters
+(Flink, Kafka, Spark, Iceberg). The 16-versus-17 gap is mainly how governance-adjacent services such
+as Ranger and Atlas are bucketed. Either way, the overlap is large enough that coordinating early on
+a shared identity and authorization layer, and on the shape of the declarative definition, before
+the SPI hardens, helps the projects reuse rather than drift into parallel schemas.
 
 ## Relationships with existing MCP servers
 
@@ -144,11 +149,13 @@ rather than block on it.
 
 ## How the chains line up
 
-Knox assembles its chain per topology from declarative service definitions. The usual default policy
-order is webappsec, authentication, rewrite, identity-assertion, authorization, dispatch (see Knox
-service-definition defaults / `ServiceDefinitionDeploymentContributor`). Aegis runs a fixed ten-step
-chain where the first denial wins and returns a stable code (see `InterceptorChain.preflight` and
-`Decision`).
+Knox assembles its provider chain per topology from declarative service definitions. The usual
+default policy order is webappsec, authentication, rewrite, identity-assertion, authorization,
+dispatch (see Knox service-definition defaults / `ServiceDefinitionDeploymentContributor`). Aegis
+runs a fixed ten-step chain where the first denial wins and returns a stable code (see
+`InterceptorChain.preflight` and `Decision`). That difference matters: Knox's order is flexible per
+topology, while Aegis's order is fixed in code, which is a fail-closed property for a governance
+gateway rather than only a caveat.
 
 Authentication sits outside the numbered Aegis tool chain (HTTP filter / stdio default caller).
 Audit runs after execute. Both are shown in the table for the Knox mapping.
@@ -158,7 +165,7 @@ Audit runs after execute. Both are shown in the table for the Knox mapping.
 | before 1 | Authentication | authentication and federation | Knox uses Shiro and LDAP, KnoxSSO, pac4j, and HeaderPreAuth. Aegis uses bearer, token file, and OAuth with JWKS. `MCP_GW_AUTH_MODE=cimd` and `spiffe` are defined but refuse to start today (`GatewayBootstrap.buildAuthFilter`). |
 | 1 | Exposure, `NOT_EXPOSED` | none | Aegis only registers tools it will honor, so write-locked tools are never advertised. Knox exposes every route a topology declares. |
 | 2 | Scope, `READONLY_CALLER` and `SCOPE_DENIED` | identity-assertion (analogue) | Knox maps a caller to an effective principal and groups. Aegis maps a caller to scopes and resource allow lists such as job, jar, topic, and table. Closest role, not a line-for-line copy. |
-| 3 | Policy, `POLICY_DENIED` | authorization | Knox uses an ACL provider by user, group, and IP. Aegis uses a PDP that can be builtin, OPA, or cedar-lite / HTTP delegate. Ranger is a suggested PDP backend for this step. |
+| 3 | Policy, `POLICY_DENIED` | authorization | Knox uses an ACL provider by user, group, and IP. Aegis uses a PDP that can be builtin, OPA, or cedar-lite / HTTP delegate. Ranger is a suggested PDP backend for this step (see Ranger note above). |
 | 4 | Approval, `APPROVAL_REQUIRED` | none | Aegis needs a single-use HMAC approval token for anything that is not read-only. Knox has no per-request approval gate. |
 | 5 | Egress and SSRF, `EGRESS_DENIED` | dispatch whitelist | Knox restricts dispatch targets for configured service roles with a whitelist (`WhitelistUtils`). Aegis uses an allow list plus an unconditional deny of metadata and link-local ranges (`EgressGuard` / `EgressConnect`). |
 | 6 | Rate limit, `RATE_LIMITED` | none | First class in Aegis, usually external infrastructure in a Knox deployment. |
@@ -193,10 +200,10 @@ already decided.
 3. **The pluggable authorization model.** This entry is alignment rather than code inheritance, so
    it helps to be precise. Knox authorizes through a pluggable provider, with an ACL provider by
    user, group, and IP in the tree. Aegis already has its own pluggable PDP (builtin, OPA, and
-   cedar-lite), so the model matches without needing to copy Knox authz code. Apache Ranger, which
-   Larry suggested, is not a Knox module. In the Hadoop ecosystem Ranger authorizes Knox through a
-   Ranger-side plugin; for Aegis the same pattern is attractive: consult Ranger as the policy
-   decision point at step 3.
+   cedar-lite), so the model matches without needing to copy Knox authz code. Apache Ranger as a
+   PDP is attractive ecosystem alignment: Knox may expose Ranger's Admin API via a service
+   definition, but Ranger-as-PDP for Knox lives in the Ranger-side `ranger-knox-plugin`. For Aegis
+   the proposed pattern is the same idea at step 3, not reuse of a Knox PDP module.
 4. **The declarative definition model.** Knox moved from code per service to a declarative service
    definition. Aegis follows the same path for MCP server definitions, which is the centerpiece of
    the new direction.
@@ -234,7 +241,7 @@ folds Knox reuse into each phase, subject to mentor and community review.
   adapters as a governance reference bar, pending community agreement. (Today the tree has 33
   adapter modules: 4 deep + 29 thin HTTP adapters.)
 - Draft the declarative MCP server definition schema and coordinate it, and the SPI, with the Knox
-  community given the 16-engine overlap Larry noted.
+  community given the roughly 16 to 17 engine overlap noted above.
 - **Interim multi-replica honesty (ops today; stronger gate as a follow-up idea):**
   [operations.md](operations.md) already documents that approval nonces, rate limits, and breakers
   are per process, and that the honest defaults are single replica, sticky routing, or writes
@@ -264,10 +271,11 @@ folds Knox reuse into each phase, subject to mentor and community review.
 ### Phase 0.3, authorization depth, federation, and resilience
 
 - Wire Apache Ranger in as the policy decision point for tool- and resource-level authorization.
-  Ranger is not a Knox module. Larry suggested it, and the integration naturally lives on the Ranger
-  side, so this is ecosystem alignment rather than reuse of Knox code. The shipped
-  [ROADMAP.md](../ROADMAP.md) still lists Ranger under milestone 0.4; one option to discuss is
-  pulling it earlier (for example into 0.3) once the proxy and identity foundation land.
+  As noted above, Knox may proxy Ranger's Admin API via a service definition, but Ranger-as-PDP
+  lives on the Ranger side (`ranger-knox-plugin`); Aegis would follow that ecosystem pattern rather
+  than reuse a Knox PDP module. The shipped [ROADMAP.md](../ROADMAP.md) still lists Ranger under
+  milestone 0.4; one option to discuss is pulling it earlier (for example into 0.3) once the proxy
+  and identity foundation land.
 - Add federation for enterprise SAML and OIDC identity providers. Reuse from Knox: pac4j-based
   federation.
 - Add failover dispatch across downstream MCP server replicas. Reuse from Knox: the HA dispatch.
