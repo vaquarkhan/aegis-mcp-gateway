@@ -1,0 +1,186 @@
+{
+  "generatedAtUtc": "2026-09-29T17:55:38+00:00",
+  "inputs": {
+    "aegisJavaFiles": 122,
+    "aegisRevision": "91c482e5b3256ced22398e820013ada182f959a3",
+    "aegisRoot": "aegis-gateway-2.0",
+    "aegisSourceTreeDigest": "sha256:5d26eeaac98e34e966a5c8571cc0f20c1b5952204b3197485371631f396e0fce",
+    "knoxJavaFiles": 1362,
+    "knoxRevision": "7d4e4facc09318354d51bcee9b2f8d248dfca638",
+    "knoxRoot": "apache-knox",
+    "knoxSourceTreeDigest": "sha256:8d60713a54d79a2288e390deeaebeb87bd72e20813ce04059f84529f679c148a"
+  },
+  "method": {
+    "limitations": [
+      "No similarity scan proves authorship, originality, ownership, or license compliance.",
+      "This check does not detect independently rewritten logic, renamed identifiers, or translated code.",
+      "Short conventional API implementations can match without copying."
+    ],
+    "lineWindow": 4,
+    "matching": "exact SHA-256-indexed windows followed by exact-value verification",
+    "scope": "production Java files under src/main; comments, package and import lines excluded",
+    "tokenWindow": 60
+  },
+  "results": {
+    "exactJavaTokenMatches": [],
+    "exactSubstantiveLineMatches": [
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-provider-identity-assertion-common/src/main/java/org/apache/knox/gateway/identityasserter/common/filter/AbstractIdentityAsserterDeploymentContributor.java",
+        "knoxStart": 5,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-provider-security-authc-anon/src/main/java/org/apache/knox/gateway/deploy/AnonymousAuthDeploymentContributor.java",
+        "knoxStart": 5,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-provider-security-authc-anon/src/main/java/org/apache/knox/gateway/deploy/AnonymousAuthDeploymentContributor.java",
+        "knoxStart": 6,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-provider-security-authc-remote/src/main/java/org/apache/knox/gateway/deploy/RemoteAuthDeploymentContributor.java",
+        "knoxStart": 5,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-provider-security-authc-remote/src/main/java/org/apache/knox/gateway/deploy/RemoteAuthDeploymentContributor.java",
+        "knoxStart": 6,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-provider-security-clientcert/src/main/java/org/apache/knox/gateway/clientcert/deploy/ClientCertDeploymentContributor.java",
+        "knoxStart": 5,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-provider-security-clientcert/src/main/java/org/apache/knox/gateway/clientcert/deploy/ClientCertDeploymentContributor.java",
+        "knoxStart": 6,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-provider-security-hadoopauth/src/main/java/org/apache/knox/gateway/hadoopauth/deploy/HadoopAuthDeploymentContributor.java",
+        "knoxStart": 6,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-provider-security-hadoopauth/src/main/java/org/apache/knox/gateway/hadoopauth/deploy/HadoopAuthDeploymentContributor.java",
+        "knoxStart": 7,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-provider-security-pac4j/src/main/java/org/apache/knox/gateway/pac4j/deploy/Pac4jFederationProviderContributor.java",
+        "knoxStart": 7,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-provider-security-pac4j/src/main/java/org/apache/knox/gateway/pac4j/deploy/Pac4jFederationProviderContributor.java",
+        "knoxStart": 8,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-provider-security-preauth/src/main/java/org/apache/knox/gateway/preauth/deploy/HeaderPreAuthContributor.java",
+        "knoxStart": 6,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-provider-security-preauth/src/main/java/org/apache/knox/gateway/preauth/deploy/HeaderPreAuthContributor.java",
+        "knoxStart": 7,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-provider-security-webappsec/src/main/java/org/apache/knox/gateway/webappsec/deploy/WebAppSecContributor.java",
+        "knoxStart": 31,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-provider-security-webappsec/src/main/java/org/apache/knox/gateway/webappsec/deploy/WebAppSecContributor.java",
+        "knoxStart": 32,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/rs/AegisMcpResource.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-service-knoxidf/src/main/java/org/apache/knox/gateway/service/knoxidf/AuthorizeResource.java",
+        "knoxStart": 12,
+        "sample": "@Context private HttpServletRequest request; @Context private ServletContext servletContext;"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-service-knoxtoken/src/main/java/org/apache/knox/gateway/service/knoxtoken/deploy/APIKeyServiceDeploymentContributor.java",
+        "knoxStart": 3,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-service-knoxtoken/src/main/java/org/apache/knox/gateway/service/knoxtoken/deploy/APIKeyServiceDeploymentContributor.java",
+        "knoxStart": 4,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-service-knoxtoken/src/main/java/org/apache/knox/gateway/service/knoxtoken/deploy/ClientCredentialsServiceDeploymentContributor.java",
+        "knoxStart": 3,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-service-knoxtoken/src/main/java/org/apache/knox/gateway/service/knoxtoken/deploy/ClientCredentialsServiceDeploymentContributor.java",
+        "knoxStart": 4,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 3,
+        "knoxFile": "gateway-service-knoxtoken/src/main/java/org/apache/knox/gateway/service/knoxtoken/deploy/TokenServiceDeploymentContributor.java",
+        "knoxStart": 3,
+        "sample": "@Override public String getRole() { return ROLE; @Override"
+      },
+      {
+        "aegisFile": "aegis-knox3-extension/src/main/java/io/github/vaquarkhan/aegis/knox/AegisKnoxServiceContributor.java",
+        "aegisStart": 4,
+        "knoxFile": "gateway-service-knoxtoken/src/main/java/org/apache/knox/gateway/service/knoxtoken/deploy/TokenServiceDeploymentContributor.java",
+        "knoxStart": 4,
+        "sample": "public String getRole() { return ROLE; @Override public String getName() {"
+      }
+    ],
+    "knoxImportsOutsideExtension": [],
+    "packagedKnoxClasses": []
+  },
+  "schemaVersion": 1
+}

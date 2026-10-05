@@ -1,0 +1,516 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Module reference for Aegis Gateway 2.0: what each Maven module does, every configuration key it reads, and the security controls it enforces.">
+  <title>Aegis Gateway module reference</title>
+  <link rel="stylesheet" href="handbook.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Module reference navigation">
+    <a class="brand" href="../index.html">Aegis <span>Module reference</span></a>
+    <nav>
+      <a href="#map">Module map</a>
+      <a href="#request-path">Request path</a>
+      <a href="#aegis-engine">aegis-engine</a>
+      <a href="#aegis-mcp">aegis-mcp</a>
+      <a href="#aegis-observability-otlp">aegis-observability-otlp</a>
+      <a href="#aegis-config">aegis-config</a>
+      <a href="#aegis-mcp-security">aegis-mcp-security</a>
+      <a href="#aegis-mcp-guardrails">aegis-mcp-guardrails</a>
+      <a href="#aegis-source-jdbc">aegis-source-jdbc</a>
+      <a href="#aegis-source-zookeeper">aegis-source-zookeeper</a>
+      <a href="#aegis-source-a2a">aegis-source-a2a</a>
+      <a href="#aegis-state-derby">aegis-state-derby</a>
+      <a href="#aegis-state-postgres">aegis-state-postgres</a>
+      <a href="#aegis-gateway">aegis-gateway</a>
+      <a href="#aegis-knox3-extension">aegis-knox3-extension</a>
+      <a href="#examples">examples</a>
+      <a href="#guideline">Governance guideline map</a>
+      <a href="#scope">Scope and roadmap</a>
+    </nav>
+    <p class="sidebar-note">Every default and limit on this page is the value in the source code of the 2.0.0-SNAPSHOT tree.</p>
+  </aside>
+  <main>
+    <header class="hero">
+      <p class="eyebrow">MODULE REFERENCE</p>
+      <h1>What each module does, how to configure it, and what it enforces.</h1>
+      <p class="lead">Aegis governs MCP actions. One engine makes every decision; the other modules carry the protocol, read configuration, authenticate callers, reach backends, keep state, and host the endpoint. This page describes each Maven module from its source code and tests.</p>
+      <div class="actions"><a class="button primary" href="#map">See the module map</a><a class="button" href="handbook.html">Back to the handbook</a><a class="button" href="../CONFIGURATION.html">Configuration reference</a></div>
+    </header>
+
+    <section id="map">
+      <p class="eyebrow">MODULE MAP</p>
+      <h2>Thirteen core modules in six layers, plus examples.</h2>
+      <p>The root <code>pom.xml</code> builds, in order: <code>aegis-engine</code>, <code>aegis-mcp</code>, <code>aegis-observability-otlp</code>, <code>aegis-config</code>, <code>aegis-mcp-guardrails</code>, <code>aegis-mcp-security</code>, <code>aegis-gateway</code>, <code>aegis-source-jdbc</code>, <code>aegis-source-zookeeper</code>, <code>aegis-source-a2a</code>, <code>aegis-state-derby</code>, <code>aegis-state-postgres</code>, <code>aegis-knox3-extension</code> and <code>examples</code>. Java 17 is the compiler release. Each module depends only on modules in lower layers.</p>
+      <img class="explainer-image" src="../assets/aegis-module-layers.svg" alt="Six layers of Aegis modules: engine at the bottom, then MCP protocol, OTLP export, configuration, extension modules, and the two hosts at the top.">
+      <p>Three rules hold across every module and are enforced in code:</p>
+      <ul>
+        <li><strong>Sources contribute capability only.</strong> A source supplies tool descriptors and executors. Classification, resources, groups, approval and previews come from the operator's configuration and are applied by the engine.</li>
+        <li><strong>Fail closed.</strong> A control that cannot run, a missing setting, or an ambiguous check denies the call or stops startup.</li>
+        <li><strong>Strict configuration.</strong> Every key that is read is recorded; any other key stops startup with its full path, before the audit journal or a durable state store is opened.</li>
+      </ul>
+    </section>
+
+    <section id="request-path" class="band">
+      <p class="eyebrow">REQUEST PATH</p>
+      <h2>How a governed <code>tools/call</code> crosses the modules.</h2>
+      <ol>
+        <li><strong>Host</strong> (<code>aegis-gateway</code> or <code>aegis-knox3-extension</code>): accepts HTTP(S) or stdio, authenticates the caller, admits the route, and bounds the body.</li>
+        <li><strong>Protocol</strong> (<code>aegis-mcp</code>): checks origin, JSON-RPC shape, MCP revision and headers, then dispatches the method.</li>
+        <li><strong>Engine</strong> (<code>aegis-engine</code>): runs the fixed governance chain, writes the intent record, then resolves the backend credential and calls the source.</li>
+        <li><strong>Source</strong> (<code>mcp</code>, <code>http</code>, <code>jdbc</code>, <code>zookeeper</code> or a plugin): performs the backend action with the source's own service credential.</li>
+        <li><strong>Observers</strong> (<code>DecisionMetrics</code>, <code>aegis-observability-otlp</code>): record the decision. Observers are read-only and cannot change it.</li>
+      </ol>
+    </section>
+
+    <section id="aegis-engine" class="module">
+      <p class="eyebrow">CORE</p>
+      <h2>aegis-engine</h2>
+      <div class="module-meta"><span>Dependencies: JDK only</span><span>Package io.github.vaquarkhan.aegis.engine</span></div>
+      <p>The governance core. <code>GovernanceEngine.call()</code> runs every tool call through one fixed, fail-closed chain. The module also holds the tool catalog with definition pinning, signed approval and dry-run receipt tokens, the hash-chained audit journal, bounded in-memory state, the JSON parser with size limits, and the service interfaces that sources, hooks, policy engines and state stores implement.</p>
+      <h3>Governance chain</h3>
+      <p>Any unexpected exception inside a control becomes a <code>POLICY_DENIED</code> denial. Step numbers are stable and appear in audit records and denials.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Order</th><th>Control (step)</th><th>What is checked</th><th>Denial</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Exposure (1)</td><td>Tool exists and is active; quarantined entries are hidden; <code>allowedGroups</code>; write and destructive groups for MUTATE and DESTRUCTIVE tools.</td><td><code>NOT_EXPOSED</code>, <code>CATALOG_INTEGRITY</code>, <code>READONLY_CALLER</code></td></tr>
+          <tr><td>2</td><td>Input and scope (2)</td><td>Schema validation (depth 64), control-token parsing, typed resources by JSON pointer, resource scopes.</td><td><code>INVALID_INPUT</code>, <code>SCOPE_DENIED</code></td></tr>
+          <tr><td>3</td><td>Policy (3)</td><td>Rule policy (deny overrides, default deny) and optional OPA. A missing or failed decision denies.</td><td><code>POLICY_DENIED</code></td></tr>
+          <tr><td>4</td><td>Egress (5)</td><td>Every executor target and every URL found in the arguments: scheme, host allow list, user-info, and every DNS answer against denied address classes unless an allowed CIDR covers it.</td><td><code>EGRESS_DENIED</code></td></tr>
+          <tr><td>5</td><td>Rate and budget (6)</td><td>Per-caller and per-caller-per-tool windows and an hourly cost budget.</td><td><code>RATE_LIMITED</code>, <code>BUDGET_EXCEEDED</code></td></tr>
+          <tr><td>6</td><td>Circuit breaker (7)</td><td>Per-source breaker with exactly one probe while half-open.</td><td><code>BREAKER_OPEN</code></td></tr>
+          <tr><td>7</td><td>Screening and hooks (8)</td><td>13 built-in injection phrases matched over the whole text in overlapping 64 Ki-character windows, with Base64 decoding on by default and governance hooks. A hook that throws, times out or returns nothing denies in ENFORCE mode.</td><td><code>PROMPT_INJECTION</code>, <code>POLICY_DENIED</code>, <code>INVALID_INPUT</code></td></tr>
+          <tr><td>8</td><td>Approval (4)</td><td>Per-call approval token for the classes in <code>approval.requiredFor</code>: bound to caller, action, gateway, source, resources and tool definition; single use; separation of duties.</td><td><code>APPROVAL_REQUIRED</code></td></tr>
+          <tr><td>9</td><td>Dry-run receipt (9)</td><td>DESTRUCTIVE calls need a fresh, single-use receipt from a dry run of the same arguments, caller and definition.</td><td><code>VRP_FAILED</code></td></tr>
+          <tr><td>10</td><td>Audit intent</td><td><code>ALLOW_INTENT</code> must be appended to the journal before anything runs.</td><td><code>AUDIT_UNAVAILABLE</code></td></tr>
+          <tr><td>11</td><td>Execute (10)</td><td>Credentials are resolved only now; backend timeouts and failures are classified; error text is redacted.</td><td><code>TIMEOUT</code>, <code>BACKEND_ERROR</code></td></tr>
+          <tr><td>12</td><td>Output guard</td><td>Default redactions (AWS access key ids, PEM private keys, bearer tokens, JWT shapes) plus operator patterns, and an output byte bound with a truncation note. Binary parts are withheld unless <code>output.allowBinary</code> is set.</td><td>Output redacted or truncated; <code>POLICY_DENIED</code> for refused binary</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Security controls in detail</h3>
+      <ul>
+        <li><strong>Signed tokens.</strong> HMAC-SHA256; the key must be at least 32 bytes. Tokens longer than 8 KiB are refused, and token JSON is parsed with an 8 KiB, depth-4 limit.</li>
+        <li><strong>Approvals.</strong> At most 100 new requests per principal per hour (429 above that). Request ids must match <code>apr_[0-9a-f]{32}</code>. A requester cannot approve their own request, a delegated identity cannot approve, and a decision is journaled before it takes effect; if the journal write fails, the decision is not made (503).</li>
+        <li><strong>Catalog integrity.</strong> Modes <code>TOFU</code> and <code>REQUIRE_PINS</code>. A changed definition is quarantined. Acceptance through the admin API requires the reviewed digest in <code>Aegis-Definition-Digest</code> and succeeds only if the current definition still has that digest.</li>
+        <li><strong>Audit journal.</strong> Append-only JSONL, each record hash-linked to the previous one from a zero genesis hash, with one writer per file (a second writer in the same or another process is refused, and the tail is read under the writer lock), optional fsync, an 8 MiB per-record bound, and a refusal to continue on a partial, oversized or unverifiable last record. Verification reads a stable prefix and does not hold the writer lock.</li>
+        <li><strong>JSON limits.</strong> Inbound documents default to 1 MiB and depth 32; configuration and audit records allow 8 MiB and depth 64.</li>
+        <li><strong>State.</strong> <code>InMemoryStateStore</code> is bounded by <code>state.maxEntries</code>; when full, new approval requests are refused rather than older entries evicted.</li>
+        <li><strong>Breaker accounting.</strong> Only failures a source marks as availability failures count toward the breaker, so a caller cannot open a shared breaker with requests the backend rejects for that caller alone.</li>
+      </ul>
+      <p class="boundary"><strong>Operator responsibility.</strong> Tool classes and resource pointers are operator-authored. Use <code>REQUIRE_PINS</code> for catalogs with MUTATE or DESTRUCTIVE tools; in TOFU mode the first definition seen becomes the pin. The egress guard covers HTTP destinations Aegis contacts; stdio children, database and ZooKeeper clients, and plugins that open their own sockets need a default-deny network policy around the process. Screening and redaction reduce risk and are heuristic. Between the egress check and the executor's own connection a name can be re-resolved; use IP literals or CIDRs where that matters. A local hash chain is tamper-evident when its head is also retained elsewhere: <code>AuditCheckpointPolicy</code> makes the journal export its head to a separate file and refuse to reopen a journal that is shorter than or different at the last exported head, and <code>AuditCheckpointVerifier</code> checks every exported head offline. <code>SignedCatalogManifest</code> verifies Ed25519-signed pin lists before reading them.</p>
+      <p><strong>Tests:</strong> GovernanceEngineTest, ControlsTest, OutputGuardTest, ContentGovernorTest, HooksTest, ContentHooksTest, SeparationOfDutiesTest, HashChainFileAuditSinkTest, AuditCheckpointTest, SignedCatalogManifestTest, JsonTest, ObservabilityTest.</p>
+    </section>
+
+    <section id="aegis-mcp" class="module">
+      <p class="eyebrow">PROTOCOL</p>
+      <h2>aegis-mcp</h2>
+      <div class="module-meta"><span>Dependencies: aegis-engine</span><span>No third-party runtime libraries</span></div>
+      <p>The MCP protocol layer. It serves the 2026-07-28 revision (per-request <code>_meta</code>, no sessions) and the 2025-11-25, 2025-06-18 and 2025-03-26 revisions (with caller-bound sessions). It also provides the admin REST API, the downstream MCP clients over Streamable HTTP and stdio that back <code>type: mcp</code> sources, and a bounded HTTP helper used by every outbound call.</p>
+      <h3>Security controls</h3>
+      <ul>
+        <li><strong>Origin check.</strong> A present <code>Origin</code> outside <code>server.allowedOrigins</code> is refused with 403 (DNS-rebinding defence), on every host.</li>
+        <li><strong>Authentication required.</strong> A request without a caller identity gets 401 and JSON-RPC <code>-32001</code>.</li>
+        <li><strong>Strict JSON-RPC.</strong> <code>jsonrpc</code> must be <code>2.0</code>; ids, params and <code>_meta</code> are type-checked; the body is parsed within <code>server.maxRequestBytes</code> (413 above it).</li>
+        <li><strong>Header and body agreement.</strong> On 2026-07-28, <code>Mcp-Method</code> and <code>Mcp-Name</code> must be present once and match the body (<code>-32020</code>). An unsupported revision gets <code>-32022</code>.</li>
+        <li><strong>Sessions.</strong> Bound to the caller. Another caller's session id is answered exactly like an unknown id (404). At most 32 sessions per caller, least recently used first out; a full registry answers 503.</li>
+        <li><strong>Methods.</strong> POST carries JSON-RPC. DELETE ends a 2025-era session. Other methods get 405 with <code>Allow: POST</code>.</li>
+        <li><strong>Downstream clients.</strong> Redirects are never followed; responses are bounded by bytes and a total deadline; <code>tools/list</code> pagination stops at 50 pages; restricted headers (host, content-length, connection, upgrade, expect) cannot be set by credentials. A stdio child receives only a small base environment plus the configured <code>env</code> and <code>envFrom</code> values.</li>
+      </ul>
+      <h3>Admin API</h3>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Route</th><th>Who</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td>GET /approvals, GET /approvals/{id}</td><td>approver groups</td><td>Pending requests and one request.</td></tr>
+          <tr><td>POST /approvals/{id}/approve, /deny</td><td>approver groups, non-delegated</td><td>Separation of duties; journaled before effect; 409 if already decided, 410 if expired.</td></tr>
+          <tr><td>GET /audit/verify</td><td>audit verifier groups</td><td>200 verified, 409 broken, 503 unavailable. Fixed journal; file names are withheld.</td></tr>
+          <tr><td>GET /catalog</td><td>approver groups</td><td>Name, source, class, status, reason and digest of each tool.</td></tr>
+          <tr><td>POST /catalog/{tool}/accept</td><td>approver groups, non-delegated</td><td>428 without exactly one <code>Aegis-Definition-Digest</code>; intent journaled first (503 if that fails); 409 unless the tool is quarantined and still has the reviewed digest.</td></tr>
+          <tr><td>GET /prompts, POST /prompts/{prompt}/accept</td><td>approver groups, non-delegated</td><td>Same rules for prompts, when a source offers prompts.</td></tr>
+        </tbody>
+      </table></div>
+      <p><strong>Tests:</strong> ContentGovernanceTest, McpServerHandlerTest, ExistingMcpServerProxyTest, AdminApiTest, McpRoundTripTest, TracePropagationTest, BoundedHttpTest.</p>
+    </section>
+
+    <section id="aegis-observability-otlp" class="module">
+      <p class="eyebrow">OBSERVABILITY</p>
+      <h2>aegis-observability-otlp</h2>
+      <div class="module-meta"><span>Dependencies: aegis-engine, aegis-mcp</span><span>Enabled by tracing.otlp.endpoint</span></div>
+      <p>An OTLP/HTTP JSON trace exporter with no OpenTelemetry SDK dependency. It observes decisions and exports one SERVER span per decision on a background thread, in batches, through a bounded queue.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key</th><th>Default</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>tracing.otlp.endpoint</td><td>none (tracing off)</td><td>Must be a URI and pass <code>egress</code> at startup.</td></tr>
+          <tr><td>tracing.otlp.headers</td><td>{}</td><td>Static headers.</td></tr>
+          <tr><td>tracing.otlp.tokenEnv</td><td>none</td><td>Environment variable holding a bearer token; must be set.</td></tr>
+          <tr><td>tracing.otlp.timeoutMs</td><td>5000</td><td>Connect and request timeout.</td></tr>
+          <tr><td>tracing.otlp.serviceName</td><td>gateway.name</td><td><code>service.name</code> resource attribute.</td></tr>
+          <tr><td>tracing.otlp.maxQueue / batchSize / flushMs</td><td>2048 / 128 / 2000</td><td>Queue bound, batch size, flush interval.</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li><strong>Data minimisation.</strong> Spans carry request id, kind, outcome, method, tool, tool class, source, step and whether the backend was reached. Caller identity, arguments and results are never exported.</li>
+        <li><strong>Isolation from the request path.</strong> A full queue drops and counts spans; a slow or absent collector never blocks a request. No redirects; responses are bounded to 64 KiB. Header and token values are never logged.</li>
+        <li><strong>Lifecycle.</strong> The exporter thread starts only after the whole configuration validated.</li>
+      </ul>
+      <p class="boundary"><strong>Scope.</strong> The exporter is tested against a local HTTP endpoint that reads the OTLP JSON shape. A run against a live OpenTelemetry Collector is planned work.</p>
+      <p><strong>Tests:</strong> OtlpSpanExporterTest.</p>
+    </section>
+
+    <section id="aegis-config" class="module">
+      <p class="eyebrow">CONFIGURATION</p>
+      <h2>aegis-config</h2>
+      <div class="module-meta"><span>Dependencies: aegis-engine, aegis-mcp, aegis-observability-otlp</span><span>SnakeYAML optional (YAML only)</span></div>
+      <p>Turns one JSON or YAML document into a running gateway: engine, MCP handler, admin API, catalog refresher, metrics, tracer and state. It provides the built-in <code>mcp</code> and declarative <code>http</code> sources, the built-in <code>remote</code> and <code>sql-readonly</code> hooks, OPA policy, static source credentials and RFC 8693 token-exchange credentials, the OpenAPI draft generator, the built-in <code>env</code>, <code>file</code> and <code>vault</code> secret sources, and the ServiceLoader interfaces <code>ToolSourceFactory</code>, <code>GovernanceHookFactory</code>, <code>StateStoreFactory</code> and <code>SecretProviderFactory</code>.</p>
+      <h3>Loader and validation</h3>
+      <ul>
+        <li>JSON is parsed within 8 MiB and depth 64. YAML uses SnakeYAML's safe constructor with duplicate keys refused, at most 20 aliases, no recursive keys, depth 64 and an 8 MiB code-point limit. Unquoted dates and other special scalars are refused.</li>
+        <li>Every unknown key stops startup with its path. The <code>host</code> and <code>knox</code> sections are handed to the host, which validates them just as strictly. Plugin <code>settings</code> objects are checked the same way.</li>
+        <li>Enumerated values (tool classes, <code>unlistedTools</code>, rule <code>effect</code>, credential <code>type</code>, MCP <code>era</code>, catalog <code>mode</code>, screening and hook modes) accept only their documented names; anything else stops startup with the key path and the accepted values.</li>
+        <li>Secrets are named by environment variable (<code>...Env</code> keys). An unset or empty variable stops startup.</li>
+        <li>Every outbound endpoint the configuration names (source URLs, the OPA URL, the remote hook URL and the OTLP endpoint) must be an absolute http(s) URL without user-info, and the policy, hook and tracing endpoints must also pass the egress allow list at startup.</li>
+        <li>The durable state store, the audit journal and the tracing thread open only after the whole document validated, so a configuration error leaves nothing open or locked.</li>
+      </ul>
+      <h3>Top-level keys</h3>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>gateway.name</td><td>aegis</td><td>Name in audit records, serverInfo and tokens.</td></tr>
+          <tr><td>access.writeGroups</td><td>[]</td><td>Groups that may call MUTATE tools at all.</td></tr>
+          <tr><td>access.destructiveGroups</td><td>writeGroups</td><td>Groups that may call DESTRUCTIVE tools.</td></tr>
+          <tr><td>access.approverGroups</td><td>[]</td><td>Groups that may decide approvals and accept definitions.</td></tr>
+          <tr><td>access.auditVerifierGroups</td><td>[]</td><td>Groups that may call <code>GET /audit/verify</code>.</td></tr>
+          <tr><td>approval.keyEnv / keyFile</td><td>none</td><td>HMAC key of at least 32 bytes; <code>keyEnv</code> wins when both are set. Without a key or approver groups, approval-required calls are denied.</td></tr>
+          <tr><td>approval.requiredFor</td><td>[MUTATE, DESTRUCTIVE]</td><td>Classes needing per-call approval. READ is refused. An explicit empty list turns per-call approval off.</td></tr>
+          <tr><td>approval.requestTtlSeconds / tokenTtlSeconds</td><td>1800 / 600</td><td>Lifetimes of a request and an approval token.</td></tr>
+          <tr><td>approval.advertiseControlArguments</td><td>true</td><td>Show the control arguments on write tools.</td></tr>
+          <tr><td>vrp.enabled / ttlSeconds</td><td>true / 900</td><td>Dry-run receipts for DESTRUCTIVE calls and their lifetime.</td></tr>
+          <tr><td>state.type</td><td>memory</td><td><code>memory</code>, or a provider such as <code>derby-local</code> or <code>postgres</code>.</td></tr>
+          <tr><td>state.maxEntries</td><td>1000000</td><td>Bound for the memory store.</td></tr>
+          <tr><td>state.settings</td><td>{}</td><td>Provider settings; must be empty for memory.</td></tr>
+          <tr><td>audit.file</td><td>required</td><td>Journal path, relative to the configuration file.</td></tr>
+          <tr><td>audit.fsync / includeArguments</td><td>true / false</td><td>Force each record to disk; record call arguments.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Sources</h3>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key (sources[])</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td>required</td><td><code>[a-z0-9][a-z0-9_-]{0,63}</code>, unique.</td></tr>
+          <tr><td>type</td><td>required</td><td><code>mcp</code>, <code>http</code>, or a plugin type.</td></tr>
+          <tr><td>namePrefix</td><td>""</td><td>Prefix for exposed tool names.</td></tr>
+          <tr><td>timeoutMs</td><td>30000</td><td>Backend budget per call.</td></tr>
+          <tr><td>unlistedTools</td><td>EXPOSE</td><td><code>EXPOSE</code> or <code>HIDE</code> discovered tools that are not listed under <code>tools</code>.</td></tr>
+          <tr><td>defaultClass</td><td>DESTRUCTIVE</td><td>Class of discovered tools that are not listed.</td></tr>
+          <tr><td>trust.state / trust.evidence</td><td>ACTIVE / none</td><td><code>QUARANTINED</code> contributes no callable tool and requires evidence text.</td></tr>
+          <tr><td>credentials.type</td><td>none</td><td><code>bearer</code> (tokenEnv), <code>basic</code> (usernameEnv, passwordEnv), <code>header</code> (header, valueEnv): the source's own service credential. <code>token-exchange</code> (tokenEndpoint, clientIdEnv, clientSecretEnv, audience or resource, scope, timeoutMs, checkSubject, discovery): a per-caller token from the identity provider for each call; the token endpoint must pass egress. Caller tokens are never forwarded to a backend.</td></tr>
+          <tr><td>mcp: url / transport / era / legacyVersion / maxResponseBytes</td><td>required for http / http / AUTO / 2025-11-25 / 4 MiB</td><td>Existing MCP server over Streamable HTTP or stdio.</td></tr>
+          <tr><td>mcp: command / env / envFrom / workingDir</td><td>stdio only</td><td>Child process; <code>envFrom</code> values name environment variables that must be set.</td></tr>
+          <tr><td>mcp: resources.uriPatterns / prompts.names / completions</td><td>off</td><td>Resources need specific URI globs (<code>*</code> is refused); prompts and completions are opt-in.</td></tr>
+          <tr><td>http: baseUrl / tools[]</td><td>required</td><td>Declarative REST tools: name, description, inputSchema, request (method GET, path, query, body, headers), response (pointer, status check, maxBytes 1 MiB).</td></tr>
+          <tr><td>tools.&lt;name&gt;.class / resources / dryRun / allowedGroups / timeoutMs</td><td>see CONFIGURATION</td><td>Per-tool classification, typed resources, preview mode (GATEWAY, ARGUMENT, TOOL), visibility and timeout.</td></tr>
+          <tr><td>settings</td><td>{}</td><td>Plugin source settings, validated strictly.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Controls</h3>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>egress.allowHosts / allowCidrs / schemes</td><td>[] / [] / [https]</td><td>Each source host and scheme is added automatically. Non-public answers need an allowed CIDR.</td></tr>
+          <tr><td>egress.checkArgumentUrls</td><td>true</td><td>Check URLs nested in arguments.</td></tr>
+          <tr><td>policy.rules[]</td><td>required with opa</td><td><code>id</code>, <code>effect</code> (ALLOW, DENY), groups, actors, tools, classes, resources. Any matching DENY wins; otherwise the first matching ALLOW; otherwise deny.</td></tr>
+          <tr><td>policy.opa.url / timeoutMs / includeArguments / tokenEnv</td><td>none / 2000 / false / none</td><td>Only <code>{"result": true}</code> or <code>{"result": {"allow": true}}</code> allows. Responses are bounded to 64 KiB; no redirects.</td></tr>
+          <tr><td>scopes[]</td><td>[]</td><td><code>groups</code> and <code>resources</code> globs.</td></tr>
+          <tr><td>rateLimits.perCallerPerMinute / perCallerPerToolPerMinute / budgetPerHour</td><td>0 / 0 / 0</td><td>0 means off. Costs READ 1, MUTATE 5, DESTRUCTIVE 20.</td></tr>
+          <tr><td>breaker.failureThreshold / openSeconds</td><td>5 / 30</td><td>Per-source circuit breaker.</td></tr>
+          <tr><td>screening.mode / toolDefinitions / content</td><td>ENFORCE</td><td>ENFORCE, AUDIT or OFF for arguments, definitions, and resources and prompts.</td></tr>
+          <tr><td>screening.phrases / decodeBase64</td><td>13 built-in / true</td><td>Phrase list; Base64 decoding for argument screening (always on for definitions and content).</td></tr>
+          <tr><td>output.useDefaultRedactions / redact / maxBytes</td><td>true / [] / 1 MiB</td><td>Redaction patterns and output bound.</td></tr>
+          <tr><td>output.allowBinary</td><td>false</td><td>Pass binary parts of tool results (image and audio <code>data</code>, any <code>blob</code>) unchanged. When false, such a result is withheld and the call is denied with <code>POLICY_DENIED</code>.</td></tr>
+          <tr><td>hooks[]</td><td>[]</td><td><code>type</code> (remote, sql-readonly, plugin), <code>operations</code> (all when empty), <code>mode</code>, <code>methods</code>, <code>groups</code>, <code>sources</code>, <code>settings</code>.</td></tr>
+          <tr><td>remote hook settings</td><td>timeoutMs 2000, maxResponseBytes 8192</td><td><code>url</code> (egress-checked), <code>tokenEnv</code>, <code>phases</code> (BEFORE, AFTER), <code>includeArguments</code>, <code>includeResult</code>. Response cap clamped to 256 to 65536 bytes; <code>allow</code> must be a literal boolean.</td></tr>
+          <tr><td>sql-readonly settings</td><td>maxChars 8192</td><td><code>arguments</code> (required). One statement, a reading first keyword, no writing keyword anywhere; comments and quoted text removed first.</td></tr>
+          <tr><td>catalog.mode / pins / pinFile</td><td>TOFU / {} / none</td><td><code>REQUIRE_PINS</code> refuses tools without an operator pin.</td></tr>
+          <tr><td>catalog.acceptNewToolsAfterStart / failOnSourceError / refreshSeconds</td><td>false / true / 0</td><td>New tools after start are quarantined unless allowed; a failing source stops startup; periodic refresh.</td></tr>
+          <tr><td>server.*</td><td>all four revisions, sessions on</td><td><code>name</code>, <code>version</code>, <code>versions</code>, <code>legacySessions</code>, <code>allowedOrigins</code>, <code>toolsListTtlMs</code>, <code>instructions</code>, <code>maxRequestBytes</code> 1 MiB, <code>sessionIdleSeconds</code> 1800, <code>maxSessions</code> 10000.</td></tr>
+          <tr><td>metrics.enabled</td><td>true</td><td>Prometheus decision counters, at most 10000 series.</td></tr>
+        </tbody>
+      </table></div>
+      <p class="boundary"><strong>Operator responsibility.</strong> The <code>sql-readonly</code> hook is a keyword and shape guard: a statement that passes may still call a writing function, so pair READ SQL tools with a read-only database credential or classify them MUTATE. Every secret the file names is read through one <code>secrets.source</code>: the environment, one file per name in a mounted directory, or one Vault KV v2 secret read at start-up (validated against OpenBao 2.7.1). Values are not refreshed while the gateway runs.</p>
+      <p><strong>Tests:</strong> GatewayFactoryTest, HttpSourcesAndWiringTest, RemoteHookTest, SqlReadOnlyHookTest, DryRunPreviewToolTest, OpaPolicyTest, SecretProvidersTest, AuditCheckpointAndManifestConfigTest, and, with <code>-Pvault-integration</code>, VaultKvSecretProviderIT.</p>
+    </section>
+
+    <section id="aegis-mcp-security" class="module">
+      <p class="eyebrow">IDENTITY PERIMETER</p>
+      <h2>aegis-mcp-security</h2>
+      <div class="module-meta"><span>Dependencies: aegis-engine, aegis-mcp, aegis-config</span><span>JDK cryptography only</span></div>
+      <p>The identity perimeter of the own host. It parses the <code>host</code> section strictly, authenticates callers with JWT (HS256, or RS256 and ES256 through JWKS), static SHA-256 token digests, or a SPIFFE X.509-SVID the mutual TLS handshake verified, admits route groups and OAuth scopes before the body is read, applies exact-origin CORS, and publishes RFC 9728 protected resource metadata.</p>
+      <h3>Security controls</h3>
+      <ul>
+        <li><strong>Bearer extraction.</strong> Exactly one <code>Authorization</code> header with the <code>Bearer</code> scheme and a value of at least 8 characters.</li>
+        <li><strong>JWT verification.</strong> Token at most 16 KiB; compact JWS; algorithm in the configured list; <code>crit</code> refused; signature (constant-time for HMAC); issuer; audience; <code>exp</code> required with clock skew; <code>nbf</code> and <code>iat</code> not in the future; subject present. Failure reasons are logged at debug level and never sent to the client.</li>
+        <li><strong>Delegation.</strong> The RFC 8693 <code>act</code> chain is read to depth 8 and kept in the caller identity and audit records. Delegated identities cannot approve or accept definitions.</li>
+        <li><strong>JWKS.</strong> Fetched with a 256 KiB and 5 second bound, no redirects; keys not for signing, RSA keys under 2048 bits and EC keys other than P-256 are skipped; refresh is rate-limited; an expired key set is never used.</li>
+        <li><strong>Static tokens.</strong> Only SHA-256 digests are held and compared in constant time; a token named by <code>tokenEnv</code> must be at least 16 characters.</li>
+        <li><strong>Admission.</strong> 401 with a <code>WWW-Authenticate</code> challenge (with <code>resource_metadata</code> when OAuth metadata is published); 403 <code>insufficient_scope</code> when a required scope is missing; 403 when the caller is outside the route's groups.</li>
+        <li><strong>CORS.</strong> Off unless origins are listed; exact origins only, <code>*</code> refused; preflight must match origin, method and every requested header.</li>
+        <li><strong>OAuth metadata.</strong> <code>resource</code> must equal <code>identity.jwt.audience</code> unless <code>allowAudienceMismatch: true</code>. The other OAuth keys are refused when <code>resource</code> is absent, because nothing would be published.</li>
+      </ul>
+      <h3>Host keys</h3>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key (host.)</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>listen.host / port</td><td>127.0.0.1 / 8080</td><td>Bind address.</td></tr>
+          <tr><td>listen.mcpPath / adminPath</td><td>/mcp / /aegis/v1</td><td>Route paths.</td></tr>
+          <tr><td>listen.threads / maxRequestBytes</td><td>32 / 1 MiB</td><td>Worker pool and body bound.</td></tr>
+          <tr><td>tls.keystore / keystorePasswordEnv / keystoreType</td><td>none / required with keystore / PKCS12</td><td>HTTPS when a keystore is set.</td></tr>
+          <tr><td>identity.type</td><td>jwt</td><td><code>jwt</code> or <code>static</code>; anonymous access is refused.</td></tr>
+          <tr><td>identity.jwt.issuer / audience</td><td>required</td><td>Expected claims.</td></tr>
+          <tr><td>identity.jwt.algorithms / hmacSecretEnv / jwksUri</td><td>[RS256] / none / none</td><td>HS256 needs a secret of at least 32 bytes; RS256 and ES256 need a JWKS URI.</td></tr>
+          <tr><td>identity.jwt.groupsClaim / subjectClaim</td><td>groups / sub</td><td>Claim names.</td></tr>
+          <tr><td>identity.jwt.clockSkewSeconds / jwksTtlSeconds / jwksRefreshCooldownSeconds</td><td>60 / 3600 / 30</td><td>Time and cache settings.</td></tr>
+          <tr><td>identity.static.tokens[]</td><td>required for static</td><td><code>tokenEnv</code> or <code>sha256</code>, <code>actor</code>, <code>groups</code>.</td></tr>
+          <tr><td>oauth.resource / authorizationServers / scopesSupported / documentation / allowAudienceMismatch</td><td>off / required with resource / [] / none / false</td><td>RFC 9728 metadata; https, or loopback http for local development.</td></tr>
+          <tr><td>routes.mcpGroups / adminGroups / mcpScopes / adminScopes</td><td>[]</td><td>Empty groups means any authenticated caller; scopes need jwt.</td></tr>
+          <tr><td>cors.allowedOrigins / allowedMethods / allowedHeaders / exposedHeaders / maxAgeSeconds / allowCredentials</td><td>[] / POST, DELETE, GET / MCP headers / [] / 600 / false</td><td>Browser access.</td></tr>
+          <tr><td>stdio.actor / groups</td><td>none</td><td>Fixed identity for <code>--stdio</code>.</td></tr>
+          <tr><td>metrics.path / allowedGroups / requiredScopes</td><td>/metrics / [] / []</td><td>Authenticated Prometheus endpoint.</td></tr>
+        </tbody>
+      </table></div>
+      <p><strong>Tests:</strong> JwtVerifierTest, ScopeEnforcementTest, ProtectedResourceMetadataTest, OwnServerPerimeterTest, OwnServerSecuritySettingsTest, SpiffeIdentityTest.</p>
+    </section>
+
+    <section id="aegis-mcp-guardrails" class="module">
+      <p class="eyebrow">EXTENSION</p>
+      <h2>aegis-mcp-guardrails</h2>
+      <div class="module-meta"><span>hooks[].type: project-governance</span><span>Dependencies: aegis-engine, aegis-config</span></div>
+      <p>An optional project-owned governance hook with two jobs: deny any action that touches a protected resource glob, and require a bounded evidence reference argument for configured tool classes. It records a reference; it does not fetch or verify the evidence itself, and it is a project control rather than an ASF policy.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key (settings.)</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>requireEvidenceFor</td><td>[]</td><td>READ, MUTATE or DESTRUCTIVE.</td></tr>
+          <tr><td>evidenceArgument</td><td>evidenceId</td><td>Identifier <code>[A-Za-z][A-Za-z0-9_]{0,63}</code>.</td></tr>
+          <tr><td>minEvidenceLength</td><td>8</td><td>1 to 512; the maximum length is 512.</td></tr>
+          <tr><td>protectedResources</td><td>[]</td><td>Resource globs that are always denied.</td></tr>
+        </tbody>
+      </table></div>
+      <p>A protected resource denies with <code>POLICY_DENIED</code> at step 8 for every class. Missing, non-text, too short, too long, <code>..</code>-bearing or control-character evidence denies with <code>INVALID_INPUT</code>. Engine policy, approval, receipts and audit still apply.</p>
+      <p><strong>Tests:</strong> ProjectGovernanceGuardrailTest.</p>
+    </section>
+
+    <section id="aegis-source-jdbc" class="module">
+      <p class="eyebrow">SOURCE</p>
+      <h2>aegis-source-jdbc</h2>
+      <div class="module-meta"><span>sources[].type: jdbc</span><span>java.sql only; ships no driver</span></div>
+      <p>Governed tools over any JDBC driver for SQL-surfaced engines such as HiveServer2, Impala, Doris, Druid, Avatica and Phoenix, Trino and the Spark Thrift server. Tools: <code>jdbc_server_info</code>, <code>jdbc_list_catalogs</code>, <code>jdbc_list_schemas</code>, <code>jdbc_list_tables</code>, <code>jdbc_describe_table</code>, <code>jdbc_run_query</code>, and <code>jdbc_execute_statement</code> when writes are enabled.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key (settings.)</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>url</td><td>required</td><td>Must start with <code>jdbc:</code>; a rejected value is never echoed.</td></tr>
+          <tr><td>driverClass</td><td>JDBC 4 discovery</td><td>Loaded at startup; a missing class stops startup.</td></tr>
+          <tr><td>userEnv / passwordEnv</td><td>none</td><td>Environment variables; must be set when named.</td></tr>
+          <tr><td>maxRows</td><td>200</td><td>1 to 10000.</td></tr>
+          <tr><td>maxCellChars</td><td>4096</td><td>16 to 1000000.</td></tr>
+          <tr><td>loginTimeoutSeconds</td><td>15</td><td>1 to 600.</td></tr>
+          <tr><td>allowWrites</td><td>false</td><td>Offers <code>jdbc_execute_statement</code>.</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li><strong>Credentials</strong> travel in connection properties, never in the URL, and are never logged. Reported URLs pass a sanitiser that removes query strings, user-info, credential properties and Oracle and TNS credential forms.</li>
+        <li><strong>Read query.</strong> <code>jdbc_run_query</code> applies the same classifier as the <code>sql-readonly</code> hook inside the source, then requests a read-only connection.</li>
+        <li><strong>Write statement.</strong> <code>jdbc_execute_statement</code> accepts exactly one statement: <code>;</code> inside literals and comments is data, and a second statement is refused even with a trailing <code>;</code>.</li>
+        <li><strong>Metadata tools</strong> pass catalog, schema and table names as <code>DatabaseMetaData</code> arguments; nothing is concatenated into SQL.</li>
+        <li><strong>Bounds.</strong> Rows and cells are capped and truncation is reported; the query timeout follows the call budget.</li>
+        <li><strong>Error classes.</strong> SQLState 08 and 57 are backend availability failures and count toward the breaker; other SQL errors are returned to the caller and do not.</li>
+      </ul>
+      <p class="boundary"><strong>Operator responsibility.</strong> Give the source a read-only database role for READ tools. The database host is configuration, so callers cannot redirect it; transport security follows the driver URL.</p>
+      <p><strong>Tests:</strong> JdbcToolSourceTest against embedded Apache Derby.</p>
+    </section>
+
+    <section id="aegis-source-zookeeper" class="module">
+      <p class="eyebrow">SOURCE</p>
+      <h2>aegis-source-zookeeper</h2>
+      <div class="module-meta"><span>sources[].type: zookeeper</span><span>Apache ZooKeeper 3.9.3 client</span></div>
+      <p>Governed tools over the ZooKeeper data tree through ZooKeeper's own client protocol: <code>zookeeper_list_children</code>, <code>zookeeper_stat_node</code>, <code>zookeeper_get_node</code>, <code>zookeeper_create_node</code>, <code>zookeeper_set_data</code> and <code>zookeeper_delete_node</code>.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key (settings.)</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>connectString</td><td>required</td><td>Ensemble; configuration only.</td></tr>
+          <tr><td>auth.digestEnv</td><td>required</td><td>Environment variable holding <code>user:password</code> for digest authentication.</td></tr>
+          <tr><td>sessionTimeoutMs / connectTimeoutMs</td><td>15000 / 10000</td><td>Session timeout; how long a call waits for the session.</td></tr>
+          <tr><td>maxDataBytes</td><td>65536</td><td>1 to 1048576.</td></tr>
+          <tr><td>maxChildren</td><td>500</td><td>1 to 100000.</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li><strong>Authenticated sessions.</strong> Digest authentication is mandatory; there is no unauthenticated connection path.</li>
+        <li><strong>Owner-only nodes.</strong> Created znodes use <code>CREATOR_ALL_ACL</code>.</li>
+        <li><strong>Path rules</strong> are ZooKeeper's own <code>PathUtils</code>; writes and deletes need a version (<code>-1</code> to write regardless).</li>
+        <li><strong>Error classes.</strong> Connection loss, session expiry, timeouts and an ensemble that cannot be reached are availability failures and count toward the breaker; other codes are caller errors. Messages never carry the connect string.</li>
+        <li><strong>Bounds.</strong> Children are sorted and capped; data is capped, returned as UTF-8 text when valid and as Base64 otherwise.</li>
+      </ul>
+      <p class="boundary"><strong>Operator responsibility.</strong> Protect the reserved <code>/zookeeper</code> subtree with a policy rule, and configure client TLS through ZooKeeper's own system properties where required.</p>
+      <p><strong>Tests:</strong> ZooKeeperToolSourceTest against a real ZooKeeper server started in-process by curator-test.</p>
+    </section>
+
+    <section id="aegis-source-a2a" class="module">
+      <p class="eyebrow">SOURCE</p>
+      <h2>aegis-source-a2a</h2>
+      <div class="module-meta"><span>sources[].type: a2a</span><span>A2A protocol 1.0, JSON-RPC binding; JDK only</span></div>
+      <p>One Agent2Agent (A2A) agent as one governed tool. Discovery reads the agent card; a call sends one JSON-RPC <code>SendMessage</code> with the <code>text</code> argument as a text part and the optional <code>data</code> argument as a data part, and returns the agent's message or completed task as text. Aegis is an A2A client only.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key (settings.)</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>cardUrl</td><td>required</td><td>The agent card URL (http or https, no user-info).</td></tr>
+          <tr><td>endpointUrl</td><td>none</td><td>Pins the JSON-RPC URL the card must name; needed only when it is on another origin than the card.</td></tr>
+          <tr><td>toolName</td><td>source id with <code>_</code></td><td>Stable tool name, independent of the card.</td></tr>
+          <tr><td>maxTextChars / maxResponseBytes / cardTimeoutMs</td><td>16000 / 1 MiB / 5000</td><td>Bounds on one message, one reply and reading the card.</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li><strong>One tool per agent.</strong> An A2A message has no field that selects a skill, so the agent endpoint is the governed unit; classify it by its strongest skill. Skills are listed in the description.</li>
+        <li><strong>Card trust.</strong> The endpoint must be on the card's origin or equal <code>endpointUrl</code>, and it is part of the description, so a moved endpoint changes the digest and quarantines the tool. Card signatures are not verified.</li>
+        <li><strong>Refused.</strong> A2A 0.3 cards, gRPC and HTTP+JSON bindings, dry-run execution (nothing is sent) and task continuation. Failed, rejected, canceled and input-required tasks are tool errors; task history is never forwarded.</li>
+      </ul>
+      <p class="boundary"><strong>Operator responsibility.</strong> List the agent's host in <code>egress.allowHosts</code>; put the agent credential in the source's <code>credentials</code>, which is sent on calls only.</p>
+      <p><strong>Tests:</strong> A2aToolSourceTest (card rules, request shape, reply mapping, gateway integration) and A2aAgentFrontDoorsTest against an agent built on the official a2a-sdk 1.2.1, through both front doors.</p>
+    </section>
+
+    <section id="aegis-state-derby" class="module">
+      <p class="eyebrow">STATE</p>
+      <h2>aegis-state-derby</h2>
+      <div class="module-meta"><span>state.type: derby-local</span><span>Apache Derby 10.16.1.1, embedded</span></div>
+      <p>Durable single-process governance state on embedded Derby: approval and receipt nonces, expiring key and value entries, and fixed-window rate counters. Derby's database lock keeps a second process from opening the same files.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody><tr><td>state.settings.path</td><td>required</td><td>Database directory; must stay under the configuration directory.</td></tr></tbody>
+      </table></div>
+      <p>All statements are prepared with parameters; prefix scans escape <code>\</code>, <code>%</code> and <code>_</code>. Each operation is one synchronized transaction that rolls back and fails closed on error. A refused rate acquisition never charges the counter. Shutdown verifies Derby's expected shutdown state so a stale lock is reported.</p>
+      <p><strong>Tests:</strong> DerbyStateStoreTest (restart survival, expiry, single-winner nonce under concurrency, rate windows).</p>
+    </section>
+
+    <section id="aegis-state-postgres" class="module">
+      <p class="eyebrow">STATE</p>
+      <h2>aegis-state-postgres</h2>
+      <div class="module-meta"><span>state.type: postgres</span><span>PostgreSQL JDBC 42.7.12</span></div>
+      <p>Shared governance state for several gateway processes on PostgreSQL. Unique constraints, <code>INSERT ... ON CONFLICT ... RETURNING</code>, <code>DELETE ... RETURNING</code> and row locks make nonces single-use and rate windows exact across processes. A <code>namespace</code> column scopes sharing.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Key (state.settings.)</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>jdbcUrl</td><td>required</td><td>Must start with <code>jdbc:postgresql://</code>; add <code>sslmode</code> parameters for TLS.</td></tr>
+          <tr><td>usernameEnv / passwordEnv</td><td>required</td><td>Environment variables; must be set.</td></tr>
+          <tr><td>namespace</td><td>required</td><td>1 to 128 letters, digits, dot, underscore or hyphen.</td></tr>
+          <tr><td>connectTimeoutSeconds</td><td>10</td><td>1 to 120.</td></tr>
+        </tbody>
+      </table></div>
+      <p>All data statements are parameterized; table names are constants. Errors roll back and fail closed with a generic message. The schema is created idempotently on first use; after that the role needs only SELECT, INSERT, UPDATE and DELETE.</p>
+      <p class="boundary"><strong>Scope.</strong> Nonces, approvals, receipts and rate windows are shared. Catalog pins and circuit breakers remain per process. <code>PostgresStateStoreIT</code> runs only with <code>-Ppostgres-integration</code> and the <code>AEGIS_POSTGRES_URL</code>, <code>AEGIS_POSTGRES_USER</code> and <code>AEGIS_POSTGRES_PASSWORD</code> variables; a retained run against Amazon RDS for PostgreSQL 18.3 is in <a href="../evidence/POSTGRES-RDS-VALIDATION.html">the evidence record</a>. <code>TwoGatewayProcessesPostgresIT</code> in <code>aegis-gateway</code> starts two gateway JVMs on one namespace against PostgreSQL 17.6: an approval asked on one replica is decided on the other, the replay is refused, and one rate window covers both (<a href="../evidence/POSTGRES-TWO-GATEWAYS.html">evidence</a>).</p>
+    </section>
+
+    <section id="aegis-gateway" class="module">
+      <p class="eyebrow">HOST</p>
+      <h2>aegis-gateway</h2>
+      <div class="module-meta"><span>Main class io.github.vaquarkhan.aegis.gateway.Main</span><span>Shaded -all jar</span></div>
+      <p>The own host on the JDK's built-in HTTP(S) server, plus a stdio host. It authenticates through <code>aegis-mcp-security</code> and hands every request to the shared MCP handler or admin API; it contains no governance logic. It bundles the Derby and PostgreSQL state providers and the project guardrail.</p>
+      <h3>Command line</h3>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Argument</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>--config &lt;file&gt;</td><td>Serve HTTP(S) with a YAML or JSON configuration.</td></tr>
+          <tr><td>--stdio</td><td>Serve line-delimited JSON-RPC on stdin and stdout as <code>host.stdio.actor</code> (lines up to 1 MiB).</td></tr>
+          <tr><td>--verify-audit &lt;file&gt;</td><td>Verify a journal offline; exit 0 when intact, 1 when broken.</td></tr>
+          <tr><td>--hash-token</td><td>Print the SHA-256 of a token read from stdin, for <code>identity.static.tokens[].sha256</code>.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Routes and controls</h3>
+      <ul>
+        <li><strong>MCP</strong> at <code>listen.mcpPath</code> and <strong>admin</strong> at <code>listen.adminPath</code>: CORS preflight, origin check, authentication and route admission run before the body is read; bodies above <code>listen.maxRequestBytes</code> get 413.</li>
+        <li><strong>Metrics</strong> at <code>metrics.path</code>: GET only, authenticated like MCP.</li>
+        <li><strong>OAuth metadata</strong> at the RFC 9728 well-known path when <code>host.oauth.resource</code> is set.</li>
+        <li><strong>Probes.</strong> <code>/healthz</code> and <code>/readyz</code> are unauthenticated for orchestrators; <code>/readyz</code> reports only readiness and the active tool count.</li>
+        <li><strong>Resource bounds.</strong> A fixed worker pool with a bounded queue that pushes back on the accept thread; request and response time limits of 30 and 120 seconds unless the operator sets them; backlog 128.</li>
+        <li><strong>Unexpected failures</strong> are logged and answered with a generic 500; exception text never reaches the client. Every response carries <code>X-Content-Type-Options: nosniff</code>.</li>
+        <li><strong>TLS</strong> uses the JDK defaults for protocols and ciphers. <code>host.tls.clientAuth: require</code> turns on mutual TLS against the PEM bundle in <code>clientCaFile</code> only; the verified client chain is passed to the identity resolver, and <code>identity.type: spiffe</code> maps an X.509-SVID to a caller.</li>
+        <li><strong>Request-scoped caller token.</strong> For a JWT-authenticated MCP request the verified bearer token is bound to <code>SubjectToken</code> for that request only, so a <code>token-exchange</code> source can exchange it; static tokens, SPIFFE, stdio and admin routes bind nothing.</li>
+        <li><strong>Command line.</strong> <code>--verify-audit &lt;journal&gt; [--checkpoints &lt;file&gt;]</code>, <code>--hash-token</code>, <code>--openapi-draft &lt;openapi&gt; &lt;draft.yaml&gt; [--source-id] [--base-url]</code> (never overwrites, never contacts the API), and the signed catalog manifest workflow: <code>--manifest-keygen</code>, <code>--manifest-create</code> (from a reviewed <code>GET /aegis/v1/catalog</code> reply), <code>--manifest-sign</code>, <code>--manifest-verify</code>. Key generation never overwrites a file.</li>
+      </ul>
+      <p><strong>Tests:</strong> GatewayHostTest (JWT, JWKS rotation, delegation, approval and promotion over HTTP, Derby state, stdio, metrics, tracing), GuardedExchangeTest, MainAndSettingsTest (including audit checkpoints), ProtectedResourceMetadataTest, SignedCatalogManifestFlowTest (the manifest workflow on the running host), OpenApiDraftCommandTest, SpiffeMutualTlsTest (real mutual TLS with <code>keytool</code>-issued certificates, not SPIRE-issued), and, with <code>-Ppostgres-integration</code>, TwoGatewayProcessesPostgresIT.</p>
+    </section>
+
+    <section id="aegis-knox3-extension" class="module">
+      <p class="eyebrow">HOST</p>
+      <h2>aegis-knox3-extension</h2>
+      <div class="module-meta"><span>Apache Knox 3.0.0, javax namespace</span><span>Knox classes in provided scope</span></div>
+      <p>An optional Knox service (role <code>AEGIS_MCP</code>). Knox's provider chain supplies TLS, authentication, identity assertion and route ACLs; the extension reads the established <code>Subject</code> and hands MCP and admin requests to an Aegis gateway built from the topology's <code>aegis.config</code> parameter. Aegis never sees the original credential.</p>
+      <ul>
+        <li><strong>Endpoint.</strong> <code>/gateway/&lt;topology&gt;/aegis-mcp/v1/mcp</code>, plus <code>admin/...</code>, <code>health</code> and <code>metrics</code>. Bodies are bounded to 1 MiB.</li>
+        <li><strong>Identity mapping.</strong> Primary principal, effective principal, group principals and any Knox actor chain become the Aegis caller identity. A request without a subject gets 401.</li>
+        <li><strong>Fail closed.</strong> A missing or invalid configuration makes the route answer 503; it never falls back to ungoverned access. Configuration is loaded lazily so a bad file does not block topology deployment.</li>
+        <li><strong>Packaging.</strong> Drop the jars or the <code>knox-bundle</code> jar into Knox <code>ext/</code>. The bundle contains only Aegis modules and the PostgreSQL driver; Knox, Jersey, Jackson, servlet and SnakeYAML classes come from Knox.</li>
+      </ul>
+      <p class="boundary"><strong>Scope.</strong> The default-build tests run the real Knox 3.0.0 SPI classes and the real <code>AclsAuthorizationFilter</code>, with servlet objects supplied by the test. Under <code>-Preal-engines</code> the validation suite installs the current <code>knox-bundle</code> jar into a stock Knox 3.0.0 and drives MCP calls through the running gateway; the 2026-10-05 ZooKeeper run is retained as claims-matrix row H10. Knox 3.1.0 moves to the Jakarta namespace, so running there needs a Jakarta build of this extension; that is the planned direction for aligning with Knox 3.1 identity work.</p>
+      <p><strong>Tests:</strong> KnoxExtensionTest, KnoxAclRouteScopeTest.</p>
+    </section>
+
+    <section id="examples" class="module">
+      <p class="eyebrow">EXAMPLES</p>
+      <h2>examples</h2>
+      <p>Plugin sources, runnable bundles and opt-in real-engine validation. These are outside the release core.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Module</th><th>What it contains</th></tr></thead>
+        <tbody>
+          <tr><td>aegis-examples</td><td><code>type: kafka-admin</code> source over the Kafka Admin client (<code>bootstrapServers</code>, <code>clientPropertiesFile</code>, <code>requestTimeoutMs</code> 15000; a dry run of topic creation uses the broker's validate-only mode), and the documentation and configuration contract tests.</td></tr>
+          <tr><td>aegis-spark-connect</td><td><code>type: spark-connect</code> source (<code>host</code>, <code>port</code> 15002, <code>useSsl</code>, <code>tokenEnv</code> requires SSL, <code>userId</code>, <code>maxRows</code> 100, <code>threads</code> 8). Identifiers are validated and quoted; free SQL is length-bounded and meant to be classified DESTRUCTIVE.</td></tr>
+          <tr><td>aegis-gateway-kafka, aegis-gateway-spark</td><td>Runnable shaded bundles of the own host with those sources.</td></tr>
+          <tr><td>aegis-validation and *-server modules</td><td>Profile <code>real-engines</code>: each test drives a real engine through both front doors (own host, and Knox when <code>AEGIS_KNOX_HOME</code> points at Knox 3.0.0).</td></tr>
+        </tbody>
+      </table></div>
+      <p class="boundary"><strong>Test doubles.</strong> Production code contains no mocks or stubs. In the default build the Kafka Admin test runs against a real Kafka 3.9.1 KRaft broker started in its own JVM from <code>aegis-validation-kafka-server</code>'s classpath, and the adapter contract tests use a local HTTP harness that proves route rendering and governance order, not product compatibility. The other real brokers, catalogs and engines run under <code>-Preal-engines</code>.</p>
+    </section>
+
+    <section id="guideline">
+      <p class="eyebrow">END-TO-END MCP GOVERNANCE</p>
+      <h2>Where each baseline control of the governance guideline lives.</h2>
+      <p>The <a href="../MCP-GOVERNANCE-GUIDELINE.html">Aegis MCP governance guideline</a> lists seven baseline controls for an MCP capability. It is Aegis project guidance, not ASF policy; ASF policy continues to govern releases, licensing, security reporting and project conduct.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Guideline control</th><th>Enforced by</th><th>Owned by the deployment</th></tr></thead>
+        <tbody>
+          <tr><td>3.1 Capability ownership and contract</td><td><code>aegis-config</code>: explicit tool class, typed resources, unlisted tools DESTRUCTIVE or hidden</td><td>Naming an owner and documenting backend effects</td></tr>
+          <tr><td>3.2 Identity and delegation</td><td><code>aegis-mcp-security</code> (JWT, act chain, scopes, static tokens, SPIFFE X.509-SVIDs over mutual TLS) or Knox via <code>aegis-knox3-extension</code>; source service credentials in <code>aegis-config</code> from <code>secrets.source</code> (environment, mounted files or a Vault KV v2 secret)</td><td>Identity provider, group lifecycle, certificate issuance and rotation, token exchange</td></tr>
+          <tr><td>3.3 Semantic authorization and resource scope</td><td><code>aegis-engine</code> steps 1 to 3: exposure, schema, typed resources, scopes, deny-overrides policy, OPA</td><td>Resource taxonomy and policy content</td></tr>
+          <tr><td>3.4 Approval and safe execution</td><td><code>aegis-engine</code> approval and dry-run receipts, separation of duties; durable or shared state through <code>aegis-state-derby</code> or <code>aegis-state-postgres</code></td><td>Approver roles and target-specific preview proof</td></tr>
+          <tr><td>3.5 Capability and source integrity</td><td><code>aegis-engine</code> catalog pins and quarantine, <code>aegis-mcp</code> digest-bound acceptance, source trust states</td><td>Initial source review; <code>REQUIRE_PINS</code> pins or a signed <code>catalog.manifest</code>, and custody of its private key</td></tr>
+          <tr><td>3.6 Data, content and network controls</td><td><code>aegis-engine</code> screening, redaction, output bounds, binary refusal, egress guard; <code>aegis-mcp</code> request bounds; minimal remote-hook data in <code>aegis-config</code></td><td>Network policy for processes and non-HTTP clients</td></tr>
+          <tr><td>3.7 Audit, evidence and response</td><td><code>aegis-engine</code> intent-first hash chain and head checkpoints, <code>aegis-gateway</code> <code>--verify-audit</code> with <code>--checkpoints</code>, <code>aegis-mcp</code> <code>GET /audit/verify</code>, metrics and <code>aegis-observability-otlp</code></td><td>Storage for the <code>audit.checkpoint</code> file out of the journal writer's reach, retention, alerting, incident response</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="scope" class="band">
+      <p class="eyebrow">SCOPE AND ROADMAP</p>
+      <h2>What the modules cover today, and what is planned.</h2>
+      <div class="two-column">
+        <div><h3>In the code today</h3><p>Semantic MCP action governance with typed resources, deny-overrides policy and OPA, independent per-call approval, bound dry-run receipts, definition pinning and quarantine, egress checks, screening, intent-first hash-chained audit with head checkpoints, signed catalog manifests, JWT with delegation chains, SPIFFE X.509-SVID identity over mutual TLS, secrets from the environment, mounted files or Vault KV v2, RFC 9728 metadata, and durable single-process or shared PostgreSQL nonce and rate state (proved with two gateway processes). Since 2026-10-03 also: per-caller backend credentials by RFC 8693 token exchange on the own host, A2A agents as governed tools, remote schema references refused, an OpenAPI-to-draft command, reference hook services, and a container image and Helm chart.</p></div>
+        <div><h3>Planned work</h3><p>Token exchange inside Knox, A2A 0.3 cards and card signature checks, a published container image and a cluster-installed chart, SPIRE Workload API integration, a Cedar policy engine, a network export of audit heads, shared catalog pins and breakers, a Jakarta build for Knox 3.1, a live OpenTelemetry Collector run, and process and network containment guidance for plugins and stdio sources.</p></div>
+      </div>
+      <p><a href="../ROADMAP.html">Read the roadmap</a> and <a href="../evidence/CLAIMS-MATRIX.html">the claims matrix</a> for the evidence behind each statement.</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,125 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Governance for the Spark + Iceberg tutorial (docs/TUTORIAL-SPARK-ICEBERG.md). Two sources in one
+# gateway, one decision path:
+#   iceberg  - the Apache Iceberg REST catalog (http source): namespaces, tables, snapshots, drop
+#   spark    - Apache Spark through Spark Connect (spark-connect source): read and change table data
+# The same file is used by both flavors. Without Knox, start-gateway.* appends host-own.yaml (who the
+# callers are). With Knox, the topology points aegis.config at this file and Knox supplies identity.
+# Everything binds to 127.0.0.1. Development settings only: use JWT identity and TLS in production.
+gateway:
+  name: aegis-spark-iceberg
+
+access:
+  writeGroups: [lake-engineers]          # may call MUTATE and DESTRUCTIVE tools at all
+  approverGroups: [lake-approvers]       # decide approvals; never the requester
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: read, groups: [lake-readers, lake-engineers], classes: [READ]}
+    - {id: engineer-changes, groups: [lake-engineers], classes: [MUTATE, DESTRUCTIVE]}
+    # The finance namespace is never dropped through an agent, whoever asks and whatever was approved.
+    - {id: never-drop-finance, effect: DENY, groups: ["*"], tools: [iceberg_drop_table], resources: ["iceberg:table:finance.*"]}
+
+# Readers see the sales namespace only; engineers see the whole lake.
+scopes:
+  - {groups: [lake-readers], resources: ["iceberg:namespace:sales", "iceberg:table:sales.*", "spark:table:lake.sales.*"]}
+  - {groups: [lake-engineers], resources: ["iceberg:*", "spark:table:*"]}
+
+egress:
+  allowHosts: [127.0.0.1]
+  allowCidrs: [127.0.0.1/32]
+  schemes: [http]
+
+catalog:
+  mode: TOFU                             # evaluation; pin definitions (REQUIRE_PINS) before production
+
+audit:
+  file: work/audit/aegis-spark-iceberg.jsonl
+
+sources:
+  - id: iceberg
+    type: http
+    baseUrl: http://127.0.0.1:8181
+    tools:
+      - name: iceberg_list_namespaces
+        description: List top-level namespaces in the Iceberg catalog.
+        class: READ
+        request: {method: GET, path: /v1/namespaces}
+        response: {pointer: /namespaces}
+
+      - name: iceberg_list_tables
+        description: List the tables in one Iceberg namespace.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}}
+          required: [namespace]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/namespaces/{namespace}/tables"}
+        response: {pointer: /identifiers}
+        resources: [{type: "iceberg:namespace", pointer: /namespace}]
+
+      - name: iceberg_load_table
+        description: Load an Iceberg table's schema.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [namespace, table]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/namespaces/{namespace}/tables/{table}"}
+        response: {pointer: /metadata/schemas}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+
+      - name: iceberg_list_snapshots
+        description: List an Iceberg table's snapshots (one per committed write), newest last.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [namespace, table]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/namespaces/{namespace}/tables/{table}"}
+        response: {pointer: /metadata/snapshots}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+
+      - name: iceberg_drop_table
+        description: Drop an Iceberg table and purge its data files.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [namespace, table]
+          additionalProperties: false
+        request: {method: DELETE, path: "/v1/namespaces/{namespace}/tables/{table}", query: {purgeRequested: "true"}}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+        dryRun: {mode: TOOL, previewTool: iceberg_load_table}
+
+  - id: spark
+    type: spark-connect
+    unlistedTools: HIDE                  # only the tools below are exposed
+    settings: {host: 127.0.0.1, port: 15002, maxRows: 50}
+    tools:
+      spark_list_tables: {class: READ}
+      spark_describe_table: {class: READ, resources: [{type: "spark:table", pointer: /table}]}
+      spark_preview_table: {class: READ, resources: [{type: "spark:table", pointer: /table}]}
+      spark_explain_sql: {class: READ}
+      spark_sql:
+        class: DESTRUCTIVE               # free SQL can write: never READ, whatever the text looks like
+        dryRun: {mode: TOOL, previewTool: spark_explain_sql}

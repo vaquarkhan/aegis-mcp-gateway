@@ -1,0 +1,66 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# An A2A (Agent2Agent protocol 1.0) agent offered to MCP clients as one governed tool, through the
+# a2a source (aegis-source-a2a, a plugin: put its jar on the gateway classpath or in Knox ext/).
+#
+# WHAT AEGIS DOES HERE
+#   Reads the agent card, offers one tool per agent, and sends each call as one JSON-RPC SendMessage.
+#   Aegis is an A2A client only. It does not offer an A2A endpoint, and it does not continue a task
+#   across calls: an agent that asks for more input gets a tool error that says so.
+#
+# WHY ONE TOOL PER AGENT, CLASSIFIED BY ITS STRONGEST SKILL
+#   An A2A message has no field that selects a skill; the agent decides from the text. A tool named
+#   after a "lookup" skill could still make the agent reserve stock. So the agent endpoint is the
+#   governed unit, and this example classifies it MUTATE because the agent can reserve stock.
+#
+# WHAT YOU MUST PROVIDE
+#   1. The card URL. The JSON-RPC endpoint the card names must be on the card's own origin, or pinned
+#      with settings.endpointUrl. A card that moves its endpoint changes the tool definition, so the
+#      tool is quarantined until an approver accepts it. Card signatures are not verified.
+#   2. The agent's host on egress.allowHosts. A plugin source's host is not added automatically.
+#   3. The agent's credential (A2A_AGENT_TOKEN here). It is sent on calls only, never to read the card.
+
+gateway:
+  name: aegis-a2a
+
+access:
+  writeGroups: [inventory-operators]
+  approverGroups: [inventory-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: operate, groups: [inventory-operators], classes: [MUTATE]}
+
+egress:
+  allowHosts: [inventory-agent.internal.example]
+  schemes: [https]
+
+audit:
+  file: audit/aegis-a2a.jsonl
+
+sources:
+  - id: inventory-agent
+    type: a2a
+    timeoutMs: 30000
+    credentials: {type: bearer, tokenEnv: A2A_AGENT_TOKEN}
+    settings:
+      cardUrl: https://inventory-agent.internal.example/.well-known/agent-card.json
+      maxTextChars: 4000
+    tools:
+      inventory_agent:
+        class: MUTATE                # the agent can reserve stock, so every call needs an approval

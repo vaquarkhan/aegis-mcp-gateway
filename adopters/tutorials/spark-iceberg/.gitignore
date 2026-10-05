@@ -1,0 +1,4 @@
+# Tutorial runtime state (warehouse, catalog database, audit journal, generated config). Never commit it.
+work/
+aegis-own-host.local.yaml
+aegis-stdio.local.yaml

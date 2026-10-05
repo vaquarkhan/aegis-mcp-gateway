@@ -1,0 +1,304 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Flink: governed MCP tools over the Flink REST API (JobManager, default port 8081).
+# Endpoints are the documented Flink REST API: /jobs/overview, /jobs/:jobid, /jobs/:jobid/exceptions,
+# /jobs/:jobid/metrics, /jobs/:jobid/checkpoints, /jobs/:jobid/config, /overview, /taskmanagers,
+# /jobmanager/config, /jars, POST /jars/:jarid/run, POST /jobs/:jobid/savepoints,
+# POST /jobs/:jobid/stop, PATCH /jobs/:jobid?mode=cancel, PATCH /jobs/:jobid/rescale.
+# No Java is needed for any of it.
+#
+# Three tools from the Aegis 0.1 Flink adapter are deliberately NOT here, because a declarative HTTP
+# source cannot express them honestly (see docs/ADOPTION-GUIDE.md):
+#   upload_jar          POST /jars/upload is a multipart/form-data upload; the body template is JSON.
+#   run_sql_readonly    the Flink SQL Gateway needs a session lifecycle (open session, submit
+#   run_sql_ddl_dml     statement, poll for results): three or more calls, not one request.
+# For SQL, put the SQL Gateway behind its own source or use a plugin; do not pretend one HTTP call
+# does it.
+gateway:
+  name: aegis-flink
+
+access:
+  writeGroups: [flink-operators]
+  approverGroups: [flink-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read-jobs, groups: [flink-users, flink-operators], classes: [READ]}
+    - {id: operate-jobs, groups: [flink-operators], classes: [MUTATE, DESTRUCTIVE], resources: ["flink:job:*"]}
+    # Running a jar on a Flink cluster is remote code execution by design. Aegis 0.1 guarded it with an
+    # upload-directory allow list; the 2.0 equivalent is that the jar is a typed resource, so an
+    # operator allow-lists the jars that may run instead of allow-listing a directory.
+    #
+    # The pattern has to match what Flink actually calls a jar. The JobManager stores an upload as
+    # "<uuid>_<original file name>" and that whole string is the jar id that POST /jars/:jarid/run
+    # takes. Verified against Flink 1.20.1: uploading approved-StateMachineExample.jar produced the id
+    #     da41fdf4-c363-469c-844d-6429fe0aec04_approved-StateMachineExample.jar
+    # so a plain prefix pattern ("flink:jar:approved-*") never matches an uploaded jar and the rule
+    # silently allows nothing. The convention here is a file name beginning with "approved-", and the
+    # pattern tolerates the uuid Flink puts in front of it.
+    - {id: run-approved-jars, groups: [flink-operators], classes: [DESTRUCTIVE], tools: [flink_run_jar],
+       resources: ["flink:jar:*_approved-*.jar"]}
+
+# No `scopes` block here on purpose: this config governs by policy and tool class, and iceberg.yaml is
+# the example that shows resource scopes. Adding scopes would make every resource-bearing tool here
+# require a matching scope rule, which is a deliberate operator decision rather than a default.
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-flink.jsonl
+
+sources:
+  - id: flink
+    type: http
+    baseUrl: http://127.0.0.1:61660
+    tools:
+      # ---------------------------------------------------------------- cluster reads
+      - name: flink_get_cluster_info
+        description: "Cluster overview: Flink version, slots total and available, running jobs."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /overview}
+
+      - name: flink_list_taskmanagers
+        description: List TaskManagers with their slot and resource counts.
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /taskmanagers}
+
+      - name: flink_get_flink_config
+        description: Effective JobManager configuration.
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /jobmanager/config}
+
+      - name: flink_list_jars
+        description: List jars uploaded to this JobManager.
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /jars}
+
+      # ---------------------------------------------------------------- job reads
+      - name: flink_list_jobs
+        description: List Flink jobs with their state.
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /jobs/overview}
+        response: {pointer: /jobs}
+
+      - name: flink_get_job
+        description: Details of one Flink job.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {jobId: {type: string, minLength: 32, maxLength: 32}}
+          required: [jobId]
+          additionalProperties: false
+        request: {method: GET, path: "/jobs/{jobId}"}
+        resources: [{type: "flink:job", pointer: /jobId}]
+
+      - name: flink_get_job_status
+        description: State of one job only, without the vertex detail.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {jobId: {type: string, minLength: 32, maxLength: 32}}
+          required: [jobId]
+          additionalProperties: false
+        request: {method: GET, path: "/jobs/{jobId}"}
+        response: {pointer: /state}      # same endpoint as flink_get_job, narrowed for the model
+        resources: [{type: "flink:job", pointer: /jobId}]
+
+      - name: flink_get_job_exceptions
+        description: Exception history of one job, most recent first.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {jobId: {type: string, minLength: 32, maxLength: 32}}
+          required: [jobId]
+          additionalProperties: false
+        request: {method: GET, path: "/jobs/{jobId}/exceptions"}
+        resources: [{type: "flink:job", pointer: /jobId}]
+
+      - name: flink_get_job_metrics
+        description: Metrics of one job.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {jobId: {type: string, minLength: 32, maxLength: 32}}
+          required: [jobId]
+          additionalProperties: false
+        request: {method: GET, path: "/jobs/{jobId}/metrics"}
+        resources: [{type: "flink:job", pointer: /jobId}]
+
+      - name: flink_get_job_config
+        description: Configuration one job was submitted with.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {jobId: {type: string, minLength: 32, maxLength: 32}}
+          required: [jobId]
+          additionalProperties: false
+        request: {method: GET, path: "/jobs/{jobId}/config"}
+        resources: [{type: "flink:job", pointer: /jobId}]
+
+      - name: flink_list_checkpoints
+        description: Checkpoint history and counts for one job.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {jobId: {type: string, minLength: 32, maxLength: 32}}
+          required: [jobId]
+          additionalProperties: false
+        request: {method: GET, path: "/jobs/{jobId}/checkpoints"}
+        resources: [{type: "flink:job", pointer: /jobId}]
+
+      - name: flink_get_savepoint_status
+        description: Status and final location of a savepoint that flink_trigger_savepoint started.
+        class: READ
+        # Triggering a savepoint is asynchronous: POST /jobs/:jobid/savepoints answers with a
+        # request-id and the savepoint completes later. Without this read the agent can start a
+        # savepoint and never learn whether it succeeded, which is why it is part of the surface.
+        #
+        # READ THE RESPONSE CAREFULLY, and tell your agent to. Verified against Flink 1.20.1: `status`
+        # is the state of the asynchronous operation *tracking*, not the outcome. A savepoint that
+        # FAILED also reports {"status":{"id":"COMPLETED"}}. The outcome is in `operation`:
+        #   {"status":{"id":"COMPLETED"},"operation":{"location":"file:/.../savepoint-599e7a-6be098d502ec"}}
+        #   {"status":{"id":"COMPLETED"},"operation":{"failure-cause":{...}}}
+        # An agent that stops at status.id will report a completed savepoint for a job that is still
+        # running with no savepoint taken. The whole response is returned here on purpose, with no
+        # `response.pointer` narrowing it to `status`, precisely so that trap is visible.
+        inputSchema:
+          type: object
+          properties:
+            jobId: {type: string, minLength: 32, maxLength: 32}
+            triggerId: {type: string, minLength: 32, maxLength: 32}
+          required: [jobId, triggerId]
+          additionalProperties: false
+        request: {method: GET, path: "/jobs/{jobId}/savepoints/{triggerId}"}
+        resources: [{type: "flink:job", pointer: /jobId}]
+
+      # ---------------------------------------------------------------- writes
+      - name: flink_trigger_savepoint
+        description: Trigger a savepoint for a running job.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties:
+            jobId: {type: string, minLength: 32, maxLength: 32}
+            targetDirectory: {type: string, maxLength: 1024}
+          required: [jobId, targetDirectory]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/jobs/{jobId}/savepoints"
+          body: {"target-directory": "{targetDirectory}", "cancel-job": false}
+        resources: [{type: "flink:job", pointer: /jobId}]
+
+      - name: flink_rescale_job
+        description: Change the parallelism of a running job.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties:
+            jobId: {type: string, minLength: 32, maxLength: 32}
+            parallelism: {type: integer, minimum: 1, maximum: 4096}
+          required: [jobId, parallelism]
+          additionalProperties: false
+        # The endpoint is /rescaling, not /rescale. Verified against Flink 1.20.1, where /rescale is not
+        # a route at all and answers 404.
+        #
+        # Read this before keeping the tool. On a standalone cluster with the default scheduler, real
+        # Flink answers this route with HTTP 503 and "Rescaling is temporarily disabled. See
+        # FLINK-12312." The cluster says so itself: GET /config reports "web-rescale": false. Aegis
+        # treats 5xx as a backend failure, so every call also counts against the circuit breaker for
+        # this source, and enough of them will open the breaker and start denying the healthy tools
+        # next to it. Elastic scaling in current Flink is the Adaptive Scheduler / Reactive Mode, which
+        # does not use this endpoint. Keep this tool only if your cluster actually serves it; otherwise
+        # delete it. It stays in this reference config because the tutorial uses it to show what an
+        # unavailable backend operation looks like end to end (docs/TUTORIAL-FLINK.md, part 5.7).
+        request: {method: PATCH, path: "/jobs/{jobId}/rescaling", query: {parallelism: "{parallelism}"}}
+        resources: [{type: "flink:job", pointer: /jobId}]
+
+      - name: flink_stop_job
+        description: Stop a job with a final savepoint. The job does not resume by itself.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties:
+            jobId: {type: string, minLength: 32, maxLength: 32}
+            targetDirectory: {type: string, maxLength: 1024}
+            drain: {type: boolean}
+          required: [jobId, targetDirectory]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/jobs/{jobId}/stop"
+          body: {"targetDirectory": "{targetDirectory}", "drain": "{drain}"}
+        resources: [{type: "flink:job", pointer: /jobId}]
+        dryRun: {mode: TOOL, previewTool: flink_get_job}   # validate = the job exists and is reachable
+
+      - name: flink_cancel_job
+        description: Cancel a running job. Irreversible for the running instance.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {jobId: {type: string, minLength: 32, maxLength: 32}}
+          required: [jobId]
+          additionalProperties: false
+        request: {method: PATCH, path: "/jobs/{jobId}", query: {mode: cancel}}
+        resources: [{type: "flink:job", pointer: /jobId}]
+        # GATEWAY on purpose, so this config shows both dry-run shapes: cancel sends nothing to Flink
+        # and still issues a receipt, while flink_stop_job above validates against the real job first.
+        dryRun: {mode: GATEWAY}
+
+      - name: flink_run_jar
+        description: Run an already uploaded jar as a new job. This starts code on the cluster.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties:
+            jarId: {type: string, maxLength: 256}
+            entryClass: {type: string, maxLength: 512}
+            parallelism: {type: integer, minimum: 1, maximum: 4096}
+            programArgs: {type: string, maxLength: 4096}
+          required: [jarId]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/jars/{jarId}/run"
+          body: {"entryClass": "{entryClass}", "parallelism": "{parallelism}", "programArgs": "{programArgs}"}
+        # The jar is the governed resource, so policy and scopes decide which jars may run at all.
+        resources: [{type: "flink:jar", pointer: /jarId}]
+        dryRun: {mode: TOOL, previewTool: flink_list_jars}
+
+# Appended for the own-host front door: loopback listener, static tokens per persona.
+host:
+  listen: {host: 127.0.0.1, port: 0}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_READER, actor: guest, groups: [flink-users]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OPERATOR, actor: sam, groups: [flink-operators]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_APPROVER, actor: tom, groups: [flink-approvers]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OUTSIDER, actor: admin, groups: []}

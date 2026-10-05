@@ -1,0 +1,85 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Cassandra: governed MCP tools over the Apache Cassandra HTTP API, configuration only.
+# The Cassandra Sidecar REST API: /api/v1/cassandra/native/keyspaces,
+# /api/v1/cassandra/native/keyspaces/{keyspace}/tables, /api/v1/cassandra/native/token-ranges.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-cassandra (taxonomy: datastore).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-cassandra
+
+access:
+  writeGroups: [cassandra-operators]
+  approverGroups: [cassandra-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [cassandra-users, cassandra-operators], classes: [READ]}
+    - {id: operate, groups: [cassandra-operators], classes: [MUTATE, DESTRUCTIVE]}
+    # the system keyspaces are not application data
+    - {id: never-drop-system, effect: DENY, groups: ["*"], tools: [cassandra_drop_table], resources: ["cassandra:table:system*"]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-cassandra.jsonl
+
+sources:
+  - id: cassandra
+    type: http
+    baseUrl: http://cassandra-sidecar:9043
+    tools:
+      - name: cassandra_list_keyspaces
+        description: "List keyspaces."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v1/cassandra/native/keyspaces"}
+
+      - name: cassandra_list_tables
+        description: "List tables in one keyspace."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {keyspace: {type: string, maxLength: 256}}
+          required: [keyspace]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v1/cassandra/native/keyspaces/{keyspace}/tables"}
+        resources: [{type: "cassandra:keyspace", pointer: /keyspace}]
+
+      - name: cassandra_get_ring
+        description: "Token ranges of the ring."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v1/cassandra/native/token-ranges"}
+
+      - name: cassandra_drop_table
+        description: "Drop one table and its data."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {keyspace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [keyspace, table]
+          additionalProperties: false
+        request: {method: DELETE, path: "/api/v1/cassandra/native/keyspaces/{keyspace}/tables/{table}"}
+        resources: [{type: "cassandra:table", pointers: [/keyspace, /table]}]

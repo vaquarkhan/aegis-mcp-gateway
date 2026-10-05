@@ -1,0 +1,225 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Developer guide for Aegis Gateway 2.0: build and run, write a configuration, connect a client, operate approvals and audit, and extend Aegis with sources, hooks, state and secret providers.">
+  <title>Aegis Gateway developer guide</title>
+  <link rel="stylesheet" href="handbook.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Developer guide navigation">
+    <a class="brand" href="../index.html">Aegis <span>Developer guide</span></a>
+    <nav>
+      <a href="#build">Build and run</a>
+      <a href="#configure">Write a configuration</a>
+      <a href="#client">Connect a client or IDE</a>
+      <a href="#operate">Operate</a>
+      <a href="#where">Where to change what</a>
+      <a href="#spi">Extension points</a>
+      <a href="#source">Write a source plugin</a>
+      <a href="#hook">Write a governance hook</a>
+      <a href="#tests">Tests and evidence</a>
+      <a href="#tutorials">Tutorials</a>
+      <a href="#conventions">Conventions</a>
+    </nav>
+    <p class="sidebar-note">Commands, keys and interface names on this page are the ones in the 2.0.0-SNAPSHOT source tree. The Markdown version is <a href="../DEVELOPER.html">DEVELOPER.md</a>.</p>
+  </aside>
+  <main>
+    <header class="hero">
+      <p class="eyebrow">DEVELOPER GUIDE</p>
+      <h1>Use Aegis to govern your project, or change Aegis itself.</h1>
+      <p class="lead">Sections 1 to 4 are for teams putting Aegis in front of an engine. Sections 5 to 9 are for people who extend it. The fastest hands-on start is a project tutorial: each one comes from a kept real run through both front doors.</p>
+      <div class="actions"><a class="button primary" href="#build">Build and run</a><a class="button" href="../TUTORIALS.html">All tutorials</a><a class="button" href="modules.html">Module reference</a><a class="button" href="../CONFIGURATION.html">Configuration reference</a></div>
+    </header>
+
+    <section id="build">
+      <p class="eyebrow">1. BUILD AND RUN</p>
+      <h2>One Maven build, one runnable jar.</h2>
+      <p>JDK 17 or newer and Maven 3.9 or newer. The default build reaches no external network. Besides embedded Apache Derby and Apache ZooKeeper, it starts one engine process: a Kafka 3.9.1 broker on loopback for the Kafka Admin test.</p>
+<pre><code>mvn -B clean install                         # all modules, tests, license headers, coverage gates
+mvn -B -Preal-engines clean install          # adds the real-engine validation modules
+java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config my-aegis.yaml
+java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config my-aegis.yaml --stdio
+java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --verify-audit audit/aegis.jsonl
+java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --verify-audit audit/aegis.jsonl --checkpoints anchor/heads.jsonl
+echo -n "$TOKEN" | java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --hash-token
+java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --openapi-draft openapi.yaml draft.yaml --source-id orders --base-url https://orders.internal.example
+docker build -t aegis-gateway:2.0.0-SNAPSHOT .            # non-root image; plugins go in /opt/aegis/plugins
+helm install aegis charts/aegis -f my-values.yaml          # StatefulSet, one audit journal volume per replica</code></pre>
+      <p>For a Spark Connect source use <code>examples/aegis-gateway-spark/target/aegis-gateway-spark-2.0.0-SNAPSHOT-all.jar</code>, and for the Kafka Admin source <code>examples/aegis-gateway-kafka/target/</code>; the commands are the same. Exit codes of the command-line modes: 0 success, 1 broken audit chain or manifest, 2 usage error. A configuration error stops start-up with a message that names the key.</p>
+    </section>
+
+    <section id="configure">
+      <p class="eyebrow">2. WRITE A CONFIGURATION</p>
+      <h2>Start from the closest profile; unknown keys stop start-up.</h2>
+      <p>Shared profiles live in <code>adopters/configurations/&lt;name&gt;/&lt;name&gt;.yaml</code> (Spark, Spark Connect, Flink, Iceberg, Kafka, an A2A agent, an existing MCP server, and the teaching template <code>template/TEMPLATE.yaml</code>), and 25 adapter profiles in <code>adopters/configurations/adapters/</code>. The minimum file has <code>sources</code>, <code>policy</code>, <code>audit.file</code> and a host section. Every key is in the <a href="../CONFIGURATION.html">configuration reference</a>.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Step</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Classify every tool with <code>class</code></td><td>An unclassified tool is <code>DESTRUCTIVE</code>; <code>MUTATE</code> and <code>DESTRUCTIVE</code> need an independent per-call approval, and <code>DESTRUCTIVE</code> also a fresh dry-run receipt.</td></tr>
+          <tr><td>Name the resources each tool touches (<code>resources: [{type, pointer}]</code>)</td><td>Policy rules and scopes match typed resources, not raw arguments.</td></tr>
+          <tr><td>Give destructive tools a real preview (<code>dryRun</code>)</td><td>The backend's validate-only flag (<code>ARGUMENT</code>) or a read tool (<code>TOOL</code>) shows the approver the actual target.</td></tr>
+          <tr><td>List every backend host in <code>egress</code></td><td>Every HTTP destination, including URLs inside arguments, is checked; everything else is denied.</td></tr>
+          <tr><td>Start a REST API from its OpenAPI document</td><td><code>--openapi-draft</code> writes every operation as a <code>DESTRUCTIVE</code> tool with a deny-all policy and lists what it could not express; classify, trim and write policy before use.</td></tr>
+          <tr><td>Give the backend each user, not one account</td><td><code>credentials: {type: token-exchange, tokenEndpoint, clientIdEnv, clientSecretEnv, audience}</code> exchanges the caller's verified JWT per call (RFC 8693). Own host with JWT identity only; no fallback.</td></tr>
+          <tr><td>Pick a <code>secrets.source</code></td><td><code>env</code> (default), <code>file</code> (a mounted directory) or <code>vault</code> (one KV v2 secret). The names in the file stay the same.</td></tr>
+          <tr><td>Use <code>catalog.mode: REQUIRE_PINS</code> with signed pins</td><td>A <code>catalog.manifest</code> signed off the gateway host decides which tool definitions may run.</td></tr>
+          <tr><td>Add <code>audit.checkpoint</code></td><td>Exports the journal head to storage the journal writer cannot rewrite, so truncation and regeneration are detected.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="client">
+      <p class="eyebrow">3. CONNECT A CLIENT OR IDE</p>
+      <h2>Streamable HTTP, stdio, or through Knox.</h2>
+      <ul>
+        <li><strong>Own host, HTTP.</strong> <code>POST http://host:8080/mcp</code> with <code>Authorization: Bearer &lt;token&gt;</code>. 2026-07-28 clients send <code>MCP-Protocol-Version</code>, <code>Mcp-Method</code> and <code>Mcp-Name</code> headers that must match the body; 2025 clients call <code>initialize</code> and use the <code>Mcp-Session-Id</code> they receive.</li>
+        <li><strong>Own host, mutual TLS.</strong> With <code>host.tls.clientAuth: require</code> the client presents a certificate from the <code>clientCaFile</code> bundle; with <code>identity.type: spiffe</code> that certificate is an X.509-SVID mapped to a caller.</li>
+        <li><strong>stdio.</strong> Run the jar with <code>--stdio</code>; the caller is <code>host.stdio</code>.</li>
+        <li><strong>Knox.</strong> <code>https://&lt;knox&gt;/gateway/&lt;topology&gt;/aegis-mcp/v1/mcp</code>; Knox authenticates and checks the route ACL, Aegis governs the call.</li>
+        <li><strong>Controls</strong> go in <code>params._meta</code>: <code>io.github.vaquarkhan.aegis/dryRun</code>, <code>.../approvalToken</code>, <code>.../dryRunReceipt</code>, and optionally a W3C <code>traceparent</code>.</li>
+        <li><strong>Decisions</strong> come back in <code>result._meta["io.github.vaquarkhan.aegis/decision"]</code> for tools, and as JSON-RPC error -32010 with the deny code for resources, prompts and completion.</li>
+      </ul>
+      <p>Each project tutorial ships VS Code, Kiro and Cursor files for both doors in <code>adopters/tutorials/&lt;project&gt;/ide/</code>. The token you give the IDE decides who the assistant is to Aegis.</p>
+    </section>
+
+    <section id="operate">
+      <p class="eyebrow">4. OPERATE</p>
+      <h2>Approvals, definitions, audit and health.</h2>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Task</th><th>How</th></tr></thead>
+        <tbody>
+          <tr><td>Decide an approval</td><td><code>GET /aegis/v1/approvals</code>, then <code>POST /aegis/v1/approvals/{id}/approve</code> or <code>/deny</code> as an approver; the requester collects the single-use token with <code>GET /aegis/v1/approvals/{id}</code>. A requester cannot approve their own request.</td></tr>
+          <tr><td>Accept a changed definition</td><td><code>GET /aegis/v1/catalog</code>, then <code>POST /aegis/v1/catalog/{tool}/accept</code> with exactly one <code>Aegis-Definition-Digest</code> header copied from the reviewed entry. Signed and configured pins cannot be overridden this way.</td></tr>
+          <tr><td>Sign the catalog</td><td><code>--manifest-keygen &lt;private.pem&gt; &lt;public.pem&gt;</code>, <code>--manifest-create &lt;catalog-reply.json&gt; &lt;manifest.json&gt; &lt;gateway-name&gt;</code>, <code>--manifest-sign &lt;manifest.json&gt; &lt;private.pem&gt;</code>, <code>--manifest-verify &lt;manifest.json&gt; &lt;public.pem&gt; &lt;gateway-name&gt;</code>. Keep the private key off the gateway host.</td></tr>
+          <tr><td>Check the journal</td><td><code>--verify-audit &lt;journal&gt;</code>, or with <code>--checkpoints &lt;file&gt;</code> to also check every exported head. <code>GET /aegis/v1/audit/verify</code> answers <code>verified: true|false</code> to <code>access.auditVerifierGroups</code>.</td></tr>
+          <tr><td>Probe and measure</td><td><code>/healthz</code>; <code>/readyz</code> answers 503 until at least one tool is active; <code>/metrics</code> in Prometheus text, authenticated like <code>/mcp</code>.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="where">
+      <p class="eyebrow">5. WHERE TO CHANGE WHAT</p>
+      <h2>Governance lives in the engine; everything else carries it.</h2>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>You want to</th><th>Change</th><th>Do not</th></tr></thead>
+        <tbody>
+          <tr><td>add a control to every call</td><td><code>aegis-engine</code> (<code>GovernanceEngine</code>, <code>control/</code>) or a <code>GovernanceHook</code> plugin</td><td>put governance in a source or a front door</td></tr>
+          <tr><td>support a backend with a Java client</td><td>a module with a <code>ToolSourceFactory</code> (see <code>examples/aegis-spark-connect</code>)</td><td>add its client to engine, mcp or config</td></tr>
+          <tr><td>support a REST backend</td><td>a configuration file with <code>type: http</code></td><td>write Java</td></tr>
+          <tr><td>change protocol handling</td><td><code>aegis-mcp</code> (<code>McpServerHandler</code>, <code>HttpMcpClient</code>, <code>StdioMcpClient</code>)</td><td>trust a header that disagrees with the body</td></tr>
+          <tr><td>add a configuration key</td><td><code>GatewayFactory</code>, <code>CONFIGURATION.md</code> and a test</td><td>accept unknown keys</td></tr>
+          <tr><td>change own-host identity, OAuth metadata, routes or CORS</td><td><code>aegis-mcp-security</code> (<code>OwnServerSecuritySettings</code>, <code>OwnServerPerimeter</code>, <code>JwtVerifier</code>, <code>SpiffeIdentity</code>)</td><td>put transport code there; <code>aegis-gateway</code> owns the JDK HTTP binding</td></tr>
+          <tr><td>add a state or secret provider</td><td>a module with a <code>StateStoreFactory</code> (see <code>aegis-state-derby</code>) or a <code>SecretProviderFactory</code></td><td>weaken the atomic <code>StateStore</code> contract, or skip the egress check</td></tr>
+          <tr><td>change trace export</td><td><code>aegis-observability-otlp</code></td><td>let an exporter block or change a decision</td></tr>
+          <tr><td>change Knox integration</td><td><code>aegis-knox3-extension</code> only</td><td>bundle Knox, Jersey, Jackson or servlet classes</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="spi">
+      <p class="eyebrow">6. EXTENSION POINTS</p>
+      <h2>ServiceLoader interfaces and in-process seams.</h2>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Interface</th><th>Selected by</th><th>Contract</th></tr></thead>
+        <tbody>
+          <tr><td><code>config.spi.ToolSourceFactory</code></td><td><code>sources[].type</code></td><td>Contributes tool descriptors and executors only. <code>create(id, settings, context)</code> receives the secret lookup.</td></tr>
+          <tr><td><code>config.spi.GovernanceHookFactory</code></td><td><code>hooks[].type</code></td><td>Builds a <code>GovernanceHook</code>: deny before a call, rewrite or withhold after it.</td></tr>
+          <tr><td><code>config.spi.StateStoreFactory</code></td><td><code>state.type</code></td><td>Durable or shared state; must keep the atomic put-if-absent, take and rate semantics.</td></tr>
+          <tr><td><code>config.spi.SecretProviderFactory</code></td><td><code>secrets.source</code></td><td>Returns name to value, <code>null</code> for unknown names; receives the egress check and must use it for every destination.</td></tr>
+          <tr><td><code>engine.spi.CredentialProvider</code></td><td>embedding host (<code>BuildContext</code>)</td><td>Backend credentials per source, resolved at execution time, never before. Built in: static credentials and RFC 8693 token exchange, which reads the verified caller token from <code>engine.spi.SubjectToken</code> for the duration of the request only.</td></tr>
+          <tr><td><code>engine.spi.PolicyDecisionPoint</code></td><td>built in: rules and OPA</td><td>Allow or deny with a reason; all configured PDPs must allow.</td></tr>
+          <tr><td><code>engine.spi.DecisionListener</code></td><td>embedding host</td><td>Observes decisions (metrics, tracing); cannot change them.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Register a factory in <code>META-INF/services/io.github.vaquarkhan.aegis.config.spi.&lt;Interface&gt;</code>. Built-in names (<code>mcp</code>, <code>http</code>, <code>memory</code>, <code>env</code>, <code>file</code>, <code>vault</code>) always select the built-in implementation, and a hook factory that claims a built-in hook name stops start-up.</p>
+    </section>
+
+    <section id="source">
+      <p class="eyebrow">7. WRITE A SOURCE PLUGIN</p>
+      <h2>Capability only: descriptors and executors.</h2>
+<pre><code>public final class MyEngineToolSourceFactory implements ToolSourceFactory {
+    @Override public String type() { return "my-engine"; }
+
+    @Override public ToolSource create(String id, ConfigNode s) {
+        String host = s.requiredString("host");          // read every key you support;
+        int port = (int) s.integer("port", 9000);        // unknown keys fail start-up
+        return new MyEngineToolSource(id, host, port);   // discover() returns descriptors and executors
+    }
+}</code></pre>
+      <ul>
+        <li>Classification, resources, groups and previews come from the operator's <code>tools:</code> section, never from the source.</li>
+        <li><code>ToolExecutor.egressTargets</code> returns the backend endpoint (as <code>http(s)://host:port</code> for non-HTTP protocols) so the egress guard sees it.</li>
+        <li>Use <code>ExecutionContext.credentials()</code> and forward <code>ExecutionContext.traceparent()</code> when the protocol carries metadata; honour <code>timeoutMillis()</code>.</li>
+        <li>Caller mistakes are a <code>ToolResult</code> with <code>isError: true</code>; outages are an <code>ExecutionException</code> and count towards the circuit breaker.</li>
+        <li>Never build a query by concatenating an argument; validate identifiers and quote them.</li>
+        <li><code>aegis-source-a2a</code> is a small worked example with no dependencies beyond the Aegis modules: card discovery, an origin rule for the endpoint, bounded HTTP and reply mapping.</li>
+        <li>Return <code>true</code> from <code>dispatchesByUpstreamName()</code> only if one executor serves several tools by <code>upstreamToolName()</code>; that enables dry-run mode <code>TOOL</code>.</li>
+      </ul>
+    </section>
+
+    <section id="hook">
+      <p class="eyebrow">8. WRITE A GOVERNANCE HOOK</p>
+      <h2>In another process, or in-process.</h2>
+      <p>Without Java: configure <code>hooks: [{type: remote, settings: {url: ...}}]</code> and answer <code>{"allow": true|false}</code> over HTTP; the URL passes the egress check at start-up. In-process: implement <code>GovernanceHook</code> and ship a <code>GovernanceHookFactory</code> (<code>aegis-mcp-guardrails</code> is a worked example). For the remote path, <code>adopters/hooks</code> has three reference services in Python's standard library (PII guard, secrets guard, change window) with unit tests and a live run against the gateway jar.</p>
+      <ul>
+        <li><code>before(Context)</code> may deny with <code>POLICY_DENIED</code>, <code>INVALID_INPUT</code> or <code>PROMPT_INJECTION</code>.</li>
+        <li><code>afterTool(Context, ToolResult)</code> and <code>afterContent(Context, Map)</code> may rewrite or withhold a result; throw <code>HookDenied(code, reason)</code> to withhold with a reason that reaches the audit record.</li>
+        <li>Operators narrow a hook with <code>operations</code>, <code>methods</code>, <code>groups</code> and <code>sources</code>, and choose <code>ENFORCE</code> or <code>AUDIT</code>. In <code>ENFORCE</code> a hook that throws denies.</li>
+      </ul>
+    </section>
+
+    <section id="tests">
+      <p class="eyebrow">9. TESTS AND EVIDENCE</p>
+      <h2>A behavior change comes with a test that fails without it.</h2>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Build</th><th>What runs</th><th>Needs</th></tr></thead>
+        <tbody>
+          <tr><td>default</td><td>Every module's unit and integration tests, RAT, per-module JaCoCo floors, the Kafka Admin test against a real KRaft broker, the SPIFFE test over real mutual TLS</td><td>JDK and Maven</td></tr>
+          <tr><td><code>-Preal-engines</code></td><td>Real engines through the own host and, with <code>AEGIS_KNOX_HOME</code>, a stock Knox 3.0.0</td><td>Engine-specific variables listed in each example README</td></tr>
+          <tr><td><code>-Ppostgres-integration</code></td><td><code>PostgresStateStoreIT</code>, <code>TwoGatewayProcessesPostgresIT</code></td><td><code>AEGIS_POSTGRES_URL</code>, <code>_USER</code>, <code>_PASSWORD</code></td></tr>
+          <tr><td><code>-Pvault-integration</code></td><td><code>VaultKvSecretProviderIT</code></td><td><code>AEGIS_VAULT_ADDR</code>, <code>AEGIS_VAULT_TOKEN</code></td></tr>
+          <tr><td><code>adopters/hooks</code> scripts</td><td><code>python -m unittest test_hooks</code>; <code>python e2e_gateway.py --jar ...-all.jar</code> against the running gateway (CI runs both)</td><td>Python 3 and the built jar</td></tr>
+          <tr><td><code>charts/aegis/ci</code></td><td><code>helm lint</code>, <code>helm template</code> with kubeconform, <code>start_rendered.py</code>; CI also builds and starts the image</td><td>Helm, kubeconform, Python with PyYAML</td></tr>
+          <tr><td><code>-Prelease</code></td><td>The default build plus release checks and a CycloneDX SBOM</td><td>JDK and Maven</td></tr>
+        </tbody>
+      </table></div>
+      <p class="boundary"><strong>Rule.</strong> A test whose real target is not configured reports skipped, never passed. Protocol fixtures (<code>TestMcpServer</code>) and the adapter contract harness prove protocol and route behavior, not compatibility with a named product. What each run established is in <a href="../VALIDATION.html">VALIDATION</a> and the <a href="../evidence/CLAIMS-MATRIX.html">claims matrix</a>.</p>
+    </section>
+
+    <section id="tutorials">
+      <p class="eyebrow">10. TUTORIALS</p>
+      <h2>One per project with a kept real run.</h2>
+      <p>The <a href="../TUTORIALS.html">tutorial index</a> lists the deep-dive tutorials (Spark and Iceberg, Spark and Spark Connect, Iceberg, Kafka, Flink) and one IDE-ready tutorial per verified project, built by <code>tools/build-project-tutorials.py</code> from that project's kept two-door run. Projects with a configuration but no real run have no tutorial.</p>
+    </section>
+
+    <section id="conventions" class="band">
+      <p class="eyebrow">11. CONVENTIONS</p>
+      <h2>From AGENTS.md.</h2>
+      <ul>
+        <li>Fail closed: if a control cannot decide, deny.</li>
+        <li>Reuse the stable deny codes in <code>DENY-CODES.md</code>; new ones need review.</li>
+        <li>Apache License 2.0 header on every file that can carry one (RAT runs in the build).</li>
+        <li>Keep the engine, mcp and config modules free of third-party runtime dependencies.</li>
+        <li>Humans commit; agents propose. Disclose AI assistance in the pull request.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

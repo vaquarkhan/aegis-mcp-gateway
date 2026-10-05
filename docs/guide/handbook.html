@@ -1,0 +1,133 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A task-focused handbook for deploying and operating Aegis Gateway 2.0.">
+  <title>Aegis Gateway handbook</title>
+  <link rel="stylesheet" href="handbook.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Handbook navigation">
+    <a class="brand" href="../index.html">Aegis <span>Gateway 2.0</span></a>
+    <nav>
+      <a href="#start">Start here</a>
+      <a href="#why-mcp">Why MCP governance</a>
+      <a href="#paths">Choose a path</a>
+      <a href="#model">Operating model</a>
+      <a href="#owasp">OWASP MCP Top 10</a>
+      <a href="#own-host">Own-host deployment</a>
+      <a href="#knox">Optional Knox integration</a>
+      <a href="#evidence">Evidence and examples</a>
+      <a href="#operate">Operate safely</a>
+      <a href="#references">Reference map</a>
+      <a href="modules.html">Module reference</a>
+    </nav>
+    <p class="sidebar-note">Aegis turns MCP requests into governed, auditable actions on real systems.</p>
+  </aside>
+  <main>
+    <header id="start" class="hero">
+      <p class="eyebrow">USER HANDBOOK</p>
+      <h1>Put governance between agents and real systems.</h1>
+      <p class="lead">Aegis is the MCP-first governance platform for real-system actions. Its own host and optional Apache Knox extension are deployment choices; the Aegis engine always evaluates action class, resource scope, policy, approvals, receipts, and audit intent before a backend call.</p>
+      <div class="actions"><a class="button primary" href="#why-mcp">Why governance</a><a class="button" href="#paths">Choose your path</a><a class="button" href="../VALIDATION.html">Read current evidence</a></div>
+    </header>
+
+    <section id="why-mcp">
+      <p class="eyebrow">THE PROBLEM</p>
+      <h2>MCP makes tools easy to call. Governance decides whether a call may execute.</h2>
+      <p>MCP is a common protocol for clients such as agents, IDEs, and services to discover and call structured tools. That turns a data platform, cluster, catalog, or business API into an agent-callable control plane. Route security can protect <code>POST /mcp</code>, but it cannot by itself decide whether a specific tool, resource, and argument set is appropriate.</p>
+      <img class="explainer-image" src="../assets/mcp-governance-problem-solution.svg" alt="Untrusted context can influence an agent; Aegis applies a fixed governance gate before an approved backend action.">
+      <div class="two-column"><div><h3>Without semantic governance</h3><p>A model can be influenced by untrusted content while a broad service credential can carry out its tool request. The backend and a route ACL see only part of that decision.</p></div><div><h3>With Aegis</h3><p>Aegis evaluates the tool class, typed resource, policy, egress, approval, receipt, and audit intent before it resolves the backend credential.</p></div></div>
+    </section>
+
+    <section id="paths">
+      <p class="eyebrow">CHOOSE YOUR PATH</p>
+      <h2>What are you trying to do?</h2>
+      <div class="cards">
+        <article><h3>Connect an existing MCP server</h3><p>Keep the server’s capability and schemas; add Aegis’s governance at the MCP boundary.</p><a href="../ADOPTION-GUIDE.html#step-1a-govern-an-existing-mcp-server">Use the MCP integration guide</a></article>
+        <article><h3>Govern a REST API</h3><p>Declare methods, paths, schemas, resources, and backend success semantics as `type: http` tools.</p><a href="../CONFIGURATION.html#type-http">Read the HTTP configuration reference</a></article>
+        <article><h3>Adopt a typed source</h3><p>Use JDBC, ZooKeeper, Kafka Admin, Spark Connect, A2A, or a custom Java plugin.</p><a href="../PLUG-AND-PLAY.html">Explore typed integrations</a></article>
+        <article><h3>Start from an OpenAPI document</h3><p>Generate a draft with <code>--openapi-draft</code>: every tool <code>DESTRUCTIVE</code> and a deny-all policy until a person reviews it.</p><a href="../CONFIGURATION.html#a-draft-from-an-openapi-document">Read the draft command</a></article>
+        <article><h3>Offer an A2A agent as a tool</h3><p>One A2A 1.0 agent becomes one governed tool; Aegis is an A2A client, not an A2A server.</p><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/adopters/configurations/a2a">Open the A2A profile</a></article>
+        <article><h3>Start with an Apache engine</h3><p>Choose a retained two-front-door example, or a clearly labelled contract-only profile.</p><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/examples/adopters">Open the adopter catalog</a></article>
+      </div>
+    </section>
+
+    <section id="model" class="band">
+      <p class="eyebrow">OPERATING MODEL</p>
+      <h2>Aegis owns one MCP decision path; hosts are deployment choices.</h2>
+      <p>Aegis owns the MCP action decision in every deployment. Its own host establishes identity with Aegis configuration. An optional Knox integration supplies external identity and route admission from an existing topology. The Aegis engine then evaluates exposure, input and resource scope, policy, egress, rate/budget, breaker, screening, approval, receipt, audit intent, and execution in a fixed order.</p>
+      <img class="explainer-image" src="../assets/aegis-mcp-first-host-boundaries.svg" alt="Aegis is the MCP-first governance core, with its own host and optional Knox adapter as deployment choices.">
+      <img src="../assets/aegis-architecture.svg" alt="Aegis own-host and Apache Knox integration choices reach one shared governance core before configured backend sources.">
+      <div class="steps">
+        <div><strong>READ</strong><span>Standard governance controls.</span></div>
+        <div><strong>MUTATE</strong><span>Independent per-call approval by default.</span></div>
+        <div><strong>DESTRUCTIVE</strong><span>Approval plus a fresh bound dry-run receipt.</span></div>
+      </div>
+      <p class="callout">Aegis complements backend authorization and network policy; it does not replace either. Use least-privilege backend credentials regardless of tool class.</p>
+    </section>
+
+    <section id="owasp">
+      <p class="eyebrow">THREAT COVERAGE</p>
+      <h2>OWASP MCP Top 10: coverage is not a claim of elimination.</h2>
+      <p>The OWASP MCP Top 10 is a threat checklist for systems that expose AI-callable tools. Aegis maps each item to a gateway control and states what remains an operator, identity-provider, backend, or network responsibility.</p>
+      <img class="explainer-image" src="../assets/owasp-mcp-top10-coverage.svg" alt="Aegis coverage of all ten OWASP MCP risk areas, grouped as strong, partial, limited, or external.">
+      <div class="owasp-grid"><div class="strong"><strong>MCP01 to MCP03</strong>Strong gateway controls for tokens, privilege scope, and changed tool definitions; provided the first pin is trusted.</div><div><strong>MCP04 and MCP05</strong>Partial supply-chain and command-execution coverage; release controls and runtime sandboxing remain outside Aegis.</div><div class="limited"><strong>MCP06</strong>Prompt-injection screening reduces impact but is heuristic. Typed scope and independent approval are the durable safeguards.</div><div class="strong"><strong>MCP07 and MCP08</strong>Strong authentication/authorization and local audit evidence controls; identity operations and off-host monitoring remain deployment work.</div><div class="external"><strong>MCP09</strong>Shadow servers cannot be discovered or prevented by a gateway that is not in their network path.</div><div><strong>MCP10</strong>Caller-filtered discovery and guarded content help, but clients can retain or disclose received data.</div></div>
+      <p><a href="../SECURITY.html#mcp-threat-coverage">Read the full S1 to S31 security mapping, test evidence, and residual responsibilities.</a></p>
+    </section>
+
+    <section id="own-host">
+      <p class="eyebrow">DEPLOYMENT ONE</p>
+      <h2>Run Aegis as its own host.</h2>
+      <p>Use the shaded executable for an HTTP(S) or stdio MCP endpoint, or the container image and Helm chart built from the repository (<code>Dockerfile</code>, <code>charts/aegis</code>). Configure host identity, routes, sources, policy, audit, and state explicitly.</p>
+      <pre><code>java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config aegis.yaml</code></pre>
+      <p><a href="../CONFIGURATION.html">Open the configuration reference</a> for TLS, JWT/static identity, OAuth metadata, CORS, scopes, egress, and source settings. Use the fixed-journal audit verification endpoint only through its dedicated verifier group.</p>
+    </section>
+
+    <section id="knox">
+      <p class="eyebrow">DEPLOYMENT TWO</p>
+      <h2>Optional: run Aegis in Apache Knox 3.0.</h2>
+      <p>Use this integration only when Knox already supplies your HTTP perimeter. Knox owns edge authentication, identity assertion, and route admission. Aegis receives the Knox subject, parses the MCP body, and applies its standard per-tool governance decision.</p>
+      <ol><li>Build Aegis with JDK 17+ and Maven 3.9+.</li><li>Copy the documented jars or the Knox bundle to Knox <code>ext/</code>.</li><li>Add <code>AEGIS_MCP</code> to a topology with identity assertion and authorization.</li><li>Point the service at the Aegis configuration and restart Knox.</li></ol>
+      <p><a href="../KNOX-EXTENSION.html#install">Follow the exact Knox installation steps</a>. Add only the state and plugin jars required by your configuration.</p>
+    </section>
+
+    <section id="evidence" class="band">
+      <p class="eyebrow">EVIDENCE BEFORE CLAIMS</p>
+      <h2>Prove the exact path you plan to operate.</h2>
+      <p>The default build establishes deterministic governance, configuration, documentation-contract, and embedded-real converter evidence. A retained run against the named target version establishes target verification for an adopter profile.</p>
+      <div class="two-column"><div><h3>Verified examples</h3><p>Fifteen profiles have retained own-host and Knox results, configuration, topology, engine files, and audit journals.</p><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/examples/adopters">Browse verified examples</a></div><div><h3>Contract-only profiles</h3><p>Sixteen profiles load and are governance-tested, and have no engine run recorded.</p><a href="../VALIDATION.html">Read validation boundaries</a></div></div>
+      <p>New to Aegis? The <a href="../TUTORIAL-SPARK-ICEBERG.html">Spark and Iceberg tutorial</a> takes you from a tiny dataset to a governed change from your IDE, with and without Knox. Then pick the real walkthrough closest to your deployment from the <a href="../TUTORIALS.html">tutorial index</a>: <a href="../TUTORIAL-KAFKA-AND-KAFKA-CONNECT.html">Kafka</a>, <a href="../TUTORIAL-SPARK-AND-SPARK-CONNECT.html">Spark</a>, <a href="../TUTORIAL-ICEBERG.html">Iceberg</a>, or <a href="../TUTORIAL-FLINK.html">Flink</a>.</p>
+    </section>
+
+    <section id="operate">
+      <p class="eyebrow">OPERATIONAL CHECKLIST</p>
+      <h2>Operate safely from day one.</h2>
+      <ul><li>Keep backend credentials least-privileged and outside configuration files; where the backend should see each user, use RFC 8693 token exchange (<code>credentials.type: token-exchange</code>).</li><li>Start custom controls from the reference PII, secrets and change-window hook services in <code>adopters/hooks</code>.</li><li>Allow only known backend egress destinations and enforce network policy below Aegis.</li><li>Separate approvers from requesters; delegated callers cannot approve.</li><li>Protect audit journals and durable state as operational records.</li><li>Validate the exact backend version and front door you will run.</li><li>Read documented limitations before treating a control as a complete defence.</li></ul>
+      <a class="button primary" href="../SECURITY.html">Review security properties and limits</a>
+    </section>
+
+    <section id="references">
+      <p class="eyebrow">REFERENCE MAP</p>
+      <h2>Continue by role.</h2>
+      <div class="reference-table"><a href="../ADOPTION-GUIDE.html"><strong>Application teams</strong><span>Adoption guide</span></a><a href="../CONFIGURATION.html"><strong>Operators</strong><span>Configuration reference</span></a><a href="../SECURITY.html"><strong>Security reviewers</strong><span>Security model</span></a><a href="developer.html"><strong>Developers and plugin authors</strong><span>Developer guide</span></a><a href="modules.html"><strong>Every module</strong><span>Module reference</span></a><a href="../ROADMAP.html"><strong>Project reviewers</strong><span>Roadmap and gaps</span></a><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/docs/HANDBOOK.md"><strong>Full handbook</strong><span>Architecture, modules, YAML, and operations</span></a></div>
+    </section>
+  </main>
+</body>
+</html>

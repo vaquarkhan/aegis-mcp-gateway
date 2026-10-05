@@ -1,0 +1,97 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Solr: governed MCP tools over the Apache Solr HTTP API, configuration only.
+# Solr admin and query APIs: GET /admin/info/system, GET /admin/collections?action=LIST,
+# GET /{collection}/select, GET /admin/collections?action=DELETE.
+# The Collections API is GET-based, including DELETE actions; the tool class, not the HTTP
+# method, is what Aegis governs.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-solr (taxonomy: search).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-solr
+
+access:
+  writeGroups: [solr-operators]
+  approverGroups: [solr-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [solr-users, solr-operators], classes: [READ]}
+    - {id: operate, groups: [solr-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-solr.jsonl
+
+sources:
+  - id: solr
+    type: http
+    baseUrl: http://127.0.0.1:58703/solr
+    tools:
+      - name: solr_system_info
+        description: "JVM, Lucene and system information."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/admin/info/system", query: {wt: "json"}}
+
+      - name: solr_list_collections
+        description: "List collections."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/admin/collections", query: {action: "LIST", wt: "json"}}
+
+      - name: solr_query
+        description: "Run a query against one collection."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {collection: {type: string, maxLength: 256}, q: {type: string, maxLength: 256}}
+          required: [collection, q]
+          additionalProperties: false
+        request: {method: GET, path: "/{collection}/select", query: {q: "{q}", wt: "json"}}
+        resources: [{type: "solr:collection", pointer: /collection}]
+
+      - name: solr_delete_collection
+        description: "Delete one collection and its index."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {collection: {type: string, maxLength: 256}}
+          required: [collection]
+          additionalProperties: false
+        request: {method: GET, path: "/admin/collections", query: {action: "DELETE", name: "{collection}", wt: "json"}}
+        resources: [{type: "solr:collection", pointer: /collection}]
+
+# Appended for the own-host front door: loopback listener, static tokens per persona.
+host:
+  listen: {host: 127.0.0.1, port: 0}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_READER, actor: guest, groups: [solr-users]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OPERATOR, actor: sam, groups: [solr-operators]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_APPROVER, actor: tom, groups: [solr-approvers]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OUTSIDER, actor: admin, groups: []}

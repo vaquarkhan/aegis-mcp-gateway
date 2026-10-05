@@ -1,0 +1,72 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Aegis Gateway 2.0 governs MCP calls before they reach real systems.">
+  <title>Aegis Gateway 2.0</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <header>
+    <h1>Aegis Gateway 2.0</h1>
+    <p>A configuration-driven governance layer for MCP calls. It gives agents one controlled route to real systems, with typed resources, approvals, destructive-action receipts, and locally verifiable audit evidence.</p>
+    <p><a class="button-link" href="guide/handbook.html">Open the user handbook</a></p>
+    <img class="hero-image" src="assets/aegis-architecture.svg" alt="Aegis own-host and Apache Knox integration choices share a fixed governance core before configured backend sources.">
+  </header>
+  <main>
+    <section class="evidence">
+      <strong>Evidence is part of the product.</strong> Current real-engine runs, configuration/contract coverage, historical results, and pending work are distinct states. A target is not called verified until a target-version run is retained. Read the <a href="VALIDATION.html">validation report</a>, <a href="evidence/CLAIMS-MATRIX.html">claims matrix</a>, and <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/examples/adopters">repository adopter catalog</a> before making a release decision.
+    </section>
+
+    <h2>Start with your task</h2>
+    <div class="grid">
+      <article class="card"><h3><a href="guide/handbook.html">User handbook</a></h3><p>A concise route map for application teams, operators, security reviewers, and plugin authors.</p></article>
+      <article class="card"><h3><a href="guide/modules.html">Module reference</a></h3><p>What each Maven module does, every configuration key it reads, and the security controls it enforces.</p></article>
+      <article class="card"><h3><a href="TUTORIAL-SPARK-ICEBERG.html">Tutorial: Spark and Iceberg from your IDE</a></h3><p>A tiny Iceberg dataset, Spark Connect, and your IDE's agent governed by Aegis, with and without Knox. <a href="TUTORIALS.html">All tutorials</a>.</p></article>
+      <article class="card"><h3><a href="ADOPTION-GUIDE.html">Adopt Aegis</a></h3><p>Connect an MCP server, declare REST tools, or choose a typed source without changing the governed project.</p></article>
+      <article class="card"><h3><a href="KNOX-EXTENSION.html">Apache Knox host integration</a></h3><p>Connect Aegis semantic governance to an existing Knox topology for perimeter, identity, and route admission.</p></article>
+      <article class="card"><h3><a href="SECURITY.html">Review security</a></h3><p>Read enforced properties, documented limits, and the vulnerability reporting process.</p></article>
+      <article class="card"><h3><a href="VALIDATION.html">Verify evidence</a></h3><p>See the current regression result, test boundaries, and real-engine verification status.</p></article>
+      <article class="card"><h3><a href="guide/developer.html">Developer guide</a></h3><p>Build, configure, connect an IDE, operate approvals and audit, and write sources, hooks, state and secret providers while preserving the engine’s fixed governance boundary.</p></article>
+    </div>
+
+    <h2>How a destructive action becomes executable</h2>
+    <img class="hero-image" src="assets/aegis-governance-flow.png" alt="Evaluate, preview, independently approve, commit audit intent and execute. Any denial prevents the backend call.">
+
+    <h2>Delivery evidence at a glance</h2>
+    <table>
+      <thead><tr><th>Surface</th><th>Current evidence</th><th>Where to go next</th></tr></thead>
+      <tbody>
+        <tr><td>Core governance</td><td>Latest local release-profile regression: 364 passing tests across 20 modules, 0 skipped, and a clean Apache RAT check.</td><td><a href="VALIDATION.html">Validation report</a></td></tr>
+        <tr><td>Adapter catalog</td><td>25 deployable adapter configurations and 115 tools are parsed and governance-tested; external compatibility remains a separate target-version claim.</td><td><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/examples/adopters">Repository adopter catalog</a></td></tr>
+        <tr><td>Real-engine evidence</td><td>15 profiles and the Spark with Iceberg scenario were rerun through the own host and Apache Knox on the current tree on 2026-10-03, each with an IDE-ready tutorial. Sixteen additional profiles are explicitly contract-supported, not real-engine verified.</td><td><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/examples/adopters">Evidence status</a></td></tr>
+        <tr><td>Added 2026-10-03</td><td>Per-caller backend credentials by RFC 8693 token exchange (run against Keycloak 26.8.0), A2A agents as governed tools (run against an a2a-sdk 1.2.1 agent through both front doors), an OpenAPI-to-draft command, three reference hook services, and a container image and Helm chart (chart checked and its configuration started; the image is built in CI only).</td><td><a href="VALIDATION.html#runs-added-on-2026-10-03">Runs added on 2026-10-03</a></td></tr>
+        <tr><td>Knox extension</td><td>Knox 3.0.0 API-level tests, and a 2026-10-05 run of the current bundle inside a stock Knox 3.0.0 gateway against real ZooKeeper. Knox 3.1 needs a Jakarta build. An operator must validate their Knox topology and plugin set.</td><td><a href="KNOX-EXTENSION.html">Knox extension guide</a></td></tr>
+      </tbody>
+    </table>
+
+    <section class="evidence warning">
+      <strong>Release rule:</strong> A successful deterministic or contract test does not establish target compatibility. Promote a profile only after its target-version run and evidence are retained.
+    </section>
+  </main>
+  <footer>
+    <strong>Aegis Gateway 2.0</strong> · Apache-2.0 · <a href="guide/handbook.html">User handbook</a>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,183 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Kafka, two ways in one file:
+#  1. Kafka Connect REST API (part of Apache Kafka): GET /connectors, GET /connectors/{name}/status,
+#     PUT /connectors/{name}/pause, DELETE /connectors/{name}. Configuration only.
+#  2. Topics through the Kafka Admin client, via the kafka-admin plugin source (ServiceLoader), for
+#     brokers that have no REST layer. Needs kafka-clients and aegis-examples on the classpath.
+gateway:
+  name: aegis-kafka
+
+access:
+  writeGroups: [kafka-operators]
+  approverGroups: [kafka-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: read, groups: [kafka-users, kafka-operators], classes: [READ]}
+    - {id: operate, groups: [kafka-operators], classes: [MUTATE, DESTRUCTIVE]}
+    - {id: protect-internal, effect: DENY, groups: ["*"], resources: ["kafka:topic:__*", "kafka:topic:_*"]}
+
+egress:
+  allowCidrs: [10.0.0.0/8]
+
+audit:
+  file: audit/aegis-kafka.jsonl
+
+sources:
+  - id: kafka-connect
+    type: http
+    baseUrl: http://kafka-connect:8083
+    tools:
+      - name: connect_list_connectors
+        description: List Kafka Connect connectors.
+        class: READ
+        request: {method: GET, path: /connectors}
+
+      - name: connect_connector_status
+        description: Status of one connector and its tasks.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: GET, path: "/connectors/{name}/status"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+      - name: connect_connector_config
+        description: Current configuration of one connector.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: GET, path: "/connectors/{name}/config"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+      - name: connect_pause_connector
+        description: Pause a connector (resumable).
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: PUT, path: "/connectors/{name}/pause"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+      - name: connect_resume_connector
+        description: Resume a paused connector.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: PUT, path: "/connectors/{name}/resume"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+      - name: connect_restart_connector
+        description: Restart a connector and optionally its tasks.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties:
+            name: {type: string, maxLength: 249}
+            includeTasks: {type: boolean}
+            onlyFailed: {type: boolean}
+          required: [name]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/connectors/{name}/restart"
+          query: {includeTasks: "{includeTasks}", onlyFailed: "{onlyFailed}"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+      - name: connect_delete_connector
+        description: Delete a connector and its configuration.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: DELETE, path: "/connectors/{name}"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+  # Confluent Schema Registry API, which Kafka deployments almost always run next to Connect. Separate
+  # source because it is a different service on a different port with its own credential.
+  - id: schema-registry
+    type: http
+    baseUrl: http://schema-registry:8081
+    tools:
+      - name: schema_list_subjects
+        description: List schema subjects in the registry.
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /subjects}
+
+      - name: schema_latest_version
+        description: Latest registered schema for one subject.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {subject: {type: string, maxLength: 512}}
+          required: [subject]
+          additionalProperties: false
+        request: {method: GET, path: "/subjects/{subject}/versions/latest"}
+        resources: [{type: "kafka:subject", pointer: /subject}]
+
+      - name: schema_check_compatibility
+        description: Test whether a schema would be compatible with a subject. Registers nothing.
+        class: READ
+        inputSchema:
+          type: object
+          properties:
+            subject: {type: string, maxLength: 512}
+            schema: {type: string, maxLength: 262144}
+          required: [subject, schema]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/compatibility/subjects/{subject}/versions/latest"
+          body: {"schema": "{schema}"}
+        resources: [{type: "kafka:subject", pointer: /subject}]
+
+  - id: kafka-admin
+    type: kafka-admin
+    unlistedTools: HIDE
+    settings:
+      bootstrapServers: kafka-1:9092
+      requestTimeoutMs: 15000
+    tools:
+      kafka_list_topics: {class: READ}
+      kafka_describe_cluster: {class: READ}
+      kafka_describe_topic:
+        class: READ
+        resources: [{type: "kafka:topic", pointer: /topic}]
+      kafka_describe_topic_configs:
+        class: READ
+        resources: [{type: "kafka:topic", pointer: /topic}]
+      kafka_create_topic:
+        class: MUTATE
+        resources: [{type: "kafka:topic", pointer: /topic}]
+        dryRun: {mode: ARGUMENT, argument: validateOnly}   # Kafka's own CreateTopics validate-only
+      kafka_delete_topic:
+        class: DESTRUCTIVE
+        resources: [{type: "kafka:topic", pointer: /topic}]

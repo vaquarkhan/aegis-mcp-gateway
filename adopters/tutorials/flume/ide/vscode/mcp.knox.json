@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "knox-basic",
+      "password": true,
+      "description": "Base64 of a user and password from the local Knox demo LDAP; see conf/users.ldif in that Knox installation"
+    }
+  ],
+  "servers": {
+    "aegis-flume-knox": {
+      "type": "http",
+      "url": "https://localhost:8443/gateway/aegis-flume/aegis-mcp/v1/mcp",
+      "headers": {
+        "Authorization": "Basic ${input:knox-basic}"
+      }
+    }
+  }
+}

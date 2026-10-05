@@ -1,0 +1,171 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+# Aegis 0.1 and 2.0 coverage contract
+
+This is a behavioral comparison, not a module-count comparison. It answers three questions:
+
+1. Does every Aegis 0.1 tool have an explicit 2.0 verdict?
+2. Did any tool become less guarded?
+3. What is the actual current 2.0 shipped surface?
+
+The executable authority is `Coverage01VsTwoTest`. It reads the frozen 0.1 inventory extracted from the
+tracked 0.1 `tools.yaml` resources and the 2.0 configuration files. A changed count or a 0.1 tool with
+no verdict fails the build. This page explains that executable contract.
+
+## The current numbers
+
+| Measure | Aegis 0.1 | Aegis 2.0 | Enforcement |
+| --- | ---: | ---: | --- |
+| Engine surfaces in the frozen inventory | 33 | 28 implemented, 5 explicitly absent | frozen inventory and verdict test |
+| Implemented tools inherited from or replacing a 0.1 capability | 156 | **152** | exact `Coverage01VsTwoTest` verdict accounting |
+| New 2.0 Kafka Admin tools | 0 | 2 | cluster and topic-configuration reads through the real AdminClient |
+| New Burr tools | 0 | 10 | Apache Burr (incubating) is a 2.0 addition, not a 0.1 successor |
+| Configuration files participating in the comparison | 33 Java adapter modules | 25 deployable adapter configurations plus 4 reference configs | parsed from YAML |
+| Shipped tools participating in the comparison | 156 | **164** | exact `Coverage01VsTwoTest` assertion |
+| Adapter configurations | n/a | **25 deployable adapter configurations and 115 tools** | exact `AdapterConfigsTest` assertion |
+| Implemented tools that became less guarded | n/a | **0** | class-order assertion |
+
+The 152 implemented successor tools are separately accounted for by the frozen verdict test. The 164 shipped
+comparison tools add Burr's ten new tools and two new Kafka Admin read tools: cluster description and topic
+configuration description. Aegis 2.0 is deliberately not called a numeric superset: removing 18 tools whose
+backend routes did not exist is a correctness improvement, even though it reduces the inherited successor count
+below 0.1's 156.
+
+## Side-by-side: 0.1 engine surface versus Aegis 2.0
+
+The frozen 0.1 inventory is
+[`aegis-0.1-tool-inventory.tsv`](../examples/aegis-examples/src/test/resources/aegis-0.1-tool-inventory.tsv)
+(one row per tool, 33 engines, 156 tools). Aegis 2.0 ships **25 deployable adapter configurations**
+under `adopters/configurations/adapters/<engine>/`, plus shared reference profiles (Flink, Iceberg, Kafka,
+Spark) and typed sources (JDBC, ZooKeeper, Kafka Admin, Spark Connect, A2A, and others). The table below
+is a per-engine view of the same contract `Coverage01VsTwoTest` enforces; regenerate it with
+`python tools/coverage-engine-table.py` when the inventory or adapter layout changes.
+
+| 0.1 engine | 0.1 tools | Aegis 2.0 deployable adapter | Notes |
+| --- | ---: | --- | --- |
+| `activemq` | 3 | yes | |
+| `airflow` | 5 | yes | |
+| `arrow` | 3 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
+| `atlas` | 4 | yes | |
+| `beam` | 4 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
+| `bookkeeper` | 4 | yes | |
+| `calcite` | 3 | yes | backend changed to Avatica JDBC (`aegis-source-jdbc`) |
+| `cassandra` | 4 | yes | |
+| `couchdb` | 4 | yes | |
+| `doris` | 3 | yes | |
+| `druid` | 4 | yes | |
+| `flink` | 19 | shared profile | |
+| `flume` | 2 | yes | |
+| `hadoop` | 4 | yes | |
+| `hbase` | 4 | yes | |
+| `hive` | 4 | yes | `run_sql_readonly` successor is `jdbc_run_query` |
+| `hudi` | 4 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
+| `iceberg` | 12 | shared profile | |
+| `ignite` | 4 | yes | |
+| `impala` | 3 | yes | |
+| `kafka` | 8 | shared profile | plus 2 new Admin read tools in 2.0 |
+| `kudu` | 3 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
+| `nifi` | 5 | yes | |
+| `ozone` | 4 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
+| `paimon` | 4 | yes | |
+| `pinot` | 4 | yes | |
+| `pulsar` | 6 | yes | |
+| `ranger` | 4 | yes | |
+| `solr` | 4 | yes | |
+| `spark` | 5 | shared profile | submission/kill backend changed to Spark standalone REST |
+| `storm` | 4 | yes | |
+| `superset` | 4 | yes | |
+| `zookeeper` | 4 | yes | data-tree tools use `aegis-source-zookeeper`, not contrib REST |
+| `burr` | 0 | yes | 2.0-only: 10 tools (Apache Burr incubating) |
+
+For every 0.1 tool row, the test assigns exactly one verdict (`kept`, `renamed`, `backend changed`, or
+`deliberately absent`). The narrative tables in the sections below list the non-`kept` cases only.
+
+## The 156 verdicts
+
+| Verdict | Count | Meaning |
+| --- | ---: | --- |
+| kept | 111 | The 2.0 config exposes the same capability, normally with an engine prefix to avoid collisions. |
+| renamed | 4 | The capability is present under a more precise 2.0 name. |
+| backend changed | 7 | The capability is present but now reaches the real product through a different supported surface. |
+| deliberately absent or roadmap | 34 | The tool is not shipped in 2.0; the reason is explicit and tested. |
+| **total** | **156** | Every frozen 0.1 row has exactly one verdict. |
+
+## Named capability changes
+
+### Renamed
+
+| Aegis 0.1 | Aegis 2.0 | Reason |
+| --- | --- | --- |
+| `iceberg/get_table` | `iceberg_load_table` | The Iceberg REST Catalog API calls the operation `loadTable`. |
+| `iceberg/alter_table` | `iceberg_set_table_properties` | The implementation changes table properties, so the name says what it changes. |
+| `kafka/query_schema_registry` | `schema_list_subjects`, `schema_latest_version`, `schema_check_compatibility` | Three endpoint and schema shapes replace one broad tool. |
+| `hive/run_sql_readonly` | `jdbc_run_query` | HiveServer2 is reached through its JDBC driver, not the former REST path, which HiveServer2 does not serve. |
+
+### Backend changed
+
+| Aegis 0.1 | 0.1 surface | Aegis 2.0 | 2.0 surface |
+| --- | --- | --- | --- |
+| `spark/submit_batch` | Apache Livy batch API | `spark_submit_batch` | Spark standalone Master REST submission API |
+| `spark/kill_application` | Apache Livy or YARN | `spark_kill_submission` | Spark standalone Master REST submission API |
+| `calcite/get_status` | an operator-built HTTP root | `jdbc_server_info` | Avatica JDBC metadata |
+| `calcite/explain_sql` | an operator-built `POST /explain` facade | `jdbc_run_query` | Avatica JDBC, with `EXPLAIN` accepted by the read-only guard |
+| `calcite/run_sql_readonly` | an operator-built `POST /sql` facade | `jdbc_run_query` | Avatica JDBC, with a single read statement and bounded result |
+| `zookeeper/list_children` | `zookeeper-contrib-rest` | `zookeeper_list_children` | ZooKeeper Java client `getChildren` |
+| `zookeeper/delete_znode` | `zookeeper-contrib-rest` | `zookeeper_delete_node` | ZooKeeper Java client delete with an expected version |
+
+The Calcite and ZooKeeper changes are deliberate correctness fixes. Calcite is a library, not a server
+with a Calcite REST API. ZooKeeper's normal data-tree protocol is its client protocol; the old
+`/znodes/v1/*` paths belonged to a separate contrib service. `aegis-source-jdbc` is proven against real
+Apache Derby, and `aegis-source-zookeeper` against a real embedded ZooKeeper server. That proves the
+converter behavior. The target-product verification state remains in [VALIDATION.md](VALIDATION.md).
+
+### Deliberately absent or roadmap
+
+| Capability | Status and reason |
+| --- | --- |
+| Flink jar upload | Not exposed. Upload is a release/CI operation; governed execution starts from an approved jar. |
+| Flink SQL Gateway reads and writes | Not exposed yet. SQL Gateway needs a session lifecycle, not one declarative request. |
+| Iceberg maintenance procedures | Not exposed through the catalog. They execute in Spark or Flink, not in an Iceberg REST catalog. |
+| Iceberg unbounded commit transaction | Not exposed. It cannot be bound accurately to one typed resource. |
+| Spark SQL read | Present through the real Spark Connect source rather than the classic Spark monitoring source. |
+| Kafka DLQ inspection and three Admin writes | Roadmap items for the Kafka Admin source. |
+| Livy and YARN | Roadmap sources. They are outside the current Spark standalone source. |
+| Arrow Flight (3 tools) | Removed from deployable configuration. Flight is gRPC, not the former HTTP facade; a typed Flight source is required. |
+| Beam JobService (4 tools) | Removed from deployable configuration. JobService is gRPC; a typed JobService source is required. |
+| Hudi table services (4 tools) | Removed from deployable configuration. The former table-service REST paths do not exist; use real engine procedures through a typed source. |
+| Kudu table operations (3 tools) | Removed from deployable configuration. The former paths do not match a released Kudu API; a version-specific source is required. |
+| Ozone volume operations (4 tools) | Removed from deployable configuration. Ozone Manager has no matching volume REST API; a real Ozone protocol source is required. |
+
+The detailed source-by-source entry is [ROADMAP.md](ROADMAP.md). An unbuilt capability is not represented
+as a nonexistent HTTP endpoint or an incomplete implementation.
+
+## What this comparison proves, and what it does not
+
+It proves 0.1 capability accounting and guard-strength preservation. It does not prove every upstream
+endpoint exists in every deployed version. `AdapterConfigsTest` exercises the **25 deployable adapter
+configurations and 115 tools** through Aegis governance; many HTTP adapters currently use a contract
+route harness. The five known surfaces without a real API are absent from product configuration and cannot be
+made green by that harness. A real-engine run is the release-compatibility requirement. The authoritative state,
+including real, embedded-real, historical, contract and pending evidence, is
+[VALIDATION.md](VALIDATION.md) and [evidence/CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md).
+
+## Related reading
+
+- [DEFECT-LOG.md](DEFECT-LOG.md): root cause and remediation of endpoint claims for routes the products do not serve
+- [VALIDATION.md](VALIDATION.md): executed evidence, versions and limits
+- [ROADMAP.md](ROADMAP.md): remaining implementation and real-engine work
+- [ARCHITECTURE.md](ARCHITECTURE.md): the control plane all source types share

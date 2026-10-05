@@ -1,0 +1,83 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Pinot: governed MCP tools over the Apache Pinot HTTP API, configuration only.
+# Pinot controller API: GET /tables, GET /tables/{table}, GET /tenants, DELETE /tables/{table}.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-pinot (taxonomy: olap).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-pinot
+
+access:
+  writeGroups: [pinot-operators]
+  approverGroups: [pinot-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [pinot-users, pinot-operators], classes: [READ]}
+    - {id: operate, groups: [pinot-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-pinot.jsonl
+
+sources:
+  - id: pinot
+    type: http
+    baseUrl: http://pinot-controller:9000
+    tools:
+      - name: pinot_list_tables
+        description: "List tables."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/tables"}
+
+      - name: pinot_get_table
+        description: "Configuration of one table."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {table: {type: string, maxLength: 256}}
+          required: [table]
+          additionalProperties: false
+        request: {method: GET, path: "/tables/{table}"}
+        resources: [{type: "pinot:table", pointer: /table}]
+
+      - name: pinot_list_tenants
+        description: "List tenants."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/tenants"}
+
+      - name: pinot_delete_table
+        description: "Delete one table and its segments."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {table: {type: string, maxLength: 256}}
+          required: [table]
+          additionalProperties: false
+        request: {method: DELETE, path: "/tables/{table}"}
+        resources: [{type: "pinot:table", pointer: /table}]
+        dryRun: {mode: TOOL, previewTool: pinot_get_table}   # validate against the exact target first

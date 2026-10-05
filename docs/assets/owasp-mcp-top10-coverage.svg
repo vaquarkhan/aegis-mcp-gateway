@@ -1,0 +1,62 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="880" viewBox="0 0 1400 880" role="img" aria-labelledby="title description">
+  <title id="title">Aegis Gateway coverage of the OWASP MCP Top 10</title>
+  <desc id="description">A ten-item coverage map showing which OWASP MCP risks receive strong gateway controls, partial controls, limited heuristic controls, or external containment. Every risk also has operator responsibilities.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#081b31"/><stop offset="1" stop-color="#4a376f"/></linearGradient>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#16233a" flood-opacity=".14"/></filter>
+    <style>
+      text { font-family: &quot;Segoe UI&quot;, Arial, sans-serif; }
+      .title { font-size: 34px; font-weight: 800; fill: #fff; }
+      .sub { font-size: 16px; fill: #dfd7ee; }
+      .code { font-size: 14px; font-weight: 800; fill: #173245; }
+      .name { font-size: 16px; font-weight: 750; fill: #173245; }
+      .detail { font-size: 12px; fill: #4b6674; }
+      .legend { font-size: 13px; font-weight: 750; fill: #355161; }
+    </style>
+  </defs>
+  <rect width="1400" height="880" fill="#f6f9fb"/>
+  <rect x="25" y="22" width="1350" height="105" rx="22" fill="url(#header)"/>
+  <text x="65" y="66" class="title">OWASP MCP Top 10: what Aegis covers at the gateway boundary</text>
+  <text x="65" y="98" class="sub">Coverage is deliberately not a claim that every risk is eliminated. The deployment, IdP, backend, and operator still own material controls.</text>
+
+  <g transform="translate(55 155)">
+    <rect width="190" height="38" rx="19" fill="#dff4ec"/><circle cx="21" cy="19" r="8" fill="#16806e"/><text x="39" y="24" class="legend">strong gateway controls</text>
+    <rect x="208" width="104" height="38" rx="19" fill="#fff2d8"/><circle cx="229" cy="19" r="8" fill="#bb7600"/><text x="247" y="24" class="legend">partial</text>
+    <rect x="330" width="105" height="38" rx="19" fill="#fde6df"/><circle cx="351" cy="19" r="8" fill="#c25345"/><text x="369" y="24" class="legend">limited</text>
+    <rect x="453" width="116" height="38" rx="19" fill="#e9edf1"/><circle cx="474" cy="19" r="8" fill="#667986"/><text x="492" y="24" class="legend">external</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="55" y="220" width="620" height="93" rx="14" fill="#fff" stroke="#b9d7cf"/><rect x="55" y="220" width="11" height="93" rx="5" fill="#16806e"/><text x="88" y="252" class="code">MCP01</text><text x="158" y="252" class="name">Token mismanagement and secret exposure</text><text x="88" y="280" class="detail">Caller token never reaches a backend; output redaction and minimal child environment reduce exposure.</text>
+    <rect x="725" y="220" width="620" height="93" rx="14" fill="#fff" stroke="#b9d7cf"/><rect x="725" y="220" width="11" height="93" rx="5" fill="#16806e"/><text x="758" y="252" class="code">MCP02</text><text x="828" y="252" class="name">Privilege escalation via scope creep</text><text x="758" y="280" class="detail">Default deny, group exposure, typed resources, approvals, and route scopes constrain authority.</text>
+
+    <rect x="55" y="331" width="620" height="93" rx="14" fill="#fff" stroke="#b9d7cf"/><rect x="55" y="331" width="11" height="93" rx="5" fill="#16806e"/><text x="88" y="363" class="code">MCP03</text><text x="158" y="363" class="name">Tool poisoning</text><text x="88" y="391" class="detail">Definition pins, quarantine, and screening help only when the initial pin is trusted.</text>
+    <rect x="725" y="331" width="620" height="93" rx="14" fill="#fff" stroke="#ead39e"/><rect x="725" y="331" width="11" height="93" rx="5" fill="#bb7600"/><text x="758" y="363" class="code">MCP04</text><text x="828" y="363" class="name">Supply-chain and dependency tampering</text><text x="758" y="391" class="detail">Source admission and SBOM creation help; vulnerability gates, signing, and provenance remain release work.</text>
+
+    <rect x="55" y="442" width="620" height="93" rx="14" fill="#fff" stroke="#ead39e"/><rect x="55" y="442" width="11" height="93" rx="5" fill="#bb7600"/><text x="88" y="474" class="code">MCP05</text><text x="158" y="474" class="name">Command injection and execution</text><text x="88" y="502" class="detail">Typed paths and safe converters help; configured stdio and approved jobs still execute with real privileges.</text>
+    <rect x="725" y="442" width="620" height="93" rx="14" fill="#fff" stroke="#f0c2b8"/><rect x="725" y="442" width="11" height="93" rx="5" fill="#c25345"/><text x="758" y="474" class="code">MCP06</text><text x="828" y="474" class="name">Prompt injection via contextual payloads</text><text x="758" y="502" class="detail">Screening, bounds, and approval contain impact; phrase-based detection is intentionally not a prevention claim.</text>
+
+    <rect x="55" y="553" width="620" height="93" rx="14" fill="#fff" stroke="#b9d7cf"/><rect x="55" y="553" width="11" height="93" rx="5" fill="#16806e"/><text x="88" y="585" class="code">MCP07</text><text x="158" y="585" class="name">Insufficient authentication and authorization</text><text x="88" y="613" class="detail">Protected routes, token validation, route groups, sessions, scopes, and admin authorization are enforced.</text>
+    <rect x="725" y="553" width="620" height="93" rx="14" fill="#fff" stroke="#b9d7cf"/><rect x="725" y="553" width="11" height="93" rx="5" fill="#16806e"/><text x="758" y="585" class="code">MCP08</text><text x="828" y="585" class="name">Lack of audit and telemetry</text><text x="758" y="613" class="detail">Hash-chained local evidence and bounded telemetry exist; off-host shipping and alerting remain operator duties.</text>
+
+    <rect x="55" y="664" width="620" height="93" rx="14" fill="#fff" stroke="#d4dce1"/><rect x="55" y="664" width="11" height="93" rx="5" fill="#667986"/><text x="88" y="696" class="code">MCP09</text><text x="158" y="696" class="name">Shadow MCP servers</text><text x="88" y="724" class="detail">Aegis inventories and restricts configured sources; asset inventory and network controls must stop bypass servers.</text>
+    <rect x="725" y="664" width="620" height="93" rx="14" fill="#fff" stroke="#ead39e"/><rect x="725" y="664" width="11" height="93" rx="5" fill="#bb7600"/><text x="758" y="696" class="code">MCP10</text><text x="828" y="696" class="name">Context injection and over-sharing</text><text x="758" y="724" class="detail">Caller-filtered discovery and guarded content help; a client can still retain or disclose received information.</text>
+  </g>
+  <rect x="55" y="790" width="1290" height="54" rx="14" fill="#edf6f8" stroke="#b8d5dd"/>
+  <text x="700" y="823" style="font:700 14px 'Segoe UI',Arial;fill:#285465" text-anchor="middle">Read the security reference for enforcement tests, exact S1 to S28 promises, and the “what is left to you” responsibility for every item.</text>
+</svg>

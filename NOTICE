@@ -1,0 +1,46 @@
+Aegis MCP Governance Gateway
+Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+This product includes software developed by the Aegis MCP Gateway project
+(https://github.com/vaquarkhan/aegis-mcp-gateway).
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use the files in this distribution except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+The aegis-engine, aegis-mcp and aegis-config modules have no third-party
+runtime dependencies. The runnable jars and optional modules bundle or depend
+on the following third-party software:
+
+- SnakeYAML (org.yaml:snakeyaml), Apache License, Version 2.0
+  Bundled in the aegis-gateway runnable jar; optional elsewhere.
+- Apache Derby (org.apache.derby:derby), Apache License, Version 2.0
+  Used by aegis-state-derby and bundled in the aegis-gateway runnable jar.
+- Apache ZooKeeper client (org.apache.zookeeper:zookeeper), Apache License, Version 2.0
+  Used by aegis-source-zookeeper.
+- Apache Kafka clients (org.apache.kafka:kafka-clients), Apache License, Version 2.0
+  Optional for the Kafka Admin source; bundled in the aegis-gateway-kafka example jar.
+- Apache Spark Connect JVM client (org.apache.spark:spark-connect-client-jvm_2.13),
+  Apache License, Version 2.0
+  Used by aegis-spark-connect; bundled in the aegis-gateway-spark example jar.
+- PostgreSQL JDBC Driver (org.postgresql:postgresql:42.7.12), BSD-2-Clause
+  Copyright (c) 1997, PostgreSQL Global Development Group.
+  Bundled in the aegis-gateway runnable jar and the aegis-knox3-extension
+  knox-bundle through aegis-state-postgres.
+- OnGres SCRAM client/common 3.2 and StringPrep SASLPrep/StringPrep 2.2,
+  BSD-2-Clause
+  Copyright (c) 2017, OnGres, Inc. (SCRAM client/common).
+  Copyright (c) 2019, OnGres, Inc. (SASLPrep/StringPrep).
+  Bundled transitively by PostgreSQL JDBC Driver where the shaded artifact
+  includes those runtime components.
+
+Apache Knox is compiled against in provided scope by aegis-knox3-extension and
+is never bundled. Test-only dependencies (JUnit, Apache Curator test server and
+the real-engine validation classpaths) are not distributed.
+
+Apache Flink, Apache Kafka, Apache Spark, Apache Iceberg, Apache Knox and the
+other Apache project names used in this repository are trademarks of The
+Apache Software Foundation. This project is not affiliated with, endorsed by,
+or sponsored by The Apache Software Foundation.

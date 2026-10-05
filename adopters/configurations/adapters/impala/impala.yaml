@@ -1,0 +1,83 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Impala: governed MCP tools over the Apache Impala HTTP API, configuration only.
+# The Impala coordinator debug web server: GET /metrics, GET /queries?json,
+# POST /cancel_query?query_id=.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-impala (taxonomy: query).
+# impala_status replaces the 0.1 impala://status MCP resource.
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-impala
+
+access:
+  writeGroups: [impala-operators]
+  approverGroups: [impala-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [impala-users, impala-operators], classes: [READ]}
+    - {id: operate, groups: [impala-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-impala.jsonl
+
+sources:
+  - id: impala
+    type: http
+    baseUrl: http://impala-coordinator:25000
+    tools:
+      - name: impala_status
+        description: "Coordinator root, used as a liveness read."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/"}
+
+      - name: impala_get_metrics
+        description: "Coordinator metrics."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/metrics"}
+
+      - name: impala_list_queries
+        description: "Running and recently completed queries."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/queries", query: {json: ""}}
+
+      - name: impala_cancel_query
+        description: "Cancel a running query."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {queryId: {type: string, maxLength: 200}}
+          required: [queryId]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/cancel_query"
+          query: {query_id: "{queryId}"}
+          body: {}
+        resources: [{type: "impala:query", pointer: /queryId}]
