@@ -1,0 +1,59 @@
+# existing-mcp-server through knox, 2026-10-05T02:08:28.961870400Z
+
+--- engine-mcp: official MCP Python SDK 2.2.0 on 127.0.0.1:56017; local-files: @modelcontextprotocol/server-filesystem 2026.8.31 over stdio, allowed dir reports
+
+=== read by READER | guest (READER) | tools/call engine_list_jobs {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"text":"{\n  \"jobs\": [\n    {\n      \"jobId\": \"job-orders-etl\",\n      \"state\": \"RUNNING\",\n      \"owner\": \"data-eng\"\n    },\n    {\n      \"jobId\": \"job-scratch-knox\",\n      \"state\": \"FINISHED\",\n      \"owner\": \"data-eng\"\n    }\n  ]\n}","type":"text"}],"isError":false,"resultType":"complete","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"aegis-existing-mcp","version":"2.0.0-SNAPSHOT"},"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_df1f360ba2cff5c957025b9b","traceId":"242ebcb411bb213bd1d65f6dc596ebe1"}}}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call engine_list_jobs {} | HTTP 403
+{
+"servlet":"aegis-existing-mcp-server-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-existing-mcp-server/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call read_text_file {"path":"C:/Users/vaquar/Downloads/kafka-trunk/aegis-gateway-2.0/examples/aegis-validation/target/existing-mcp-server/reports/q3-summary.txt"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"Q3 summary: orders up 4 percent\n"}],"structuredContent":{"content":"Q3 summary: orders up 4 percent\n"},"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_7d55ee4bf33a973c01b86862","traceId":"9c8ca187979360eb43e93011dab54b5d"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-existing-mcp","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call read_text_file {"path":"C:/Users/vaquar/Downloads/kafka-trunk/aegis-gateway-2.0/examples/aegis-validation/target/existing-mcp-server/reports/q3-summary.txt"} | HTTP 403
+{
+"servlet":"aegis-existing-mcp-server-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-existing-mcp-server/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== a hidden stdio tool (unlistedTools: HIDE) | sam (OPERATOR) | tools/call write_file {"content":"x","path":"C:/Users/vaquar/Downloads/kafka-trunk/aegis-gateway-2.0/examples/aegis-validation/target/existing-mcp-server/reports/injected.txt"} | HTTP 200 decision=DENIED:NOT_EXPOSED:step1
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"type":"text","text":"Aegis denied this call: NOT_EXPOSED (step 1). unknown tool"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:NOT_EXPOSED:step1","requestId":"req_9d4cac68cd59f927b450d32f","code":"NOT_EXPOSED","step":1,"reason":"unknown tool","traceId":"fb7efc5a82fba4929eece82828dee2e8"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-existing-mcp","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== an unclassified tool defaults to DESTRUCTIVE | sam (OPERATOR) | tools/call engine_restart_all_jobs {} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":6,"result":{"content":[{"type":"text","text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). this DESTRUCTIVE call needs a per-call approval Approval request apr_78b8fe1b6675a713156c2c00fc83a66a is pending; retry with the approval token once approved."}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_b6f6e33fa8111835aec1cce5","code":"APPROVAL_REQUIRED","step":4,"reason":"this DESTRUCTIVE call needs a per-call approval","approvalRequestId":"apr_78b8fe1b6675a713156c2c00fc83a66a","argsDigest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","traceId":"2e8e65d384d05d86d952cd6fa35bf5ea"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-existing-mcp","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== destructive by READER | guest (READER) | tools/call engine_delete_job {"jobId":"job-scratch-knox"} | HTTP 200 decision=DENIED:READONLY_CALLER:step1
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"type":"text","text":"Aegis denied this call: READONLY_CALLER (step 1). caller is not in a group allowed to call DESTRUCTIVE tools"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:READONLY_CALLER:step1","requestId":"req_34695e32ef6d06f8c6713d8e","code":"READONLY_CALLER","step":1,"reason":"caller is not in a group allowed to call DESTRUCTIVE tools","traceId":"10da7848dd822206fb476e9db032afe9"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-existing-mcp","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== destructive without approval | sam (OPERATOR) | tools/call engine_delete_job {"jobId":"job-scratch-knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":8,"result":{"content":[{"type":"text","text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). this DESTRUCTIVE call needs a per-call approval Approval request apr_b399e623bc783699b07062102d12e7bd is pending; retry with the approval token once approved."}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_1ccfd5dfce791cc1d4aa5bd5","code":"APPROVAL_REQUIRED","step":4,"reason":"this DESTRUCTIVE call needs a per-call approval","approvalRequestId":"apr_b399e623bc783699b07062102d12e7bd","argsDigest":"sha256:a7756ecb40570e99b195ecfe7426be5043519fb2c3e2bca1f86672852d764119","traceId":"c08d469603cf573f22734393e0df14ef"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-existing-mcp","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== dry run | sam (OPERATOR) | tools/call engine_delete_job {"jobId":"job-scratch-knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":9,"result":{"content":[{"type":"text","text":"Dry run: this exact DESTRUCTIVE call passed every Aegis governance check. Nothing was sent to the backend."}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_67c8c9e700be42606006ff51","argsDigest":"sha256:a7756ecb40570e99b195ecfe7426be5043519fb2c3e2bca1f86672852d764119","approvalRequestId":"apr_b399e623bc783699b07062102d12e7bd","dryRunReceiptExpiresAt":"2026-10-05T02:23:36.444266400Z","dryRunReceipt":"<redacted>","traceId":"cb00f7c5cb60903db82fea8c1d75cc28"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-existing-mcp","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== requester approves own request | sam (OPERATOR) | POST approvals/apr_b399e623bc783699b07062102d12e7bd/approve | HTTP 403
+{"error":"caller is not in an approver group"}
+
+=== independent approval | tom (APPROVER) | POST approvals/apr_b399e623bc783699b07062102d12e7bd/approve | HTTP 200
+{"id":"apr_b399e623bc783699b07062102d12e7bd","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-existing-mcp-server","actorChain":[],"tool":"engine_delete_job","toolClass":"DESTRUCTIVE","source":"engine-mcp","resources":["engine:job:job-scratch-knox"],"argsDigest":"sha256:a7756ecb40570e99b195ecfe7426be5043519fb2c3e2bca1f86672852d764119","binding":"sha256:e95baad6039acf193cbe9bfa48b13d26eeecfdc96b60fdfce6ce3ffb68537dd6","evidence":{"arguments":{"jobId":"job-scratch-knox"},"preview":{"content":[{"type":"text","text":"Dry run: this exact DESTRUCTIVE call passed every Aegis governance check. Nothing was sent to the backend."}],"isError":false}},"createdAt":"2026-10-05T02:08:36.395999Z","expiresAt":"2026-10-05T02:38:36.395999Z","decidedBy":"tom","decidedAt":"2026-10-05T02:08:36.528225400Z","tokenExpiresAt":"2026-10-05T02:18:36.528225400Z"}
+
+=== requester collects the token | sam (OPERATOR) | GET approvals/apr_b399e623bc783699b07062102d12e7bd | HTTP 200
+{"id":"apr_b399e623bc783699b07062102d12e7bd","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-existing-mcp-server","actorChain":[],"tool":"engine_delete_job","toolClass":"DESTRUCTIVE","source":"engine-mcp","resources":["engine:job:job-scratch-knox"],"argsDigest":"sha256:a7756ecb40570e99b195ecfe7426be5043519fb2c3e2bca1f86672852d764119","binding":"sha256:e95baad6039acf193cbe9bfa48b13d26eeecfdc96b60fdfce6ce3ffb68537dd6","evidence":{"arguments":{"jobId":"job-scratch-knox"},"preview":{"content":[{"type":"text","text":"Dry run: this exact DESTRUCTIVE call passed every Aegis governance check. Nothing was sent to the backend."}],"isError":false}},"createdAt":"2026-10-05T02:08:36.395999Z","expiresAt":"2026-10-05T02:38:36.395999Z","decidedBy":"tom","decidedAt":"2026-10-05T02:08:36.528225400Z","token":"<redacted>","tokenExpiresAt":"2026-10-05T02:18:36.528225400Z"}
+
+=== execute with approval and receipt | sam (OPERATOR) | tools/call engine_delete_job {"jobId":"job-scratch-knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":10,"result":{"content":[{"text":"{\n  \"deleted\": \"job-scratch-knox\"\n}","type":"text"}],"isError":false,"resultType":"complete","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"aegis-existing-mcp","version":"2.0.0-SNAPSHOT"},"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_c2523626d9f331534d64cc66","traceId":"7d91b9d8bb6ede3fe3ce3e6d2b40f6ce"}}}}
+
+--- the engine MCP server no longer has job-scratch-knox
+
+=== replay of the same approval | sam (OPERATOR) | tools/call engine_delete_job {"jobId":"job-scratch-knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":11,"result":{"content":[{"type":"text","text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). approval token has already been used"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_d0ed523bcf4b323653f24d83","code":"APPROVAL_REQUIRED","step":4,"reason":"approval token has already been used","traceId":"67fa3b5ca0f2ddeacb4ee9bd647ca2ff"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-existing-mcp","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+--- engine-mcp saw: every request authorized with the gateway credential, protocol 2026-07-28, delete_job once

@@ -76,13 +76,6 @@
       <version>1.28.0</version>
       <scope>test</scope>
     </dependency>
-    <!-- Hive JDBC driver for HiveFrontDoorsTest only; never shipped by Aegis. -->
-    <dependency>
-      <groupId>org.apache.hive</groupId>
-      <artifactId>hive-jdbc</artifactId>
-      <version>4.0.1</version>
-      <scope>test</scope>
-    </dependency>
     <!-- Build order only: the server classpath files and unpacked distributions must exist. -->
     <dependency>
       <groupId>io.github.vaquarkhan.aegis</groupId>
@@ -257,7 +250,6 @@
             <aegis.calcite.serverClasspathFile>${project.basedir}/../aegis-validation-calcite-server/target/server.classpath</aegis.calcite.serverClasspathFile>
             <aegis.jdbc.pluginJar>${project.basedir}/../../aegis-source-jdbc/target/aegis-source-jdbc-${project.version}.jar</aegis.jdbc.pluginJar>
             <aegis.jdbc.pluginClasspathFile>${project.basedir}/../../aegis-source-jdbc/target/plugin.classpath</aegis.jdbc.pluginClasspathFile>
-            <aegis.hive.jdbcLibDir>${project.build.directory}/hive-jdbc-lib</aegis.hive.jdbcLibDir>
             <aegis.calcite.driverJar>${org.apache.calcite.avatica:avatica:jar}</aegis.calcite.driverJar>
             <aegis.zookeeper.serverClasspathFile>${project.basedir}/../aegis-validation-zookeeper-server/target/server.classpath</aegis.zookeeper.serverClasspathFile>
             <aegis.zookeeper.pluginJar>${project.basedir}/../../aegis-source-zookeeper/target/aegis-source-zookeeper-${project.version}.jar</aegis.zookeeper.pluginJar>
@@ -279,18 +271,6 @@
             <goals>
               <goal>properties</goal>
             </goals>
-          </execution>
-          <execution>
-            <id>copy-hive-jdbc</id>
-            <phase>generate-test-resources</phase>
-            <goals>
-              <goal>copy-dependencies</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${project.build.directory}/hive-jdbc-lib</outputDirectory>
-              <includeArtifactIds>hive-jdbc</includeArtifactIds>
-              <includeScope>test</includeScope>
-            </configuration>
           </execution>
         </executions>
       </plugin>

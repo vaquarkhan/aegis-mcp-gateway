@@ -21,9 +21,30 @@ This is a behavioral comparison, not a module-count comparison. It answers three
 2. Did any tool become less guarded?
 3. What is the actual current 2.0 shipped surface?
 
+**Naming.** The legacy line is **Aegis 0.1** (release `0.1.0`). There is no separate product called
+“Aegis 1.0” in this repository. People sometimes say “1.0” when they mean that pre-2.0 line; this
+document and `Coverage01VsTwoTest` always mean **0.1 → 2.0**.
+
 The executable authority is `Coverage01VsTwoTest`. It reads the frozen 0.1 inventory extracted from the
 tracked 0.1 `tools.yaml` resources and the 2.0 configuration files. A changed count or a 0.1 tool with
-no verdict fails the build. This page explains that executable contract.
+no verdict fails the build. This page explains that executable contract. The product-boundary record is
+[HISTORY.md](HISTORY.md).
+
+## Product shape: 0.1 versus 2.0
+
+| Area | Aegis 0.1 | Aegis 2.0 |
+| --- | --- | --- |
+| Backend integrations | One Java `mcp-adapter-<engine>` module per engine | Named YAML under `adopters/configurations/adapters/<adopter>/`, plus shared profiles (Flink, Iceberg, Kafka, Spark) |
+| Typed protocols | Mostly adapter-local | Shared modules when a real client protocol requires one: JDBC, ZooKeeper, Kafka Admin, Spark Connect, A2A |
+| Governance | In the 0.1 core | One governance engine shared by own-host and optional Knox |
+| False HTTP facades | Some tools pointed at routes products do not serve | Removed or replaced; absences are explicit and tested |
+| Kafka and Kafka Connect | Kafka adapter surface | One shared **Kafka** profile and tutorial covering the broker **and** Connect (`docs/tutorials/kafka.md`, `docs/TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md`) |
+| Repository | Separate 0.1 tree / release | 2.0 is the repository root; 0.1 modules are not in this build |
+
+**Coverage is not the same as a real-engine Keep.** This page accounts for every 0.1 tool and the
+shipped 2.0 surface. Whether a profile has a kept own-host + Knox run against a live product is tracked
+in [evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.md) and
+[VALIDATION.md](VALIDATION.md).
 
 ## The current numbers
 
@@ -31,18 +52,28 @@ no verdict fails the build. This page explains that executable contract.
 | --- | ---: | ---: | --- |
 | Engine surfaces in the frozen inventory | 33 | 28 implemented, 5 explicitly absent | frozen inventory and verdict test |
 | Implemented tools inherited from or replacing a 0.1 capability | 156 | **152** | exact `Coverage01VsTwoTest` verdict accounting |
+| Non-Burr tools in the comparison surface | — | **155** | `EXPECTED_COMPARABLE_TOOLS` (152 successors + 2 Kafka Admin reads + 1 Superset chart preview) |
 | New 2.0 Kafka Admin tools | 0 | 2 | cluster and topic-configuration reads through the real AdminClient |
 | New Burr tools | 0 | 10 | Apache Burr (incubating) is a 2.0 addition, not a 0.1 successor |
-| Configuration files participating in the comparison | 33 Java adapter modules | 25 deployable adapter configurations plus 4 reference configs | parsed from YAML |
-| Shipped tools participating in the comparison | 156 | **165** | exact `Coverage01VsTwoTest` assertion |
+| Configuration files participating in the comparison | 33 Java adapter modules | 25 deployable adapter configurations plus shared reference configs | parsed from YAML |
+| Shipped tools participating in the comparison | 156 | **165** | `EXPECTED_SHIPPED_TOOLS` (155 non-Burr + 10 Burr) |
 | Adapter configurations | n/a | **25 deployable adapter configurations and 116 tools** | exact `AdapterConfigsTest` assertion |
 | Implemented tools that became less guarded | n/a | **0** | class-order assertion |
 
-The 152 implemented successor tools are separately accounted for by the frozen verdict test. The 165 shipped
-comparison tools add Burr's ten new tools, two new Kafka Admin read tools (cluster description and topic
-configuration description), and one additional Superset chart read used as the dry-run preview for chart delete. Aegis 2.0 is deliberately not called a numeric superset: removing 18 tools whose
-backend routes did not exist is a correctness improvement, even though it reduces the inherited successor count
-below 0.1's 156.
+How the 2.0 totals fit together:
+
+```
+152  successors of 0.1 capabilities (kept / renamed / backend-changed)
++  2  new Kafka Admin read tools
++  1  Superset chart read (dry-run preview for chart delete)
+= 155  comparable (non-Burr) tools
++ 10  Burr (2.0-only)
+= 165  shipped comparison tools
+```
+
+Aegis 2.0 is deliberately not called a numeric superset of 0.1: removing 18 tools whose backend routes
+did not exist is a correctness improvement, even though the inherited successor count (152) is below
+0.1's 156.
 
 ## Side-by-side: 0.1 engine surface versus Aegis 2.0
 
@@ -51,19 +82,20 @@ The frozen 0.1 inventory is
 (one row per tool, 33 engines, 156 tools). Aegis 2.0 ships **25 deployable adapter configurations**
 under `adopters/configurations/adapters/<engine>/`, plus shared reference profiles (Flink, Iceberg, Kafka,
 Spark) and typed sources (JDBC, ZooKeeper, Kafka Admin, Spark Connect, A2A, and others). The table below
-is a per-engine view of the same contract `Coverage01VsTwoTest` enforces; regenerate it with
-`python tools/coverage-engine-table.py` when the inventory or adapter layout changes.
+is a per-engine view of the same contract `Coverage01VsTwoTest` enforces; regenerate the skeleton with
+`python tools/coverage-engine-table.py` when the inventory or adapter layout changes, then keep the
+notes in this file.
 
 | 0.1 engine | 0.1 tools | Aegis 2.0 deployable adapter | Notes |
 | --- | ---: | --- | --- |
 | `activemq` | 3 | yes | |
 | `airflow` | 5 | yes | |
 | `arrow` | 3 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
-| `atlas` | 4 | yes | |
+| `atlas` | 4 | yes | contract config; real-engine Keep still pending ([ROADMAP.md](ROADMAP.md)) |
 | `beam` | 4 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
 | `bookkeeper` | 4 | yes | |
 | `calcite` | 3 | yes | backend changed to Avatica JDBC (`aegis-source-jdbc`) |
-| `cassandra` | 4 | yes | |
+| `cassandra` | 4 | yes | contract config; real-engine Keep still pending |
 | `couchdb` | 4 | yes | |
 | `doris` | 3 | yes | |
 | `druid` | 4 | yes | |
@@ -71,23 +103,23 @@ is a per-engine view of the same contract `Coverage01VsTwoTest` enforces; regene
 | `flume` | 2 | yes | |
 | `hadoop` | 4 | yes | |
 | `hbase` | 4 | yes | |
-| `hive` | 4 | yes | `run_sql_readonly` successor is `jdbc_run_query` |
+| `hive` | 4 | yes | `run_sql_readonly` successor is `jdbc_run_query`; FrontDoors Keep on roadmap (no scaffold in tree) |
 | `hudi` | 4 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
 | `iceberg` | 12 | shared profile | |
 | `ignite` | 4 | yes | |
-| `impala` | 3 | yes | |
-| `kafka` | 8 | shared profile | plus 2 new Admin read tools in 2.0 |
+| `impala` | 3 | yes | contract config; real-engine Keep still pending |
+| `kafka` | 8 | shared profile | Kafka broker **and** Connect; plus 2 new Admin read tools in 2.0 |
 | `kudu` | 3 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
 | `nifi` | 5 | yes | |
 | `ozone` | 4 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
-| `paimon` | 4 | yes | |
+| `paimon` | 4 | yes | contract config; real-engine Keep still pending |
 | `pinot` | 4 | yes | |
 | `pulsar` | 6 | yes | |
-| `ranger` | 4 | yes | |
+| `ranger` | 4 | yes | contract config; real-engine Keep still pending |
 | `solr` | 4 | yes | |
 | `spark` | 5 | shared profile | submission/kill backend changed to Spark standalone REST |
 | `storm` | 4 | yes | |
-| `superset` | 4 | yes | |
+| `superset` | 4 | yes | plus chart-read preview tool in 2.0 |
 | `zookeeper` | 4 | yes | data-tree tools use `aegis-source-zookeeper`, not contrib REST |
 | `burr` | 0 | yes | 2.0-only: 10 tools (Apache Burr incubating) |
 
@@ -165,7 +197,10 @@ including real, embedded-real, historical, contract and pending evidence, is
 
 ## Related reading
 
+- [HISTORY.md](HISTORY.md): product boundary between the 0.1 line and 2.0
 - [DEFECT-LOG.md](DEFECT-LOG.md): root cause and remediation of endpoint claims for routes the products do not serve
 - [VALIDATION.md](VALIDATION.md): executed evidence, versions and limits
+- [evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.md): which adopters have kept two-door runs
 - [ROADMAP.md](ROADMAP.md): remaining implementation and real-engine work
 - [ARCHITECTURE.md](ARCHITECTURE.md): the control plane all source types share
+- [TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md](TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md): Kafka broker and Connect under one profile

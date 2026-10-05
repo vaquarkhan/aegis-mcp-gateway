@@ -58,7 +58,7 @@ are tracked separately in [docs/ROADMAP.md](../../docs/ROADMAP.md) and are not t
 | [Flink](flink/) | supported | 1.20.1 | passed | passed | real Flink MiniCluster JobManager REST API |
 | [Hadoop HDFS](hadoop/) | supported | 3.2.1 | passed | passed | Docker NameNode and DataNode; WebHDFS governed path; Keep 2026-10-05 |
 | [HBase](hbase/) | supported | REST via `dajobe/hbase` | passed | passed | HBase REST Docker; governed table reads/writes; Keep 2026-10-05 |
-| [Hive](hive/) | supported | not run | not run | not run | **Already `type: jdbc`**. HS2 Docker+beeline proven; Keep still needs `HiveFrontDoorsTest` + `hive-jdbc` classpath (see ROADMAP) |
+| [Hive](hive/) | supported | not run | not run | not run | **Already `type: jdbc`**. HS2 Docker+beeline proven; FrontDoors Keep is roadmap-only (no incomplete test in tree) |
 | [Iceberg REST catalog](iceberg/) | supported | 1.10.1 | passed | passed | official REST catalog server with a JDBC catalog |
 | [Ignite](ignite/) | supported | 2.18.0 | passed | passed | real Ignite node with REST v1 |
 | [Impala](impala/) | supported | not run | not run | not run | Coordinator HTTP ops today; SQL should use jdbc like Hive when an Impala endpoint exists |

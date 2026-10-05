@@ -23,6 +23,6 @@ Provide `hive-jdbc`, `HIVE_USER`, `HIVE_PASSWORD`, the real JDBC URL and a datab
 
 The generic JDBC source is proven against real Apache Derby and through Avatica for Calcite. Hive’s
 profile is already that same `type: jdbc` source (the old fake HTTP `/sql` facade was removed as a
-defect). A HiveServer2 Keep run (`apache/hive` Docker + `hive-jdbc` on the gateway classpath) is the
-remaining engineering step — not an ASF process item, and not something Spark Connect can substitute.
-See [ADOPTER-REAL-ENGINE-STATUS.md](../../../../docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md).
+defect). A HiveServer2 own-host + Knox Keep is **roadmap work** (no incomplete FrontDoors test in
+tree). See [ROADMAP.md](../../../../docs/ROADMAP.md) and
+[ADOPTER-REAL-ENGINE-STATUS.md](../../../../docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md).

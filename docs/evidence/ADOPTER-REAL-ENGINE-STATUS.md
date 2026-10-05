@@ -56,7 +56,7 @@ where the product’s real surface matches those protocols.
 
 | Adopter | Honest surface already in tree | Closable with existing JDBC / Spark Connect? | What still blocks a Keep |
 | --- | --- | --- | --- |
-| **Hive** | `type: jdbc` + `HiveDriver` (fake HTTP `/sql` was removed) | **Yes — same JDBC source as Calcite/Derby.** | `apache/hive:4.0.1` HS2 Docker listens and answers `SHOW DATABASES` via beeline (proven 2026-10-05). Still need `HiveFrontDoorsTest`, `hive-jdbc` transitive jars on own-host/Knox classpath, seed, Keep retention, tutorial regen. Tracked on [ROADMAP.md](../ROADMAP.md) |
+| **Hive** | `type: jdbc` + `HiveDriver` (fake HTTP `/sql` was removed) | **Yes — same JDBC source as Calcite/Derby.** | `apache/hive:4.0.1` HS2 Docker + beeline proven 2026-10-05. **No FrontDoors scaffold in tree.** Full Keep needs HS2 client jars on classpath, seed, retained results, tutorial. Tracked on [ROADMAP.md](../ROADMAP.md) |
 | **Impala** | Coordinator **HTTP** debug UI tools today; SQL would be JDBC like Hive | **SQL yes (jdbc rewrite); cancel/status stay HTTP.** Spark Connect does not speak Impala | Full Impala (or JDBC endpoint) stack — **future roadmap** |
 | **Paimon** | Declarative **HTTP** REST catalog (same pattern as Iceberg REST) | **Not JDBC/gRPC.** | Paimon REST catalog + warehouse Keep — **future roadmap** |
 | **Cassandra** | Declarative **HTTP** Cassandra Sidecar | **Not JDBC** (profile is Sidecar REST, not CQL). CQL would be a different jdbc profile | Sidecar + cluster Docker Keep — **future roadmap** |

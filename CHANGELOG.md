@@ -17,17 +17,21 @@
 
 ## 2.0.0 (unreleased)
 
+- Clarified [docs/COVERAGE-0.1-VS-2.0.md](docs/COVERAGE-0.1-VS-2.0.md): 0.1 naming (not “1.0”), product-shape
+  table, 152/155/165 arithmetic, Kafka+Connect under one profile, and Keep vs coverage distinction.
+- Track Hive, Paimon, Cassandra, Ranger, Impala, and Atlas two-door Keeps only on
+  [docs/ROADMAP.md](docs/ROADMAP.md); removed incomplete `HiveFrontDoorsTest` scaffold (no half-done Keep code).
+- Force-track retained Keep `*-transcript.log` files under `examples/adopters/*/results/` (global `*.log`
+  ignores previously dropped them from commits and broke documentation link checks).
 - JDBC `driverClass` loads with the thread context class loader so engine drivers supplied as Knox/own-host
   plugin jars resolve at startup (Hive FrontDoors and other JDBC adopters).
 - Spark Connect `missingTokenEnvironmentFailsStartup` test normalizes line endings before patching shipped YAML
   (Windows CRLF no longer skips the `tokenEnv` injection).
-- Opt-in `HiveFrontDoorsTest` (`-Preal-engines`, Docker `apache/hive:4.0.1`) copies HS2 client libs from the
-  container; Keep evidence and tutorial regen still pending until that test is green in CI.
 - Regenerated all 25 IDE project tutorials from kept two-door runs (`tools/build-project-tutorials.py`).
 - Roadmap: explicit **Future work — remaining target verification** for Hive, Paimon, Cassandra, Ranger,
   Impala, Atlas (with acceptance criteria), plus future typed sources (Arrow/Beam) and D7/D28. Hive
-  `apache/hive:4.0.1` HS2 Docker + beeline connectivity proven; FrontDoors Keep still blocked on
-  `hive-jdbc` classpath wiring ([ADOPTER-REAL-ENGINE-STATUS.md](docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md)).
+  `apache/hive:4.0.1` HS2 Docker + beeline connectivity proven; FrontDoors Keep remains roadmap work
+  ([ADOPTER-REAL-ENGINE-STATUS.md](docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md)).
 - HTML [Hello World guide](docs/guide/hello-world.html): how to add Aegis to an IDE development cycle and put
   governed MCP in front of an existing MCP server or Apache project; linked from the landing page,
   handbook, and developer guide.

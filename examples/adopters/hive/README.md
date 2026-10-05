@@ -13,7 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-# Apache Hive: profile supported; HS2 Docker proven; FrontDoors Keep not yet retained
+# Apache Hive: profile supported; HS2 Docker proven; FrontDoors Keep on roadmap
 
 ## Canonical reference
 
@@ -31,16 +31,17 @@ read tool; writes smuggled through it are refused by the source.
 
 Official image `apache/hive:4.0.1` with `SERVICE_NAME=hiveserver2` listens on host port 10000 and
 answers `SHOW DATABASES` via `beeline` inside the container. That proves the product process is
-runnable. It does **not** yet prove Aegis governance through both front doors.
+runnable. It does **not** prove Aegis governance through both front doors.
+
+There is **no** `HiveFrontDoorsTest` in this tree until a green Keep lands (incomplete scaffolds are
+not kept). Tracked under [docs/ROADMAP.md](../../../docs/ROADMAP.md) § “Future work — remaining
+target verification”.
 
 ## What a Keep still needs (roadmap)
 
-1. `HiveFrontDoorsTest` starting HS2 via `DockerContainer` (image already pulled on this host).
-2. `hive-jdbc` and its transitive jars on the own-host test classpath and in Knox `ext/` (thin
-   `hive-jdbc-4.0.1.jar` alone is not enough).
+1. A green `HiveFrontDoorsTest` that starts HS2 via Docker and exercises both front doors.
+2. Full HS2 client jars on the own-host classpath and in Knox `ext/` (thin Maven `hive-jdbc` alone
+   is not enough; copy from the Hive distribution / image `lib/`).
 3. Seed a disposable table outside Aegis; exercise `jdbc_*` reads and a refused write.
 4. `-Keep` retention under `examples/adopters/hive/results/` and
    `python tools/build-project-tutorials.py` for the IDE tutorial.
-
-Tracked under [docs/ROADMAP.md](../../../docs/ROADMAP.md) § “Future work — remaining target verification”.
-Replace the JDBC URL, driver, credentials, groups and egress policy for your deployment.

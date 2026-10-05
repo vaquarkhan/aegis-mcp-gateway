@@ -58,12 +58,12 @@ Spark Connect as a generic gRPC path. Acceptance: green `*FrontDoorsTest`, kept
 
 | Adopter | Blocker (honest) | Acceptance criteria | Owner / effort |
 | --- | --- | --- | --- |
-| **Hive** | `apache/hive:4.0.1` HS2 is reachable (Docker + beeline `SHOW DATABASES` proven on this tree). Keep still needs `HiveFrontDoorsTest`, `hive-jdbc` (+ transitive jars) on the gateway/Knox classpath, seed table, and Keep retention | Own-host + Knox Keep; tutorial regenerated | Engineering; medium (JDBC classpath wiring) |
-| **Paimon** | Needs a running Paimon REST catalog + warehouse (same class of work as Iceberg REST Keep) | `PaimonFrontDoorsTest` + Keep | Engineering; medium |
-| **Cassandra** | Profile is **Sidecar HTTP**, not CQL. Needs Sidecar + cluster Docker (or a separate future `jdbc`/CQL profile) | `CassandraFrontDoorsTest` + Keep | Engineering; medium–heavy |
-| **Ranger** | Needs Ranger Admin + DB (and usually Solr/users bootstrap) | `RangerFrontDoorsTest` + Keep | Engineering; heavy |
-| **Impala** | Coordinator HTTP tools exist; full SQL Keep needs Impala (or JDBC rewrite + Impala endpoint). No light official all-in-one image | FrontDoors Keep against a real coordinator | Engineering; heavy / infra |
-| **Atlas** | Atlas + Kafka + Solr + HBase (or equivalent) stack | FrontDoors Keep | Engineering; very heavy |
+| **Hive** | Profile is already `type: jdbc` + `HiveDriver`. Local proof only: `apache/hive:4.0.1` HS2 Docker answers `SHOW DATABASES` via beeline. **No** `HiveFrontDoorsTest` in tree (scaffold removed until green). Needs full HS2 client jars on own-host/Knox classpath (thin Maven `hive-jdbc` is insufficient), seed table, Keep retention, tutorial regen | Green `HiveFrontDoorsTest` (own host + Knox) + kept `examples/adopters/hive/results/` + tutorial | Engineering; medium (JDBC client classpath) |
+| **Paimon** | Needs a running Paimon REST catalog + warehouse (same class of work as Iceberg REST Keep). No FrontDoors test in tree | `PaimonFrontDoorsTest` + Keep + tutorial | Engineering; medium |
+| **Cassandra** | Profile is **Sidecar HTTP**, not CQL. Needs Sidecar + cluster Docker (or a separate future `jdbc`/CQL profile). No FrontDoors test in tree | `CassandraFrontDoorsTest` + Keep + tutorial | Engineering; medium–heavy |
+| **Ranger** | Needs Ranger Admin + DB (and usually Solr/users bootstrap). No FrontDoors test in tree | `RangerFrontDoorsTest` + Keep + tutorial | Engineering; heavy |
+| **Impala** | Coordinator HTTP tools exist; full SQL Keep needs Impala (or JDBC rewrite + Impala endpoint). No light official all-in-one image. No FrontDoors test in tree | FrontDoors Keep against a real coordinator + tutorial | Engineering; heavy / infra |
+| **Atlas** | Atlas + Kafka + Solr + HBase (or equivalent) stack. No FrontDoors test in tree | `AtlasFrontDoorsTest` + Keep + tutorial | Engineering; very heavy |
 
 ### Future product features (not open defects)
 
