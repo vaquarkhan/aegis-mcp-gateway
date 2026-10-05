@@ -28,9 +28,10 @@ real engine through both Aegis front doors:
 
 Every verified folder contains the exact Aegis YAML used by both doors, the actual Knox topology, the
 engine configuration files written by the test, a `HOW-TO-RUN.md` with engine and front-door commands, a
-sample MCP request, and retained result logs. The other 16 folders now contain `aegis/canonical.yaml`: an
-exact reference copy of the profile covered by `AdapterConfigsTest`, clearly labeled as not captured from a
-real-engine run. Tokens, approval receipts and credentials are not kept.
+sample MCP request, and retained result logs. The other **6** folders (Atlas, Cassandra, Hive, Impala,
+Paimon, Ranger) contain `aegis/canonical.yaml`: an exact reference copy of the profile covered by
+`AdapterConfigsTest`, clearly labeled as not captured from a real-engine run. Tokens, approval receipts
+and credentials are not kept.
 
 At this point: **26 profiles have real two-door evidence** (including Docker-backed Airflow, CouchDB, Doris,
 Druid, Hadoop, HBase, NiFi, Pinot, Storm, and Superset); **6 more** are profile/contract supported and still

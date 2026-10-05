@@ -121,12 +121,13 @@ OWASP Top 10 elimination.
 
 ### Latest opt-in real-engine profile
 
-The real-engine examples are intentionally not part of the default build. On 2026-10-03 all 15 adopters
-marked **passed** in [`examples/adopters/README.md`](../examples/adopters/README.md), plus the
-`spark-iceberg` scenario, were rerun on the current working tree through both own-host Aegis and the
-current `knox-bundle` jar in a stock Knox 3.0.0 process: 33 tests in two modules, 0 failures, 0 skipped
-(Pulsar after the D27 harness fix). All 32 kept audit journals pass `--verify-audit`. The kept folders were
-refreshed from that run, and the per-project tutorials in [TUTORIALS.md](TUTORIALS.md) are built from them.
+The real-engine examples are intentionally not part of the default build. On 2026-10-05 the catalog marked
+**26** adopter/scenario profiles as real two-door **passed** in
+[`examples/adopters/README.md`](../examples/adopters/README.md) (the earlier 2026-10-03 cohort plus the
+Docker-backed Airflow, CouchDB, Doris, Druid, Hadoop, HBase, NiFi, Pinot, Storm, and Superset Keeps, and
+the `spark-iceberg` scenario). Each passed Keep was run through both own-host Aegis and the current
+`knox-bundle` jar in a stock Knox 3.0.0 process. Retained folders were refreshed from those runs; the
+per-project tutorials in [TUTORIALS.md](TUTORIALS.md) are built from them.
 Each retained folder contains:
 
 - `aegis/own-host.yaml`, `aegis/knox-aegis.yaml` and `aegis/knox-topology.xml`: the exact redacted
@@ -140,8 +141,10 @@ The retained materials record the own-host and Knox paths that were exercised. T
 authoritative for whether each run remains current after later code or configuration changes; a release
 candidate still needs its own run.
 
-The other 16 shipped profiles are config/contract supported but not real-engine verified; the precise
-service prerequisite and the fact that no evidence was fabricated are recorded in the same adopter index.
+The other **6** shipped profiles (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) are config/contract
+supported but not real-engine verified; the precise service prerequisite and the fact that no evidence
+was fabricated are recorded in the same adopter index and on
+[ROADMAP.md](ROADMAP.md).
 
 ## Inventory contract
 

@@ -19,6 +19,11 @@ Apache Software Foundation release process work (see [ROADMAP.md](../ROADMAP.md)
 
 ## Real two-door verified (kept results)
 
+Public “**26** profiles with retained own-host and Knox Keep runs” means the adopter/scenario rows marked
+**passed** in [`examples/adopters/README.md`](../../examples/adopters/README.md) (including the
+`spark-iceberg` scenario). Those 26 drive the generated IDE tutorials. **A2A** also has a kept two-door
+run below; it is an additional typed-source Keep, not one of the six contract-only backlog items.
+
 | Adopter | Engine | Evidence |
 | --- | --- | --- |
 | ActiveMQ | 6.3.2 | `examples/adopters/activemq/results/` |
