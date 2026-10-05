@@ -26,6 +26,7 @@
   <aside class="sidebar" aria-label="Developer guide navigation">
     <a class="brand" href="../index.html">Aegis <span>Developer guide</span></a>
     <nav>
+      <a href="hello-world.html">Hello World</a>
       <a href="#build">Build and run</a>
       <a href="#configure">Write a configuration</a>
       <a href="#client">Connect a client or IDE</a>
@@ -37,6 +38,8 @@
       <a href="#tests">Tests and evidence</a>
       <a href="#tutorials">Tutorials</a>
       <a href="#conventions">Conventions</a>
+      <a href="security.html">Security guide</a>
+      <a href="handbook.html">User handbook</a>
     </nav>
     <p class="sidebar-note">Commands, keys and interface names on this page are the ones in the 2.0.0-SNAPSHOT source tree. The Markdown version is <a href="../DEVELOPER.html">DEVELOPER.md</a>.</p>
   </aside>
@@ -45,7 +48,7 @@
       <p class="eyebrow">DEVELOPER GUIDE</p>
       <h1>Use Aegis to govern your project, or change Aegis itself.</h1>
       <p class="lead">Sections 1 to 4 are for teams putting Aegis in front of an engine. Sections 5 to 9 are for people who extend it. The fastest hands-on start is a project tutorial: each one comes from a kept real run through both front doors.</p>
-      <div class="actions"><a class="button primary" href="#build">Build and run</a><a class="button" href="../TUTORIALS.html">All tutorials</a><a class="button" href="modules.html">Module reference</a><a class="button" href="../CONFIGURATION.html">Configuration reference</a></div>
+      <div class="actions"><a class="button primary" href="hello-world.html">Hello World</a><a class="button" href="#build">Build and run</a><a class="button" href="../TUTORIALS.html">All tutorials</a><a class="button" href="security.html">Security guide</a><a class="button" href="modules.html">Module reference</a><a class="button" href="../CONFIGURATION.html">Configuration reference</a></div>
     </header>
 
     <section id="build">
@@ -206,7 +209,8 @@ helm install aegis charts/aegis -f my-values.yaml          # StatefulSet, one au
     <section id="tutorials">
       <p class="eyebrow">10. TUTORIALS</p>
       <h2>One per project with a kept real run.</h2>
-      <p>The <a href="../TUTORIALS.html">tutorial index</a> lists the deep-dive tutorials (Spark and Iceberg, Spark and Spark Connect, Iceberg, Kafka, Flink) and one IDE-ready tutorial per verified project, built by <code>tools/build-project-tutorials.py</code> from that project's kept two-door run. Projects with a configuration but no real run have no tutorial.</p>
+      <p>The <a href="../TUTORIALS.html">tutorial index</a> lists the deep-dive tutorials (Spark and Iceberg, Spark and Spark Connect, Iceberg, Kafka, Flink) and one IDE-ready tutorial per verified project, built by <code>tools/build-project-tutorials.py</code> from that project's kept two-door run. Twenty-five generated tutorials cover the Keep-verified engines, including Airflow, CouchDB, Doris, Druid, Hadoop, HBase, NiFi, Pinot, Storm, and Superset. Projects with a configuration but no real run (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) have no tutorial.</p>
+      <p>Security reviewers should start with the <a href="security.html">HTML security guide</a> (threat zones, TM01 to TM10, OWASP MCP handling, S1 to S31, and the latest control-suite evidence) before reading <a href="../THREAT-MODEL.html">THREAT-MODEL</a> and <a href="../SECURITY.html">SECURITY</a>.</p>
     </section>
 
     <section id="conventions" class="band">

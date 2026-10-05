@@ -27,15 +27,18 @@
     <a class="brand" href="../index.html">Aegis <span>Gateway 2.0</span></a>
     <nav>
       <a href="#start">Start here</a>
+      <a href="hello-world.html">Hello World</a>
       <a href="#why-mcp">Why MCP governance</a>
       <a href="#paths">Choose a path</a>
       <a href="#model">Operating model</a>
       <a href="#owasp">OWASP MCP Top 10</a>
+      <a href="#security">Threat model</a>
       <a href="#own-host">Own-host deployment</a>
       <a href="#knox">Optional Knox integration</a>
       <a href="#evidence">Evidence and examples</a>
       <a href="#operate">Operate safely</a>
       <a href="#references">Reference map</a>
+      <a href="security.html">Security guide</a>
       <a href="modules.html">Module reference</a>
     </nav>
     <p class="sidebar-note">Aegis turns MCP requests into governed, auditable actions on real systems.</p>
@@ -45,7 +48,7 @@
       <p class="eyebrow">USER HANDBOOK</p>
       <h1>Put governance between agents and real systems.</h1>
       <p class="lead">Aegis is the MCP-first governance platform for real-system actions. Its own host and optional Apache Knox extension are deployment choices; the Aegis engine always evaluates action class, resource scope, policy, approvals, receipts, and audit intent before a backend call.</p>
-      <div class="actions"><a class="button primary" href="#why-mcp">Why governance</a><a class="button" href="#paths">Choose your path</a><a class="button" href="../VALIDATION.html">Read current evidence</a></div>
+      <div class="actions"><a class="button primary" href="hello-world.html">Hello World</a><a class="button" href="#why-mcp">Why governance</a><a class="button" href="#paths">Choose your path</a><a class="button" href="../VALIDATION.html">Read current evidence</a></div>
     </header>
 
     <section id="why-mcp">
@@ -60,6 +63,7 @@
       <p class="eyebrow">CHOOSE YOUR PATH</p>
       <h2>What are you trying to do?</h2>
       <div class="cards">
+        <article><h3>Hello World: IDE + first prompt</h3><p>Build Aegis, start a verified profile, point Cursor/VS Code/Kiro at <code>/mcp</code>, and see allow / approve / audit.</p><a href="hello-world.html">Open the Hello World guide</a></article>
         <article><h3>Connect an existing MCP server</h3><p>Keep the server’s capability and schemas; add Aegis’s governance at the MCP boundary.</p><a href="../ADOPTION-GUIDE.html#step-1a-govern-an-existing-mcp-server">Use the MCP integration guide</a></article>
         <article><h3>Govern a REST API</h3><p>Declare methods, paths, schemas, resources, and backend success semantics as `type: http` tools.</p><a href="../CONFIGURATION.html#type-http">Read the HTTP configuration reference</a></article>
         <article><h3>Adopt a typed source</h3><p>Use JDBC, ZooKeeper, Kafka Admin, Spark Connect, A2A, or a custom Java plugin.</p><a href="../PLUG-AND-PLAY.html">Explore typed integrations</a></article>
@@ -89,7 +93,19 @@
       <p>The OWASP MCP Top 10 is a threat checklist for systems that expose AI-callable tools. Aegis maps each item to a gateway control and states what remains an operator, identity-provider, backend, or network responsibility. See the product <a href="../THREAT-MODEL.html">threat model</a> and <a href="../evidence/SECURITY-VALIDATION.html">security validation</a> record for STRIDE scenarios and the latest control-suite evidence.</p>
       <img class="explainer-image" src="../assets/owasp-mcp-top10-coverage.svg" alt="Aegis coverage of all ten OWASP MCP risk areas, grouped as strong, partial, limited, or external.">
       <div class="owasp-grid"><div class="strong"><strong>MCP01 to MCP03</strong>Strong gateway controls for tokens, privilege scope, and changed tool definitions; provided the first pin is trusted.</div><div><strong>MCP04 and MCP05</strong>Partial supply-chain and command-execution coverage; release controls and runtime sandboxing remain outside Aegis.</div><div class="limited"><strong>MCP06</strong>Prompt-injection screening reduces impact but is heuristic. Typed scope and independent approval are the durable safeguards.</div><div class="strong"><strong>MCP07 and MCP08</strong>Strong authentication/authorization and local audit evidence controls; identity operations and off-host monitoring remain deployment work.</div><div class="external"><strong>MCP09</strong>Shadow servers cannot be discovered or prevented by a gateway that is not in their network path.</div><div><strong>MCP10</strong>Caller-filtered discovery and guarded content help, but clients can retain or disclose received data.</div></div>
-      <p><a href="../SECURITY.html#mcp-threat-coverage">Read the full S1 to S31 security mapping, test evidence, and residual responsibilities.</a></p>
+      <p><a href="../SECURITY.html#mcp-threat-coverage">Read the full S1 to S31 security mapping, test evidence, and residual responsibilities.</a> The HTML security guide collects the threat-model diagram, abuse cases, and validation record in one place: <a href="security.html">open the security guide</a>.</p>
+    </section>
+
+    <section id="security" class="band">
+      <p class="eyebrow">THREAT MODEL</p>
+      <h2>Review the governed MCP boundary before you trust a claim.</h2>
+      <p>Security reviewers start with the product threat model: trust zones Z1 to Z6, STRIDE, abuse scenarios TM01 to TM10, and residual risk. Control promises S1 to S31 are listed with their tests. The latest focused suite on this tree ran 227 selected tests with 0 failures (2026-10-05).</p>
+      <img class="explainer-image" src="../assets/aegis-threat-model.svg" alt="Aegis threat model: trust zones, STRIDE, and the governed MCP boundary.">
+      <div class="actions">
+        <a class="button primary" href="security.html">Open the security guide</a>
+        <a class="button" href="../THREAT-MODEL.html">Full threat model</a>
+        <a class="button" href="../evidence/SECURITY-VALIDATION.html">Validation record</a>
+      </div>
     </section>
 
     <section id="own-host">
@@ -112,21 +128,21 @@
       <p class="eyebrow">EVIDENCE BEFORE CLAIMS</p>
       <h2>Prove the exact path you plan to operate.</h2>
       <p>The default build establishes deterministic governance, configuration, documentation-contract, and embedded-real converter evidence. A retained run against the named target version establishes target verification for an adopter profile.</p>
-      <div class="two-column"><div><h3>Verified examples</h3><p>Fifteen profiles have retained own-host and Knox results, configuration, topology, engine files, and audit journals.</p><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/examples/adopters">Browse verified examples</a></div><div><h3>Contract-only profiles</h3><p>Sixteen profiles load and are governance-tested, and have no engine run recorded.</p><a href="../VALIDATION.html">Read validation boundaries</a></div></div>
-      <p>New to Aegis? The <a href="../TUTORIAL-SPARK-ICEBERG.html">Spark and Iceberg tutorial</a> takes you from a tiny dataset to a governed change from your IDE, with and without Knox. Then pick the real walkthrough closest to your deployment from the <a href="../TUTORIALS.html">tutorial index</a>: <a href="../TUTORIAL-KAFKA-AND-KAFKA-CONNECT.html">Kafka</a>, <a href="../TUTORIAL-SPARK-AND-SPARK-CONNECT.html">Spark</a>, <a href="../TUTORIAL-ICEBERG.html">Iceberg</a>, or <a href="../TUTORIAL-FLINK.html">Flink</a>.</p>
+      <div class="two-column"><div><h3>Verified examples</h3><p>Twenty-six profiles have retained own-host and Knox results, configuration, topology, engine files, and audit journals, each with an IDE-ready tutorial.</p><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/examples/adopters">Browse verified examples</a></div><div><h3>Contract-only profiles</h3><p>Six profiles load and are governance-tested, and still need a full product stack before a real Keep run (Atlas, Cassandra, Hive, Impala, Paimon, Ranger).</p><a href="../VALIDATION.html">Read validation boundaries</a></div></div>
+      <p>New to Aegis? The <a href="../TUTORIAL-SPARK-ICEBERG.html">Spark and Iceberg tutorial</a> takes you from a tiny dataset to a governed change from your IDE, with and without Knox. Then pick the real walkthrough closest to your deployment from the <a href="../TUTORIALS.html">tutorial index</a>: <a href="../TUTORIAL-KAFKA-AND-KAFKA-CONNECT.html">Kafka</a>, <a href="../TUTORIAL-SPARK-AND-SPARK-CONNECT.html">Spark</a>, <a href="../TUTORIAL-ICEBERG.html">Iceberg</a>, or <a href="../TUTORIAL-FLINK.html">Flink</a>. Docker Keep tutorials now also cover Airflow, CouchDB, Doris, Druid, Hadoop, HBase, NiFi, Pinot, Storm, and Superset.</p>
     </section>
 
     <section id="operate">
       <p class="eyebrow">OPERATIONAL CHECKLIST</p>
       <h2>Operate safely from day one.</h2>
       <ul><li>Keep backend credentials least-privileged and outside configuration files; where the backend should see each user, use RFC 8693 token exchange (<code>credentials.type: token-exchange</code>).</li><li>Start custom controls from the reference PII, secrets and change-window hook services in <code>adopters/hooks</code>.</li><li>Allow only known backend egress destinations and enforce network policy below Aegis.</li><li>Separate approvers from requesters; delegated callers cannot approve.</li><li>Protect audit journals and durable state as operational records.</li><li>Validate the exact backend version and front door you will run.</li><li>Read documented limitations before treating a control as a complete defence.</li></ul>
-      <a class="button primary" href="../SECURITY.html">Review security properties and limits</a>
+      <div class="actions"><a class="button primary" href="security.html">Open the security guide</a><a class="button" href="../SECURITY.html">S1 to S31 properties</a></div>
     </section>
 
     <section id="references">
       <p class="eyebrow">REFERENCE MAP</p>
       <h2>Continue by role.</h2>
-      <div class="reference-table"><a href="../ADOPTION-GUIDE.html"><strong>Application teams</strong><span>Adoption guide</span></a><a href="../CONFIGURATION.html"><strong>Operators</strong><span>Configuration reference</span></a><a href="../SECURITY.html"><strong>Security reviewers</strong><span>Security model</span></a><a href="developer.html"><strong>Developers and plugin authors</strong><span>Developer guide</span></a><a href="modules.html"><strong>Every module</strong><span>Module reference</span></a><a href="../ROADMAP.html"><strong>Project reviewers</strong><span>Roadmap and gaps</span></a><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/docs/HANDBOOK.md"><strong>Full handbook</strong><span>Architecture, modules, YAML, and operations</span></a></div>
+      <div class="reference-table"><a href="../ADOPTION-GUIDE.html"><strong>Application teams</strong><span>Adoption guide</span></a><a href="../CONFIGURATION.html"><strong>Operators</strong><span>Configuration reference</span></a><a href="security.html"><strong>Security reviewers</strong><span>Threat model and S1 to S31</span></a><a href="developer.html"><strong>Developers and plugin authors</strong><span>Developer guide</span></a><a href="modules.html"><strong>Every module</strong><span>Module reference</span></a><a href="../ROADMAP.html"><strong>Project reviewers</strong><span>Roadmap and gaps</span></a><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/docs/HANDBOOK.md"><strong>Full handbook</strong><span>Architecture, modules, YAML, and operations</span></a></div>
     </section>
   </main>
 </body>

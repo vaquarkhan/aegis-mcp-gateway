@@ -8,16 +8,11 @@ contributor-to-committer path. It is intentionally short and will be aligned to 
 model if/when the project is accepted.
 
 ## Project status
-Aegis is a young, initiated by single-author project that is seeking a neutral, community-based home and now we have 4 active contributers. It does
-not claim a mature or diverse community yet; growing one is the primary goal. Parts of the codebase were
+Aegis was a young, initiated by single-author project that is seeking a neutral, community-based home and now we have 4 active contributers. growing  mature or diverse community is the primary goal.
+
+Parts of the codebase were 
 developed with AI assistance under human direction and review - see the AI-assisted development
 disclosure in [AGENTS.md](AGENTS.md).
-
-## Roles
-- **Contributor** - anyone who opens issues or pull requests. No prior status required.
-- **Committer / maintainer** - has write access, reviews and merges PRs, and takes responsibility for
-  the health of the code. Committership is earned through sustained, reviewed contribution (merit).
-- **PPMC / PMC** (once incubating) - oversees releases, votes, and community growth.
 
 ## Decision-making
 - **Code changes** require one approving review from a committer other than the author, plus green CI,

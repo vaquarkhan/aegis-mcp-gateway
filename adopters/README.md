@@ -35,7 +35,8 @@ adopters/
         README.md       developer guide for this adopter
   clients/         language/client integration examples
   frameworks/      framework-to-Aegis examples
-  tutorials/       runnable end-to-end tutorial material
+  tutorials/       runnable end-to-end tutorial material (see tutorials/README.md for
+                   a plain-language guide to the ide/ JSON files)
 ```
 
 The first adopter artifact is the project governance profile:
@@ -46,3 +47,16 @@ Adoption paths now use this directory. Each 2.0 adapter profile lives in its own
 README explaining the backend surface, source choice, evidence level and developer workflow. The 0.1
 `mcp-adapter-*` Java modules are not part of 2.0; [docs/HISTORY.md](../docs/HISTORY.md) maps them to
 these profiles.
+
+## Tutorials and IDE files
+
+[`tutorials/README.md`](tutorials/README.md) explains, for a new user, what the `ide/` folders mean:
+they are MCP connection snippets for VS Code, Kiro, and Cursor so an agent talks to **Aegis**, not
+straight to Kafka/Spark/Airflow. Each project also has `ide/README.md` with copy paths and first-time
+steps. Walkthroughs live under [`docs/TUTORIALS.md`](../docs/TUTORIALS.md).
+
+## Maven modules
+
+Each core module has a short developer README (what it owns, how to build/test, where to change
+code). Start with [`aegis-config/README.md`](../aegis-config/README.md) and the
+[module reference](../docs/guide/modules.html).

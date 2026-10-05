@@ -66,19 +66,29 @@ HEADER_MD = """<!--
 # Display names and the hand-written deep-dive tutorial, where one exists. Everything else is derived.
 PROJECTS = {
     "activemq": ("Apache ActiveMQ", None),
+    "airflow": ("Apache Airflow", None),
     "bookkeeper": ("Apache BookKeeper", None),
     "burr": ("Apache Burr (incubating)", None),
     "calcite": ("Apache Calcite (Avatica)", None),
+    "couchdb": ("Apache CouchDB", None),
+    "doris": ("Apache Doris", None),
+    "druid": ("Apache Druid", None),
     "existing-mcp-server": ("an existing MCP server", None),
     "flink": ("Apache Flink", "../TUTORIAL-FLINK.md"),
     "flume": ("Apache Flume", None),
+    "hadoop": ("Apache Hadoop HDFS", None),
+    "hbase": ("Apache HBase", None),
     "iceberg": ("Apache Iceberg REST catalog", "../TUTORIAL-ICEBERG.md"),
     "ignite": ("Apache Ignite", None),
     "kafka": ("Apache Kafka and Kafka Connect", "../TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md"),
+    "nifi": ("Apache NiFi", None),
+    "pinot": ("Apache Pinot", None),
     "pulsar": ("Apache Pulsar", None),
     "solr": ("Apache Solr", None),
     "spark": ("Apache Spark", "../TUTORIAL-SPARK-AND-SPARK-CONNECT.md"),
     "spark-connect": ("Apache Spark Connect", "../TUTORIAL-SPARK-AND-SPARK-CONNECT.md"),
+    "storm": ("Apache Storm", None),
+    "superset": ("Apache Superset", None),
     "zookeeper": ("Apache ZooKeeper", None),
 }
 # Spark with Iceberg has its own hand-built tutorial, scripts and IDE files (docs/TUTORIAL-SPARK-ICEBERG.md).
@@ -427,6 +437,73 @@ def tutorial(project, title, deep):
                                              "test": test, "date": date, "counts": counts}
 
 
+def ide_readme(project, title, meta):
+    """Plain-language guide for the JSON files in this project's ide/ folder."""
+    name = f"aegis-{project}"
+    own_url = f"http://127.0.0.1:{OWN_HOST_PORT}/mcp"
+    knox_url = f"https://localhost:{KNOX_PORT}{meta['knox_path']}"
+    walk = f"../../../../docs/tutorials/{project}.md"
+    return HEADER_MD + f"""# IDE setup for the {title} tutorial
+
+## What this folder is (new-user version)
+
+Your coding editor's **agent** can call remote tools over MCP. These JSON files tell the editor to call
+**Aegis**, not the {title} engine directly. Aegis checks who you are and whether the action is allowed,
+then talks to the engine only when the call is allowed.
+
+Think of it as a receptionist: the agent asks Aegis; Aegis decides; the backend never sees a skipped
+governance check.
+
+You still need:
+
+1. The real {title} stack running (see the tutorial).
+2. Aegis running with that tutorial's configuration on port `{OWN_HOST_PORT}` (own host) or Knox on
+   `{KNOX_PORT}` (Knox door).
+3. A bearer token (own host) or Knox demo credentials (Knox door) from the tutorial.
+
+Full walkthrough: [`docs/tutorials/{project}.md`]({walk}). Folder overview:
+[`adopters/tutorials/README.md`](../../README.md).
+
+## Which file to copy
+
+| Editor | Copy this file to | Door |
+| --- | --- | --- |
+| VS Code (Copilot agent) | `.vscode/mcp.json` | own host → `{own_url}` |
+| VS Code (Knox) | `.vscode/mcp.json` (from `mcp.knox.json`) | Knox → `{knox_url}` |
+| Kiro | `.kiro/settings/mcp.json` | own host enabled; Knox entry present but disabled |
+| Cursor | `.cursor/mcp.json` | own host → `{own_url}` |
+
+Server name in the files: `{name}` (Knox variant: `{name}-knox`).
+
+## First-time steps
+
+1. Finish the "Run the whole verified scenario" (or Flavor A / Flavor B) section of the tutorial so
+   Aegis is listening.
+2. Copy the matching JSON above into your project or user MCP settings path.
+3. Replace `REPLACE_WITH_YOUR_TOKEN` (Cursor / Kiro) with a token from
+   `examples/adopters/{project}/aegis/own-host.yaml`, or answer VS Code's password prompt.
+4. Reload MCP / the window, then ask the agent a **read** prompt from the tutorial (for example list
+   or status). A write or delete should require approval when the profile marks the tool `MUTATE` or
+   `DESTRUCTIVE`.
+
+## What the fields mean
+
+| Field | Meaning |
+| --- | --- |
+| `url` | MCP endpoint. Must be Aegis (or Knox → Aegis), never the raw engine admin URL. |
+| `Authorization: Bearer …` | Own-host identity. The token maps to groups in Aegis config. |
+| `Authorization: Basic …` | Knox demo identity. Knox authenticates; Aegis still governs the MCP body. |
+| `disabled` (Kiro) | `true` means that server entry is ignored until you enable it. |
+
+## Safety
+
+- Do not commit real tokens or Knox passwords.
+- Do not set the IDE to auto-approve destructive tools while learning.
+- If the IDE shows no tools, the usual causes are: Aegis not running, wrong port, wrong token, or a
+  token whose groups see an empty catalog.
+"""
+
+
 def ide_files(project, meta):
     name = f"aegis-{project}"
     own_url = f"http://127.0.0.1:{OWN_HOST_PORT}/mcp"
@@ -467,10 +544,9 @@ def index(built, skipped):
     if skipped:
         out.append("\nNot built, and why:\n")
         out += [f"- {s}" for s in skipped]
-    out.append("\nProjects with a configuration but no real run on record (Airflow, Atlas, Cassandra, CouchDB, Doris, "
-               "Druid, Hadoop, HBase, Hive, Impala, NiFi, Paimon, Pinot, Ranger, Storm, Superset) have no tutorial "
-               "here: their profiles pass the contract test only, which proves route rendering and governance order, "
-               "not that the product answers. Their status and blockers are in "
+    out.append("\nProjects with a configuration but no real run on record (Atlas, Cassandra, Hive, Impala, Paimon, "
+               "Ranger) have no tutorial here: their profiles pass the contract test only, which proves route "
+               "rendering and governance order, not that the product answers. Their status and blockers are in "
                "[examples/adopters/README.md](../../examples/adopters/README.md).")
     return "\n".join(out) + "\n"
 
@@ -485,6 +561,7 @@ def main():
             continue
         built[project] = meta
         writes[DOCS / f"{project}.md"] = text
+        writes[IDE_ROOT / project / "ide" / "README.md"] = ide_readme(project, title, meta)
         for rel, doc in ide_files(project, meta).items():
             writes[IDE_ROOT / project / "ide" / rel] = json.dumps(doc, indent=2) + "\n"
     writes[DOCS / "README.md"] = index(built, skipped)

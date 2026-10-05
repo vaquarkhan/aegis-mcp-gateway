@@ -15,7 +15,6 @@
  */
 package io.github.vaquarkhan.aegis.validation;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.vaquarkhan.aegis.validation.frontdoor.AdopterScenario;
@@ -60,19 +59,32 @@ class DruidFrontDoorsTest {
         DockerContainer.requireDocker();
         port = JavaServer.freePort();
         Path log = Path.of("target", "druid-server", "docker.log").toAbsolutePath();
-        // Official image ENTRYPOINT is /druid.sh (single service). Nano-quickstart is a separate script.
+        // Official apache/druid images are Distroless: bin/supervise needs perl+/usr/bin/env, so
+        // start-nano-quickstart cannot run. Launch the same nano-quickstart services with bash.
+        String launch = "cd /opt/druid; "
+                + "bash bin/run-zk conf & sleep 8; "
+                + "bash bin/run-druid coordinator-overlord conf/druid/single-server/nano-quickstart & "
+                + "bash bin/run-druid broker conf/druid/single-server/nano-quickstart & "
+                + "bash bin/run-druid router conf/druid/single-server/nano-quickstart & "
+                + "bash bin/run-druid historical conf/druid/single-server/nano-quickstart & sleep 5; "
+                + "bash bin/run-druid middleManager conf/druid/single-server/nano-quickstart & "
+                + "wait";
         druid = DockerContainer.start("aegis-val-druid", IMAGE,
                 List.of("--entrypoint", "bash", "-p", "127.0.0.1:" + port + ":8888"),
-                List.of("-c", "/opt/druid/bin/start-nano-quickstart"),
+                List.of("-c", launch),
                 log);
         druid.awaitReady(() -> {
             HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(URI.create(base() + "/status/health"))
                     .timeout(Duration.ofSeconds(5)).GET().build(), HttpResponse.BodyHandlers.ofString());
             return r.statusCode() == 200;
-        }, Duration.ofMinutes(6), "Druid nano-quickstart");
-        // Seed two disposable datasources by cloning metadata if wikipedia exists; otherwise create via SQL load.
-        druid.awaitReady(() -> datasources().contains("wikipedia") || datasources().contains("["),
-                Duration.ofMinutes(4), "Druid coordinator datasources API");
+        }, Duration.ofMinutes(8), "Druid nano-quickstart");
+        // MiddleManager registration lags router health; wait before posting index tasks.
+        druid.awaitReady(() -> {
+            HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(
+                            URI.create(base() + "/druid/indexer/v1/workers"))
+                    .timeout(Duration.ofSeconds(5)).GET().build(), HttpResponse.BodyHandlers.ofString());
+            return r.statusCode() == 200 && r.body().contains("\"host\"");
+        }, Duration.ofMinutes(4), "Druid MiddleManager workers");
         ownHostVictim = ensureDisposable("aegis_ownhost");
         knoxVictim = ensureDisposable("aegis_knox");
     }
@@ -110,8 +122,16 @@ class DruidFrontDoorsTest {
             GovernedFlow.destructive(d, "druid_disable_datasource", Map.of("datasource", victim),
                     () -> assertTrue(datasourceExists(victim), victim + " still enabled"),
                     () -> {
-                        // After disable, coordinator may 404 the datasource or mark it disabled.
-                        assertFalse(datasourceEnabled(victim), victim + " disabled");
+                        long deadline = System.nanoTime() + Duration.ofMinutes(2).toNanos();
+                        boolean disabled = false;
+                        while (System.nanoTime() < deadline) {
+                            if (!datasourceEnabled(victim)) {
+                                disabled = true;
+                                break;
+                            }
+                            Thread.sleep(1000);
+                        }
+                        assertTrue(disabled, victim + " disabled; datasources=" + datasources());
                         d.note("Druid disabled datasource " + victim);
                     });
         }
@@ -121,9 +141,6 @@ class DruidFrontDoorsTest {
         if (datasourceExists(name)) {
             return name;
         }
-        // Create an empty datasource by posting a supervisor-less mark: use coordinator "datasources" by
-        // ingesting a tiny lookups-style mark via SQL INSERT is not available; use the wikipedia clone trick:
-        // POST /druid/coordinator/v1/datasources/{name} is not create. Instead load a tiny inline task.
         String task = "{\"type\":\"index_parallel\",\"spec\":{\"dataSchema\":{\"dataSource\":\"" + name
                 + "\",\"timestampSpec\":{\"column\":\"ts\",\"format\":\"iso\"},"
                 + "\"dimensionsSpec\":{\"dimensions\":[\"x\"]},"
@@ -132,22 +149,37 @@ class DruidFrontDoorsTest {
                 + "\"ioConfig\":{\"type\":\"index_parallel\",\"inputSource\":{\"type\":\"inline\","
                 + "\"data\":\"{\\\"ts\\\":\\\"2020-01-01T00:00:00Z\\\",\\\"x\\\":\\\"a\\\"}\"},"
                 + "\"inputFormat\":{\"type\":\"json\"}},\"tuningConfig\":{\"type\":\"index_parallel\"}}}";
-        HTTP.send(HttpRequest.newBuilder(URI.create(base() + "/druid/indexer/v1/task"))
+        HttpResponse<String> submitted = HTTP.send(HttpRequest.newBuilder(URI.create(base() + "/druid/indexer/v1/task"))
                 .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(task)).build(), HttpResponse.BodyHandlers.ofString());
-        long deadline = System.nanoTime() + Duration.ofMinutes(3).toNanos();
+        if (submitted.statusCode() / 100 != 2 || !submitted.body().contains("\"task\"")) {
+            throw new IllegalStateException("index task refused for " + name + ": "
+                    + submitted.statusCode() + " " + submitted.body());
+        }
+        String taskId = submitted.body().replaceAll("(?s).*\"task\"\\s*:\\s*\"([^\"]+)\".*", "$1");
+        long deadline = System.nanoTime() + Duration.ofMinutes(5).toNanos();
+        while (System.nanoTime() < deadline) {
+            HttpResponse<String> status = HTTP.send(HttpRequest.newBuilder(
+                            URI.create(base() + "/druid/indexer/v1/task/" + taskId + "/status"))
+                    .timeout(Duration.ofSeconds(10)).GET().build(), HttpResponse.BodyHandlers.ofString());
+            if (status.body().contains("\"statusCode\":\"SUCCESS\"") || status.body().contains("\"status\":\"SUCCESS\"")) {
+                break;
+            }
+            if (status.body().contains("FAILED") || status.body().contains("\"statusCode\":\"FAILED\"")) {
+                throw new IllegalStateException("index task failed for " + name + ": " + status.body());
+            }
+            Thread.sleep(2000);
+        }
+        deadline = System.nanoTime() + Duration.ofMinutes(3).toNanos();
         while (System.nanoTime() < deadline) {
             if (datasourceExists(name)) {
                 return name;
             }
             Thread.sleep(2000);
         }
-        // Fall back to wikipedia for one door only if ingest failed (still proves disable path once).
-        if (datasourceExists("wikipedia")) {
-            return "wikipedia";
-        }
-        throw new IllegalStateException("could not seed datasource " + name + ": " + datasources());
+        throw new IllegalStateException("could not seed datasource " + name + ": " + datasources()
+                + " task=" + submitted.body());
     }
 
     private static boolean datasourceExists(String name) throws Exception {

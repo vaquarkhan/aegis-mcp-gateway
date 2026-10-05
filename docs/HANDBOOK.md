@@ -19,7 +19,7 @@ Aegis Gateway 2.0 is a configuration-driven governance boundary for Model Contex
 
 This handbook explains the product from problem through deployment and operation. Evidence has two positive stages: a configuration/contract profile demonstrates that Aegis parses and governs a declared integration shape; a retained run against the named target version establishes target-version verification.
 
-> **Build governed MCP actions with evidence.** The [validation report](VALIDATION.md) records deterministic regression evidence and retained target evidence. The [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/examples/adopters/README.md) identifies 15 profiles with retained own-host and Knox-host target evidence and 16 configuration/contract profiles ready for their required real-engine runs.
+> **Build governed MCP actions with evidence.** The [validation report](VALIDATION.md) records deterministic regression evidence and retained target evidence. The [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/examples/adopters/README.md) identifies 26 profiles with retained own-host and Knox-host target evidence and 6 configuration/contract profiles that still need a full product stack (Atlas, Cassandra, Hive, Impala, Paimon, Ranger).
 
 ## Contents
 
@@ -171,7 +171,7 @@ The [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/) is a threat-or
 | MCP09 Shadow MCP servers | **External with partial containment:** Aegis inventories/restricts configured sources. | discovering and blocking servers deployed outside the gateway |
 | MCP10 Context injection and over-sharing | **Partial:** caller-filtered discovery and guarded content. | clients can retain, combine, or disclose results after receiving them |
 
-This project addresses the portion of all ten risks visible at the gateway boundary; it does not eliminate all ten. [Security](SECURITY.md#mcp-threat-coverage) is the authoritative S1 to S31 mapping, test evidence, hardening checklist, and residual-risk explanation. [Threat model](THREAT-MODEL.md) states the trust boundary; [security validation](evidence/SECURITY-VALIDATION.md) records what the current tree executed.
+This project addresses the portion of all ten risks visible at the gateway boundary; it does not eliminate all ten. [Security](SECURITY.md#mcp-threat-coverage) is the authoritative S1 to S31 mapping, test evidence, hardening checklist, and residual-risk explanation. The [HTML security guide](guide/security.html) summarizes trust zones, TM01 to TM10, and the latest control suite for Pages readers. [Threat model](THREAT-MODEL.md) states the trust boundary; [security validation](evidence/SECURITY-VALIDATION.md) records what the current tree executed.
 
 ## Apache project adoption and evidence
 
@@ -188,11 +188,11 @@ A project does not modify its code. An operator selects the backend boundary tha
 
 ### Current adopter state
 
-The repository has **15 real two-door verified profiles**: ActiveMQ Classic, BookKeeper, Apache Burr (incubating), Calcite/Avatica, an existing MCP server, Flink, Flume, Iceberg REST catalog, Ignite, Kafka and Kafka Connect, Pulsar, Solr, Spark, Spark Connect, and ZooKeeper. Each passed through both own-host Aegis and a stock Apache Knox 3.0.0 process, with redacted run materials retained in its adopter folder. The two-door runs were rerun on 2026-10-03 on the current working tree; rerun a profile on the release candidate before relying on it as release compatibility evidence.
+The repository has **26 real two-door verified profiles**: ActiveMQ Classic, Airflow, BookKeeper, Apache Burr (incubating), Calcite/Avatica, CouchDB, Doris, Druid, an existing MCP server, Flink, Flume, Hadoop HDFS, HBase, Iceberg REST catalog, Ignite, Kafka and Kafka Connect, NiFi, Pinot, Pulsar, Solr, Spark, Spark Connect, Storm, Superset, and ZooKeeper (plus the Spark+Iceberg tutorial scenario). Each passed through both own-host Aegis and a stock Apache Knox 3.0.0 process, with redacted run materials retained in its adopter folder. Two-door Keep runs were extended on 2026-10-05 on the current working tree; rerun a profile on the release candidate before relying on it as release compatibility evidence. Each verified profile has an IDE-ready tutorial under [tutorials/](tutorials/).
 
-The following **16 profiles are configuration/contract supported but not real-engine verified**: Airflow, Atlas, Cassandra, CouchDB, Doris, Druid, Hadoop HDFS, HBase, Hive, Impala, NiFi, Paimon, Pinot, Ranger, Storm, and Superset. Their folders carry an exact canonical YAML copy and an explicit prerequisite; they intentionally do not carry fabricated result logs or topology snapshots.
+The following **6 profiles are configuration/contract supported but not real-engine verified** on this host: Atlas, Cassandra, Hive, Impala, Paimon, and Ranger. Their folders carry an exact canonical YAML copy and an explicit prerequisite; they intentionally do not carry fabricated result logs or topology snapshots.
 
-The 25 deployable adapter configurations contain 115 declared tools. The executable 0.1-to-2.0 comparison surface is 164 tools, including the two Kafka Admin read capabilities and Burr. Five former adapter surfaces without a real API were removed rather than represented as nonexistent HTTP APIs. See [Validation](VALIDATION.md), [coverage contract](COVERAGE-0.1-VS-2.0.md), and the [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/examples/adopters/README.md) for exact evidence and limitations.
+The 25 deployable adapter configurations contain 116 declared tools. The executable 0.1-to-2.0 comparison surface is 165 tools, including the two Kafka Admin read capabilities and Burr. Five former adapter surfaces without a real API were removed rather than represented as nonexistent HTTP APIs. See [Validation](VALIDATION.md), [coverage contract](COVERAGE-0.1-VS-2.0.md), and the [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/examples/adopters/README.md) for exact evidence and limitations.
 
 ### What is proven, and what is not
 
@@ -426,7 +426,7 @@ For a configuration/contract profile, read its prerequisite and treat the canoni
 
 | You want to... | Primary guide | Deep reference |
 | --- | --- | --- |
-| Understand the threat model | [Threat scenarios and gateway boundary](#threat-scenarios-and-why-the-gateway-boundary-matters) | [Threat model](THREAT-MODEL.md), [Security](SECURITY.md), [security validation](evidence/SECURITY-VALIDATION.md) |
+| Understand the threat model | [Threat scenarios and gateway boundary](#threat-scenarios-and-why-the-gateway-boundary-matters) | [HTML security guide](guide/security.html), [Threat model](THREAT-MODEL.md), [Security](SECURITY.md), [security validation](evidence/SECURITY-VALIDATION.md) |
 | Configure a source or policy | [Adoption guide](ADOPTION-GUIDE.md) | [Configuration](CONFIGURATION.md) |
 | Review architecture and extension seams | [Architecture](ARCHITECTURE.md) | [Developer guide](DEVELOPER.md) |
 | Try Aegis end to end from an IDE | [Spark and Iceberg tutorial](TUTORIAL-SPARK-ICEBERG.md) | [all tutorials](TUTORIALS.md) |

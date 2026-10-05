@@ -81,7 +81,7 @@ public final class JdbcToolSourceFactory implements ToolSourceFactory {
         }
         if (driverClass != null) {
             try {
-                Class.forName(driverClass);
+                Class.forName(driverClass, true, Thread.currentThread().getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 // Fail at startup with the actionable message rather than on the first tool call.
                 throw new ConfigException(s.path() + ".driverClass '" + driverClass

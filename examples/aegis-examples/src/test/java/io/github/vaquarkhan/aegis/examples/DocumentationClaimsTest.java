@@ -32,12 +32,12 @@ import org.junit.jupiter.api.Test;
  * <p>Adapter configuration is product code. A manual count in a README is therefore a compatibility
  * claim, not decorative prose. This test derives the count from the same YAML reader that drives every
  * adapter through governance. Five product-named files were then removed because their target APIs
- * did not exist; honest removal reduced the deployable inventory to 25 configurations and 115 tools.
+ * did not exist; honest removal reduced the deployable inventory to 25 configurations and 116 tools.
  */
 class DocumentationClaimsTest {
 
     private static final int ADAPTER_CONFIGS = 25;
-    private static final int ADAPTER_TOOLS = 115;
+    private static final int ADAPTER_TOOLS = 116;
 
     private static String document(String relative) throws Exception {
         Path file = Path.of("..", "..", relative).normalize();
@@ -62,7 +62,7 @@ class DocumentationClaimsTest {
             String text = document(relative);
             assertTrue(text.contains("25 deployable adapter configurations") || text.contains("25 configurations"),
                     relative + ": must state the current deployable adapter-config count");
-            assertTrue(text.contains("115 tools"), relative + ": must state the current adapter-tool count");
+            assertTrue(text.contains("116 tools"), relative + ": must state the current adapter-tool count");
             assertFalse(text.contains("29 config-driven adapters"), relative + ": stale adapter count");
             assertFalse(text.contains("29 engines"), relative + ": stale adapter count");
         }

@@ -30,7 +30,7 @@ The local runs in this report and in [evidence/](evidence/) used one Windows wor
 | --- | --- | --- |
 | Operating system | Windows 11, x64 workstation | every local run |
 | JDK | 17.0.17 or 21.0.11 (Microsoft build) | the Maven build, the tests and the gateway jar |
-| JDK | 21.0.11–21.0.12 | Keycloak only ([token-exchange evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md)) |
+| JDK | 21.0.11“21.0.12 | Keycloak only ([token-exchange evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md)) |
 | Maven | 3.9.11 | the build |
 | Python | 3.13 | Python clients, Python engines and tools |
 | Node.js | 24.14.0 | the stdio MCP filesystem server |
@@ -103,7 +103,7 @@ not re-run on this date.
 
 ### Security control validation (2026-10-05)
 
-See [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) for the focused S1–S31
+See [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) for the focused S1“S31
 deterministic suite (and related host/Knox perimeter tests) re-run on this tree, plus the product
 [threat model](THREAT-MODEL.md). That record proves gateway control properties; it does not certify
 OWASP Top 10 elimination.
@@ -152,15 +152,15 @@ executable:
 | --- | ---: | --- |
 | Shared reference configurations | **6 executable reference profiles** plus a separate teaching template | one executable YAML and developer README in each `adopters/configurations/<profile>/` directory; `DocumentationClaimsTest` rejects flat root YAML and missing catalog links |
 | Adapter configurations | **25 deployable adapter configurations** | one executable YAML in each `adopters/configurations/adapters/<adopter>/` directory |
-| Adapter tools | **115 tools** | summed from the same parsed YAML |
+| Adapter tools | **116 tools** | summed from the same parsed YAML |
 | 0.1 frozen inventory | 156 tools, 33 engines | checked against every implemented or explicitly absent verdict |
 | Implemented 0.1 successor surface | 152 tools | exact frozen verdict accounting; five engine surfaces without a real API were removed |
 | New Kafka Admin capabilities | 2 tools | real AdminClient cluster and configuration reads |
-| Full comparison surface, including Apache Burr (incubating) | 164 tools | exact `Coverage01VsTwoTest` assertion |
+| Full comparison surface, including Apache Burr (incubating) | 165 tools | exact `Coverage01VsTwoTest` assertion |
 | Deliberately absent engine surfaces | 5 engines, 18 tools | Arrow, Beam, Hudi, Kudu and Ozone need real typed sources; no configuration ships for them |
 | Less-guarded implemented 0.1 tools | 0 | class-order assertion |
 
-The 25 deployable adapter configurations and 115 tools are governed in the current default build. Their external
+The 25 deployable adapter configurations and 116 tools are governed in the current default build. Their external
 compatibility state is below and in the claims matrix. A removed route that had no real API counts as an accurate
 absence, not as a 2.0 capability.
 
@@ -185,8 +185,8 @@ not hand-written protocol fixtures.
 ## Evidence by target
 
 The complete current target-status source of truth is
-[`examples/adopters/README.md`](../examples/adopters/README.md): it distinguishes 15 real two-door runs
-from 16 config/contract-supported profiles without fabricated engine evidence. The table below is
+[`examples/adopters/README.md`](../examples/adopters/README.md): it distinguishes 26 real two-door runs
+from 6 config/contract-supported profiles without fabricated engine evidence. The table below is
 supplemental source/converter detail.
 
 | Target | Current evidence | Current status |
@@ -198,7 +198,7 @@ supplemental source/converter detail.
 | Spark Connect 4.0.1 | `RealSparkConnectServerTest` starts a real Spark Connect server in a separate JVM and exercises reads plus a dry-run, independent approval and real destructive drop | verified-current source behavior; rerun when Spark Connect source, Spark version or config changes |
 | Iceberg 1.10.1 REST catalog | `IcebergFrontDoorsTest`: real `RESTCatalogServer`, own host and Knox; rerun 2026-10-05 on the current tree | verified-current source behavior; rerun on the exact candidate before a release claim |
 | Kafka 3.9.1 and Connect | `KafkaFrontDoorsTest`: real KRaft broker and Connect worker, own host and Knox; rerun 2026-10-05; and in every default build `ExampleConfigsTest` drives the `kafka-admin` source against a real broker | verified-current source behavior; rerun on the exact candidate before a release claim |
-| 16 profiles without real-engine evidence | deterministic `AdapterConfigsTest` contract route and governance flow (and documented environment prerequisites in `examples/adopters/`) | config/contract supported; target runs pending, no compatibility claim |
+| 6 profiles without real-engine evidence (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) | deterministic `AdapterConfigsTest` contract route and governance flow (and documented environment prerequisites in `examples/adopters/`) | config/contract supported; target runs pending, no compatibility claim |
 | Arrow, Beam, Hudi, Kudu and Ozone | no deployable configuration; 18 old tools have explicit absent verdicts because the former routes were not real product APIs | typed source implementation pending |
 | `aegis-state-postgres` | `PostgresStateStoreIT` ran four real RDS PostgreSQL 18.3 integration tests covering two-provider nonce/rate sharing, persistence, expiration, escaped scans, invalid rate requests, and environment-named credentials | verified-current source behavior; see [PostgreSQL RDS validation evidence](evidence/POSTGRES-RDS-VALIDATION.md). Re-run from the exact candidate before release or active-active claims |
 | Two gateway processes, one `postgres` namespace | `TwoGatewayProcessesPostgresIT` starts two `Main` JVMs against a real PostgreSQL 17.6 server: an approval requested on A is decided on B, the approved delete runs once on B, the replay on A is refused, and a rate window of 3 is one window across both | verified-current source behavior; see [two-gateway evidence](evidence/POSTGRES-TWO-GATEWAYS.md). Re-run from the exact candidate before a release claim |
@@ -215,7 +215,7 @@ the particular endpoint or driver works with the particular upstream release.
 3. Implement and run real typed sources for Arrow Flight, Beam JobService, Hudi, Kudu and Ozone; do not restore their former HTTP configurations, which targeted routes the products do not serve.
 4. Run every remaining HTTP adapter against its documented product version, preserve the raw output under
    `docs/evidence/`, then update its claim-matrix row.
-5. Re-run the Knox front-door scenarios on the exact release candidate bundle (the 2026-10-03 run covers all 16 scenarios on the local working tree), and re-capture the manual cold-install transcript with that bundle.
+5. Re-run the Knox front-door scenarios on the exact release candidate bundle (the 2026-10-05 Keep set covers the verified profiles on the local working tree), and re-capture the manual cold-install transcript with that bundle.
 6. Run an OpenTelemetry collector interoperability test, and re-run `TwoGatewayProcessesPostgresIT` on the exact candidate.
 7. Run the provenance scan required by `AGENTS.md` and attach the result.
 

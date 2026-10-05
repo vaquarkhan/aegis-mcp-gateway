@@ -15,7 +15,7 @@
 -->
 # Aegis 2.0 adopter catalog
 
-This directory contains **25 deployable adapter configurations and 115 tools**. Each configuration now has
+This directory contains **25 deployable adapter configurations and 116 tools**. Each configuration now has
 one named directory, one executable YAML profile and one developer README:
 
 ```text
@@ -103,7 +103,7 @@ groups, protected-resource policy, egress rules and audit location. Set `AEGIS_S
 
 ## What the tests prove
 
-`AdapterConfigsTest` loads all **25 deployable adopter profiles and 115 tools**. It verifies the
+`AdapterConfigsTest` loads all **25 deployable adopter profiles and 116 tools**. It verifies the
 configuration surface, access classes, approval flow, dry-run flow, resource extraction, policy denials
 and audit-chain integrity. HTTP profiles run through a contract route harness. That proves Aegis renders
 and governs the configured operation; it does not establish that a target product release implements

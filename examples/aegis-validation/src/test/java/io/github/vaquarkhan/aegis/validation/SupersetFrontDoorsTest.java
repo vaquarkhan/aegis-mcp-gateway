@@ -18,6 +18,7 @@ package io.github.vaquarkhan.aegis.validation;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.validation.frontdoor.AdopterScenario;
 import io.github.vaquarkhan.aegis.validation.frontdoor.DockerContainer;
 import io.github.vaquarkhan.aegis.validation.frontdoor.FrontDoor;
@@ -53,7 +54,6 @@ class SupersetFrontDoorsTest {
     private static final String PASS = "admin";
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final Pattern ACCESS = Pattern.compile("\"access_token\"\\s*:\\s*\"([^\"]+)\"");
-    private static final Pattern CHART_ID = Pattern.compile("\"id\"\\s*:\\s*(\\d+)");
 
     private static DockerContainer superset;
     private static int port;
@@ -155,6 +155,7 @@ class SupersetFrontDoorsTest {
     private static void seedCharts() throws Exception {
         // Prefer existing example charts; otherwise create two empty chart stubs via API if possible.
         List<String> ids = chartIds(listCharts());
+        ids = verifiedDistinctCharts(ids);
         if (ids.size() >= 2) {
             ownHostVictim = ids.get(0);
             knoxVictim = ids.get(1);
@@ -168,22 +169,25 @@ class SupersetFrontDoorsTest {
                     .timeout(Duration.ofSeconds(30))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body))).build(), HttpResponse.BodyHandlers.ofString());
-            Matcher m = CHART_ID.matcher(r.body());
-            if (m.find()) {
+            Object id = Json.parseObject(r.body()).get("id");
+            if (id != null) {
+                String chartId = String.valueOf(id);
                 if (ownHostVictim == null) {
-                    ownHostVictim = m.group(1);
-                } else {
-                    knoxVictim = m.group(1);
+                    ownHostVictim = chartId;
+                } else if (!chartId.equals(ownHostVictim)) {
+                    knoxVictim = chartId;
                 }
             }
         }
-        if (ownHostVictim == null || knoxVictim == null) {
-            ids = chartIds(listCharts());
-            if (ids.size() >= 2) {
-                ownHostVictim = ids.get(0);
-                knoxVictim = ids.get(1);
-            }
+        if (ownHostVictim == null || knoxVictim == null || ownHostVictim.equals(knoxVictim)) {
+            ids = verifiedDistinctCharts(chartIds(listCharts()));
+            assertTrue(ids.size() >= 2, "need two distinct charts; got " + ids);
+            ownHostVictim = ids.get(0);
+            knoxVictim = ids.get(1);
         }
+        assertTrue(chartExists(ownHostVictim) && chartExists(knoxVictim)
+                        && !ownHostVictim.equals(knoxVictim),
+                "victims must be two distinct existing charts: " + ownHostVictim + "," + knoxVictim);
     }
 
     private static String login() throws Exception {
@@ -212,12 +216,30 @@ class SupersetFrontDoorsTest {
     }
 
     private static List<String> chartIds(String body) {
+        // Superset list payloads nest many "id" fields (owners, tags, dashboards). Only result[].id
+        // are chart ids.
+        Object result = Json.parseObject(body).get("result");
         List<String> ids = new java.util.ArrayList<>();
-        Matcher m = CHART_ID.matcher(body);
-        while (m.find()) {
-            ids.add(m.group(1));
+        if (!(result instanceof List<?> rows)) {
+            return ids;
+        }
+        for (Object row : rows) {
+            if (row instanceof Map<?, ?> m && m.get("id") != null) {
+                ids.add(String.valueOf(m.get("id")));
+            }
         }
         return ids;
+    }
+
+    /** Keep chart ids that GET /api/v1/chart/{id} confirms, in stable order, without duplicates. */
+    private static List<String> verifiedDistinctCharts(List<String> candidates) throws Exception {
+        List<String> out = new java.util.ArrayList<>();
+        for (String id : candidates) {
+            if (!out.contains(id) && chartExists(id)) {
+                out.add(id);
+            }
+        }
+        return out;
     }
 
     private static String base() {

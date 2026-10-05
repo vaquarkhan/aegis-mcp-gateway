@@ -22,21 +22,65 @@ else, and [FEATURES.md](FEATURES.md) describes only what ships.
 Nothing here is a placeholder in the code. Where a control is absent, the gateway fails closed rather
 than pretending: an unimplemented auth mode refuses to start, an unconfigured control denies.
 
-## Current release and Apache Incubator obligations
+## Apache Incubator and release process (gated outside day-to-day code)
 
-These are current release blockers for Aegis as an Apache Incubator project. Applicable ASF and
-Incubator policy governs the release process; the technical evidence below does not replace that process.
+These items are **not** Aegis product defects and are **not** closed by JDBC/gRPC adopter Keep work.
+They remain visible for release honesty; owners are ASF/Incubator process, upstream Knox/Derby, or
+operator publish steps. Day-to-day engineering treats the adopter Keep backlog and typed-source
+features as the actionable code list.
 
-| Item | Why it blocks | Where it is discussed |
+| Item | Why it is outside this backlog | Where evidence lives |
 | --- | --- | --- |
-| Re-capture the manual Knox 3.0.0 cold-install transcript with the release candidate `knox-bundle` jar | The manual transcript predates the hook and OTLP work and used four jars. The automated two-door run with the current bundle in a stock Knox 3.0.0 process passed on 2026-10-05 for the ZooKeeper scenario on the local working tree (claims matrix H10; see [E2E validation](evidence/E2E-VALIDATION-2026-10-05.md)) | [evidence provenance note](evidence/knox-3.0.0-cold-install/README.md) |
-| Dependency vulnerability scan over the SBOM | `mvn -Prelease package` writes a CycloneDX SBOM (`target/bom.json`), but nothing checks it against a vulnerability feed yet | root `pom.xml` `release` profile |
-| Provenance scan (SCANOSS or FOSSA) over AI-assisted code | Required by the project's [AGENTS.md](../AGENTS.md) before the first Aegis release. The local SCANOSS fingerprint completed, but the external source-match API rate-limited the full scan and produced no result. | [release-assurance evidence](evidence/RELEASE-ASSURANCE.md#source-match-and-provenance-review) |
-| Resolve gateway-bundle Derby advisory | Fresh OSV scan flags `org.apache.derby:derby:10.16.1.1` (`GHSA-rcjc-c4pj-xxrp`). The OSV-listed 10.16.1.2 coordinate was unavailable from Maven Central; the next Derby line needs a newer Java baseline. | [release-assurance evidence](evidence/RELEASE-ASSURANCE.md#gateway-finding) |
-| Resolve supported Knox 3.0.0 host-stack advisories | The Knox bundle does not package Knox classes, but its fresh runtime-host SBOM has 36 advisories across 15 Knox-provided dependencies. Supporting the Knox path needs an upstream upgrade, Jakarta migration, or an explicit reviewed risk acceptance. | [release-assurance evidence](evidence/RELEASE-ASSURANCE.md#knox-host-findings) |
-| Review distribution LICENSE, NOTICE, and SBOM metadata | The Knox bundle SBOM has no license metadata for provided `javax.servlet.jsp:jsp-api:2.1`; shaded JAR resource precedence is not a reviewed distribution-level notice process. | [release-assurance evidence](evidence/RELEASE-ASSURANCE.md#archive-and-legal-content-inspection) |
-| Publish and verify private reporting contacts for security and conduct | `SECURITY.md` and `CODE_OF_CONDUCT.md` describe targets but no checkout-visible evidence confirms that the private channels are enabled or independent of a reported maintainer | root `SECURITY.md`, `CODE_OF_CONDUCT.md` |
-| Run the real-engine suite in CI rather than by hand | `RealFlinkTest`, `RealSparkTest` and `RealSparkConnectServerTest` now run locally against current source; Iceberg and Kafka still skip when their externally started endpoints are absent. CI must provision every target and fail a required target job when its real test skips | [VALIDATION.md](VALIDATION.md) §2 |
+| ASF software-grant header transition | Requires an ASF-recorded Software Grant before headers change | `tools/asf-header-switch.py`; section below |
+| Provenance scan (SCANOSS / FOSSA) | Release assurance / AI provenance policy; external API or FOSSA account | [RELEASE-ASSURANCE.md](evidence/RELEASE-ASSURANCE.md#source-match-and-provenance-review) |
+| SBOM vulnerability gate | Needs a chosen feed + CI policy; SBOM already builds with `-Prelease` | root `pom.xml` `release` profile |
+| Derby / Knox host-stack advisories | Upstream coordinate / Knox upgrade or reviewed risk acceptance | [RELEASE-ASSURANCE.md](evidence/RELEASE-ASSURANCE.md) |
+| LICENSE / NOTICE distribution review | Legal review of shaded/provided metadata | [RELEASE-ASSURANCE.md](evidence/RELEASE-ASSURANCE.md#archive-and-legal-content-inspection) |
+| Security / conduct private channel proof | Maintainer/GitHub org configuration, not gateway code | root `SECURITY.md`, `CODE_OF_CONDUCT.md` |
+| Real-engine suite always-on in CI | Infra provisioning on CI runners | [VALIDATION.md](VALIDATION.md) |
+| Published container image / Helm install in a shared cluster | Registry and cluster ops after image build (Dockerfile + chart already exist) | `Dockerfile`, `charts/aegis/` |
+| Re-capture manual Knox cold-install transcript | Operator documentation refresh; automated Knox Keep already exists | [knox cold-install note](evidence/knox-3.0.0-cold-install/README.md) |
+
+## Current engineering release-prep (code and evidence we own)
+
+| Item | Why it matters | Where it is discussed |
+| --- | --- | --- |
+| Keep-green remaining adopters (table below) | Target verification, not governance completeness | [ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.md) |
+| Typed Arrow Flight / Beam JobService sources | Deliberate **removal** of false HTTP facades is done; new converters are **features** | [DEFECT-LOG.md](DEFECT-LOG.md) D8; coverage table below |
+| Shared catalog pins / breakers across replicas | Multi-replica correctness beyond shared approvals | Scale section below |
+
+## Future work — remaining target verification (cannot claim 100% Keep yet)
+
+Governance and contract coverage for these profiles already ship. What is **missing** is a retained
+two-door Keep (own host + Knox) against a real product process. None of these are closed by reusing
+Spark Connect as a generic gRPC path. Acceptance: green `*FrontDoorsTest`, kept
+`examples/adopters/<name>/results/`, regenerated `docs/tutorials/<name>.md`, catalog row **passed**.
+
+| Adopter | Blocker (honest) | Acceptance criteria | Owner / effort |
+| --- | --- | --- | --- |
+| **Hive** | `apache/hive:4.0.1` HS2 is reachable (Docker + beeline `SHOW DATABASES` proven on this tree). Keep still needs `HiveFrontDoorsTest`, `hive-jdbc` (+ transitive jars) on the gateway/Knox classpath, seed table, and Keep retention | Own-host + Knox Keep; tutorial regenerated | Engineering; medium (JDBC classpath wiring) |
+| **Paimon** | Needs a running Paimon REST catalog + warehouse (same class of work as Iceberg REST Keep) | `PaimonFrontDoorsTest` + Keep | Engineering; medium |
+| **Cassandra** | Profile is **Sidecar HTTP**, not CQL. Needs Sidecar + cluster Docker (or a separate future `jdbc`/CQL profile) | `CassandraFrontDoorsTest` + Keep | Engineering; medium–heavy |
+| **Ranger** | Needs Ranger Admin + DB (and usually Solr/users bootstrap) | `RangerFrontDoorsTest` + Keep | Engineering; heavy |
+| **Impala** | Coordinator HTTP tools exist; full SQL Keep needs Impala (or JDBC rewrite + Impala endpoint). No light official all-in-one image | FrontDoors Keep against a real coordinator | Engineering; heavy / infra |
+| **Atlas** | Atlas + Kafka + Solr + HBase (or equivalent) stack | FrontDoors Keep | Engineering; very heavy |
+
+### Future product features (not open defects)
+
+| Item | Why it is future, not a bug | Note |
+| --- | --- | --- |
+| Arrow Flight typed source | False HTTP facade **removed** (D8 closed) | New gRPC Flight client; Spark Connect does not implement Flight |
+| Beam JobService typed source | False HTTP facade **removed** (D8 closed) | New gRPC JobService client |
+| Hudi / Ozone / Kudu product sources | Facades **removed**; no honest REST surface in 2.0 | Prefer Spark/Flink procedures or versioned REST when products ship one |
+| Apache Livy / YARN RM sources (D7) | Deliberate gap vs 0.1 | Declarative HTTP configs once identity/Kerberos story is chosen |
+| Airflow 3.x routes (D28) | Profile documents Airflow **2.x only** | New or versioned profile when 3.x Keep exists |
+| Ranger as a PDP | Not an adopter Keep; separate policy engine | Policy SPI already allows OPA; Ranger PDP is new work |
+| Knox 3.1 Jakarta extension | 3.0.0 is the current proof | [ADR-002](adr/ADR-002-KNOX-3.1-JAKARTA-TARGET.md) |
+| CIMD, MCP Tasks, `resources/subscribe` | Spec / design gated | See Protocol section |
+
+ASF / first-release process items (provenance, SBOM gate, software-grant headers, published image,
+Helm-in-cluster, security/conduct channel proof) stay in the section above; they are **not** closed by
+adopter Keep work.
 
 ## Work gated on the applicable software grant
 
@@ -84,10 +128,10 @@ before that event is verified.
 | Flink `upload_jar` | Not present | `POST /jars/upload` is `multipart/form-data`; the declarative body template is JSON. Needs either multipart support in the HTTP source or a small plugin |
 | Flink SQL Gateway (`run_sql_readonly`, `run_sql_ddl_dml`) | Not present | Needs a session lifecycle (open, submit, poll), which is a source rather than one declarative call |
 | Iceberg `expire_snapshots`, `remove_orphan_files`, `rewrite_data_files` | Not present | Engine procedures run by Spark or Flink, not REST catalog operations. They belong to that engine's source |
-| Real-engine verification of the 25 deployable adapter configurations and 115 tools | Current default build proves converter behavior against real Apache Derby and ZooKeeper; historical reference-engine runs exist separately | Every target version needs a preserved real-engine run before its config is promoted to verified-current. The claim matrix is the release gate. |
+| Real-engine verification of the 25 deployable adapter configurations and 116 tools | Current default build proves converter behavior against real Apache Derby and ZooKeeper; historical reference-engine runs exist separately | Every target version needs a preserved real-engine run before its config is promoted to verified-current. The claim matrix is the release gate. |
 | Complete endpoint audit | D8 corrected Hive, Calcite and ZooKeeper surfaces that had no real API. Arrow Flight and Beam JobService are identified as gRPC converter work. | Continue against each remaining target's own source, OpenAPI or registry, then execute the target. |
-| Arrow Flight converter | Not present | Flight is gRPC, not HTTP. Implement and test a typed client source rather than restoring a facade. |
-| Beam JobService converter | Not present | JobService is gRPC. Implement and test a typed client source rather than restoring a facade. |
+| Arrow Flight converter | Not present as a **feature** (false HTTP facade was **removed** --- defect closed) | Flight is gRPC, not HTTP. Spark Connect does **not** implement Flight. Ship a typed Flight client source and Keep it; do not restore the removed facade |
+| Beam JobService converter | Not present as a **feature** (false HTTP facade was **removed** --- defect closed) | JobService is gRPC. Unrelated to Spark Connect. Typed JobService client source required |
 | An Apache Livy source | Not present. 0.1's `submit_batch` and `kill_application` targeted Livy and YARN; the 2.0 Spark tools target Spark's own Master REST submission server | The only coverage 2.0 lost relative to 0.1 that is not deliberate ([COVERAGE-0.1-VS-2.0.md](COVERAGE-0.1-VS-2.0.md)). Livy's REST API is ordinary JSON over HTTP, so this is a configuration file rather than code |
 | A YARN ResourceManager source | Not present, same reason | `killApplication` through the RM REST API is one declarative call; the work is in getting the identity and the Kerberos story right |
 

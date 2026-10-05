@@ -1,0 +1,188 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Aegis Gateway threat model, security properties S1 to S31, and control-suite validation evidence.">
+  <title>Aegis Gateway security and threat model</title>
+  <link rel="stylesheet" href="handbook.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Security guide navigation">
+    <a class="brand" href="../index.html">Aegis <span>Gateway 2.0</span></a>
+    <nav>
+      <a href="#start">Start here</a>
+      <a href="#boundary">System boundary</a>
+      <a href="#zones">Trust zones</a>
+      <a href="#stride">STRIDE and abuse cases</a>
+      <a href="#owasp">OWASP MCP Top 10</a>
+      <a href="#properties">Security properties</a>
+      <a href="#evidence">Validation evidence</a>
+      <a href="#residual">Residual risk</a>
+      <a href="#references">Full documents</a>
+      <a href="hello-world.html">Hello World</a>
+      <a href="handbook.html">User handbook</a>
+      <a href="modules.html">Module reference</a>
+    </nav>
+    <p class="sidebar-note">Handle means an enforced control, partial containment, or an explicit external owner. It does not mean elimination.</p>
+  </aside>
+  <main>
+    <header id="start" class="hero">
+      <p class="eyebrow">SECURITY REVIEW</p>
+      <h1>Threat model and control evidence for MCP governance.</h1>
+      <p class="lead">This page is the HTML entry for security reviewers. It summarizes the product threat model, the S1 to S31 promises, and the latest control-suite run. Full tables and abuse-case detail stay in the linked Markdown documents so evidence stays auditable.</p>
+      <div class="actions">
+        <a class="button primary" href="../THREAT-MODEL.html">Full threat model</a>
+        <a class="button" href="../SECURITY.html">S1 to S31 properties</a>
+        <a class="button" href="../evidence/SECURITY-VALIDATION.html">Validation record</a>
+      </div>
+    </header>
+
+    <section id="boundary">
+      <p class="eyebrow">BOUNDARY</p>
+      <h2>What is under review.</h2>
+      <p>Aegis is reviewed as the MCP decision plane after host identity is established and before a source presents a backend credential. Own-host and Knox are front-door choices; both feed the same governance engine.</p>
+      <img class="explainer-image" src="../assets/aegis-threat-model.svg" alt="Aegis threat model: trust zones Z1 to Z6, STRIDE highlights, and the governed MCP boundary before backend credentials.">
+      <div class="two-column">
+        <div>
+          <h3>In scope</h3>
+          <p>Tool, resource, prompt, and completion calls; catalog pinning; approvals and receipts; egress; audit; hooks; output bounds; declarative HTTP and typed sources as capability only.</p>
+        </div>
+        <div>
+          <h3>Out of scope</h3>
+          <p>Model training and RAG poisoning, agents that never call Aegis, backend-internal ACLs beyond the gateway credential, discovery of shadow MCP servers off this path, and host OS or SIEM product choice.</p>
+        </div>
+      </div>
+      <p class="callout">Cross-zone rule: a call may not present a backend credential until the governance core has written <code>ALLOW_INTENT</code> (or denied). Caller tokens never enter the backend zone for protected backends.</p>
+    </section>
+
+    <section id="zones" class="band">
+      <p class="eyebrow">TRUST ZONES</p>
+      <h2>Six zones, one fail-closed decision plane.</h2>
+      <div class="table-wrap">
+        <table class="ref-table">
+          <thead><tr><th>Zone</th><th>Components</th><th>Posture</th></tr></thead>
+          <tbody>
+            <tr><td>Z1 Client</td><td>Agent, IDE, MCP client, untrusted documents</td><td>Untrusted for authorization</td></tr>
+            <tr><td>Z2 Host perimeter</td><td>TLS, JWT/JWKS/static/SPIFFE, Knox Subject, CORS, routes, scopes</td><td>Trusted only after verification</td></tr>
+            <tr><td>Z3 Governance core</td><td>Catalog, policy, egress, screening, approval, receipt, hooks, audit</td><td>Fail-closed MCP action root</td></tr>
+            <tr><td>Z4 Sources</td><td>HTTP, MCP proxy, plugins</td><td>Capability only; must not bypass Z3</td></tr>
+            <tr><td>Z5 Backend</td><td>Engines that receive the gateway credential</td><td>Trusted for own responses; ACLs still required</td></tr>
+            <tr><td>Z6 Operator / IdP / network</td><td>Config, pins, secrets, firewall, inventory</td><td>External residual owners</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <img class="explainer-image" src="../assets/aegis-mcp-first-host-boundaries.svg" alt="Aegis MCP-first governance core with own-host and optional Knox as deployment choices.">
+    </section>
+
+    <section id="stride">
+      <p class="eyebrow">STRIDE AND ABUSE</p>
+      <h2>Named abuse scenarios with expected denials.</h2>
+      <p>The threat model elaborates STRIDE per zone into abuse cases TM01 to TM10. Each case states preconditions, attacker goal, expected gateway outcome, and the S-property that owns the proof.</p>
+      <div class="cards">
+        <article><h3>TM01 Prompt-injected destructive call</h3><p>Untrusted context steers a privileged caller. Expect policy, approval, and receipt binding before any backend write.</p></article>
+        <article><h3>TM02 Tool poisoning / rug-pull</h3><p>A changed tool definition is quarantined; prior approvals and receipts do not bind the new digest.</p></article>
+        <article><h3>TM03 Confused deputy</h3><p>Inbound caller tokens are not forwarded to protected backends; token exchange is egress-checked and subject-bound.</p></article>
+        <article><h3>TM04 SSRF via nested URL</h3><p>Nested HTTP(S) arguments and DNS answers pass egress classification; redirects are not followed.</p></article>
+        <article><h3>TM05 READ carries a mutate</h3><p>Classification, sql-readonly hooks, and least-privilege credentials contain the call; fail closed on ambiguity.</p></article>
+        <article><h3>TM06 Self-approval</h3><p>Requester cannot approve under an alternate spelling; delegated identities cannot approve.</p></article>
+        <article><h3>TM07 Shadow MCP bypass</h3><p>External residual: Aegis cannot govern a path that never reaches it. Network inventory remains operator work.</p></article>
+        <article><h3>TM08 to TM10</h3><p>Post-delivery disclosure, supply-chain pin trust, and host CSRF/Origin checks are covered in the full model.</p></article>
+      </div>
+      <p><a href="../THREAT-MODEL.html#8-abuse-scenarios-detailed">Read every TM01 to TM10 scenario with preconditions and expected outcomes.</a></p>
+    </section>
+
+    <section id="owasp" class="band">
+      <p class="eyebrow">OWASP MCP TOP 10</p>
+      <h2>Coverage is not a claim of elimination.</h2>
+      <img class="explainer-image" src="../assets/owasp-mcp-top10-coverage.svg" alt="Aegis coverage of all ten OWASP MCP risk areas, grouped as strong, partial, limited, or external.">
+      <div class="owasp-grid">
+        <div class="strong"><strong>MCP01 to MCP03</strong>Strong gateway controls for tokens, privilege scope, and changed tool definitions when the first pin is trusted.</div>
+        <div><strong>MCP04 and MCP05</strong>Partial supply-chain and command-execution coverage; release controls and runtime sandboxing remain outside Aegis.</div>
+        <div class="limited"><strong>MCP06</strong>Prompt-injection screening is heuristic. Typed scope and independent approval are the durable safeguards.</div>
+        <div class="strong"><strong>MCP07 and MCP08</strong>Strong authentication/authorization and local audit evidence; IdP operations and SIEM remain deployment work.</div>
+        <div class="external"><strong>MCP09</strong>Shadow servers cannot be discovered by a gateway that is not on their path.</div>
+        <div><strong>MCP10</strong>Caller-filtered discovery helps, but clients can retain or disclose received data.</div>
+      </div>
+    </section>
+
+    <section id="properties">
+      <p class="eyebrow">PROMISES</p>
+      <h2>Security properties S1 to S31.</h2>
+      <p>Each property names the enforcing class and the test that must stay green. Breaking one is treated as a vulnerability. Highlights for reviewers:</p>
+      <div class="steps">
+        <div><strong>S1 to S4</strong><span>Identity required, JWT rules, no token passthrough, default deny.</span></div>
+        <div><strong>S5 to S7</strong><span>Approval, dry-run receipt, hash-chained audit intent.</span></div>
+        <div><strong>S8 to S11</strong><span>Egress, catalog pin, request agreement, bounded redacted output.</span></div>
+      </div>
+      <ul>
+        <li>S17 / S28: admin and audit-verify APIs are group-scoped; CSRF Origin checked; verify reveals only true/false.</li>
+        <li>S21 / S26: own-host route groups and optional OAuth scopes run before body buffering.</li>
+        <li>S27: Knox packaging boundary; own-host jar contains no Knox classes.</li>
+        <li>S29 / S31: token exchange and A2A card endpoint trust fail closed.</li>
+      </ul>
+      <a class="button primary" href="../SECURITY.html#security-properties">Open the full S1 to S31 table</a>
+    </section>
+
+    <section id="evidence" class="band">
+      <p class="eyebrow">PROOF</p>
+      <h2>Latest control-suite validation.</h2>
+      <p>On 2026-10-05 the focused S1 to S31 suite was re-run on JDK 17 with Maven surefire: <strong>227 selected tests, 0 failures</strong>. That run is control evidence for claim G03. It is not OWASP Top 10 elimination and it is not a live collector or production IdP certification.</p>
+      <div class="two-column">
+        <div>
+          <h3>Included</h3>
+          <p>Governance, SoD, egress, catalog, admin CSRF, JWT/scopes, Knox packaging boundary, token exchange unit tests, output bounds, hooks fail-closed.</p>
+        </div>
+        <div>
+          <h3>Separate evidence</h3>
+          <p>Real-engine Keep runs, Keycloak token exchange, OpenBao secrets, and Postgres state have their own evidence files under <code>docs/evidence/</code>.</p>
+        </div>
+      </div>
+      <p><a href="../evidence/SECURITY-VALIDATION.html">Read the security validation record</a> and <a href="../evidence/CLAIMS-MATRIX.html">claims matrix G03</a>.</p>
+    </section>
+
+    <section id="residual">
+      <p class="eyebrow">RESIDUAL RISK</p>
+      <h2>What operators still own.</h2>
+      <ul>
+        <li>Prompt injection and redaction remain heuristic; approvals and least privilege are the durable controls.</li>
+        <li>First catalog pin trust, plugin provenance, and release scanning are release-process work.</li>
+        <li>Network policy must prevent shadow MCP paths that never hit Aegis.</li>
+        <li>Backend ACLs and credential scope remain required under every tool class.</li>
+        <li>Clients can retain or disclose results after a governed allow.</li>
+      </ul>
+      <p class="callout">Report vulnerabilities privately via a GitHub security advisory. Do not open a public issue for an unfixed vulnerability.</p>
+    </section>
+
+    <section id="references">
+      <p class="eyebrow">REFERENCE MAP</p>
+      <h2>Continue in the full documents.</h2>
+      <div class="reference-table">
+        <a href="../THREAT-MODEL.html"><strong>Threat model</strong><span>STRIDE, TM01 to TM10, DFD</span></a>
+        <a href="../SECURITY.html"><strong>Security model</strong><span>S1 to S31 and limits</span></a>
+        <a href="../evidence/SECURITY-VALIDATION.html"><strong>Validation record</strong><span>227-test suite proof</span></a>
+        <a href="../MCP-GOVERNANCE-GUIDELINE.html"><strong>MCP governance guideline</strong><span>Spec and OWASP mapping</span></a>
+        <a href="../DEFECT-LOG.html"><strong>Defect log</strong><span>Fixed and residual defects</span></a>
+        <a href="handbook.html"><strong>User handbook</strong><span>Deploy and operate</span></a>
+        <a href="../TUTORIALS.html"><strong>Tutorials</strong><span>Kept two-door walks</span></a>
+        <a href="../VALIDATION.html"><strong>Validation report</strong><span>Build and adopter evidence</span></a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

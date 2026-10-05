@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Apache Doris: governed MCP tools over the Apache Doris HTTP API, configuration only.
-# Doris frontend HTTP API: GET /api/bootstrap, GET /rest/v1/system?path=//backends,
-# GET /api/show_proc, POST /api/query/{cluster}/{database}.
+# Doris frontend HTTP API: GET /api/bootstrap, GET /rest/v1/system?path=/backends,
+# GET /api/show_proc?path=/, POST /api/query/{cluster}/{database}.
 # Read-only by design: this adapter exposes no MUTATE or DESTRUCTIVE tool.
 # Replaces the Aegis 0.1 Java adapter mcp-adapter-doris (taxonomy: olap).
 # doris_status replaces the 0.1 doris://status MCP resource.
@@ -68,7 +68,7 @@ sources:
         description: "Frontend process list, used as a liveness read."
         class: READ
         inputSchema: {type: object, properties: {}, additionalProperties: false}
-        request: {method: GET, path: "/api/show_proc"}
+        request: {method: GET, path: "/api/show_proc", query: {path: "/"}}
 
       - name: doris_cluster_overview
         description: "Cluster bootstrap information."
@@ -80,7 +80,7 @@ sources:
         description: "List backend nodes."
         class: READ
         inputSchema: {type: object, properties: {}, additionalProperties: false}
-        request: {method: GET, path: "/rest/v1/system", query: {path: "//backends"}}
+        request: {method: GET, path: "/rest/v1/system", query: {path: "/backends"}}
 
       - name: doris_run_sql_readonly
         description: "Run a read-only query against information_schema."

@@ -47,6 +47,8 @@ sources:
   - id: superset
     type: http
     baseUrl: http://superset:8088
+    # Superset REST needs a JWT from POST /api/v1/security/login; the gateway holds that bearer.
+    credentials: {type: bearer, tokenEnv: SUPERSET_ACCESS_TOKEN}
     tools:
       - name: superset_list_databases
         description: "List database connections."
@@ -66,6 +68,17 @@ sources:
         inputSchema: {type: object, properties: {}, additionalProperties: false}
         request: {method: GET, path: "/api/v1/chart/"}
 
+      - name: superset_get_chart
+        description: "Get one chart by id (dry-run preview for delete)."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {chartId: {type: string, maxLength: 200}}
+          required: [chartId]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v1/chart/{chartId}"}
+        resources: [{type: "superset:chart", pointer: /chartId}]
+
       - name: superset_delete_chart
         description: "Delete one chart."
         class: DESTRUCTIVE
@@ -76,3 +89,4 @@ sources:
           additionalProperties: false
         request: {method: DELETE, path: "/api/v1/chart/{chartId}"}
         resources: [{type: "superset:chart", pointer: /chartId}]
+        dryRun: {mode: TOOL, previewTool: superset_get_chart}

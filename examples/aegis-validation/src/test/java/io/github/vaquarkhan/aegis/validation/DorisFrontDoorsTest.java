@@ -41,8 +41,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * {@code adopters/configurations/adapters/doris/doris.yaml} against a real Apache Doris frontend
  * (read-only profile: no MUTATE/DESTRUCTIVE tools) through both front doors.
  *
- * <p>Uses the community all-in-one image {@code apache/doris:doris-2.1.7-x64} when available; otherwise
- * the FE-only image with a companion BE. Skipped (never passed) when the image cannot be pulled.
+ * <p>Uses the official all-in-one image {@code apache/doris:all-in-one-4.1.3}. Fails hard when the image
+ * cannot be pulled (never skipped-as-passed).
  */
 class DorisFrontDoorsTest {
 
@@ -58,31 +58,63 @@ class DorisFrontDoorsTest {
     @BeforeAll
     static void startDoris() throws Exception {
         DockerContainer.requireDocker();
-        AssumptionsDocker.assumeImage(IMAGE);
+        pullOrFail(IMAGE);
         port = JavaServer.freePort();
         Path log = Path.of("target", "doris-server", "docker.log").toAbsolutePath();
+        // Hostname alias matches Doris all-in-one expectations; FE HTTP needs several minutes on cold start.
         doris = DockerContainer.start("aegis-val-doris", IMAGE,
-                List.of("-p", "127.0.0.1:" + port + ":8030",
+                List.of("--hostname", "doris",
+                        "-p", "127.0.0.1:" + port + ":8030",
                         "-p", "127.0.0.1:" + (port + 1) + ":9030"),
                 log);
         doris.awaitReady(() -> {
             HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(URI.create(base() + "/api/bootstrap"))
                     .timeout(Duration.ofSeconds(5)).GET().build(), HttpResponse.BodyHandlers.ofString());
-            return r.statusCode() == 200 && r.body().contains("code");
-        }, Duration.ofMinutes(5), "Doris FE bootstrap");
-        // Aegis rejects empty passwordEnv values; set a real root password on the FE.
-        Process setPw = new ProcessBuilder("docker", "exec", "aegis-val-doris", "bash", "-lc",
-                "mysql -h127.0.0.1 -P9030 -uroot -e \"SET PASSWORD FOR 'root'@'%' = PASSWORD('aegis'); "
-                        + "SET PASSWORD FOR 'root'@'localhost' = PASSWORD('aegis');\" "
-                        + "|| mysql -h127.0.0.1 -P9030 -uroot -e \"ALTER USER 'root'@'%' IDENTIFIED BY 'aegis'; "
-                        + "ALTER USER 'root'@'localhost' IDENTIFIED BY 'aegis';\"")
-                .redirectErrorStream(true).start();
-        String pwOut = new String(setPw.getInputStream().readAllBytes());
-        if (!setPw.waitFor(2, java.util.concurrent.TimeUnit.MINUTES) || setPw.exitValue() != 0) {
-            // Some all-in-one images already use a fixed password; continue and let tool calls prove auth.
-            System.getLogger(DorisFrontDoorsTest.class.getName())
-                    .log(System.Logger.Level.WARNING, "Doris password set soft-failed: " + pwOut);
+            String body = r.body();
+            return r.statusCode() == 200 && body.contains("\"msg\":\"success\"") && body.contains("\"code\":0");
+        }, Duration.ofMinutes(10), "Doris FE bootstrap");
+        // All-in-one defaults to root with an empty password. Set it over the FE HTTP SQL API (the
+        // container mysql client truncates 127.0.0.1 under Windows docker exec). Aegis needs a non-empty
+        // passwordEnv value for basic credentials.
+        String emptyRoot = java.util.Base64.getEncoder()
+                .encodeToString("root:".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String aegisRoot = java.util.Base64.getEncoder()
+                .encodeToString("root:aegis".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        HttpResponse<String> setPw = HTTP.send(HttpRequest.newBuilder(
+                        URI.create(base() + "/api/query/default_cluster/mysql"))
+                .timeout(Duration.ofSeconds(20))
+                .header("Authorization", "Basic " + emptyRoot)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        "{\"stmt\":\"SET PASSWORD FOR 'root'@'%' = PASSWORD('aegis')\"}"))
+                .build(), HttpResponse.BodyHandlers.ofString());
+        boolean passwordReady = setPw.statusCode() == 200 && setPw.body().contains("\"code\":0");
+        if (!passwordReady) {
+            // Reused FE volume / prior run may already have the password; prove with aegis auth.
+            HttpResponse<String> probe = HTTP.send(HttpRequest.newBuilder(
+                            URI.create(base() + "/api/query/default_cluster/information_schema"))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", "Basic " + aegisRoot)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"stmt\":\"SHOW DATABASES\"}"))
+                    .build(), HttpResponse.BodyHandlers.ofString());
+            passwordReady = probe.statusCode() == 200 && probe.body().toLowerCase().contains("information_schema");
+            if (!passwordReady) {
+                throw new IllegalStateException("could not set Doris root password: " + setPw.statusCode()
+                        + " " + setPw.body());
+            }
         }
+        // Prove basic auth + HTTP SQL path before opening either front door.
+        doris.awaitReady(() -> {
+            HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(
+                            URI.create(base() + "/api/query/default_cluster/information_schema"))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", "Basic " + aegisRoot)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"stmt\":\"SHOW DATABASES\"}"))
+                    .build(), HttpResponse.BodyHandlers.ofString());
+            return r.statusCode() == 200 && r.body().toLowerCase().contains("information_schema");
+        }, Duration.ofMinutes(3), "Doris HTTP SQL with basic auth");
     }
 
     @AfterAll
@@ -121,25 +153,17 @@ class DorisFrontDoorsTest {
         return "http://127.0.0.1:" + port;
     }
 
-    /** Small helper so Doris can soft-skip when the image is not on the host and cannot be pulled quickly. */
-    static final class AssumptionsDocker {
-        private AssumptionsDocker() {}
-
-        static void assumeImage(String image) {
-            try {
-                Process p = new ProcessBuilder("docker", "image", "inspect", image)
-                        .redirectErrorStream(true).start();
-                p.getInputStream().readAllBytes();
-                if (p.waitFor() == 0) {
-                    return;
-                }
-                Process pull = new ProcessBuilder("docker", "pull", image).redirectErrorStream(true).start();
-                String out = new String(pull.getInputStream().readAllBytes());
-                org.junit.jupiter.api.Assumptions.assumeTrue(pull.waitFor() == 0,
-                        "Doris image unavailable (SKIPPED, not passed): " + out);
-            } catch (Exception e) {
-                org.junit.jupiter.api.Assumptions.assumeTrue(false, "Doris image unavailable: " + e);
-            }
+    private static void pullOrFail(String image) throws Exception {
+        Process inspect = new ProcessBuilder("docker", "image", "inspect", image)
+                .redirectErrorStream(true).start();
+        inspect.getInputStream().readAllBytes();
+        if (inspect.waitFor() == 0) {
+            return;
+        }
+        Process pull = new ProcessBuilder("docker", "pull", image).redirectErrorStream(true).start();
+        String out = new String(pull.getInputStream().readAllBytes());
+        if (!pull.waitFor(30, java.util.concurrent.TimeUnit.MINUTES) || pull.exitValue() != 0) {
+            throw new IllegalStateException("could not pull Doris image " + image + ": " + out);
         }
     }
 }

@@ -74,6 +74,35 @@
     </dependency>
   </dependencies>
 
+  <profiles>
+    <profile>
+      <id>real-engines</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.8.1</version>
+            <executions>
+              <execution>
+                <id>plugin-classpath</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>build-classpath</goal>
+                </goals>
+                <configuration>
+                  <outputFile>${project.build.directory}/plugin.classpath</outputFile>
+                  <includeScope>runtime</includeScope>
+                  <excludeGroupIds>io.github.vaquarkhan.aegis,org.junit.jupiter,org.junit.platform,org.opentest4j,org.apiguardian</excludeGroupIds>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
   <build>
     <plugins>
       <plugin>

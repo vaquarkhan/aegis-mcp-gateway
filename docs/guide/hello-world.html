@@ -1,0 +1,243 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Hello World for Aegis Gateway: put governed MCP into your IDE and Apache project development cycle.">
+  <title>Aegis Hello World — govern MCP in your development cycle</title>
+  <link rel="stylesheet" href="handbook.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Hello World navigation">
+    <a class="brand" href="../index.html">Aegis <span>Hello World</span></a>
+    <nav>
+      <a href="#picture">The picture</a>
+      <a href="#choose">Choose a path</a>
+      <a href="#hello">15-minute Hello World</a>
+      <a href="#cycle">Fit your development cycle</a>
+      <a href="#apache">Secure an Apache project</a>
+      <a href="#next">What to do next</a>
+      <a href="handbook.html">User handbook</a>
+      <a href="developer.html">Developer guide</a>
+      <a href="security.html">Security guide</a>
+    </nav>
+    <p class="sidebar-note">Your IDE talks to Aegis. Aegis talks to the engine. The engine never sees the agent’s raw tool call until governance allows it.</p>
+  </aside>
+  <main>
+    <header class="hero">
+      <p class="eyebrow">HELLO WORLD</p>
+      <h1>Add Aegis to your development cycle in one afternoon.</h1>
+      <p class="lead">You do not rewrite Kafka, Spark, Airflow, or your existing MCP server. You put Aegis in front, point your IDE’s MCP settings at Aegis, and every tool call is classified, scoped, approved when needed, and audited before the backend runs.</p>
+      <div class="actions">
+        <a class="button primary" href="#hello">Start the Hello World</a>
+        <a class="button" href="#apache">Secure an Apache project</a>
+        <a class="button" href="../TUTORIALS.html">All tutorials</a>
+      </div>
+    </header>
+
+    <section id="picture">
+      <p class="eyebrow">WHAT CHANGES</p>
+      <h2>One new hop. Same tools. Governed decisions.</h2>
+      <img class="explainer-image" src="../assets/mcp-governance-problem-solution.svg" alt="Without Aegis an agent can reach backends with a broad credential; with Aegis a fixed governance gate runs first.">
+      <div class="two-column">
+        <div>
+          <h3>Before</h3>
+          <p>Cursor, VS Code, Kiro, or Claude Desktop talks straight to an MCP server or product API. Whatever credential that path holds can execute the tool.</p>
+        </div>
+        <div>
+          <h3>After</h3>
+          <p>The IDE talks only to Aegis (<code>/mcp</code>). Aegis applies tool class, groups, policy, egress, approval, dry-run receipt, and audit. Only then does it call your MCP server or Apache engine.</p>
+        </div>
+      </div>
+      <p class="callout">Aegis does not replace backend authorization or network policy. Use least-privilege backend credentials in every path.</p>
+    </section>
+
+    <section id="choose" class="band">
+      <p class="eyebrow">PICK ONE START</p>
+      <h2>Three Hello World paths. Same governance engine.</h2>
+      <div class="cards">
+        <article>
+          <h3>1. You already have an MCP server</h3>
+          <p>Keep the server’s tools and schemas. Classify them in YAML. Aegis fronts them with no code change in that project.</p>
+          <a href="../tutorials/existing-mcp-server.html">Existing MCP server tutorial</a>
+          · <a href="../ADOPTION-GUIDE.html#step-1a-govern-an-existing-mcp-server">Adoption guide §1a</a>
+        </article>
+        <article>
+          <h3>2. You run an Apache engine with a shipped profile</h3>
+          <p>Copy a retained adopter config (Kafka, Spark, Flink, Airflow, ZooKeeper, …). Start the engine, start Aegis, paste the IDE JSON.</p>
+          <a href="../TUTORIALS.html">Tutorial index</a>
+          · <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/examples/adopters">Adopter catalog</a>
+        </article>
+        <article>
+          <h3>3. You only have a REST API</h3>
+          <p>Declare <code>type: http</code> tools (method, path, schema, class, resources). Or generate a deny-all draft from OpenAPI and review it.</p>
+          <a href="../CONFIGURATION.html#type-http">HTTP tools reference</a>
+          · <a href="../CONFIGURATION.html#a-draft-from-an-openapi-document">OpenAPI draft</a>
+        </article>
+        <article>
+          <h3>Optional: Apache Knox already at the edge</h3>
+          <p>Knox authenticates and admits the route. Aegis still decides each MCP action. Same YAML governance as own host.</p>
+          <a href="../KNOX-EXTENSION.html">Knox extension guide</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="hello">
+      <p class="eyebrow">15-MINUTE PATH</p>
+      <h2>Hello World: build once, govern one project, prompt from your IDE.</h2>
+      <p>Use this when you want your first green path. The Spark and Iceberg walkthrough is the fullest IDE story; the existing-MCP tutorial is the fastest if you already speak MCP.</p>
+
+      <h3>Step 1 — Build Aegis</h3>
+      <p>JDK 17+ and Maven 3.9+. From the repository root:</p>
+<pre><code>mvn -B -Preal-engines -DskipTests install</code></pre>
+      <p>That produces <code>aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar</code> (and Spark/Kafka fat jars when those sources are needed).</p>
+
+      <h3>Step 2 — Start a real backend and Aegis</h3>
+      <p><strong>Fastest verified scenario</strong> (engine + both front doors + assertions):</p>
+<pre><code># PowerShell
+$env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'   # only needed for the Knox door
+examples/adopters/run-example.ps1 existing-mcp-server -Keep
+
+# bash
+export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0
+examples/adopters/run-example.sh existing-mcp-server --keep</code></pre>
+      <p>Or pick your Apache project name (<code>kafka</code>, <code>airflow</code>, <code>spark-connect</code>, …) from the <a href="../TUTORIALS.html">tutorial index</a>. Each tutorial lists the engine command, own-host YAML, and Knox flavor.</p>
+      <p><strong>Own-host only</strong> (after you have a config file):</p>
+<pre><code>export AEGIS_SIGNING_KEY='replace-with-32-or-more-bytes-of-secret'
+java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
+  --config adopters/configurations/existing-mcp-server/existing-mcp-server.yaml</code></pre>
+      <p>Point the YAML’s source URL, egress CIDRs, and host tokens at your machine. Unknown keys fail closed at start-up.</p>
+
+      <h3>Step 3 — Point the IDE at Aegis (not at the engine)</h3>
+      <p>Ready-made files live under <code>adopters/tutorials/&lt;project&gt;/ide/</code>. Example for Cursor (own host):</p>
+<pre><code>{
+  "mcpServers": {
+    "aegis-existing-mcp-server": {
+      "url": "http://127.0.0.1:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer REPLACE_WITH_YOUR_TOKEN"
+      }
+    }
+  }
+}</code></pre>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>IDE</th><th>Where the file goes</th></tr></thead>
+        <tbody>
+          <tr><td>Cursor</td><td><code>.cursor/mcp.json</code> (project) or Cursor MCP settings</td></tr>
+          <tr><td>VS Code / Copilot</td><td>MCP servers settings; use <code>ide/vscode/mcp.json</code> or <code>mcp.knox.json</code></td></tr>
+          <tr><td>Kiro</td><td><code>ide/kiro/mcp.json</code></td></tr>
+          <tr><td>Claude Desktop</td><td>desktop config (see Spark+Iceberg tutorial)</td></tr>
+        </tbody>
+      </table></div>
+      <p>Replace the placeholder with a bearer token from the tutorial’s own-host config (or answer the IDE prompt). Until Aegis is listening on that URL, the IDE shows an empty or failing MCP server — start the gateway first.</p>
+
+      <h3>Step 4 — Send one prompt</h3>
+      <p>Use a prompt the tutorial lists under “Prompts to try” (for example list jobs, list topics, list DAGs). Expect one of:</p>
+      <ul>
+        <li><strong>ALLOWED</strong> for a <code>READ</code> your group may call</li>
+        <li><strong>APPROVAL_REQUIRED</strong> / deny for <code>MUTATE</code> / <code>DESTRUCTIVE</code> until an independent approver and (for destructive) a fresh dry-run receipt are in place</li>
+        <li>An audit line in the configured <code>audit.file</code> JSONL journal</li>
+      </ul>
+      <p>Full IDE-and-dataset walkthrough: <a href="../TUTORIAL-SPARK-ICEBERG.html">Spark and Iceberg from your IDE</a>. Plain-language IDE folder guide: <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/tutorials/README.md">adopters/tutorials/README.md</a>.</p>
+    </section>
+
+    <section id="cycle" class="band">
+      <p class="eyebrow">DAY-TO-DAY WORKFLOW</p>
+      <h2>How Aegis sits in an existing development cycle</h2>
+      <div class="steps">
+        <div><strong>1. Local</strong><span>Developer runs engine + Aegis on loopback; IDE MCP points at <code>127.0.0.1:8080/mcp</code>.</span></div>
+        <div><strong>2. Shared</strong><span>Team deploys one Aegis (own host or Knox) with reviewed YAML; CI can run contract tests and Keep profiles.</span></div>
+        <div><strong>3. Change</strong><span>New tools = YAML (or OpenAPI draft) + classification + resources + egress. No agent SDK rewrite.</span></div>
+        <div><strong>4. Evidence</strong><span>Approvals and denies land in the hash-chained audit journal; verify with <code>--verify-audit</code>.</span></div>
+      </div>
+      <div class="two-column">
+        <div>
+          <h3>What you keep doing</h3>
+          <p>Write product code, operate Kafka/Spark/Airflow, use IDE agents for exploration and change requests. Backend APIs and MCP servers stay yours.</p>
+        </div>
+        <div>
+          <h3>What you add once</h3>
+          <p>One Aegis configuration per governed surface; host identity (JWT or static tokens); approver groups; egress allow list; IDE MCP entry that targets Aegis.</p>
+        </div>
+      </div>
+      <p>Container and cluster options: <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/Dockerfile">Dockerfile</a> and <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/charts/aegis/README.md">Helm chart</a>. Operator details: <a href="developer.html">developer guide</a> and <a href="../CONFIGURATION.html">configuration reference</a>.</p>
+    </section>
+
+    <section id="apache">
+      <p class="eyebrow">APACHE PROJECTS</p>
+      <h2>How to put secure MCP in front of an Apache project</h2>
+      <p>Aegis is built so the Apache project itself changes <strong>nothing</strong>: no new dependency, no fork, no rebuild. You choose the source type that matches the product’s real API.</p>
+      <div class="table-wrap"><table class="ref-table">
+        <thead><tr><th>Project has…</th><th>Aegis source</th><th>Start from</th></tr></thead>
+        <tbody>
+          <tr><td>Its own MCP server</td><td><code>type: mcp</code></td><td><a href="../tutorials/existing-mcp-server.html">existing-mcp-server tutorial</a></td></tr>
+          <tr><td>A documented REST / HTTP Admin API</td><td><code>type: http</code> declarative tools</td><td>Shipped adapter under <code>adopters/configurations/adapters/&lt;name&gt;/</code></td></tr>
+          <tr><td>SQL over JDBC (Hive, Calcite/Avatica, …)</td><td><code>type: jdbc</code></td><td>Hive / Calcite profiles + JDBC converter</td></tr>
+          <tr><td>ZooKeeper data tree / AdminServer</td><td>ZooKeeper converter + HTTP Admin commands</td><td><a href="../tutorials/zookeeper.html">ZooKeeper tutorial</a></td></tr>
+          <tr><td>Spark Connect</td><td>typed Spark Connect plugin</td><td><a href="../tutorials/spark-connect.html">Spark Connect tutorial</a></td></tr>
+          <tr><td>Kafka Admin / Connect REST</td><td><code>kafka-admin</code> + HTTP Connect tools</td><td><a href="../tutorials/kafka.html">Kafka tutorial</a></td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Operator checklist for a new Apache surface</h3>
+      <ol>
+        <li>Find the closest profile in <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/main/adopters/configurations">adopters/configurations</a> (or generate an OpenAPI draft for a REST API).</li>
+        <li>Classify every tool: <code>READ</code>, <code>MUTATE</code>, or <code>DESTRUCTIVE</code>. Unlisted tools default to <code>DESTRUCTIVE</code> (or use <code>unlistedTools: HIDE</code>).</li>
+        <li>Name typed resources with JSON pointers (for example <code>kafka:topic</code> from <code>/topic</code>) so policy can constrain objects, not only tool names.</li>
+        <li>Set <code>egress.allowCidrs</code> (or hosts) to the engine’s real addresses only.</li>
+        <li>Wire groups: readers, operators, approvers. Separate people who request from people who approve.</li>
+        <li>Run the matching tutorial Keep (or contract test) before you call the path “verified” for a release.</li>
+      </ol>
+      <p class="callout">Twenty-six profiles already have retained own-host and Knox Keep runs with IDE tutorials. Six more (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) are contract-supported until a full product stack Keep lands — see <a href="../evidence/ADOPTER-REAL-ENGINE-STATUS.html">adopter status</a>.</p>
+      <p>Deep adoption narrative (MCP vs HTTP vs typed source): <a href="../ADOPTION-GUIDE.html">Adoption guide</a>. Security reviewers: <a href="security.html">security and threat-model guide</a>.</p>
+    </section>
+
+    <section id="next" class="band">
+      <p class="eyebrow">NEXT</p>
+      <h2>After Hello World</h2>
+      <div class="cards">
+        <article>
+          <h3>Learn the control model</h3>
+          <p>Tool classes, approvals, receipts, and fail-closed deny codes.</p>
+          <a href="handbook.html">User handbook</a>
+        </article>
+        <article>
+          <h3>Harden the deployment</h3>
+          <p>Threat zones, OWASP MCP mapping, S1 to S31 promises and limits.</p>
+          <a href="security.html">Security guide</a>
+        </article>
+        <article>
+          <h3>Extend Aegis</h3>
+          <p>Sources, hooks, state, and secret providers without moving policy into plugins.</p>
+          <a href="developer.html">Developer guide</a>
+        </article>
+        <article>
+          <h3>Check evidence</h3>
+          <p>What is proven on this tree versus what still needs a target Keep.</p>
+          <a href="../VALIDATION.html">Validation report</a>
+        </article>
+      </div>
+      <div class="actions">
+        <a class="button primary" href="#hello">Back to Hello World steps</a>
+        <a class="button" href="../index.html">Landing page</a>
+        <a class="button" href="../TUTORIAL-SPARK-ICEBERG.html">Spark + Iceberg tutorial</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

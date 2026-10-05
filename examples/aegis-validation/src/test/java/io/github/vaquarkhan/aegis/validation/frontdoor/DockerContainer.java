@@ -68,7 +68,11 @@ public final class DockerContainer implements AutoCloseable {
             Path log) throws Exception {
         requireDocker();
         Files.createDirectories(log.getParent());
-        exec(List.of("docker", "rm", "-f", name), Duration.ofSeconds(30), false);
+        // Force-remove any prior container with this name and wait until the name is free.
+        // A slow concurrent `docker rm` from a previous JVM can otherwise leave Status=removing
+        // under the new run and fail awaitReady within seconds.
+        exec(List.of("docker", "rm", "-f", name), Duration.ofMinutes(2), false);
+        awaitNameGone(name, Duration.ofMinutes(2));
         List<String> cmd = new ArrayList<>();
         cmd.add("docker");
         cmd.add("run");
@@ -88,10 +92,14 @@ public final class DockerContainer implements AutoCloseable {
         Exception last = null;
         while (System.nanoTime() < deadline) {
             String state = execCapture(List.of("docker", "inspect", "-f", "{{.State.Status}}", name),
-                    Duration.ofSeconds(10));
-            if (!"running".equals(state.trim())) {
+                    Duration.ofSeconds(10)).trim();
+            if ("removing".equals(state) || "created".equals(state) || "restarting".equals(state)) {
+                Thread.sleep(500);
+                continue;
+            }
+            if (!"running".equals(state)) {
                 dumpLogs();
-                throw new IllegalStateException(what + " container is " + state.trim());
+                throw new IllegalStateException(what + " container is " + state);
             }
             try {
                 if (ready.ok()) {
@@ -104,6 +112,23 @@ public final class DockerContainer implements AutoCloseable {
         }
         dumpLogs();
         throw new IllegalStateException("timed out waiting for " + what, last);
+    }
+
+    private static void awaitNameGone(String name, Duration limit) throws Exception {
+        long deadline = System.nanoTime() + limit.toNanos();
+        while (System.nanoTime() < deadline) {
+            Process p = new ProcessBuilder("docker", "inspect", name).redirectErrorStream(true).start();
+            p.getInputStream().readAllBytes();
+            if (!p.waitFor(20, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                throw new IllegalStateException("timed out inspecting " + name + " during pre-start cleanup");
+            }
+            if (p.exitValue() != 0) {
+                return;
+            }
+            Thread.sleep(250);
+        }
+        throw new IllegalStateException("container name still present after rm: " + name);
     }
 
     public String name() {
@@ -122,7 +147,8 @@ public final class DockerContainer implements AutoCloseable {
         } catch (Exception ignored) {
             // best effort
         }
-        exec(List.of("docker", "rm", "-f", name), Duration.ofSeconds(60), false);
+        exec(List.of("docker", "rm", "-f", name), Duration.ofMinutes(2), false);
+        awaitNameGone(name, Duration.ofMinutes(2));
     }
 
     private static void exec(List<String> cmd, Duration limit, boolean failOnError)

@@ -70,9 +70,9 @@ class Coverage01VsTwoTest {
     static final int EXPECTED_01_ROWS = 156;
     static final int EXPECTED_01_ENGINES = 33;
     /** All configuration files participating in this comparison, including Burr's 10-tool addition. */
-    static final int EXPECTED_SHIPPED_TOOLS = 164;
+    static final int EXPECTED_SHIPPED_TOOLS = 165;
     /** Non-Burr 2.0 tools participating in the comparison; this includes 2.0 additions as well as successors. */
-    static final int EXPECTED_COMPARABLE_TOOLS = 154;
+    static final int EXPECTED_COMPARABLE_TOOLS = 155;
 
     /** 0.1 {@code engine/tool} to the 2.0 tool name(s) that carry it. */
     static final Map<String, List<String>> RENAMED = Map.of(

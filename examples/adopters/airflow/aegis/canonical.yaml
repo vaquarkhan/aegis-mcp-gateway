@@ -14,7 +14,8 @@
 # Apache Airflow: governed MCP tools over the Apache Airflow HTTP API, configuration only.
 # Airflow 2.x stable REST API (/api/v1): GET /health, GET /dags, GET /dags/{dag_id},
 # POST /dags/{dag_id}/dagRuns, DELETE /dags/{dag_id}. Airflow 3 replaced /api/v1 with /api/v2,
-# so this file does not match an Airflow 3 api-server. No real Airflow run is recorded for it.
+# so this file does not match an Airflow 3 api-server.
+# Real two-door Keep: examples/adopters/airflow/results/ (apache/airflow:2.9.3 standalone).
 # Replaces the Aegis 0.1 Java adapter mcp-adapter-airflow (taxonomy: orchestration).
 # Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
 # exact target use dryRun mode TOOL with that read as the preview.
@@ -48,6 +49,8 @@ sources:
   - id: airflow
     type: http
     baseUrl: http://airflow-webserver:8080/api/v1
+    # Airflow 2.x REST uses HTTP basic for the API user (FAB auth).
+    credentials: {type: basic, usernameEnv: AIRFLOW_API_USER, passwordEnv: AIRFLOW_API_PASSWORD}
     tools:
       - name: airflow_get_health
         description: "Airflow scheduler and metadata database health."

@@ -34,13 +34,13 @@ no verdict fails the build. This page explains that executable contract.
 | New 2.0 Kafka Admin tools | 0 | 2 | cluster and topic-configuration reads through the real AdminClient |
 | New Burr tools | 0 | 10 | Apache Burr (incubating) is a 2.0 addition, not a 0.1 successor |
 | Configuration files participating in the comparison | 33 Java adapter modules | 25 deployable adapter configurations plus 4 reference configs | parsed from YAML |
-| Shipped tools participating in the comparison | 156 | **164** | exact `Coverage01VsTwoTest` assertion |
-| Adapter configurations | n/a | **25 deployable adapter configurations and 115 tools** | exact `AdapterConfigsTest` assertion |
+| Shipped tools participating in the comparison | 156 | **165** | exact `Coverage01VsTwoTest` assertion |
+| Adapter configurations | n/a | **25 deployable adapter configurations and 116 tools** | exact `AdapterConfigsTest` assertion |
 | Implemented tools that became less guarded | n/a | **0** | class-order assertion |
 
-The 152 implemented successor tools are separately accounted for by the frozen verdict test. The 164 shipped
-comparison tools add Burr's ten new tools and two new Kafka Admin read tools: cluster description and topic
-configuration description. Aegis 2.0 is deliberately not called a numeric superset: removing 18 tools whose
+The 152 implemented successor tools are separately accounted for by the frozen verdict test. The 165 shipped
+comparison tools add Burr's ten new tools, two new Kafka Admin read tools (cluster description and topic
+configuration description), and one additional Superset chart read used as the dry-run preview for chart delete. Aegis 2.0 is deliberately not called a numeric superset: removing 18 tools whose
 backend routes did not exist is a correctness improvement, even though it reduces the inherited successor count
 below 0.1's 156.
 
@@ -157,7 +157,7 @@ as a nonexistent HTTP endpoint or an incomplete implementation.
 
 It proves 0.1 capability accounting and guard-strength preservation. It does not prove every upstream
 endpoint exists in every deployed version. `AdapterConfigsTest` exercises the **25 deployable adapter
-configurations and 115 tools** through Aegis governance; many HTTP adapters currently use a contract
+configurations and 116 tools** through Aegis governance; many HTTP adapters currently use a contract
 route harness. The five known surfaces without a real API are absent from product configuration and cannot be
 made green by that harness. A real-engine run is the release-compatibility requirement. The authoritative state,
 including real, embedded-real, historical, contract and pending evidence, is

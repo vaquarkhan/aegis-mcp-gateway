@@ -19,7 +19,8 @@ This document is the product threat model for Aegis as an MCP governance gateway
 security reviewers, operators, and release evidence. It describes the system under review, trust
 zones, data flows, assets, actors, entry points, STRIDE analysis, abuse scenarios with
 preconditions and expected outcomes, OWASP MCP and MCP-spec handling, residual risk, assumptions,
-and how tests prove each control.
+and how tests prove each control. A concise HTML summary for GitHub Pages is
+[guide/security.html](guide/security.html).
 
 **What "handle" means:** every OWASP MCP Top 10 item and every MCP specification security best
 practice that can appear on a call through Aegis has an enforced gateway control, a documented

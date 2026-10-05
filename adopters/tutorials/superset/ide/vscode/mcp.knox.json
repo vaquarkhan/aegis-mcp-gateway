@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "knox-basic",
+      "password": true,
+      "description": "Base64 of a user and password from the local Knox demo LDAP; see conf/users.ldif in that Knox installation"
+    }
+  ],
+  "servers": {
+    "aegis-superset-knox": {
+      "type": "http",
+      "url": "https://localhost:8443/gateway/aegis-superset/aegis-mcp/v1/mcp",
+      "headers": {
+        "Authorization": "Basic ${input:knox-basic}"
+      }
+    }
+  }
+}

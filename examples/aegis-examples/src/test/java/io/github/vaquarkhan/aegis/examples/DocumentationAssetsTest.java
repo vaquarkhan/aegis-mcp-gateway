@@ -125,8 +125,23 @@ class DocumentationAssetsTest {
         assertTrue(comparison.contains("assets/knox-aegis-module-comparison.svg"), "Knox composition SVG");
         assertTrue(comparison.contains("assets/knox-aegis-module-comparison.svg"), "Knox comparison SVG source link");
         assertTrue(index.contains("guide/handbook.html"), "Pages handbook entry point");
+        assertTrue(index.contains("guide/hello-world.html"), "Pages Hello World entry point");
+        assertTrue(index.contains("guide/security.html") && webHandbook.contains("security.html"), "Pages security guide entry point");
         assertTrue(index.contains("guide/modules.html") && webHandbook.contains("modules.html"), "Pages module reference entry point");
         assertTrue(index.contains("TUTORIAL-SPARK-ICEBERG.html") && index.contains("TUTORIALS.html"), "Pages tutorial entry points");
+        String helloWorld = text("docs/guide/hello-world.html");
+        assertTrue(helloWorld.contains("Hello World"), "Hello World page title content");
+        assertTrue(helloWorld.contains("../tutorials/existing-mcp-server.html")
+                && helloWorld.contains("../TUTORIAL-SPARK-ICEBERG.html"),
+                "Hello World links the existing-MCP and Spark+Iceberg tutorials");
+        assertTrue(webHandbook.contains("hello-world.html"), "handbook links Hello World");
+        assertTrue(text("docs/guide/developer.html").contains("hello-world.html"), "developer guide links Hello World");
+        String securityGuide = text("docs/guide/security.html");
+        assertTrue(securityGuide.contains("../assets/aegis-threat-model.svg"), "security guide threat-model visual");
+        assertTrue(securityGuide.contains("../assets/owasp-mcp-top10-coverage.svg"), "security guide OWASP visual");
+        assertTrue(securityGuide.contains("../THREAT-MODEL.html") && securityGuide.contains("../SECURITY.html"),
+                "security guide links the Markdown threat model and S1-S31 properties");
+        assertTrue(webHandbook.contains("../assets/aegis-threat-model.svg"), "web handbook threat-model visual");
         assertTrue(text("docs/TUTORIAL-SPARK-ICEBERG.md").contains("assets/tutorial-spark-iceberg.svg"), "tutorial layout visual");
         for (String tutorialFile : List.of("aegis-spark-iceberg.yaml", "host-own.yaml", "start-catalog.ps1", "start-catalog.sh",
                 "start-spark.ps1", "start-spark.sh", "seed-data.ps1", "seed-data.sh", "SeedLake.java", "start-gateway.ps1",
@@ -175,7 +190,7 @@ class DocumentationAssetsTest {
             projects = files.map(p -> p.getFileName().toString()).filter(n -> n.endsWith(".md") && !n.equals("README.md"))
                     .map(n -> n.substring(0, n.length() - 3)).sorted().toList();
         }
-        assertTrue(projects.size() >= 15, "expected the verified project tutorials, found " + projects);
+        assertTrue(projects.size() >= 25, "expected the verified project tutorials, found " + projects);
         String index = text("docs/TUTORIALS.md");
         for (String project : projects) {
             String tutorial = text("docs/tutorials/" + project + ".md");
@@ -193,6 +208,26 @@ class DocumentationAssetsTest {
         }
         assertTrue(text("docs/guide/developer.html").contains("../TUTORIALS.html"), "developer guide links the tutorial index");
         assertTrue(text("docs/index.html").contains("guide/developer.html"), "Pages entry point to the developer guide");
+        assertTrue(text("adopters/tutorials/README.md").contains("ide/"), "tutorials folder explains IDE JSON files");
+        for (String project : projects) {
+            assertTrue(Files.isRegularFile(ROOT.resolve("adopters/tutorials/" + project + "/ide/README.md")),
+                    project + " ide/README.md explains the connection files for new users");
+        }
+        assertTrue(Files.isRegularFile(ROOT.resolve("adopters/tutorials/spark-iceberg/ide/README.md")),
+                "spark-iceberg ide/README.md explains the connection files");
+    }
+
+    @Test
+    void coreModulesShipDeveloperReadmes() throws Exception {
+        for (String module : List.of("aegis-engine", "aegis-mcp", "aegis-config", "aegis-gateway",
+                "aegis-mcp-security", "aegis-mcp-guardrails", "aegis-observability-otlp",
+                "aegis-source-jdbc", "aegis-source-zookeeper", "aegis-source-a2a",
+                "aegis-state-derby", "aegis-state-postgres", "aegis-knox3-extension")) {
+            String readme = text(module + "/README.md");
+            assertTrue(readme.contains("Developer instructions"), module + " README has developer instructions");
+            assertTrue(readme.contains("mvn -B -pl " + module), module + " README shows how to build/test the module");
+        }
+        assertTrue(text("charts/aegis/README.md").contains("Example values"), "Helm chart README includes example values");
     }
 
     @Test
@@ -261,8 +296,8 @@ class DocumentationAssetsTest {
      */
     @Test
     void publishedPagesUseRenderedMarkdownRoutes() throws Exception {
-        for (String relative : List.of("docs/index.html", "docs/guide/handbook.html", "docs/guide/modules.html",
-                "docs/guide/developer.html")) {
+        for (String relative : List.of("docs/index.html", "docs/guide/handbook.html", "docs/guide/hello-world.html",
+                "docs/guide/security.html", "docs/guide/modules.html", "docs/guide/developer.html")) {
             String body = FENCE.matcher(text(relative)).replaceAll("");
             Matcher matcher = LINK.matcher(body);
             while (matcher.find()) {

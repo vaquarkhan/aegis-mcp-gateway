@@ -99,7 +99,8 @@ class SparkConnectSourceTest {
     @Test
     void missingTokenEnvironmentFailsStartup() throws Exception {
         String yaml = Files.readString(Path.of("..", "..", "adopters", "configurations", "spark-connect", "spark-connect.yaml"))
-                .replace("      port: 15002\n", "      port: 15002\n      useSsl: true\n      tokenEnv: NOT_SET_TOKEN\n");
+                .replace("\r\n", "\n")
+                .replace("port: 15002", "port: 15002\n      useSsl: true\n      tokenEnv: NOT_SET_TOKEN");
         Path cfg = dir.resolve("t.yaml");
         Files.writeString(cfg, yaml);
         Exception e = assertThrows(Exception.class, () -> GatewayFactory.build(cfg, BuildContext.defaults(dir).withEnv(ENV::get)));

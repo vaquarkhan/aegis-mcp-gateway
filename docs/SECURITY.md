@@ -18,7 +18,8 @@
 Aegis sits between a language model and production data infrastructure. This page lists what it
 promises, how each promise is enforced and tested, what it does not promise, and how to report a
 problem. The repository-wide policy (supported versions, disclosure timeline) is in the root
-[SECURITY.md](../SECURITY.md). The product [threat model](THREAT-MODEL.md) and the latest
+[SECURITY.md](../SECURITY.md). The HTML [security and threat-model guide](guide/security.html) is the
+Pages entry for reviewers. The product [threat model](THREAT-MODEL.md) and the latest
 [security validation record](evidence/SECURITY-VALIDATION.md) accompany this page.
 
 ## Reporting a vulnerability

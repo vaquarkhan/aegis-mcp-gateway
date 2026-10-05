@@ -68,8 +68,8 @@ class AdapterConfigsTest {
      */
     static final int EXPECTED_ADAPTERS = 25;
 
-    /** The 115 tools are only those remaining in deployable configuration files. */
-    static final int EXPECTED_TOOLS = 115;
+    /** The 116 tools are only those remaining in deployable configuration files. */
+    static final int EXPECTED_TOOLS = 116;
 
     @TempDir
     Path dir;
@@ -121,6 +121,8 @@ class AdapterConfigsTest {
             case "q" -> "*:*";
             case "id" -> "topology-1";
             case "chartId" -> "12";
+            case "revisionVersion" -> 0;
+            case "revisionClientId" -> "aegis-test";
             default -> throw new IllegalStateException("no sample value for argument '" + arg + "' (" + engine + ")");
         };
     }
@@ -217,6 +219,7 @@ class AdapterConfigsTest {
                     .route("POST", "/api/v1/topology/[^/]+/kill/0", 200, ok);
             case "superset" -> m.route("GET", "/api/v1/database/", 200, ok)
                     .route("GET", "/api/v1/dataset/", 200, ok).route("GET", "/api/v1/chart/", 200, ok)
+                    .route("GET", "/api/v1/chart/[^/]+", 200, ok)
                     .route("DELETE", "/api/v1/chart/[^/]+", 200, ok);
             // AdminServer only. These two command names are checked against ZooKeeper's own command
             // registry in ZooKeeperAdminCommandsTest. This harness checks request rendering; the
@@ -371,7 +374,7 @@ class AdapterConfigsTest {
         // here, so adding a jdbc source does not mean remembering to extend this harness.
         Map<String, String> env = new LinkedHashMap<>(ENV);
         java.util.regex.Matcher envNames =
-                java.util.regex.Pattern.compile("(?:user|username|password|digest)Env:\\s*([A-Z0-9_]+)").matcher(yaml);
+                java.util.regex.Pattern.compile("(?:user|username|password|digest|token)Env:\\s*([A-Z0-9_]+)").matcher(yaml);
         while (envNames.find()) {
             env.put(envNames.group(1), "not-a-real-credential");
         }

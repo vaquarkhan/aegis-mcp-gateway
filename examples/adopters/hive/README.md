@@ -13,23 +13,34 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-# Apache Hive: profile supported, real-engine evidence not yet captured
+# Apache Hive: profile supported; HS2 Docker proven; FrontDoors Keep not yet retained
 
 ## Canonical reference
 
 [`aegis/canonical.yaml`](aegis/canonical.yaml) is an exact reference copy of the
 [canonical adapter profile](../../../adopters/configurations/adapters/hive/hive.yaml), not
-configuration captured from a real engine run. Current profile/contract coverage is
-`AdapterConfigsTest` in [`examples/aegis-examples`](../../aegis-examples); real results remain not
-recorded.
+configuration captured from a real two-door Keep. Current profile/contract coverage is
+`AdapterConfigsTest` in [`examples/aegis-examples`](../../aegis-examples).
 
 Aegis loads and governs [`hive.yaml`](../../../adopters/configurations/adapters/hive/hive.yaml) through the
 shared `jdbc` source and HiveServer2’s JDBC driver. This is deliberately not a REST profile: Hive
 SQL is a JDBC protocol. The JDBC source classifies and permits only safe read statements in the profile’s
 read tool; writes smuggled through it are refused by the source.
 
-A real two-door run needs HiveServer2, a metastore/database service, a Hive JDBC driver and a disposable table.
-Because it is a Java source plugin, a Knox run needs both the Aegis bundle and `aegis-source-jdbc` plus the
-operator’s Hive JDBC driver in `ext/`; the own-host process needs the same jars on its classpath. Replace the
-JDBC URL, driver, credentials, groups and egress policy in the canonical YAML. None of that service stack is
-available here, so no real results are claimed.
+## Proven locally (2026-10-05) — not a Keep
+
+Official image `apache/hive:4.0.1` with `SERVICE_NAME=hiveserver2` listens on host port 10000 and
+answers `SHOW DATABASES` via `beeline` inside the container. That proves the product process is
+runnable. It does **not** yet prove Aegis governance through both front doors.
+
+## What a Keep still needs (roadmap)
+
+1. `HiveFrontDoorsTest` starting HS2 via `DockerContainer` (image already pulled on this host).
+2. `hive-jdbc` and its transitive jars on the own-host test classpath and in Knox `ext/` (thin
+   `hive-jdbc-4.0.1.jar` alone is not enough).
+3. Seed a disposable table outside Aegis; exercise `jdbc_*` reads and a refused write.
+4. `-Keep` retention under `examples/adopters/hive/results/` and
+   `python tools/build-project-tutorials.py` for the IDE tutorial.
+
+Tracked under [docs/ROADMAP.md](../../../docs/ROADMAP.md) § “Future work — remaining target verification”.
+Replace the JDBC URL, driver, credentials, groups and egress policy for your deployment.

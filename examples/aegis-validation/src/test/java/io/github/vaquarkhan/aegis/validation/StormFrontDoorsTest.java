@@ -15,7 +15,6 @@
  */
 package io.github.vaquarkhan.aegis.validation;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.vaquarkhan.aegis.validation.frontdoor.AdopterScenario;
@@ -141,27 +140,40 @@ class StormFrontDoorsTest {
             GovernedFlow.destructive(d, "storm_kill_topology", Map.of("id", victim),
                     () -> assertTrue(topologies().contains(victim), victim + " still listed"),
                     () -> {
-                        assertFalse(topologies().contains(victim), victim + " killed");
+                        long deadline = System.nanoTime() + Duration.ofMinutes(2).toNanos();
+                        boolean done = false;
+                        while (System.nanoTime() < deadline) {
+                            if (topologyKilledOrGone(victim)) {
+                                done = true;
+                                break;
+                            }
+                            Thread.sleep(1000);
+                        }
+                        assertTrue(done, victim + " killed; summary=" + topologies());
                         d.note("Storm killed topology " + victim);
                     });
         }
     }
 
     private static String submitTopology(String name) throws Exception {
-        // Slim image ships starter sources only; fetch the prebuilt topologies jar from the Apache distro.
-        Process ensure = new ProcessBuilder("docker", "exec", "aegis-val-storm-nimbus", "bash", "-lc",
-                "set -e; "
-                        + "if [ ! -f /tmp/storm-starter-topologies.jar ]; then "
-                        + "curl -fsSL -o /tmp/storm.tgz "
-                        + "https://archive.apache.org/dist/storm/apache-storm-2.6.2/apache-storm-2.6.2.tar.gz; "
-                        + "tar -xzf /tmp/storm.tgz -C /tmp "
-                        + "apache-storm-2.6.2/examples/storm-starter/storm-starter-topologies-2.6.2.jar; "
-                        + "cp /tmp/apache-storm-2.6.2/examples/storm-starter/storm-starter-topologies-2.6.2.jar "
-                        + "/tmp/storm-starter-topologies.jar; fi")
-                .redirectErrorStream(true).start();
-        String ensureOut = new String(ensure.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        if (!ensure.waitFor(5, java.util.concurrent.TimeUnit.MINUTES) || ensure.exitValue() != 0) {
-            throw new IllegalStateException("could not fetch storm-starter topologies jar: " + ensureOut);
+        // Prefer a host-cached Maven Central jar (docker cp). Avoid downloading the full Apache
+        // Storm tarball inside the container (slow and fragile on this Windows Docker path).
+        Path cache = Path.of("target", "storm-cache", "storm-starter-2.6.2.jar").toAbsolutePath();
+        if (!java.nio.file.Files.isRegularFile(cache) || java.nio.file.Files.size(cache) < 1_000_000) {
+            java.nio.file.Files.createDirectories(cache.getParent());
+            Process dl = new ProcessBuilder("curl.exe", "-fsSL", "-o", cache.toString(),
+                    "https://repo1.maven.org/maven2/org/apache/storm/storm-starter/2.6.2/storm-starter-2.6.2.jar")
+                    .redirectErrorStream(true).start();
+            String dlOut = new String(dl.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            if (!dl.waitFor(10, java.util.concurrent.TimeUnit.MINUTES) || dl.exitValue() != 0) {
+                throw new IllegalStateException("could not download storm-starter jar: " + dlOut);
+            }
+        }
+        Process cp = new ProcessBuilder("docker", "cp", cache.toString(),
+                "aegis-val-storm-nimbus:/tmp/storm-starter-topologies.jar").redirectErrorStream(true).start();
+        String cpOut = new String(cp.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        if (!cp.waitFor(2, java.util.concurrent.TimeUnit.MINUTES) || cp.exitValue() != 0) {
+            throw new IllegalStateException("docker cp storm-starter jar failed: " + cpOut);
         }
         Process p = new ProcessBuilder("docker", "exec", "aegis-val-storm-nimbus", "bash", "-lc",
                 "storm jar /tmp/storm-starter-topologies.jar org.apache.storm.starter.WordCountTopology " + name
@@ -186,6 +198,17 @@ class StormFrontDoorsTest {
 
     private static String topologies() throws Exception {
         return get("/api/v1/topology/summary");
+    }
+
+    /** Storm keeps a KILLED row in the summary briefly (sometimes longer); treat that as success. */
+    private static boolean topologyKilledOrGone(String id) throws Exception {
+        String body = topologies();
+        if (!body.contains(id)) {
+            return true;
+        }
+        int at = body.indexOf(id);
+        String slice = body.substring(at, Math.min(body.length(), at + 500));
+        return slice.contains("\"status\":\"KILLED\"") || slice.contains("\"status\":\"INACTIVE\"");
     }
 
     private static String get(String path) throws Exception {

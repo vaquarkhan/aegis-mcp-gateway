@@ -154,7 +154,7 @@ are not claimed by any document:
 | Commit semantics | Approval nonce single-use | Approval and receipt nonces consumed atomically, then intent journaled **before** execution; a journal failure denies (`AUDIT_UNAVAILABLE`) |
 | 2026-07-28 round trips | Not addressed | Multi round-trip requests governed as first-class: the client's answers are screened and the retry is governed again |
 | Extension controls | Before/after hooks on tool calls | Hooks over all four governed operations, with `ENFORCE`/`AUDIT`/`OFF` modes, conditions, and an out-of-process `remote` type needing no Java |
-| Adapter surface | 33 Maven modules of Java adapters that built URLs by string concatenation | **25 deployable adapter configurations and 115 tools**. HTTP adapters validate schema/path/resource rules; Hive and Calcite use the JDBC converter; ZooKeeper uses its client-protocol converter. The inventory is enforced by `AdapterConfigsTest` and `DocumentationClaimsTest`. |
+| Adapter surface | 33 Maven modules of Java adapters that built URLs by string concatenation | **25 deployable adapter configurations and 116 tools**. HTTP adapters validate schema/path/resource rules; Hive and Calcite use the JDBC converter; ZooKeeper uses its client-protocol converter. The inventory is enforced by `AdapterConfigsTest` and `DocumentationClaimsTest`. |
 
 ---
 

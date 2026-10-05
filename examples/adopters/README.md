@@ -32,43 +32,48 @@ sample MCP request, and retained result logs. The other 16 folders now contain `
 exact reference copy of the profile covered by `AdapterConfigsTest`, clearly labeled as not captured from a
 real-engine run. Tokens, approval receipts and credentials are not kept.
 
-At this point: **17 profiles have real two-door evidence** (including Docker-backed CouchDB and Pinot);
-**14 more** are profile/contract supported but not yet real-engine verified on this host.
+At this point: **26 profiles have real two-door evidence** (including Docker-backed Airflow, CouchDB, Doris,
+Druid, Hadoop, HBase, NiFi, Pinot, Storm, and Superset); **6 more** are profile/contract supported and still
+need a product Keep (see [adopter real-engine status](../../docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md)):
+Hive is already `type: jdbc` (same source family as Calcite); Paimon/Cassandra/Ranger are HTTP like other
+Docker Keeps; Impala SQL can move to JDBC but still needs Impala; Atlas needs its full stack. Spark Connect
+does not substitute for Atlas/Ranger/Cassandra/Paimon or for Arrow Flight / Beam. ASF release-process items
+are tracked separately in [docs/ROADMAP.md](../../docs/ROADMAP.md) and are not treated as open product defects.
 
 ## Complete adopter status
 
 | Adopter/profile | Aegis config | Real engine | Own host | Knox | Evidence / reason |
 | --- | --- | --- | --- | --- | --- |
 | [ActiveMQ Classic](activemq/) | supported | 6.3.2 | passed | passed | real Jolokia; profile corrected for POST-only Jolokia, Origin and basic auth |
-| [Airflow](airflow/) | supported | not run | not run | not run | needs a Python/Airflow deployment and metadata database; no Docker or WSL distro in the [tested environment](../../docs/VALIDATION.md#tested-environments) |
-| [Atlas](atlas/) | supported | not run | not run | not run | requires Atlas plus Kafka, Solr and HBase; no substitute service was used |
+| [Airflow](airflow/) | supported | 2.9.3 | passed | passed | official `apache/airflow` Docker standalone; `/api/v1` with basic auth; Keep 2026-10-05 |
+| [Atlas](atlas/) | supported | not run | not run | not run | HTTP v2 profile OK; Keep needs Atlas + Kafka + Solr + HBase (not closable via JDBC or Spark Connect) |
 | [BookKeeper](bookkeeper/) | supported | 4.18.1 | passed | passed | real bookie HTTP admin plus real ZooKeeper metadata and ledgers |
 | [Burr](burr/) | supported | 0.42.0 | passed | passed | real Apache Burr (incubating) tracking server and traces recorded by Burr itself |
 | [Calcite](calcite/) | supported | Calcite 1.42.0 / Avatica 1.28.0 | passed | passed | real Avatica server; read-only profile refusal tested |
-| [Cassandra](cassandra/) | supported | not run | not run | not run | profile targets Cassandra Sidecar; a real sidecar/cluster is required |
+| [Cassandra](cassandra/) | supported | not run | not run | not run | Sidecar HTTP profile; Keep needs Sidecar + cluster (CQL would be a separate jdbc profile) |
 | [CouchDB](couchdb/) | supported | 3.4.2 | passed | passed | official `couchdb` Docker image; admin basic auth; rerun 2026-10-05 |
-| [Doris](doris/) | supported | not run | not run | not run | requires Doris Frontend and Backend services |
-| [Druid](druid/) | supported | not run | not run | not run | requires coordinator/router and deep storage/metadata services |
+| [Doris](doris/) | supported | 4.1.3 | passed | passed | official Doris all-in-one Docker; HTTP SQL with set password; Keep 2026-10-05 |
+| [Druid](druid/) | supported | 28.0.1 | passed | passed | Druid nano-quickstart Docker with bash launcher; Keep 2026-10-05 |
 | [Flume](flume/) | supported | 1.11.0 | passed | passed | real agent with live HTTP monitoring counters |
 | [Flink](flink/) | supported | 1.20.1 | passed | passed | real Flink MiniCluster JobManager REST API |
-| [Hadoop HDFS](hadoop/) | supported | not run | not run | not run | needs an HDFS NameNode/DataNode runtime; no WSL distro/Docker in the [tested environment](../../docs/VALIDATION.md#tested-environments) |
-| [HBase](hbase/) | supported | not run | not run | not run | needs HBase REST plus HDFS and ZooKeeper |
-| [Hive](hive/) | supported | not run | not run | not run | profile targets HiveServer2 JDBC; needs a Hive metastore/database service |
+| [Hadoop HDFS](hadoop/) | supported | 3.2.1 | passed | passed | Docker NameNode and DataNode; WebHDFS governed path; Keep 2026-10-05 |
+| [HBase](hbase/) | supported | REST via `dajobe/hbase` | passed | passed | HBase REST Docker; governed table reads/writes; Keep 2026-10-05 |
+| [Hive](hive/) | supported | not run | not run | not run | **Already `type: jdbc`**. HS2 Docker+beeline proven; Keep still needs `HiveFrontDoorsTest` + `hive-jdbc` classpath (see ROADMAP) |
 | [Iceberg REST catalog](iceberg/) | supported | 1.10.1 | passed | passed | official REST catalog server with a JDBC catalog |
 | [Ignite](ignite/) | supported | 2.18.0 | passed | passed | real Ignite node with REST v1 |
-| [Impala](impala/) | supported | not run | not run | not run | source-only Apache release; a running coordinator needs a Hadoop stack |
+| [Impala](impala/) | supported | not run | not run | not run | Coordinator HTTP ops today; SQL should use jdbc like Hive when an Impala endpoint exists |
 | [Kafka and Kafka Connect](kafka/) | supported | 3.9.1 | passed | passed | real KRaft broker and standalone Connect worker |
 | [Existing MCP server](existing-mcp-server/) | supported | MCP SDK 2.2.0 plus filesystem server | passed | passed | real HTTP/stdio downstream MCP; 2026 stateless and 2025 session paths recorded |
-| [NiFi](nifi/) | supported | not run | not run | not run | needs a NiFi runtime; no distribution installed yet |
-| [Paimon](paimon/) | supported | not run | not run | not run | needs the Paimon REST catalog server and storage configuration |
+| [NiFi](nifi/) | supported | 1.28.1 | passed | passed | official NiFi Docker; HTTP + revision-aware calls; Keep 2026-10-05 |
+| [Paimon](paimon/) | supported | not run | not run | not run | REST catalog HTTP (Iceberg-like); Keep needs a real Paimon REST catalog process |
 | [Pinot](pinot/) | supported | 1.2.0 | passed | passed | official `apachepinot/pinot` QuickStart Docker image; disposable sample tables; rerun 2026-10-05 |
 | [Pulsar](pulsar/) | supported | 4.0.13 | passed | passed | real broker/bookie with external real ZooKeeper metadata on Windows |
-| [Ranger](ranger/) | supported | not run | not run | not run | source-only Apache release; Ranger Admin requires database and policy services |
+| [Ranger](ranger/) | supported | not run | not run | not run | Admin HTTP API; Keep needs Ranger Admin + DB |
 | [Solr](solr/) | supported | 9.10.1 | passed | passed | real SolrCloud node with embedded ZooKeeper |
 | [Spark](spark/) | supported | 4.0.1 | passed | passed | real application UI REST and standalone Master REST server |
 | [Spark Connect](spark-connect/) | supported | 4.0.1 | passed | passed | real Spark Connect server; source plugin installed into Knox `ext/` |
-| [Storm](storm/) | supported | not run | not run | not run | requires Nimbus, UI and ZooKeeper |
-| [Superset](superset/) | supported | not run | not run | not run | requires Python web service, database and a configured security model |
+| [Storm](storm/) | supported | 2.6.2 | passed | passed | Docker Nimbus, Supervisor, UI and ZooKeeper; host-built topology jar; Keep 2026-10-05 |
+| [Superset](superset/) | supported | 4.0.2 | passed | passed | official Superset Docker; governed chart/dataset APIs; Keep 2026-10-05 |
 | [ZooKeeper](zookeeper/) | supported | 3.9.3 | passed | passed | real ZooKeeper data tree and AdminServer; source plugin installed into Knox `ext/`; rerun 2026-10-05 ([E2E record](../../docs/evidence/E2E-VALIDATION-2026-10-05.md)) |
 
 **Tutorial scenario (combines two engines, not counted as an adapter profile):**

@@ -30,11 +30,12 @@ A destructive action is governed as a state transition, not as a privileged HTTP
 
 ## Start here
 
-Read the task-focused [Aegis Gateway handbook](docs/HANDBOOK.md). It explains MCP governance, the risk of ungoverned agent actions, the Aegis MCP-first architecture, modules, YAML, evidence, and deployment choices. A visual version is available at [docs/guide/handbook.html](docs/guide/handbook.html).
+Read the task-focused [Aegis Gateway handbook](docs/HANDBOOK.md). It explains MCP governance, the risk of ungoverned agent actions, the Aegis MCP-first architecture, modules, YAML, evidence, and deployment choices. A visual version is available at [docs/guide/handbook.html](docs/guide/handbook.html). New users: start with the [Hello World guide](docs/guide/hello-world.html). Security reviewers can start with the [HTML security and threat-model guide](docs/guide/security.html).
 
 | If you need to... | Start with |
 | --- | --- |
-| Understand MCP governance, risks, and Aegis controls | [Handbook](docs/HANDBOOK.md) → [Security](docs/SECURITY.md) → [Threat model](docs/THREAT-MODEL.md) |
+| Hello World: IDE + first governed prompt | [Hello World (HTML)](docs/guide/hello-world.html) -> [tutorials](docs/TUTORIALS.md) |
+| Understand MCP governance, risks, and Aegis controls | [Handbook](docs/HANDBOOK.md) → [Security guide](docs/guide/security.html) → [Security](docs/SECURITY.md) → [Threat model](docs/THREAT-MODEL.md) |
 | Put an existing MCP server or REST API behind Aegis | [Adoption guide](docs/ADOPTION-GUIDE.md) → [Configuration](docs/CONFIGURATION.md) |
 | Use Aegis in an existing Knox topology | [Aegis Knox extension guide](docs/KNOX-EXTENSION.md) |
 | Reuse an Apache-engine profile | [Adopter catalog](examples/adopters/README.md) |
@@ -65,13 +66,16 @@ The validation report records deterministic governance evidence, retained target
 
 ## Evidence rule
 
-Aegis ships **15 adopter profiles with retained real two-door runs** (own host, and a stock Apache Knox 3.0.0 process) and **16 configuration/contract-supported profiles** that have no engine run recorded. The catalog includes **25 deployable adapter configurations and 115 tools**. Every profile with a retained run has redacted own-host and Knox configuration, engine configuration, a runnable guide, and retained results. The two-door adopter runs were rerun on 2026-10-03 on the current working tree; each is rerun on a release candidate before it supports a release compatibility claim. The [adopter catalog](examples/adopters/README.md) identifies which is which and why a target remains unverified.
+Aegis ships **26 adopter profiles with retained real two-door runs** (own host, and a stock Apache Knox 3.0.0 process) and **6 configuration/contract-supported profiles** that still need a full product stack before a real Keep run (Atlas, Cassandra, Hive, Impala, Paimon, Ranger). The catalog includes **25 deployable adapter configurations and 116 tools**. Every profile with a retained run has redacted own-host and Knox configuration, engine configuration, a runnable guide, and retained results. The two-door adopter runs were extended on 2026-10-05 on the current working tree; each is rerun on a release candidate before it supports a release compatibility claim. The [adopter catalog](examples/adopters/README.md) identifies which is which and why a target remains unverified.
 
 ## Project references
 
 - [User handbook](docs/HANDBOOK.md)
 - [Architecture](docs/ARCHITECTURE.md) and [configuration reference](docs/CONFIGURATION.md)
+- [HTML security and threat-model guide](docs/guide/security.html)
 - [Module reference](docs/guide/modules.html): purpose, configuration keys and security controls of every module
+- [Module developer READMEs](aegis-config/README.md) (one per core Maven module; start with `aegis-config`)
+- [Tutorials and IDE setup (plain language)](adopters/tutorials/README.md)
 - [Security properties and documented limits](docs/SECURITY.md)
 - [Validation and claims evidence](docs/VALIDATION.md)
 - [Apache Knox extension](docs/KNOX-EXTENSION.md)

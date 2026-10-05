@@ -15,7 +15,7 @@
 -->
 # GitHub Pages publishing notes
 
-`docs/index.html` is the public landing page and `docs/guide/handbook.html` is the task-focused user handbook. Both use local CSS and static visual assets; no Node, Ruby, Python, or container build is required to render the landing page itself. Linked Markdown pages are rendered by GitHub Pages through Jekyll.
+`docs/index.html` is the public landing page, `docs/guide/hello-world.html` is the Hello World path for putting Aegis into an IDE and Apache project development cycle, `docs/guide/handbook.html` is the task-focused user handbook, and `docs/guide/security.html` is the HTML security and threat-model entry for reviewers. Those pages use local CSS and static visual assets; no Node, Ruby, Python, or container build is required to render them. Linked Markdown pages are rendered by GitHub Pages through Jekyll.
 
 After a human maintainer commits the 2.0 package, enable GitHub Pages with **Deploy from a branch** and select the branch and `/docs` directory that contain these files. This repository intentionally has no automated publishing workflow: publication makes material public and must remain a reviewed human action.
 
@@ -27,4 +27,4 @@ Before publishing a release claim:
 2. Read [VALIDATION.md](VALIDATION.md), [evidence/CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md),
    [THREAT-MODEL.md](THREAT-MODEL.md), and [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md)
    to confirm evidence status, threat-model scope, and current counts.
-3. Open the published handbook and each primary navigation link. Confirm that references to repository-only material identify that boundary.
+3. Open the published Hello World guide (`guide/hello-world.html`), handbook, the security guide (`guide/security.html`), and each primary navigation link. Confirm that references to repository-only material identify that boundary.

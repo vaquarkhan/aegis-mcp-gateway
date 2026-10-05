@@ -17,6 +17,42 @@
 
 ## 2.0.0 (unreleased)
 
+- JDBC `driverClass` loads with the thread context class loader so engine drivers supplied as Knox/own-host
+  plugin jars resolve at startup (Hive FrontDoors and other JDBC adopters).
+- Spark Connect `missingTokenEnvironmentFailsStartup` test normalizes line endings before patching shipped YAML
+  (Windows CRLF no longer skips the `tokenEnv` injection).
+- Opt-in `HiveFrontDoorsTest` (`-Preal-engines`, Docker `apache/hive:4.0.1`) copies HS2 client libs from the
+  container; Keep evidence and tutorial regen still pending until that test is green in CI.
+- Regenerated all 25 IDE project tutorials from kept two-door runs (`tools/build-project-tutorials.py`).
+- Roadmap: explicit **Future work — remaining target verification** for Hive, Paimon, Cassandra, Ranger,
+  Impala, Atlas (with acceptance criteria), plus future typed sources (Arrow/Beam) and D7/D28. Hive
+  `apache/hive:4.0.1` HS2 Docker + beeline connectivity proven; FrontDoors Keep still blocked on
+  `hive-jdbc` classpath wiring ([ADOPTER-REAL-ENGINE-STATUS.md](docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md)).
+- HTML [Hello World guide](docs/guide/hello-world.html): how to add Aegis to an IDE development cycle and put
+  governed MCP in front of an existing MCP server or Apache project; linked from the landing page,
+  handbook, and developer guide.
+- HTML [security and threat-model guide](docs/guide/security.html) for GitHub Pages: trust zones Z1 to Z6,
+  STRIDE/TM01-TM10, OWASP MCP handling, S1 to S31 highlights, and the 227-test validation summary; linked
+  from the landing page, handbook, developer guide, and README.
+- Clarified remaining adopter Keep vs ASF process: Hive is already JDBC (same family as Calcite);
+  Spark Connect is not a generic gRPC path for Atlas/Ranger/Arrow/Beam; Arrow/Beam/Hudi/Ozone/Kudu false
+  HTTP facades remain **closed defects** (removed), with typed sources listed as future features.
+  ASF provenance/SBOM/grant/publish items moved out of the day-to-day engineering defect list in
+  [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md](docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md).
+- FrontDoors defect follow-ups: Superset chart-id seeding parses `result[].id` only and confirms charts
+  via GET; `superset_get_chart` + TOOL dry-run for delete; Doris `show_proc?path=/` and
+  `/backends` path corrections (inventory now 116 adapter tools).
+- Generated IDE-ready tutorials for the ten newly Keep-verified adopters (Airflow, CouchDB, Doris, Druid,
+  Hadoop, HBase, NiFi, Pinot, Storm, Superset), bringing the project-tutorial set to twenty-five plus
+  Spark+Iceberg. See [docs/TUTORIALS.md](docs/TUTORIALS.md).
+- Plain-language [tutorials README](adopters/tutorials/README.md) and per-project `ide/README.md` files
+  explaining what the VS Code / Kiro / Cursor MCP JSON files mean for new users; developer README in
+  each core Maven module (for example [aegis-config/README.md](aegis-config/README.md)); Helm chart
+  README expanded with install and values examples.
+- Real two-door Keep runs retained for Airflow 2.9.3, Doris 4.1.3, Druid 28.0.1, Storm 2.6.2, and
+  Superset 4.0.2 (own host and Knox), in addition to the earlier Docker Keep set (CouchDB, Pinot,
+  Hadoop HDFS, HBase, NiFi). Stack-blocked adapters remain Atlas, Cassandra, Hive, Impala, Paimon,
+  and Ranger. See [docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md](docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md).
 - New configuration-driven architecture: one governance engine (`aegis-engine`), MCP protocol for the
   2025 and 2026-07-28 revisions (`aegis-mcp`), strict declarative configuration (`aegis-config`), and
   two front doors: the own-host gateway (`aegis-gateway`) and an optional Apache Knox 3.0 extension

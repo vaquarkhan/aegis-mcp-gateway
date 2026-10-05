@@ -15,6 +15,9 @@
 -->
 # Tutorials
 
+New to Aegis? Start with the HTML [Hello World guide](guide/hello-world.html): how Aegis fits an IDE
+development cycle and how to put governed MCP in front of an existing MCP server or Apache project.
+
 Each tutorial runs real Apache software on one machine and puts Aegis between an agent and it. The
 outputs in each one are copied from a recorded run; the files they use are in
 [`adopters/tutorials/`](../adopters/tutorials/).
@@ -33,30 +36,42 @@ results; the Spark and Iceberg tutorial's run is kept there as `spark-iceberg`.
 
 ## One tutorial per verified project, from your IDE, with and without Knox
 
-These fifteen are built by `tools/build-project-tutorials.py` from each project's kept real run. All
-fifteen, plus Spark with Iceberg, were run on the current tree on 2026-10-03 through both front doors (the
-own host and a stock Knox 3.0.0), and every kept audit journal verifies. Each tutorial has the engine
-command line, both flavors step by step, VS Code, Kiro and Cursor files in
-`adopters/tutorials/<project>/ide/`, prompts mapped to tools with what Aegis answered, and the full
-request table of that run. `python tools/build-project-tutorials.py --check` fails when a tutorial no
-longer matches its kept run.
+These twenty-five are built by `tools/build-project-tutorials.py` from each project's kept real run. All
+twenty-five, plus Spark with Iceberg, have retained own-host and Knox Keep runs on the current tree, and
+every kept audit journal verifies. Each tutorial has the engine command line, both flavors step by step,
+VS Code, Kiro and Cursor files in `adopters/tutorials/<project>/ide/`, prompts mapped to tools with what
+Aegis answered, and the full request table of that run. `python tools/build-project-tutorials.py --check`
+fails when a tutorial no longer matches its kept run.
+
+Security reviewers: start with the [HTML security guide](guide/security.html) (threat zones, TM01 to TM10,
+OWASP MCP handling, S1 to S31) before walking a tutorial.
 
 | Project | Tutorial |
 | --- | --- |
 | Apache ActiveMQ 6.3.2 (Jolokia) | [tutorials/activemq.md](tutorials/activemq.md) |
+| Apache Airflow 2.9.3 | [tutorials/airflow.md](tutorials/airflow.md) |
 | Apache BookKeeper 4.18.1 | [tutorials/bookkeeper.md](tutorials/bookkeeper.md) |
 | Apache Burr 0.42.0 (incubating) | [tutorials/burr.md](tutorials/burr.md) |
 | Apache Calcite 1.42.0 over Avatica 1.28.0 | [tutorials/calcite.md](tutorials/calcite.md) |
+| Apache CouchDB 3.4.2 | [tutorials/couchdb.md](tutorials/couchdb.md) |
+| Apache Doris 4.1.3 | [tutorials/doris.md](tutorials/doris.md) |
+| Apache Druid 28.0.1 | [tutorials/druid.md](tutorials/druid.md) |
 | An existing MCP server (Python SDK and the filesystem server) | [tutorials/existing-mcp-server.md](tutorials/existing-mcp-server.md) |
 | Apache Flink 1.20.1 | [tutorials/flink.md](tutorials/flink.md) |
 | Apache Flume 1.11.0 | [tutorials/flume.md](tutorials/flume.md) |
+| Apache Hadoop HDFS 3.2.1 | [tutorials/hadoop.md](tutorials/hadoop.md) |
+| Apache HBase (REST) | [tutorials/hbase.md](tutorials/hbase.md) |
 | Apache Iceberg 1.10.1 REST catalog | [tutorials/iceberg.md](tutorials/iceberg.md) |
 | Apache Ignite 2.18.0 | [tutorials/ignite.md](tutorials/ignite.md) |
 | Apache Kafka 3.9.1 and Kafka Connect | [tutorials/kafka.md](tutorials/kafka.md) |
+| Apache NiFi 1.28.1 | [tutorials/nifi.md](tutorials/nifi.md) |
+| Apache Pinot 1.2.0 | [tutorials/pinot.md](tutorials/pinot.md) |
 | Apache Pulsar 4.0.13 | [tutorials/pulsar.md](tutorials/pulsar.md) |
 | Apache Solr 9.10.1 | [tutorials/solr.md](tutorials/solr.md) |
 | Apache Spark 4.0.1 | [tutorials/spark.md](tutorials/spark.md) |
 | Apache Spark Connect 4.0.1 | [tutorials/spark-connect.md](tutorials/spark-connect.md) |
+| Apache Storm 2.6.2 | [tutorials/storm.md](tutorials/storm.md) |
+| Apache Superset 4.0.2 | [tutorials/superset.md](tutorials/superset.md) |
 | Apache ZooKeeper 3.9.3 | [tutorials/zookeeper.md](tutorials/zookeeper.md) |
 
 The IDE files are checked by `DocumentationAssetsTest` (they parse and name the tutorial's endpoints). The
@@ -65,10 +80,8 @@ IDEs themselves were not driven by a test.
 
 ## Projects without a tutorial
 
-Airflow, Atlas, Cassandra, CouchDB, Doris, Druid, Hadoop, HBase, Hive, Impala, NiFi, Paimon, Pinot,
-Ranger, Storm and Superset have a configuration profile that passes the contract test, which proves
-route rendering and governance order, not that the product answers. None has a real run on record, so
-none has a tutorial. The status and blocker of each are in
-[examples/adopters/README.md](../examples/adopters/README.md). For Airflow in particular, the profile is
-written for the Airflow 2.x `/api/v1` REST API, which Airflow 3 replaced with `/api/v2`; see
-[examples/adopters/airflow/README.md](../examples/adopters/airflow/README.md).
+Atlas, Cassandra, Hive, Impala, Paimon and Ranger have a configuration profile that passes the contract
+test, which proves route rendering and governance order, not that the product answers. None has a real
+run on record, so none has a tutorial. The status and blocker of each are in
+[examples/adopters/README.md](../examples/adopters/README.md) and
+[evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.md).

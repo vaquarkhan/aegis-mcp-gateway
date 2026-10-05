@@ -48,11 +48,11 @@ class AirflowFrontDoorsTest {
 
     private static final String USER = "admin";
     private static final String PASS = "admin";
-    private static final String KEEP_DAG = "example_bash_operator";
     private static final HttpClient HTTP = HttpClient.newHttpClient();
 
     private static DockerContainer airflow;
     private static int port;
+    private static String keepDag;
     private static String ownHostVictim;
     private static String knoxVictim;
 
@@ -64,9 +64,10 @@ class AirflowFrontDoorsTest {
         DockerContainer.requireDocker();
         port = JavaServer.freePort();
         Path log = Path.of("target", "airflow-server", "docker.log").toAbsolutePath();
+        // Examples are slow and version-specific; seed three disposable DAGs via the API filesystem instead.
         airflow = DockerContainer.start("aegis-val-airflow", "apache/airflow:2.9.3-python3.11",
                 List.of("-p", "127.0.0.1:" + port + ":8080",
-                        "-e", "AIRFLOW__CORE__LOAD_EXAMPLES=True",
+                        "-e", "AIRFLOW__CORE__LOAD_EXAMPLES=False",
                         "-e", "AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth",
                         "-e", "AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL=5",
                         "-e", "_AIRFLOW_DB_MIGRATE=true",
@@ -79,11 +80,9 @@ class AirflowFrontDoorsTest {
                 Duration.ofMinutes(8), "Airflow 2.9.3 /api/v1 health");
         resetAdminPassword();
         airflow.awaitReady(() -> listDags().startsWith("200:"), Duration.ofMinutes(2), "Airflow basic auth");
-        airflow.awaitReady(() -> listDags().contains(KEEP_DAG), Duration.ofMinutes(5), "example DAGs loaded");
-        List<String> victims = disposableExampleDags();
-        assertTrue(victims.size() >= 2, "need two disposable example DAGs, got " + victims + " from " + listDags());
-        ownHostVictim = victims.get(0);
-        knoxVictim = victims.get(1);
+        keepDag = seedDisposableDag("aegis_keep");
+        ownHostVictim = seedDisposableDag("aegis_ownhost");
+        knoxVictim = seedDisposableDag("aegis_knox");
     }
 
     @AfterAll
@@ -110,22 +109,29 @@ class AirflowFrontDoorsTest {
                 Map.of("AIRFLOW_API_USER", USER, "AIRFLOW_API_PASSWORD", PASS));
 
         try (FrontDoor d = FrontDoor.open(door, scenario, dir)) {
-            d.note("apache/airflow:2.9.3 standalone on " + url + "; keep " + KEEP_DAG + "; delete " + victim);
+            d.note("apache/airflow:2.9.3 standalone on " + url + "; keep " + keepDag + "; delete " + victim);
             GovernedFlow.read(d, "airflow_get_health", Map.of(), "healthy");
-            GovernedFlow.read(d, "airflow_list_dags", Map.of(), KEEP_DAG);
-            GovernedFlow.read(d, "airflow_get_dag", Map.of("dagId", KEEP_DAG), KEEP_DAG);
+            GovernedFlow.read(d, "airflow_list_dags", Map.of(), keepDag);
+            GovernedFlow.read(d, "airflow_get_dag", Map.of("dagId", keepDag), keepDag);
             GovernedFlow.destructive(d, "airflow_delete_dag", Map.of("dagId", victim),
                     () -> assertTrue(listDags().contains(victim), victim + " still listed"),
                     () -> {
-                        assertFalse(listDags().contains(victim), victim + " deleted");
-                        assertTrue(listDags().contains(KEEP_DAG), KEEP_DAG + " untouched");
-                        d.note("Airflow deleted " + victim + " and still has " + KEEP_DAG);
+                        // Prevent the scheduler from re-importing the deleted DAG from disk.
+                        removeDagFile(victim);
+                        long deadline = System.nanoTime() + Duration.ofMinutes(2).toNanos();
+                        boolean gone = false;
+                        while (System.nanoTime() < deadline) {
+                            if (!listDags().contains(victim)) {
+                                gone = true;
+                                break;
+                            }
+                            Thread.sleep(1000);
+                        }
+                        assertTrue(gone, victim + " deleted; list=" + listDags());
+                        assertTrue(listDags().contains(keepDag), keepDag + " untouched");
+                        d.note("Airflow deleted " + victim + " and still has " + keepDag);
                     });
         }
-    }
-
-    private static String health() throws Exception {
-        return get("/health");
     }
 
     private static String unauthHealth() throws Exception {
@@ -150,22 +156,10 @@ class AirflowFrontDoorsTest {
         return get("/dags?limit=100");
     }
 
-    private static List<String> disposableExampleDags() throws Exception {
-        String body = listDags();
-        List<String> out = new java.util.ArrayList<>();
-        for (String id : List.of("example_python_operator", "example_branch_operator",
-                "example_trigger_controller_dag", "tutorial", "example_xcom",
-                "example_skip_dag", "example_branch_labels")) {
-            if (body.contains("\"" + id + "\"") && !id.equals(KEEP_DAG)) {
-                out.add(id);
-            }
-        }
-        return out;
-    }
-
     /**
-     * Writes a one-shot DAG into the container via stdin (kept for local debugging; the default path
-     * uses LOAD_EXAMPLES disposable DAGs).
+     * Writes a one-shot DAG into the container via stdin and waits until the metadata API lists it.
+     * Leaves the file in place so Airflow keeps the DAG {@code is_active} (default {@code only_active}
+     * listing would otherwise hide it after a file removal).
      */
     private static String seedDisposableDag(String dagId) throws Exception {
         String py = "from airflow import DAG\n"
@@ -188,17 +182,19 @@ class AirflowFrontDoorsTest {
         long deadline = System.nanoTime() + Duration.ofMinutes(4).toNanos();
         while (System.nanoTime() < deadline) {
             if (listDags().contains(dagId)) {
-                Process rm = new ProcessBuilder("docker", "exec", "aegis-val-airflow", "rm", "-f",
-                        "/opt/airflow/dags/" + dagId + ".py").redirectErrorStream(true).start();
-                rm.getInputStream().readAllBytes();
-                rm.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
-                assertTrue(listDags().contains(dagId), dagId + " still in metadata after file removal");
                 return dagId;
             }
             Thread.sleep(2000);
         }
         throw new IllegalStateException("DAG " + dagId + " never appeared: " + listDags()
                 + " file=" + wout);
+    }
+
+    private static void removeDagFile(String dagId) throws Exception {
+        Process rm = new ProcessBuilder("docker", "exec", "aegis-val-airflow", "rm", "-f",
+                "/opt/airflow/dags/" + dagId + ".py").redirectErrorStream(true).start();
+        rm.getInputStream().readAllBytes();
+        rm.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
     }
 
     private static String get(String path) throws Exception {
