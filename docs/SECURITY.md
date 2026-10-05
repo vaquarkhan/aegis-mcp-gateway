@@ -18,7 +18,8 @@
 Aegis sits between a language model and production data infrastructure. This page lists what it
 promises, how each promise is enforced and tested, what it does not promise, and how to report a
 problem. The repository-wide policy (supported versions, disclosure timeline) is in the root
-[SECURITY.md](../SECURITY.md).
+[SECURITY.md](../SECURITY.md). The product [threat model](THREAT-MODEL.md) and the latest
+[security validation record](evidence/SECURITY-VALIDATION.md) accompany this page.
 
 ## Reporting a vulnerability
 
@@ -152,6 +153,16 @@ the gateway boundary; Aegis does not eliminate any of them. The status words mea
 | Local MCP server compromise | Partial | stdio commands come only from operator config, never from a client; the child gets a minimal environment; the own listener binds 127.0.0.1 by default, needs a token and checks browser Origin. The child is not sandboxed (see the limits above). |
 | OAuth authorization URL validation | Implemented for metadata Aegis publishes | This is mainly a client duty. Aegis refuses to publish an authorization-server or documentation URL that is not https (or loopback http), so it never hands a client `javascript:`, `data:` or `file:` URLs. Aegis does not run an authorization UI. |
 | Scope minimization | Implemented per route, policy per tool | S26: a valid token without the route's scope gets 403 `insufficient_scope` with the scope to request, and the 401 challenge names it up front. Tool-level least privilege is enforced by groups, typed resources and policy rather than OAuth scopes. |
+
+## Threat model and validation evidence
+
+- **Threat model:** [THREAT-MODEL.md](THREAT-MODEL.md): trust-zone diagram, DFD, STRIDE by zone,
+  detailed TM01-TM10 abuse cases, OWASP MCP handling for all ten items, and residual assumptions.
+- **What was validated on this tree:** [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md):
+  command, environment, 227-test suite, per-class proof catalogue, and explicit non-claims
+  (OWASP elimination, provenance scan, production IdP/network hardening).
+- **Release claims index:** [evidence/CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md).
+- **Framework mappings:** [GOVERNANCE-MAPPING.md](GOVERNANCE-MAPPING.md) (OWASP LLM and Agentic Top 10).
 
 ## Hardening checklist
 

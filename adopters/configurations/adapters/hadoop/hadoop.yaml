@@ -59,7 +59,7 @@ sources:
           properties: {path: {type: string, maxLength: 1024}}
           required: [path]
           additionalProperties: false
-        request: {method: GET, path: "/webhdfs/v1/{path/}", query: {op: "LISTSTATUS"}}
+        request: {method: GET, path: "/webhdfs/v1/{path/}", query: {op: "LISTSTATUS", "user.name": "root"}}
         resources: [{type: "hadoop:path", pointer: /path}]
 
       - name: hadoop_get_file_status
@@ -70,7 +70,7 @@ sources:
           properties: {path: {type: string, maxLength: 1024}}
           required: [path]
           additionalProperties: false
-        request: {method: GET, path: "/webhdfs/v1/{path/}", query: {op: "GETFILESTATUS"}}
+        request: {method: GET, path: "/webhdfs/v1/{path/}", query: {op: "GETFILESTATUS", "user.name": "root"}}
         resources: [{type: "hadoop:path", pointer: /path}]
 
       - name: hadoop_mkdirs
@@ -81,7 +81,7 @@ sources:
           properties: {path: {type: string, maxLength: 1024}}
           required: [path]
           additionalProperties: false
-        request: {method: PUT, path: "/webhdfs/v1/{path/}", query: {op: "MKDIRS"}}
+        request: {method: PUT, path: "/webhdfs/v1/{path/}", query: {op: "MKDIRS", "user.name": "root"}}
         resources: [{type: "hadoop:path", pointer: /path}]
 
       - name: hadoop_delete_path
@@ -92,6 +92,6 @@ sources:
           properties: {path: {type: string, maxLength: 1024}}
           required: [path]
           additionalProperties: false
-        request: {method: DELETE, path: "/webhdfs/v1/{path/}", query: {op: "DELETE", recursive: "false"}}
+        request: {method: DELETE, path: "/webhdfs/v1/{path/}", query: {op: "DELETE", recursive: "false", "user.name": "root"}}
         resources: [{type: "hadoop:path", pointer: /path}]
         dryRun: {mode: TOOL, previewTool: hadoop_get_file_status}   # validate against the exact target first

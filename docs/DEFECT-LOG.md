@@ -592,9 +592,25 @@ need both. **Fix:** before the examples `-Preal-engines` install, build the adop
 with `mvn -Preal-engines -pl <source-module> -am package` when the scenario installs a typed plugin into
 Knox `ext/`.
 
+### D32. Oversized-body rejection assertion missed a JDK client abort message
+
+| | |
+| --- | --- |
+| **Severity** | Low (test harness) |
+| **Status** | Recorded, fixed |
+| **Found by** | Focused S1–S31 security suite, 2026-10-05 |
+
+`GatewayHostTest.assertLargeBodyRejected` already accepted 413 or JDK I/O aborts that mention
+`content-length` or `body`. On JDK 21, closing the connection after an oversized POST can surface as
+`HTTP/1.1 header parser received no bytes`, which the helper treated as unexpected. **Fix:** accept
+`header parser` and `no bytes` messages as the same client-side abort class; server still rejects
+before backend dispatch ([SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md)).
+
 ## Related reading
 
 - [DESIGN-REVIEW-AND-GAPS.md](DESIGN-REVIEW-AND-GAPS.md): scope changes from 0.1 to 2.0
 - [COVERAGE-0.1-VS-2.0.md](COVERAGE-0.1-VS-2.0.md): every 0.1 tool and what happened to it
 - [VALIDATION.md](VALIDATION.md): what is proven, by which test, against what software
+- [THREAT-MODEL.md](THREAT-MODEL.md): assets, STRIDE, and abuse scenarios
+- [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md): focused control-suite evidence
 - [ROADMAP.md](ROADMAP.md): what is not built

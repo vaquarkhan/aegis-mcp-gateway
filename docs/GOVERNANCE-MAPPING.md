@@ -372,5 +372,7 @@ Rules for changing this file, because a mapping document decays faster than code
    they follow.
 
 Related reading: [HANDBOOK.md](HANDBOOK.md#threat-scenarios-and-why-the-gateway-boundary-matters) for the problem statement,
-[SECURITY.md](SECURITY.md) for the threat model and the explicit non-promises,
+[THREAT-MODEL.md](THREAT-MODEL.md) for assets, STRIDE, and abuse scenarios,
+[SECURITY.md](SECURITY.md) for property promises S1–S31 and explicit non-promises,
+[evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) for the latest control-suite run,
 [GOVERNANCE.md](GOVERNANCE.md) for the operator control list and how the project itself is governed.

@@ -30,6 +30,8 @@ case "$adopter" in
   kafka)         module=aegis-validation;               test=KafkaFrontDoorsTest ;;
   iceberg)       module=aegis-validation;               test=IcebergFrontDoorsTest ;;
   activemq)      module=aegis-validation;               test=ActiveMqFrontDoorsTest ;;
+  couchdb)       module=aegis-validation;               test=CouchdbFrontDoorsTest ;;  # needs Docker
+  pinot)         module=aegis-validation;               test=PinotFrontDoorsTest ;;    # needs Docker
   ignite)        module=aegis-validation;               test=IgniteFrontDoorsTest ;;
   # needs AEGIS_MCP_PYTHON, AEGIS_NODE, AEGIS_MCP_FILESYSTEM_JS (existing-mcp-server/setup.sh)
   existing-mcp-server) module=aegis-validation;         test=ExistingMcpServerFrontDoorsTest ;;

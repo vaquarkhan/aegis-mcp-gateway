@@ -46,6 +46,8 @@ The local runs in this report and in [evidence/](evidence/) used one Windows wor
 | Keycloak | 26.8.0 | RFC 8693 token exchange ([evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md)) |
 | a2a-sdk (Python) | 1.2.1 | the A2A agent behind the `a2a` source (`A2aAgentFrontDoorsTest`, both front doors) |
 | Helm, kubeconform, hadolint, actionlint | 4.3.0, 0.8.0, 2.15.1, 1.7.12 | chart, manifest, Dockerfile and workflow checks ([chart README](../charts/aegis/README.md)) |
+| Apache CouchDB | 3.4.2 (official Docker image) | `CouchdbFrontDoorsTest` own host and Knox ([adopter status](evidence/ADOPTER-REAL-ENGINE-STATUS.md)) |
+| Apache Pinot | 1.2.0 (official Docker QuickStart) | `PinotFrontDoorsTest` own host and Knox |
 
 The RDS PostgreSQL 18.3 run is described in the [PostgreSQL RDS validation evidence](evidence/POSTGRES-RDS-VALIDATION.md).
 The engine version of each adopter run is in [`examples/adopters/README.md`](../examples/adopters/README.md).
@@ -98,6 +100,13 @@ pass on this working tree, including `ZooKeeperFrontDoorsTest` (Knox bundle SHA-
 `0726C4CE71D23856F8FE9A58BE2C80E7FC7E4AE740ED70E8ECC8CBFB2617B780`), Keycloak token exchange,
 Helm/kubeconform/`start_rendered.py`, hooks e2e, and Docker Postgres/Vault ITs. RDS PostgreSQL 18.3 was
 not re-run on this date.
+
+### Security control validation (2026-10-05)
+
+See [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) for the focused S1–S31
+deterministic suite (and related host/Knox perimeter tests) re-run on this tree, plus the product
+[threat model](THREAT-MODEL.md). That record proves gateway control properties; it does not certify
+OWASP Top 10 elimination.
 
 ### Runs added on 2026-10-03
 

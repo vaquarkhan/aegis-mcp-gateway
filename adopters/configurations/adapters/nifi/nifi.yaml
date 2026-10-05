@@ -47,6 +47,8 @@ sources:
   - id: nifi
     type: http
     baseUrl: http://nifi:8080/nifi-api
+    # NiFi single-user mode uses HTTP basic (username/password from the container env).
+    credentials: {type: basic, usernameEnv: NIFI_API_USER, passwordEnv: NIFI_API_PASSWORD}
     tools:
       - name: nifi_get_about
         description: "NiFi version and build information."
@@ -76,13 +78,22 @@ sources:
         class: MUTATE
         inputSchema:
           type: object
-          properties: {groupId: {type: string, maxLength: 200}}
-          required: [groupId]
+          properties:
+            groupId: {type: string, maxLength: 200}
+            # NiFi optimistic locking: version and clientId from GET /process-groups/{id}.
+            # version must be a JSON number (NiFi rejects a string).
+            revisionVersion: {type: integer, minimum: 0, maximum: 2147483647}
+            revisionClientId: {type: string, maxLength: 64}
+          required: [groupId, revisionVersion, revisionClientId]
           additionalProperties: false
         request:
           method: PUT
           path: "/flow/process-groups/{groupId}"
-          body: {"id": "{groupId}", "state": "RUNNING"}
+          body:
+            id: "{groupId}"
+            state: "RUNNING"
+            disconnectedNodeAcknowledged: true
+            revision: {version: "{revisionVersion}", clientId: "{revisionClientId}"}
         resources: [{type: "nifi:process-group", pointer: /groupId}]
 
       - name: nifi_stop_process_group
@@ -90,12 +101,19 @@ sources:
         class: DESTRUCTIVE
         inputSchema:
           type: object
-          properties: {groupId: {type: string, maxLength: 200}}
-          required: [groupId]
+          properties:
+            groupId: {type: string, maxLength: 200}
+            revisionVersion: {type: integer, minimum: 0, maximum: 2147483647}
+            revisionClientId: {type: string, maxLength: 64}
+          required: [groupId, revisionVersion, revisionClientId]
           additionalProperties: false
         request:
           method: PUT
           path: "/flow/process-groups/{groupId}"
-          body: {"id": "{groupId}", "state": "STOPPED"}
+          body:
+            id: "{groupId}"
+            state: "STOPPED"
+            disconnectedNodeAcknowledged: true
+            revision: {version: "{revisionVersion}", clientId: "{revisionClientId}"}
         resources: [{type: "nifi:process-group", pointer: /groupId}]
         dryRun: {mode: TOOL, previewTool: nifi_get_process_group}   # validate against the exact target first

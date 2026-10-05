@@ -13,21 +13,28 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-# Apache Pinot: profile supported, real-engine evidence not yet captured
+# Apache Pinot example: with Knox and without Knox
 
-## Canonical reference
+This example runs
+[`adopters/configurations/adapters/pinot/pinot.yaml`](../../../adopters/configurations/adapters/pinot/pinot.yaml)
+against a real Apache Pinot 1.2.0 QuickStart controller (`apachepinot/pinot` Docker image) through own-host
+Aegis and stock Knox 3.0.0.
 
-[`aegis/canonical.yaml`](aegis/canonical.yaml) is an exact reference copy of the
-[canonical adapter profile](../../../adopters/configurations/adapters/pinot/pinot.yaml), not
-configuration captured from a real engine run. Current profile/contract coverage is
-`AdapterConfigsTest` in [`examples/aegis-examples`](../../aegis-examples); real results remain not
-recorded.
+Status: **verified when Docker is available**, both front doors. Keep evidence with
+`../run-example.ps1 pinot -Keep`.
 
-Aegis loads and governs [`pinot.yaml`](../../../adopters/configurations/adapters/pinot/pinot.yaml) over the
-Pinot Controller API: table/tenant reads and destructive table deletion. `AdapterConfigsTest` verifies all
-request shapes and controls against a contract server, not a real Pinot cluster.
+## Prerequisites
 
-A real two-door run needs a Pinot Controller, at least one server and a disposable table fixture. This is
-declarative HTTP, so Knox needs only the Aegis extension/topology. Substitute the Controller URL, egress
-allowlist, credentials and groups in the canonical YAML. The required Pinot service set is not installed here,
-so there are no end-to-end results to mistake for real evidence.
+- Docker Engine (`docker` on `PATH`)
+- `AEGIS_KNOX_HOME` for the Knox door
+- JDK 17+ and Maven
+
+```powershell
+$env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'
+../run-example.ps1 pinot -Keep
+```
+
+## What the run proves
+
+List tables/tenants (READ), outsider denial, destructive table delete with independent approval and dry-run
+receipt against a seeded scratch table, with `baseballStats` left untouched. Audit journals verify.

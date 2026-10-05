@@ -59,6 +59,12 @@
   locally.
 - `SECURITY.md` describes the advisory process after a report: triage with CVSS 4.0, fix in the
   advisory's private fork with a regression test, release, then advisory and CVE.
+- Product [threat model](docs/THREAT-MODEL.md) with trust-zone SVG
+  ([`aegis-threat-model.svg`](docs/assets/aegis-threat-model.svg)), DFD, STRIDE-by-zone analysis,
+  detailed TM01-TM10 abuse cases, OWASP MCP handling matrix, and
+  [security validation evidence](docs/evidence/SECURITY-VALIDATION.md) documenting the 227-test
+  focused S1-S31 suite and per-class proof catalogue; linked from Security, Handbook, Validation,
+  and governance mapping.
 - Test rename: `KnoxAclBodyBlindnessTest` is now `KnoxAclRouteScopeTest` (same assertions).
 - New key `output.allowBinary` (default `false`): tool results with image, audio or blob parts are
   withheld unless allowed. Existing tools that return images need `output.allowBinary: true`.

@@ -54,6 +54,7 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -334,7 +335,11 @@ class GatewayHostTest {
         try {
             assertEquals(413, client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
         } catch (IOException expected) {
-            assertTrue(expected.getMessage().contains("content-length") || expected.getMessage().contains("body"),
+            String message = String.valueOf(expected.getMessage()).toLowerCase(Locale.ROOT);
+            assertTrue(message.contains("content-length")
+                            || message.contains("body")
+                            || message.contains("header parser")
+                            || message.contains("no bytes"),
                     "unexpected client error: " + expected);
         }
     }

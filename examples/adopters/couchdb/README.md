@@ -13,22 +13,40 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-# Apache CouchDB: profile supported, real-engine evidence not yet captured
+# Apache CouchDB example: with Knox and without Knox
 
-## Canonical reference
+This example runs the shipped profile
+[`adopters/configurations/adapters/couchdb/couchdb.yaml`](../../../adopters/configurations/adapters/couchdb/couchdb.yaml)
+against a real Apache CouchDB 3.4.2 node (official `couchdb` Docker image), through Aegis's own server and
+inside a stock Apache Knox 3.0.0 gateway. Only the CouchDB address, egress CIDR and admin basic-auth
+environment are substituted.
 
-[`aegis/canonical.yaml`](aegis/canonical.yaml) is an exact reference copy of the
-[canonical adapter profile](../../../adopters/configurations/adapters/couchdb/couchdb.yaml), not
-configuration captured from a real engine run. Current profile/contract coverage is
-`AdapterConfigsTest` in [`examples/aegis-examples`](../../aegis-examples); real results remain not
-recorded.
+Status: **verified on this tree when Docker is available**, both front doors. Kept logs land in
+[results/](results/) after `./run-example.ps1 couchdb -Keep`.
 
-Aegis loads and governs [`couchdb.yaml`](../../../adopters/configurations/adapters/couchdb/couchdb.yaml).
-Its deterministic contract test covers database list/detail, create and destructive delete request shapes and
-the required governance controls.
+## Files in this folder
 
-A real two-door run needs a CouchDB node with a disposable database. The source is declarative HTTP, so the
-standard Knox setup is only the Aegis extension and topology; no CouchDB plugin jar is needed. Use the canonical
-YAML, substitute the CouchDB URL, egress allowlist, credentials and groups, then run the same scenario once
-through own-host Aegis and once through Knox. CouchDB is not installed in the [tested environment](../../../docs/VALIDATION.md#tested-environments) and Docker/WSL is
-unavailable, so no false end-to-end evidence is present.
+| File | What it is |
+| --- | --- |
+| [`HOW-TO-RUN.md`](HOW-TO-RUN.md) | written by the test harness during a kept run |
+| [`aegis/own-host.yaml`](aegis/own-host.yaml) | own-host configuration from a kept run |
+| [`aegis/knox-aegis.yaml`](aegis/knox-aegis.yaml) / [`knox-topology.xml`](aegis/knox-topology.xml) | Knox path from a kept run |
+| [`aegis/canonical.yaml`](aegis/canonical.yaml) | reference copy of the shipped profile |
+| [`results/`](results/) | transcripts, audit journals, Surefire report |
+| [`CouchdbFrontDoorsTest.java`](../../aegis-validation/src/test/java/io/github/vaquarkhan/aegis/validation/CouchdbFrontDoorsTest.java) | starts CouchDB, seeds databases, asserts both doors |
+
+## Prerequisites
+
+- Docker Engine reachable as `docker` on `PATH`
+- `AEGIS_KNOX_HOME` for the Knox door (otherwise Knox is skipped, never passed)
+- `mvn` and JDK 17+
+
+```powershell
+$env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'
+../run-example.ps1 couchdb -Keep
+```
+
+## What the run proves
+
+List and get database (READ), outsider denial, destructive delete of a scratch database with independent
+approval and dry-run receipt, engine state checked before/after outside Aegis, audit journals verify.

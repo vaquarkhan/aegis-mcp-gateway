@@ -32,8 +32,8 @@ sample MCP request, and retained result logs. The other 16 folders now contain `
 exact reference copy of the profile covered by `AdapterConfigsTest`, clearly labeled as not captured from a
 real-engine run. Tokens, approval receipts and credentials are not kept.
 
-At this point: **15 profiles have real two-door evidence; 16 more are profile/contract supported but explicitly
-not real-engine verified.**
+At this point: **17 profiles have real two-door evidence** (including Docker-backed CouchDB and Pinot);
+**14 more** are profile/contract supported but not yet real-engine verified on this host.
 
 ## Complete adopter status
 
@@ -46,7 +46,7 @@ not real-engine verified.**
 | [Burr](burr/) | supported | 0.42.0 | passed | passed | real Apache Burr (incubating) tracking server and traces recorded by Burr itself |
 | [Calcite](calcite/) | supported | Calcite 1.42.0 / Avatica 1.28.0 | passed | passed | real Avatica server; read-only profile refusal tested |
 | [Cassandra](cassandra/) | supported | not run | not run | not run | profile targets Cassandra Sidecar; a real sidecar/cluster is required |
-| [CouchDB](couchdb/) | supported | not run | not run | not run | requires a CouchDB distribution/container; none installed in the [tested environment](../../docs/VALIDATION.md#tested-environments) |
+| [CouchDB](couchdb/) | supported | 3.4.2 | passed | passed | official `couchdb` Docker image; admin basic auth; rerun 2026-10-05 |
 | [Doris](doris/) | supported | not run | not run | not run | requires Doris Frontend and Backend services |
 | [Druid](druid/) | supported | not run | not run | not run | requires coordinator/router and deep storage/metadata services |
 | [Flume](flume/) | supported | 1.11.0 | passed | passed | real agent with live HTTP monitoring counters |
@@ -61,7 +61,7 @@ not real-engine verified.**
 | [Existing MCP server](existing-mcp-server/) | supported | MCP SDK 2.2.0 plus filesystem server | passed | passed | real HTTP/stdio downstream MCP; 2026 stateless and 2025 session paths recorded |
 | [NiFi](nifi/) | supported | not run | not run | not run | needs a NiFi runtime; no distribution installed yet |
 | [Paimon](paimon/) | supported | not run | not run | not run | needs the Paimon REST catalog server and storage configuration |
-| [Pinot](pinot/) | supported | not run | not run | not run | needs Pinot controller/server and a table dataset |
+| [Pinot](pinot/) | supported | 1.2.0 | passed | passed | official `apachepinot/pinot` QuickStart Docker image; disposable sample tables; rerun 2026-10-05 |
 | [Pulsar](pulsar/) | supported | 4.0.13 | passed | passed | real broker/bookie with external real ZooKeeper metadata on Windows |
 | [Ranger](ranger/) | supported | not run | not run | not run | source-only Apache release; Ranger Admin requires database and policy services |
 | [Solr](solr/) | supported | 9.10.1 | passed | passed | real SolrCloud node with embedded ZooKeeper |

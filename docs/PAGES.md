@@ -24,5 +24,7 @@ The `docs/evidence/` directory is published so that the landing page’s claims-
 Before publishing a release claim:
 
 1. Run `mvn -B clean install`. The documentation tests verify static assets, local links, anchors, canonical profile copies, and encoding. Mermaid blocks are always checked for presence and rendered when a local Mermaid CLI is supplied; the default build intentionally does not download a renderer.
-2. Read [VALIDATION.md](VALIDATION.md) and [evidence/CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md) to confirm evidence status and current counts.
+2. Read [VALIDATION.md](VALIDATION.md), [evidence/CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md),
+   [THREAT-MODEL.md](THREAT-MODEL.md), and [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md)
+   to confirm evidence status, threat-model scope, and current counts.
 3. Open the published handbook and each primary navigation link. Confirm that references to repository-only material identify that boundary.

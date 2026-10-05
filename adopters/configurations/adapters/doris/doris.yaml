@@ -61,6 +61,8 @@ sources:
   - id: doris
     type: http
     baseUrl: http://doris-fe:8030
+    # Doris FE HTTP APIs authenticate with basic auth (default all-in-one: root / empty).
+    credentials: {type: basic, usernameEnv: DORIS_USER, passwordEnv: DORIS_PASSWORD}
     tools:
       - name: doris_status
         description: "Frontend process list, used as a liveness read."

@@ -51,6 +51,7 @@ This review paraphrases the following public sources. They are the source of tru
 | Token exchange | Retained the correction that a verified caller JWT goes only to the configured, egress-checked token endpoint when exchange is configured, never to the protected backend, audit, hooks, or policy input. | [Keycloak evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md) |
 | A2A | Retained the correction that Aegis is an A2A 1.0 JSON-RPC client/tool source, with no A2A front door, streaming, task continuation, or card-signature verification. | [A2A ADR](adr/ADR-001-A2A-AS-TOOL-SOURCE.md) |
 | Claims evidence | Refreshed Knox bundle hash, validation boundaries, and a 2026-10-05 end-to-end record; expanded 0.1 versus 2.0 coverage with a per-engine side-by-side table. | [E2E validation](evidence/E2E-VALIDATION-2026-10-05.md), [COVERAGE-0.1-VS-2.0.md](COVERAGE-0.1-VS-2.0.md), [DEFECT-LOG.md](DEFECT-LOG.md) D30–D31 |
+| Security threat model | Added product threat model (STRIDE, abuse scenarios) and focused S1–S31 control-suite evidence; fixed oversized-body JDK client abort assertion (D32). | [THREAT-MODEL.md](THREAT-MODEL.md), [SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md), [DEFECT-LOG.md](DEFECT-LOG.md) D32 |
 
 ## Current release and compliance work
 

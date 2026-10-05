@@ -268,6 +268,7 @@ not certification, legal advice, a security guarantee, or proof of compliance wi
 an ASF requirement.
 
 Use [VALIDATION.md](VALIDATION.md), [SECURITY.md](SECURITY.md),
-[GOVERNANCE-MAPPING.md](GOVERNANCE-MAPPING.md), and the project-specific threat model to state
+[THREAT-MODEL.md](THREAT-MODEL.md), [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md),
+[GOVERNANCE-MAPPING.md](GOVERNANCE-MAPPING.md), and the deployment-specific threat model to state
 exactly what was tested, what controls are configured, and which responsibilities remain outside
 the gateway.

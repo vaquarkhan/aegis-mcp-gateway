@@ -48,6 +48,8 @@ sources:
   - id: airflow
     type: http
     baseUrl: http://airflow-webserver:8080/api/v1
+    # Airflow 2.x REST uses HTTP basic for the API user (FAB auth).
+    credentials: {type: basic, usernameEnv: AIRFLOW_API_USER, passwordEnv: AIRFLOW_API_PASSWORD}
     tools:
       - name: airflow_get_health
         description: "Airflow scheduler and metadata database health."

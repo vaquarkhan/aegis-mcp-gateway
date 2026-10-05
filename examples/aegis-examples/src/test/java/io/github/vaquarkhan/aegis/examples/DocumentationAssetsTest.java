@@ -69,7 +69,8 @@ class DocumentationAssetsTest {
                 "docs/assets/knox-aegis-module-comparison.svg",
                 "docs/assets/mcp-governance-problem-solution.svg",
                 "docs/assets/owasp-mcp-top10-coverage.svg",
-                "docs/assets/aegis-mcp-first-host-boundaries.svg"}) {
+                "docs/assets/aegis-mcp-first-host-boundaries.svg",
+                "docs/assets/aegis-threat-model.svg"}) {
             String svg = text(relative);
             assertTrue(svg.contains("Licensed under the Apache License, Version 2.0"), relative + ": Apache header");
             assertTrue(svg.contains("role=\"img\""), relative + ": accessible image role");
@@ -154,6 +155,8 @@ class DocumentationAssetsTest {
         assertTrue(handbook.contains("assets/mcp-governance-problem-solution.svg"), "handbook MCP governance visual");
         assertTrue(handbook.contains("assets/owasp-mcp-top10-coverage.svg"), "handbook OWASP visual");
         assertTrue(handbook.contains("assets/aegis-mcp-first-host-boundaries.svg"), "handbook MCP-first host boundary visual");
+        assertTrue(text("docs/THREAT-MODEL.md").contains("assets/aegis-threat-model.svg"), "threat model boundary visual");
+        assertTrue(text("docs/THREAT-MODEL.md").contains("assets/owasp-mcp-top10-coverage.svg"), "threat model OWASP visual");
         assertTrue(webHandbook.contains("../assets/mcp-governance-problem-solution.svg"), "web handbook MCP governance visual");
         assertTrue(webHandbook.contains("../assets/owasp-mcp-top10-coverage.svg"), "web handbook OWASP visual");
         assertTrue(webHandbook.contains("../assets/aegis-mcp-first-host-boundaries.svg"), "web handbook MCP-first host boundary visual");

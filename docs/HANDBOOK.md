@@ -26,7 +26,7 @@ This handbook explains the product from problem through deployment and operation
 1. [What MCP is and why it needs a governance layer](#what-mcp-is-and-why-it-needs-a-governance-layer)
 2. [The current problem and the Aegis solution](#the-current-problem-and-the-aegis-solution)
 3. [What MCP governance means in practice](#what-mcp-governance-means-in-practice)
-4. [Threat scenarios and why the gateway boundary matters](#threat-scenarios-and-why-the-gateway-boundary-matters)
+4. [Threat scenarios and why the gateway boundary matters](#threat-scenarios-and-why-the-gateway-boundary-matters) ([full threat model](THREAT-MODEL.md))
 5. [Architecture: one Aegis governance core, flexible hosts](#architecture-one-aegis-governance-core-flexible-hosts)
 6. [What happens to every request](#what-happens-to-every-request)
 7. [OWASP MCP Top 10 coverage](#owasp-mcp-top-10-coverage)
@@ -90,7 +90,9 @@ A governance gateway is needed because MCP makes a model's selected action execu
 
 TLS, an API gateway, backend ACLs, and model safety are still needed. Each protects a different layer. TLS and firewalls decide where traffic can travel. A route ACL decides who reaches an endpoint. Backend authorization decides what a backend credential may do. Aegis decides whether this caller may execute this MCP action against this typed resource with these arguments and this approval state.
 
-The gateway boundary is the only place that simultaneously sees caller identity, tool class, typed resources, canonical arguments, approval/receipt evidence, and the backend request before it is sent. That is why governance belongs at the MCP boundary rather than inside every agent client or every backend project.
+The gateway boundary is the only place that simultaneously sees caller identity, tool class, typed resources, canonical arguments, approval/receipt evidence, and the backend request before it is sent. That is why governance belongs at the MCP boundary rather than inside every agent client or every backend project. The full STRIDE model, trust-zone diagram, OWASP MCP handling matrix, and abuse scenarios are in
+[THREAT-MODEL.md](THREAT-MODEL.md); the latest control-suite evidence is in
+[security validation](evidence/SECURITY-VALIDATION.md).
 
 ## Architecture: one Aegis governance core, flexible hosts
 
@@ -169,7 +171,7 @@ The [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/) is a threat-or
 | MCP09 Shadow MCP servers | **External with partial containment:** Aegis inventories/restricts configured sources. | discovering and blocking servers deployed outside the gateway |
 | MCP10 Context injection and over-sharing | **Partial:** caller-filtered discovery and guarded content. | clients can retain, combine, or disclose results after receiving them |
 
-This project addresses the portion of all ten risks visible at the gateway boundary; it does not eliminate all ten. [Security](SECURITY.md#mcp-threat-coverage) is the authoritative S1 to S31 mapping, test evidence, hardening checklist, and residual-risk explanation.
+This project addresses the portion of all ten risks visible at the gateway boundary; it does not eliminate all ten. [Security](SECURITY.md#mcp-threat-coverage) is the authoritative S1 to S31 mapping, test evidence, hardening checklist, and residual-risk explanation. [Threat model](THREAT-MODEL.md) states the trust boundary; [security validation](evidence/SECURITY-VALIDATION.md) records what the current tree executed.
 
 ## Apache project adoption and evidence
 
@@ -424,7 +426,7 @@ For a configuration/contract profile, read its prerequisite and treat the canoni
 
 | You want to... | Primary guide | Deep reference |
 | --- | --- | --- |
-| Understand the threat model | [Threat scenarios and gateway boundary](#threat-scenarios-and-why-the-gateway-boundary-matters) | [Security](SECURITY.md) |
+| Understand the threat model | [Threat scenarios and gateway boundary](#threat-scenarios-and-why-the-gateway-boundary-matters) | [Threat model](THREAT-MODEL.md), [Security](SECURITY.md), [security validation](evidence/SECURITY-VALIDATION.md) |
 | Configure a source or policy | [Adoption guide](ADOPTION-GUIDE.md) | [Configuration](CONFIGURATION.md) |
 | Review architecture and extension seams | [Architecture](ARCHITECTURE.md) | [Developer guide](DEVELOPER.md) |
 | Try Aegis end to end from an IDE | [Spark and Iceberg tutorial](TUTORIAL-SPARK-ICEBERG.md) | [all tutorials](TUTORIALS.md) |

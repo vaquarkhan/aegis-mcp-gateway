@@ -47,6 +47,8 @@ sources:
   - id: superset
     type: http
     baseUrl: http://superset:8088
+    # Superset REST needs a JWT from POST /api/v1/security/login; the gateway holds that bearer.
+    credentials: {type: bearer, tokenEnv: SUPERSET_ACCESS_TOKEN}
     tools:
       - name: superset_list_databases
         description: "List database connections."

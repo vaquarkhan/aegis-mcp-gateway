@@ -34,7 +34,7 @@ Read the task-focused [Aegis Gateway handbook](docs/HANDBOOK.md). It explains MC
 
 | If you need to... | Start with |
 | --- | --- |
-| Understand MCP governance, risks, and Aegis controls | [Handbook](docs/HANDBOOK.md) → [Security](docs/SECURITY.md) |
+| Understand MCP governance, risks, and Aegis controls | [Handbook](docs/HANDBOOK.md) → [Security](docs/SECURITY.md) → [Threat model](docs/THREAT-MODEL.md) |
 | Put an existing MCP server or REST API behind Aegis | [Adoption guide](docs/ADOPTION-GUIDE.md) → [Configuration](docs/CONFIGURATION.md) |
 | Use Aegis in an existing Knox topology | [Aegis Knox extension guide](docs/KNOX-EXTENSION.md) |
 | Reuse an Apache-engine profile | [Adopter catalog](examples/adopters/README.md) |

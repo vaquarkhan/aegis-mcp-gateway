@@ -48,6 +48,8 @@ sources:
   - id: couchdb
     type: http
     baseUrl: http://couchdb:5984
+    # CouchDB 3+ requires an admin; the gateway holds that credential (never the caller's).
+    credentials: {type: basic, usernameEnv: COUCHDB_USER, passwordEnv: COUCHDB_PASSWORD}
     tools:
       - name: couchdb_list_dbs
         description: "List databases."
