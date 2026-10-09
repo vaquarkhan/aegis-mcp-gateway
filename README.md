@@ -66,7 +66,7 @@ The validation report records deterministic governance evidence, retained target
 
 ## Evidence rule
 
-Aegis ships **26 adopter profiles with retained real two-door runs** (own host, and a stock Apache Knox 3.0.0 process) and **6 configuration/contract-supported profiles** that still need a full product stack before a real Keep run (Atlas, Cassandra, Hive, Impala, Paimon, Ranger). The catalog includes **25 deployable adapter configurations and 116 tools**. Every profile with a retained run has redacted own-host and Knox configuration, engine configuration, a runnable guide, and retained results. The two-door adopter runs were extended on 2026-10-05 on the current working tree; each is rerun on a release candidate before it supports a release compatibility claim. The [adopter catalog](examples/adopters/README.md) identifies which is which and why a target remains unverified.
+Aegis ships **26 adopter profiles with retained real two-door runs** (own host, and a stock Apache Knox 3.0.0 process) and **6 configuration/contract-supported profiles** that still need a full product stack before a real Keep run (Atlas, Cassandra, Hive, Impala, Paimon, Ranger). The catalog includes **25 deployable adapter configurations and 116 tools**. Every profile with a retained run has redacted own-host and Knox configuration, engine configuration, a runnable guide, and retained results. Those two-door runs were extended on 2026-10-05 and stay historical until they are repeated on a release candidate and bound to that commit. They do not by themselves support a release compatibility claim. The [adopter catalog](examples/adopters/README.md) identifies which is which and why a target remains unverified.
 
 ## Project references
 

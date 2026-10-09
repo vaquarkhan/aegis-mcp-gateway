@@ -130,9 +130,9 @@ class DocumentationClaimsTest {
                 Map.entry("29 configuration files", "use 25 deployable adapter configurations"),
                 Map.entry("29 engines", "do not confuse config count with the 33-engine 0.1 baseline"),
                 Map.entry("30 adapter configurations", "five fictional configurations were removed; use 25 deployable adapter configurations"),
-                Map.entry("134 tools", "five fictional surfaces were removed; use 115 adapter tools"),
-                Map.entry("171 comparable", "use the executable 152 implemented-successor total"),
-                Map.entry("181 full", "use the executable 162 full comparison total"));
+                Map.entry("134 tools", "five fictional surfaces were removed; use 116 adapter tools"),
+                Map.entry("171 comparable", "use the executable 155 comparable-tool total"),
+                Map.entry("181 full", "use the executable 165 shipped-tool total"));
         try (var files = Files.walk(Path.of("..", ".."))) {
             for (Path file : files.filter(p -> p.toString().endsWith(".md")).toList()) {
                 String text = Files.readString(file);

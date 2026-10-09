@@ -72,7 +72,14 @@ class SupersetFrontDoorsTest {
         Path pythonpath = Path.of("target", "superset-server", "pythonpath").toAbsolutePath();
         Files.createDirectories(pythonpath);
         Files.writeString(pythonpath.resolve("superset_config.py"),
-                "WTF_CSRF_ENABLED = False\nTALISMAN_ENABLED = False\n");
+                "WTF_CSRF_ENABLED = False\nTALISMAN_ENABLED = False\n"
+                        + "PREVENT_UNSAFE_DB_CONNECTIONS = False\n");
+        Files.writeString(pythonpath.resolve("seed_scratch.py"),
+                "import sqlite3\n"
+                        + "c = sqlite3.connect('/app/superset_home/aegis_scratch.db')\n"
+                        + "c.execute('create table if not exists scratch (id integer primary key, label text)')\n"
+                        + "c.execute(\"insert or ignore into scratch(id, label) values (1, 'one')\")\n"
+                        + "c.commit()\n");
         // Official image entrypoint waits for SUPERSET_SECRET_KEY; we bootstrap admin + examples via docker exec.
         superset = DockerContainer.start("aegis-val-superset", "apache/superset:4.0.2",
                 List.of("-p", "127.0.0.1:" + port + ":8088",
@@ -153,41 +160,48 @@ class SupersetFrontDoorsTest {
     }
 
     private static void seedCharts() throws Exception {
-        // Prefer existing example charts; otherwise create two empty chart stubs via API if possible.
-        List<String> ids = chartIds(listCharts());
-        ids = verifiedDistinctCharts(ids);
-        if (ids.size() >= 2) {
-            ownHostVictim = ids.get(0);
-            knoxVictim = ids.get(1);
-            return;
-        }
-        // Minimal chart create against the examples database if present.
-        for (int i = 0; i < 2; i++) {
-            String body = "{\"slice_name\":\"aegis_scratch_" + i + "\",\"viz_type\":\"table\","
-                    + "\"datasource_id\":1,\"datasource_type\":\"table\",\"params\":\"{}\"}";
-            HttpResponse<String> r = HTTP.send(authed(HttpRequest.newBuilder(URI.create(base() + "/api/v1/chart/"))
-                    .timeout(Duration.ofSeconds(30))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body))).build(), HttpResponse.BodyHandlers.ofString());
-            Object id = Json.parseObject(r.body()).get("id");
-            if (id != null) {
-                String chartId = String.valueOf(id);
-                if (ownHostVictim == null) {
-                    ownHostVictim = chartId;
-                } else if (!chartId.equals(ownHostVictim)) {
-                    knoxVictim = chartId;
-                }
-            }
-        }
-        if (ownHostVictim == null || knoxVictim == null || ownHostVictim.equals(knoxVictim)) {
+        // Example charts are optional: load-examples downloads public datasets and fails closed when
+        // that host is unavailable. A local sqlite table does not need that download.
+        List<String> ids = verifiedDistinctCharts(chartIds(listCharts()));
+        if (ids.size() < 2) {
+            createLocalCharts();
             ids = verifiedDistinctCharts(chartIds(listCharts()));
-            assertTrue(ids.size() >= 2, "need two distinct charts; got " + ids);
-            ownHostVictim = ids.get(0);
-            knoxVictim = ids.get(1);
         }
+        assertTrue(ids.size() >= 2, "need two distinct charts; got " + ids);
+        ownHostVictim = ids.get(0);
+        knoxVictim = ids.get(1);
         assertTrue(chartExists(ownHostVictim) && chartExists(knoxVictim)
                         && !ownHostVictim.equals(knoxVictim),
                 "victims must be two distinct existing charts: " + ownHostVictim + "," + knoxVictim);
+    }
+
+    /** Two disposable charts on a sqlite table created inside the container. */
+    private static void createLocalCharts() throws Exception {
+        execIn("python /app/pythonpath/seed_scratch.py");
+        String databaseId = postId("/api/v1/database/",
+                "{\"database_name\":\"aegis_scratch\","
+                        + "\"sqlalchemy_uri\":\"sqlite:////app/superset_home/aegis_scratch.db\"}");
+        String datasetId = postId("/api/v1/dataset/",
+                "{\"database\":" + databaseId + ",\"table_name\":\"scratch\",\"schema\":\"main\"}");
+        for (int i = 0; i < 2; i++) {
+            postId("/api/v1/chart/",
+                    "{\"slice_name\":\"aegis_scratch_" + i + "\",\"viz_type\":\"table\","
+                            + "\"datasource_id\":" + datasetId
+                            + ",\"datasource_type\":\"table\",\"params\":\"{}\"}");
+        }
+    }
+
+    private static String postId(String path, String body) throws Exception {
+        HttpResponse<String> r = HTTP.send(authed(HttpRequest.newBuilder(URI.create(base() + path))
+                .timeout(Duration.ofSeconds(60))
+                .header("Content-Type", "application/json")
+                .header("Referer", base() + "/")
+                .POST(HttpRequest.BodyPublishers.ofString(body))).build(), HttpResponse.BodyHandlers.ofString());
+        assertTrue(r.statusCode() == 200 || r.statusCode() == 201,
+                path + " -> " + r.statusCode() + " " + r.body());
+        Object id = Json.parseObject(r.body()).get("id");
+        assertTrue(id != null, path + " response has no id: " + r.body());
+        return String.valueOf(id);
     }
 
     private static String login() throws Exception {
