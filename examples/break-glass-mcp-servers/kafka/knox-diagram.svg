@@ -1,0 +1,99 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1340" height="800" viewBox="0 0 1340 800" role="img" aria-labelledby="kt-kafka kd-kafka">
+<title id="kt-kafka">Kafka MCP server inside Apache Knox: what talks to what</title>
+<desc id="kd-kafka">The IDE and AI assistant call Apache Knox over HTTPS. Knox authenticates the user, asserts groups and checks the route ACL, then hands the call to the Aegis AEGIS_MCP service running inside the same Knox process, which applies the aegis.yaml rules, the signed catalog, approvals and the audit log before calling Kafka through its own unchanged API.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3c4043"/></marker></defs>
+<rect width="1340" height="800" fill="#ffffff"/>
+<text x="30" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="bold" fill="#202124" text-anchor="start">Kafka MCP server inside Apache Knox: what talks to what</text>
+<text x="30" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="normal" fill="#5f6368" text-anchor="start">Knox does the login and the front door; Aegis runs inside Knox and governs each MCP call. Kafka still does not change.</text>
+<rect x="30" y="100" width="300" height="280" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+<text x="50" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1565c0" text-anchor="start">Developer laptop</text>
+<rect x="50" y="145" width="260" height="70" rx="10" fill="#ffffff" stroke="#1565c0" stroke-width="1.5"/>
+<text x="65" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">IDE + AI assistant</text>
+<text x="65" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="start">Kiro, VS Code, Cursor, Claude</text>
+<rect x="50" y="230" width="260" height="132" rx="10" fill="#ffffff" stroke="#1565c0" stroke-width="1.5"/>
+<text x="65" y="256" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">mcp.json  (you add)</text>
+<text x="65" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">url: https://&lt;knox&gt;:8443/gateway/</text>
+<text x="65" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">  aegis-kafka/aegis-mcp/v1/mcp</text>
+<text x="65" y="322" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">header: your Knox login</text>
+<text x="65" y="342" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">(SSO / JWT, or Basic for demo LDAP)</text>
+<rect x="30" y="430" width="300" height="110" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+<text x="50" y="460" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="#1565c0" text-anchor="start">Approver (a different person)</text>
+<text x="50" y="486" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="start">Approves risky calls through</text>
+<text x="50" y="508" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="start">Knox: .../aegis-mcp/v1/admin/...</text>
+<text x="50" y="530" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="start">Self-approval is refused.</text>
+<rect x="460" y="100" width="470" height="620" rx="10" fill="#fcf7fd" stroke="#6a1b9a" stroke-width="2.5"/>
+<text x="480" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" fill="#6a1b9a" text-anchor="start">Apache Knox 3.0.0 gateway (one Java process)</text>
+<rect x="480" y="146" width="430" height="130" rx="10" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="2"/>
+<text x="495" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#6a1b9a" text-anchor="start">topology aegis-kafka.xml  (your Knox admins)</text>
+<text x="495" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">1. authentication: LDAP / AD, KnoxSSO or JWT</text>
+<text x="495" y="216" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">2. identity-assertion: user and groups</text>
+<text x="495" y="236" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">3. AclsAuthz: who may reach the MCP route at all</text>
+<text x="495" y="256" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">4. service AEGIS_MCP, param aegis.config = aegis.yaml</text>
+<rect x="480" y="290" width="430" height="410" rx="10" fill="#fafafa" stroke="#3c4043" stroke-width="1.5"/>
+<text x="495" y="314" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">Aegis AEGIS_MCP service (inside Knox)</text>
+<rect x="495" y="326" width="400" height="42" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+<text x="510" y="344" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="bold" fill="#2e7d32" text-anchor="start">ext/aegis-knox3-extension-...-knox-bundle.jar</text>
+<text x="510" y="361" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#202124" text-anchor="start">ready-made; the same jar for every engine</text>
+<rect x="495" y="376" width="400" height="30" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+<text x="510" y="396" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#2e7d32" text-anchor="start">ext/: kafka-admin plugin jar and its jars</text>
+<rect x="495" y="414" width="400" height="62" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+<text x="510" y="434" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#1565c0" text-anchor="start">aegis.yaml: the same file as the own host</text>
+<text x="510" y="452" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#202124" text-anchor="start">tools, policy, approvals, egress; Knox ignores</text>
+<text x="510" y="468" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#202124" text-anchor="start">its host: section (Knox does the login)</text>
+<rect x="495" y="484" width="400" height="30" rx="10" fill="#fff8e1" stroke="#b26a00" stroke-width="2"/>
+<text x="510" y="504" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#b26a00" text-anchor="start">run/servers.json + .sig (signed catalog)</text>
+<rect x="495" y="522" width="400" height="30" rx="10" fill="#fff8e1" stroke="#c62828" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="510" y="542" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#c62828" text-anchor="start">run/order.json (break-glass, incident only)</text>
+<rect x="495" y="560" width="400" height="30" rx="10" fill="#fff8e1" stroke="#b26a00" stroke-width="2"/>
+<text x="510" y="580" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#b26a00" text-anchor="start">run/audit/ (Aegis hash-chained decision log)</text>
+<text x="495" y="604" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#6a1b9a" text-anchor="start">Knox: who are you, may you reach MCP?  Then</text>
+<text x="495" y="622" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#3c4043" text-anchor="start">Aegis: which tool, approval, log, call engine</text>
+<line x1="330" y1="240" x2="456" y2="240" stroke="#3c4043" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="395" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#3c4043" text-anchor="middle">HTTPS (MCP)</text>
+<text x="395" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#3c4043" text-anchor="middle">via Knox</text>
+<line x1="330" y1="485" x2="456" y2="485" stroke="#3c4043" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="395" y="475" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#3c4043" text-anchor="middle">approves</text>
+<text x="1010" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="bold" fill="#5f6368" text-anchor="start">Kafka (unchanged)</text>
+<rect x="1010" y="130" width="300" height="140" rx="10" fill="#f1f3f4" stroke="#c62828" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="1025" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">Kafka Connect</text>
+<text x="1025" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">REST API, port 18083</text>
+<text x="1025" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#c62828" text-anchor="start">break-glass example target</text>
+<line x1="930" y1="200" x2="1006" y2="200" stroke="#3c4043" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="970" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#3c4043" text-anchor="middle">own API</text>
+<rect x="1010" y="288" width="300" height="140" rx="10" fill="#f1f3f4" stroke="#5f6368" stroke-width="2"/>
+<text x="1025" y="314" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">Schema Registry</text>
+<text x="1025" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">REST API, port 8081 (not started here)</text>
+<line x1="930" y1="358" x2="1006" y2="358" stroke="#3c4043" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="1010" y="446" width="300" height="140" rx="10" fill="#f1f3f4" stroke="#5f6368" stroke-width="2"/>
+<text x="1025" y="472" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">Kafka brokers</text>
+<text x="1025" y="494" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">Kafka protocol, port 19092</text>
+<line x1="930" y1="516" x2="1006" y2="516" stroke="#3c4043" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="30" y="742" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#202124" text-anchor="start">Legend</text>
+<rect x="30" y="756" width="26" height="18" rx="4" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="1.5"/>
+<text x="64" y="770" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">Knox (your Knox admins)</text>
+<rect x="251" y="756" width="26" height="18" rx="4" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+<text x="285" y="770" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">ready-made by Aegis</text>
+<rect x="444" y="756" width="26" height="18" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+<text x="478" y="770" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">you create or adjust</text>
+<rect x="644" y="756" width="26" height="18" rx="4" fill="#f1f3f4" stroke="#5f6368" stroke-width="1.5"/>
+<text x="678" y="770" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">the engine, unchanged</text>
+<rect x="851" y="756" width="26" height="18" rx="4" fill="#fff8e1" stroke="#b26a00" stroke-width="1.5"/>
+<text x="885" y="770" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">generated when you sign</text>
+<rect x="1072" y="756" width="26" height="18" rx="4" fill="#fff8e1" stroke="#c62828" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="1106" y="770" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">break-glass</text>
+</svg>

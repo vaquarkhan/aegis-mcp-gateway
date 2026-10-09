@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <!-- Explicit: the default ../pom.xml is examples/pom.xml, a different artifact, so without this
+         Maven falls back to the local repository and builds against whatever was installed there. -->
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>aegis-validation-spark-connect-server</artifactId>
+  <packaging>pom</packaging>
+  <name>Aegis 2.0 validation: Spark Connect server classpath (opt-in)</name>
+  <description>No code. Resolves the official Apache Spark 4.0 Spark Connect SERVER (spark-connect + spark-sql) and
+    writes its runtime classpath to target/server.classpath, so the real-engine test can start
+    org.apache.spark.sql.connect.service.SparkConnectServer in its own JVM, exactly like a deployment where the
+    gateway and Spark are separate processes. Only built with -Preal-engines.</description>
+
+  <properties>
+    <spark.version>4.0.1</spark.version>
+    <!-- Same Iceberg release as the REST catalog server (aegis-validation-iceberg-server). -->
+    <iceberg.version>1.10.1</iceberg.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-connect_2.13</artifactId>
+      <version>${spark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-sql_2.13</artifactId>
+      <version>${spark.version}</version>
+    </dependency>
+    <!-- A Spark binary distribution always ships MLlib, and the 4.0 Connect server uses it when it releases a
+         client session (org.apache.spark.ml.util.ConnectHelper); without it a session close fails server-side. -->
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-mllib_2.13</artifactId>
+      <version>${spark.version}</version>
+    </dependency>
+    <!-- Apache Iceberg's Spark runtime: what a Spark deployment adds with
+         spark.jars.packages=org.apache.iceberg:iceberg-spark-runtime-4.0_2.13. Inert unless a catalog is
+         configured with org.apache.iceberg.spark.SparkCatalog (the Spark + Iceberg tutorial does). -->
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-spark-runtime-4.0_2.13</artifactId>
+      <version>${iceberg.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.8.1</version>
+        <executions>
+          <execution>
+            <id>server-classpath</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>build-classpath</goal>
+            </goals>
+            <configuration>
+              <outputFile>${project.build.directory}/server.classpath</outputFile>
+              <includeScope>runtime</includeScope>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

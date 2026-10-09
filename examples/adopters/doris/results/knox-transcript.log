@@ -1,0 +1,39 @@
+# doris through knox, 2026-10-05T15:10:43.377216800Z
+
+--- apache/doris:all-in-one-4.1.3 FE HTTP on http://127.0.0.1:54252 (read-only adopter)
+
+=== read by READER | guest (READER) | tools/call doris_cluster_overview {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"msg\":\"success\",\"code\":0,\"data\":{\"replayedJournalId\":0,\"queryPort\":0,\"rpcPort\":0,\"arrowFlightSqlPort\":0,\"version\":\"\"},\"count\":0}"}],"structuredContent":{"msg":"success","code":0,"data":{"replayedJournalId":0,"queryPort":0,"rpcPort":0,"arrowFlightSqlPort":0,"version":""},"count":0},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_acd9c98c506c065fb1db637c","traceId":"d9076c8f10cf1cc50b7001c4a6865315"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-doris"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call doris_cluster_overview {} | HTTP 403
+{
+"servlet":"aegis-doris-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-doris/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call doris_status {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\"msg\":\"success\",\"code\":0,\"data\":[[\"auth\"],[\"backends\"],[\"bdbje\"],[\"binlog\"],[\"brokers\"],[\"catalogs\"],[\"cluster_balance\"],[\"cluster_health\"],[\"colocation_group\"],[\"current_backend_instances\"],[\"current_queries\"],[\"current_query_stmts\"],[\"dbs\"],[\"diagnose\"],[\"frontends\"],[\"jobs\"],[\"monitor\"],[\"resources\"],[\"routine_loads\"],[\"statistic\"],[\"stream_loads\"],[\"tasks\"],[\"transactions\"],[\"trash\"]],\"count\":0}"}],"structuredContent":{"msg":"success","code":0,"data":[["auth"],["backends"],["bdbje"],["binlog"],["brokers"],["catalogs"],["cluster_balance"],["cluster_health"],["colocation_group"],["current_backend_instances"],["current_queries"],["current_query_stmts"],["dbs"],["diagnose"],["frontends"],["jobs"],["monitor"],["resources"],["routine_loads"],["statistic"],["stream_loads"],["tasks"],["transactions"],["trash"]],"count":0},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_31f2bfc7ffa8f84cc578d88a","traceId":"713f5c566a8365bdb38f2bf6bdba5f07"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-doris"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call doris_status {} | HTTP 403
+{
+"servlet":"aegis-doris-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-doris/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call doris_run_sql_readonly {"sql":"SHOW DATABASES"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"type":"text","text":"{\"data\":{\"type\":\"result_set\",\"meta\":[{\"name\":\"Database\",\"type\":\"CHAR\"}],\"data\":[[\"__internal_schema\"],[\"information_schema\"],[\"mysql\"]],\"time\":6},\"msg\":\"success\",\"code\":0}"}],"structuredContent":{"data":{"type":"result_set","meta":[{"name":"Database","type":"CHAR"}],"data":[["__internal_schema"],["information_schema"],["mysql"]],"time":6},"msg":"success","code":0},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_73f3cfff66a9ea3458e58123","traceId":"d3dde23861d6c220f81e4c1b476e1624"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-doris"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call doris_run_sql_readonly {"sql":"SHOW DATABASES"} | HTTP 403
+{
+"servlet":"aegis-doris-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-doris/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== write smuggled into doris SQL | guest (READER) | tools/call doris_run_sql_readonly {"sql":"DROP DATABASE aegis_should_fail"} | HTTP 200 decision=DENIED:INVALID_INPUT:step8
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"type":"text","text":"Aegis denied this call: INVALID_INPUT (step 8). hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:INVALID_INPUT:step8","requestId":"req_6c482f7e84abca44867a2883","code":"INVALID_INPUT","step":8,"reason":"hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]","traceId":"da04be89e7e4e1802f9ac30aa0c4d313"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-doris"}},"resultType":"complete"}}

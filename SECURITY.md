@@ -1,6 +1,19 @@
-# Security Policy
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
 
-Author: Viquar Khan.
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+# Security policy
 
 Aegis sits between a language model and production data infrastructure, so a defect here is a
 defect in someone's blast radius. Please treat security reports accordingly.
@@ -9,62 +22,57 @@ defect in someone's blast radius. Please treat security reports accordingly.
 
 | Version | Supported |
 | --- | --- |
-| 0.1.x | Yes |
-| older pre-releases | No |
+| 2.0.0-SNAPSHOT | Pre-release only. Reports are considered on a best-effort basis; no support commitment or published release exists. |
+| 0.1.x | Archived source only. No active support commitment. |
+| Older pre-releases | No |
 
 ## Reporting a vulnerability
 
 Report privately. Do not open a public issue for a suspected vulnerability.
 
-- Preferred: open a private security advisory at
-  <https://github.com/vaquarkhan/aegis-mcp-gateway/security/advisories/new>.
-- Include the affected version, configuration (with secrets removed), reproduction steps, and the
-  impact you believe it has.
+- Use the private report page at
+  <https://github.com/vaquarkhan/aegis-mcp-gateway/security/advisories/new> when it is enabled for the
+  repository. Include the affected version or commit, configuration with secrets removed, reproduction
+  steps, and the impact you believe it has.
+- If the page is unavailable, do not open a public issue. Use a private contact channel explicitly
+  published by the repository owner. Before a public release, maintainers must verify that a private
+  vulnerability-reporting channel works and publish a fallback channel.
 
-You can expect an acknowledgement within five business days and a status update at least every ten
-business days until the report is resolved. Please give us 90 days before public disclosure, or
-less if we agree a shorter timeline together.
+The project targets acknowledgement within five business days and a status update at least every ten
+business days while a report is being handled. The project asks reporters to allow up to 90 days before
+public disclosure, unless both sides agree a shorter timeline. These are targets, not a guarantee while
+Aegis is an unreleased, single-maintainer project.
 
-## What counts as a vulnerability
+## What happens after you report
 
-The gateway makes a small number of promises. A report is in scope when it breaks one of them.
+1. **Triage target.** A maintainer attempts to reproduce the report against the latest commit and
+   records the affected versions and a severity assessment, normally using CVSS 4.0.
+2. **Private remediation.** When the advisory platform provides a private workspace, the fix is prepared
+   there. Every fix should include a regression test that fails without it.
+3. **Release and CVE request.** If a release carrying the fix is published, the project will publish the
+   advisory with affected and fixed versions, workaround information where available, and credit. It
+   will request a CVE when the advisory tooling and CVE eligibility permit it.
+4. **Afterwards.** Published advisories appear at
+   <https://github.com/vaquarkhan/aegis-mcp-gateway/security/advisories>, and a published release should
+   note the fix in [CHANGELOG.md](CHANGELOG.md).
 
-- A caller reaches a tool the policy chain should have denied.
-- A `MUTATE` or `DESTRUCTIVE` tool runs without an unexpired, unused, scope-bound approval token.
-- An unauthenticated request is admitted on the HTTP transport.
-- A token, keystore password, approval secret or outbound credential appears in a log line, an
-  error message, a metric label or a tool result.
-- Tool output escapes the size bound or the redaction pass.
-- An outbound call reaches a host the egress allow list should have refused, in particular a cloud
-  instance metadata endpoint.
-- A swapped or tampered tool manifest changes the registered tool surface without the catalog
-  integrity check failing.
+The project targets a fix within 30 days for critical and high severity reports and within 90 days for
+medium and low severity reports. If a target cannot be met, the reporter should be told why and offered
+a revised date.
 
-Out of scope: findings that depend on a configuration the gateway already refuses to start with,
-denial of service through resource exhaustion on a deliberately unlimited setting, and reports
-against refuse-start auth modes (CIMD / SPIFFE) documented on the [ROADMAP](ROADMAP.md).
+## Lessons from other gateways
 
-## Known limitations in 0.1.0
+Bug classes published against other MCP gateways are checked here as regression tests, so the same
+class cannot appear quietly: a schema `$ref` that the gateway would fetch (`SchemaRefTest`), a response
+filter language that can read the gateway's environment (`JsonPointerExpressionTest`), an admin route
+that registers a backend by URL (`AdminApiTest.noRouteRegistersABackendAtRunTime`), and injection or
+URLs nested below the top-level argument (`GovernanceEngineTest`).
 
-These are documented gaps, not vulnerabilities. Fail-closed items and future work live on
-[ROADMAP.md](ROADMAP.md).
+## Scope, properties and limits
 
-- `MCP_GW_AUTH_MODE=cimd` and `MCP_GW_AUTH_MODE=spiffe` refuse to start an HTTP listener (→ 0.3).
-- Approval nonces, rate limiter buckets and circuit breaker state are per process. Multi-replica
-  weakens all three until HA shared state lands (→ 0.2). See [docs/operations.md](docs/operations.md).
-- Pass-through outbound credentials do not yet perform vault / RFC 8693 exchange (→ 0.2).
-- VRP HMAC receipts are not Merkle/Ed25519 source-vs-sink proofs (→ 0.3).
-
-## Hardening checklist
-
-- Terminate TLS at the gateway (`MCP_GW_HTTP_TLS_ENABLED=true`) or in front of it. Plaintext on a
-  non-loopback bind address is logged as a warning at startup and should be treated as a finding.
-- Prefer `MCP_GW_AUTH_TOKENS_FILE` or OAuth over a single shared `MCP_GW_HTTP_BEARER_TOKEN`.
-- Keep `MCP_GW_WRITE_ENABLED=false` wherever writes are not required.
-- Set `MCP_GW_EGRESS_ALLOW_HOSTS` explicitly rather than relying on the default deny list alone.
-- Pin the tool catalog with `MCP_GW_TOOLS_CATALOG` so an adapter cannot change its own tool surface.
-- Give each caller the narrowest job, jar and resource allow lists that still let it work. An empty
-  allow list denies everything, which is the intended failure direction.
+[docs/SECURITY.md](docs/SECURITY.md) lists each security property Aegis promises with the test that
+enforces it, what Aegis explicitly does not promise, the OWASP MCP Top 10 coverage, and the hardening
+checklist. A report is in scope when it breaks one of those promises.
 
 ## Credit
 

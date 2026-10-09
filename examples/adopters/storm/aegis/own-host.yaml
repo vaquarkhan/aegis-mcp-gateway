@@ -1,0 +1,99 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Storm: governed MCP tools over the Apache Storm HTTP API, configuration only.
+# Storm UI REST API: GET /api/v1/cluster/summary, /api/v1/topology/summary,
+# /api/v1/topology/{id}, POST /api/v1/topology/{id}/kill/{waitSeconds}.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-storm (taxonomy: streaming).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-storm
+
+access:
+  writeGroups: [storm-operators]
+  approverGroups: [storm-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [storm-users, storm-operators], classes: [READ]}
+    - {id: operate, groups: [storm-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-storm.jsonl
+
+sources:
+  - id: storm
+    type: http
+    baseUrl: http://127.0.0.1:65047
+    tools:
+      - name: storm_cluster_summary
+        description: "Nimbus and supervisor summary."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v1/cluster/summary"}
+
+      - name: storm_list_topologies
+        description: "List topologies."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v1/topology/summary"}
+
+      - name: storm_get_topology
+        description: "Spouts, bolts and statistics of one topology."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {id: {type: string, maxLength: 200}}
+          required: [id]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v1/topology/{id}"}
+        resources: [{type: "storm:topology", pointer: /id}]
+
+      - name: storm_kill_topology
+        description: "Kill one topology with no wait period."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {id: {type: string, maxLength: 200}}
+          required: [id]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/api/v1/topology/{id}/kill/0"
+          body: {}
+        resources: [{type: "storm:topology", pointer: /id}]
+        dryRun: {mode: TOOL, previewTool: storm_get_topology}   # validate against the exact target first
+
+# Appended for the own-host front door: loopback listener, static tokens per persona.
+host:
+  listen: {host: 127.0.0.1, port: 0}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_READER, actor: guest, groups: [storm-users]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OPERATOR, actor: sam, groups: [storm-operators]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_APPROVER, actor: tom, groups: [storm-approvers]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OUTSIDER, actor: admin, groups: []}

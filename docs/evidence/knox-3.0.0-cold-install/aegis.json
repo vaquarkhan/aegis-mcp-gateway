@@ -1,0 +1,15 @@
+{
+  "gateway": {"name": "knox-aegis-coldinstall"},
+  "access": {"writeGroups": ["operators"], "approverGroups": ["approvers"]},
+  "approval": {"keyFile": "signing.key"},
+  "policy": {"rules": [
+    {"id": "analysts-read", "groups": ["analysts"], "classes": ["READ"]},
+    {"id": "operators-write", "groups": ["operators"], "classes": ["MUTATE", "DESTRUCTIVE"]}
+  ]},
+  "egress": {"allowCidrs": ["127.0.0.0/8"]},
+  "audit": {"file": "audit.jsonl"},
+  "sources": [{
+    "id": "engine-mcp", "type": "mcp", "url": "http://127.0.0.1:56062/mcp",
+    "tools": {"list_jobs": {"class": "READ"}}
+  }]
+}

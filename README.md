@@ -1,155 +1,89 @@
-# Aegis MCP Governance Gateway
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
 
-Aegis is a vendor-neutral, secure-by-default Model Context Protocol (MCP) governance gateway for
-data and streaming engines. It puts a single, auditable control plane in front of many backend
-engines so that an LLM agent never talks to Flink, Kafka, Spark or Iceberg directly.
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
 
-The gateway owns identity, authorization, approvals, egress control, rate limiting, circuit
-breaking, output redaction and audit. Engines plug in through a small service provider interface
-(SPI) and contribute only tool definitions plus backend calls.
+      http://www.apache.org/licenses/LICENSE-2.0
 
-## Why a gateway
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+# Aegis Gateway 2.0
 
-- One governance chain instead of one bespoke policy layer per engine.
-- Read-only by default. Mutating and destructive tools stay unregistered until writes are unlocked
-  and an approval token is presented.
-- A stable deny taxonomy so operators can alert on `POLICY_DENIED` or `APPROVAL_REQUIRED` across
-  every engine with one rule.
-- Tool catalog integrity so a compromised or swapped adapter cannot silently change what an agent
-  is allowed to call (rug-pull defense).
+Aegis is a configuration-driven governance layer for MCP (Model Context Protocol) calls. It places one fixed, fail-closed decision path between an agent and real systems: typed resource scope, policy, egress control, rate/budget controls, screening, independent approval, destructive-action receipts, and hash-chained audit intent all run before a backend credential is resolved or a backend is called.
 
-## Modules
+Aegis is a pre-release MCP action-governance engine. Compatibility is asserted only per target version
+and evidence record. Broader adapter validation, shared catalog state, external audit anchoring, and
+additional delegated-credential integrations are planned work listed in the [roadmap](docs/ROADMAP.md).
+Built-in RFC 8693 token exchange is verified only for the own host with JWT identity and Keycloak.
 
-| Module | Purpose |
+![Aegis architecture: shared governance core with own-host and Apache Knox integration choices](docs/assets/aegis-architecture.svg)
+
+A destructive action is governed as a state transition, not as a privileged HTTP call:
+
+![Aegis approval and execution flow](docs/assets/aegis-governance-flow.png)
+
+## Start here
+
+Read the task-focused [Aegis Gateway handbook](docs/HANDBOOK.md). It explains MCP governance, the risk of ungoverned agent actions, the Aegis MCP-first architecture, modules, YAML, evidence, and deployment choices. A visual version is available at [docs/guide/handbook.html](docs/guide/handbook.html). New users: start with the [Hello World guide](docs/guide/hello-world.html). Security reviewers can start with the [HTML security and threat-model guide](docs/guide/security.html).
+
+| If you need to... | Start with |
 | --- | --- |
-| `mcp-gateway-core` | SPI, governance interceptor chain, auth, config, transports, bootstrap |
-| `mcp-adapter-flink` | Apache Flink REST and SQL Gateway (reference) |
-| `mcp-adapter-kafka` | Apache Kafka AdminClient + Schema Registry |
-| `mcp-adapter-spark` | Apache Spark History + Livy |
-| `mcp-adapter-iceberg` | Apache Iceberg REST catalog |
-| `mcp-adapter-*` | Additional Apache data-platform adapters (Pulsar, NiFi, Hive, Hudi, Pinot, Druid, Airflow, Hadoop, HBase, Cassandra, Solr, Ranger, Atlas, and more) |
-| `mcp-gateway-dist` | Shaded runnable distribution bundling every adapter |
+| Hello World: IDE + first governed prompt | [Hello World (HTML)](docs/guide/hello-world.html) -> [tutorials](docs/TUTORIALS.md) |
+| Understand MCP governance, risks, and Aegis controls | [Handbook](docs/HANDBOOK.md) → [Security guide](docs/guide/security.html) → [Security](docs/SECURITY.md) → [Threat model](docs/THREAT-MODEL.md) |
+| Put an existing MCP server or REST API behind Aegis | [Adoption guide](docs/ADOPTION-GUIDE.md) → [Configuration](docs/CONFIGURATION.md) |
+| Use Aegis in an existing Knox topology | [Aegis Knox extension guide](docs/KNOX-EXTENSION.md) |
+| Reuse an Apache-engine profile | [Adopter catalog](examples/adopters/README.md) |
+| Check retained target verification evidence | [Validation report](docs/VALIDATION.md) → [claims matrix](docs/evidence/CLAIMS-MATRIX.md) |
+| Develop a source, hook, or extension | [Developer guide](docs/DEVELOPER.md) |
+| Try it end to end from an IDE, with Spark and Iceberg | [Spark and Iceberg tutorial](docs/TUTORIAL-SPARK-ICEBERG.md) → [all tutorials](docs/TUTORIALS.md) |
 
-Only `mcp-gateway-core` is required. Adapters are discovered at runtime and restricted with
-`MCP_GW_ADAPTERS` (recommended: enable only the engines you operate). See
-[docs/adapters.md](docs/adapters.md) for the full catalog.
+## Aegis host integrations
 
-## Architecture at a glance
+Aegis owns the MCP action decision in every deployment. It can expose that decision through its own host, or through an optional extension when an organization already operates Apache Knox.
 
-```mermaid
-flowchart TB
-  Client["MCP client / agent"]
-  Client -->|"stdio JSON-RPC or streamable HTTP<br/>bearer / OAuth / mTLS"| GW
+| Aegis integration | Edge identity and routing | Aegis MCP governance |
+| --- | --- | --- |
+| **Aegis own host** (`aegis-gateway`) | Aegis verifies JWT via JWKS or HS256, or hashed static tokens; Aegis applies TLS and route policy. | The standard own-host executable invokes the common MCP handler and governance engine. |
+| **Optional Knox extension** (`aegis-knox3-extension`) | An existing Knox topology authenticates, establishes identity/groups, and admits the route. | Aegis receives the Knox subject, then parses and governs the MCP action with the same engine. |
 
-  subgraph GW["Aegis gateway"]
-    direction TB
-    Auth["auth"] --> Chain["interceptor chain<br/>10 ordered steps<br/>first denial wins"]
-    Chain --> Audit["audit"]
-    Gates["exposure · scope · policy · approval · egress<br/>rate limit · circuit breaker · prompt injection · VRP · execute"]
-    Chain --- Gates
-  end
+Apache Knox and Aegis address distinct, composable layers. A Knox topology can provide the HTTP perimeter, identity, and route admission in deployments that already use Knox; Aegis applies semantic governance to each MCP action after that admission. Aegis also offers its own host for deployments where that is the appropriate operational choice.
 
-  GW --> Flink["Flink"]
-  GW --> Kafka["Kafka"]
-  GW --> Spark["Spark"]
-  GW --> Iceberg["Iceberg"]
+## Build and verify
+
+JDK 17+ and Maven 3.9+ are required. The default build runs without external services or network access.
+
+```powershell
+mvn -B clean install
 ```
 
-Every tool call passes the same chain. The first denial wins and returns a stable code. See
-[docs/LLD-apache-mcp-gateway.md](docs/LLD-apache-mcp-gateway.md) for the full step table.
+The validation report records deterministic governance evidence, retained target-version verification evidence, and clearly scoped contract profiles. Use the [adopter catalog](examples/adopters/README.md) to select the profile and evidence level appropriate for your deployment.
 
-## Secure by default
+## Evidence rule
 
-- `MCP_GW_WRITE_ENABLED=false` by default, so only `READ` class tools are registered.
-- Unlocking writes additionally requires `MCP_GW_APPROVAL_SECRET`; otherwise startup fails closed.
-- HTTP transport requires an inbound credential (`MCP_GW_HTTP_BEARER_TOKEN`,
-  `MCP_GW_AUTH_TOKENS_FILE`, or an OAuth resource server configuration).
-- Outbound calls are checked against an egress allow list that always denies cloud metadata
-  endpoints such as `169.254.169.254`.
-- Tool output is size bounded and passed through data loss prevention redaction before it reaches
-  the model.
-- stdout is reserved for MCP JSON-RPC frames. All logging goes to stderr through SLF4J and Logback.
+Aegis ships **26 adopter profiles with retained real two-door runs** (own host, and a stock Apache Knox 3.0.0 process) and **6 configuration/contract-supported profiles** that still need a full product stack before a real Keep run (Atlas, Cassandra, Hive, Impala, Paimon, Ranger). The catalog includes **25 deployable adapter configurations and 116 tools**. Every profile with a retained run has redacted own-host and Knox configuration, engine configuration, a runnable guide, and retained results. The two-door adopter runs were extended on 2026-10-05 on the current working tree; each is rerun on a release candidate before it supports a release compatibility claim. The [adopter catalog](examples/adopters/README.md) identifies which is which and why a target remains unverified.
 
-## Build
+## Project references
 
-```bash
-mvn -q clean install
-```
+- [User handbook](docs/HANDBOOK.md)
+- [Architecture](docs/ARCHITECTURE.md) and [configuration reference](docs/CONFIGURATION.md)
+- [HTML security and threat-model guide](docs/guide/security.html)
+- [Module reference](docs/guide/modules.html): purpose, configuration keys and security controls of every module
+- [Module developer READMEs](aegis-config/README.md) (one per core Maven module; start with `aegis-config`)
+- [Tutorials and IDE setup (plain language)](adopters/tutorials/README.md)
+- [Security properties and documented limits](docs/SECURITY.md)
+- [Validation and claims evidence](docs/VALIDATION.md)
+- [Apache Knox extension](docs/KNOX-EXTENSION.md)
+- [Real-engine examples and contract profiles](examples/adopters/README.md)
+- [Break-glass MCP servers](examples/break-glass-mcp-servers/README.md): four independent servers (Spark, Kafka, Iceberg, Flink) with a signed server catalog, per-tool scopes and incident containment, run end to end
+- [Container image](Dockerfile) and [Helm chart](charts/aegis/README.md); [reference hook services](adopters/hooks/README.md); [A2A agent profile](adopters/configurations/a2a/README.md); [per-caller credentials with token exchange](docs/CONFIGURATION.md#per-caller-credentials-rfc-8693-token-exchange)
+- [Roadmap](docs/ROADMAP.md), [A2A decision: agents as tool sources, no A2A front door](docs/adr/ADR-001-A2A-AS-TOOL-SOURCE.md) and [Knox 3.1 Jakarta target](docs/adr/ADR-002-KNOX-3.1-JAKARTA-TARGET.md)
 
-Build only the core module:
+## Status
 
-```bash
-mvn -q -f mcp-gateway-core/pom.xml clean test
-```
-
-Requirements: JDK 17 or newer and Maven 3.9 or newer.
-
-## Run
-
-### stdio (default, local agent)
-
-```bash
-export MCP_GW_TRANSPORT=stdio
-export MCP_GW_ADAPTERS=flink
-java -jar mcp-gateway-dist/target/aegis-mcp-gateway-0.1.0-all.jar
-```
-
-### Streamable HTTP
-
-```bash
-export MCP_GW_TRANSPORT=http
-export MCP_GW_HTTP_HOST=127.0.0.1
-export MCP_GW_HTTP_PORT=8090
-export MCP_GW_AUTH_MODE=tokenfile
-export MCP_GW_AUTH_TOKENS_FILE=/etc/aegis/auth-tokens.txt
-export MCP_GW_HTTP_TLS_ENABLED=true
-export MCP_GW_HTTP_TLS_KEYSTORE=/etc/aegis/server.p12
-export MCP_GW_HTTP_TLS_KEYSTORE_PASSWORD='<keystore-password>'
-java -jar mcp-gateway-dist/target/aegis-mcp-gateway-0.1.0-all.jar
-```
-
-The MCP endpoint is `POST /mcp`. Operational endpoints are `/healthz`, `/readyz` and `/metrics`
-(Prometheus text format).
-
-### Unlocking writes
-
-```bash
-export MCP_GW_WRITE_ENABLED=true
-export MCP_GW_APPROVAL_SECRET="$(openssl rand -hex 32)"
-```
-
-Mint a short-lived approval token for a single mutating call:
-
-```bash
-java -cp mcp-gateway-core/target/classes \
-  io.github.vaquarkhan.aegis.core.governance.Approval "$MCP_GW_APPROVAL_SECRET" cancel_job job-42 300
-```
-
-Pass the printed value as the `approvalToken` argument. Tokens are single use, scope bound and
-expire after `MCP_GW_APPROVAL_TTL_MS`.
-
-## Configuration
-
-All runtime settings come from the environment (twelve-factor). `MCP_GW_CONFIG` optionally points
-at a `gateway.yaml` file whose values are used as defaults before environment overrides are
-applied. The complete key list lives in
-[docs/LLD-apache-mcp-gateway.md](docs/LLD-apache-mcp-gateway.md).
-
-## Documentation
-
-- [docs/getting-started.md](docs/getting-started.md) - build and first run
-- [docs/operations.md](docs/operations.md) - auth, TLS, writes, HA limits
-- [docs/adapters.md](docs/adapters.md) - Flink, Kafka, Spark, Iceberg
-- [docs/DESIGN-apache-mcp-gateway.md](docs/DESIGN-apache-mcp-gateway.md) - architecture and design rationale
-- [docs/DESIGN-CONFORMANCE-0.1.md](docs/DESIGN-CONFORMANCE-0.1.md) - design vs 0.1.0 implementation matrix
-- [docs/LLD-apache-mcp-gateway.md](docs/LLD-apache-mcp-gateway.md) - low level design, deny codes, config keys
-- [docs/RESEARCH-centralized-mcp-gateway.md](docs/RESEARCH-centralized-mcp-gateway.md) - strategic analysis and standards mapping
-- [docs/CURSOR-BUILD-INSTRUCTIONS.md](docs/CURSOR-BUILD-INSTRUCTIONS.md) - scaffolding and build instructions
-- [examples/](examples/) - stdio, HTTP, approvals, multi-adapter, Cursor, Compose
-- [CHANGELOG.md](CHANGELOG.md) · [SECURITY.md](SECURITY.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [ROADMAP.md](ROADMAP.md)
-
-## License
-
-Apache License, Version 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
-
-Author: Viquar Khan
+`2.0.0-SNAPSHOT`, pre-release. No release has been published. Contributor, governance, security, provenance, and release rules are in [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md), [SECURITY.md](SECURITY.md), and [AGENTS.md](AGENTS.md).

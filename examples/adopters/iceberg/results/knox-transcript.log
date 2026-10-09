@@ -1,0 +1,46 @@
+# iceberg through knox, 2026-10-04T23:41:50.371427Z
+
+--- official Iceberg 1.10.1 REST catalog on 127.0.0.1:62817; tables sales.orders, sales.scratch_knox, finance.ledger
+
+=== read by READER | guest (READER) | tools/call iceberg_list_tables {"namespace":"sales"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"text":"[{\"namespace\":[\"sales\"],\"name\":\"orders\"},{\"namespace\":[\"sales\"],\"name\":\"scratch_knox\"}]","type":"text"}],"structuredContent":{"value":[{"namespace":["sales"],"name":"orders"},{"namespace":["sales"],"name":"scratch_knox"}]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_92a4c0c56505feca5b87d026","traceId":"471027a355181f4afb762fca51dfb0d9"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-iceberg","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call iceberg_list_tables {"namespace":"sales"} | HTTP 403
+{
+"servlet":"aegis-iceberg-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-iceberg/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== analyst outside their resource scope | guest (READER) | tools/call iceberg_list_tables {"namespace":"finance"} | HTTP 200 decision=DENIED:SCOPE_DENIED:step2
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"Aegis denied this call: SCOPE_DENIED (step 2). resource out of scope: iceberg:namespace:finance","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:SCOPE_DENIED:step2","requestId":"req_1acf812bdff269c7c4a6787c","code":"SCOPE_DENIED","step":2,"reason":"resource out of scope: iceberg:namespace:finance","traceId":"ed7078e79c6b312b56b691aceef691f4"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-iceberg","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== drop a finance table (DENY rule, before any approval) | sam (OPERATOR) | tools/call iceberg_drop_table {"namespace":"finance","table":"ledger"} | HTTP 200 decision=DENIED:POLICY_DENIED:step3
+{"jsonrpc":"2.0","id":4,"result":{"content":[{"text":"Aegis denied this call: POLICY_DENIED (step 3). denied by rule never-drop-finance","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:POLICY_DENIED:step3","requestId":"req_51d67c7a97590d8000e406f6","code":"POLICY_DENIED","step":3,"reason":"denied by rule never-drop-finance","traceId":"bb45767729ff46ee1b262914bca7f338"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-iceberg","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== destructive by READER | guest (READER) | tools/call iceberg_drop_table {"namespace":"sales","table":"scratch_knox"} | HTTP 200 decision=DENIED:READONLY_CALLER:step1
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"text":"Aegis denied this call: READONLY_CALLER (step 1). caller is not in a group allowed to call DESTRUCTIVE tools","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:READONLY_CALLER:step1","requestId":"req_a558b0026e4b9937896b0664","code":"READONLY_CALLER","step":1,"reason":"caller is not in a group allowed to call DESTRUCTIVE tools","traceId":"392df2bfeb2dee0f4156503b432fb0d6"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-iceberg","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== destructive without approval | sam (OPERATOR) | tools/call iceberg_drop_table {"namespace":"sales","table":"scratch_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":6,"result":{"content":[{"text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). this DESTRUCTIVE call needs a per-call approval Approval request apr_4975537bc17ce47e7f1c994e26cd8fb5 is pending; retry with the approval token once approved.","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_24661dbcfeebe0c11a396e53","code":"APPROVAL_REQUIRED","step":4,"reason":"this DESTRUCTIVE call needs a per-call approval","approvalRequestId":"apr_4975537bc17ce47e7f1c994e26cd8fb5","argsDigest":"sha256:0b686ce740e7fc26a6cf84bfdfdde829693243e10b4340547f8f8d2358aed459","traceId":"00dd88d15a333b34130f3690b8879bb1"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-iceberg","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== dry run | sam (OPERATOR) | tools/call iceberg_drop_table {"namespace":"sales","table":"scratch_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"text":"[{\"type\":\"struct\",\"schema-id\":0,\"fields\":[{\"id\":1,\"name\":\"id\",\"required\":true,\"type\":\"long\"}]}]","type":"text"}],"structuredContent":{"value":[{"type":"struct","schema-id":0,"fields":[{"id":1,"name":"id","required":true,"type":"long"}]}]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_c7d245269accd4872351fa78","argsDigest":"sha256:0b686ce740e7fc26a6cf84bfdfdde829693243e10b4340547f8f8d2358aed459","traceId":"2c721b3dad05eb89936000046f257f74","dryRunReceipt":"<redacted>","dryRunReceiptExpiresAt":"2026-10-04T23:56:57.866176800Z","approvalRequestId":"apr_4975537bc17ce47e7f1c994e26cd8fb5"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-iceberg","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== requester approves own request | sam (OPERATOR) | POST approvals/apr_4975537bc17ce47e7f1c994e26cd8fb5/approve | HTTP 403
+{"error":"caller is not in an approver group"}
+
+=== independent approval | tom (APPROVER) | POST approvals/apr_4975537bc17ce47e7f1c994e26cd8fb5/approve | HTTP 200
+{"id":"apr_4975537bc17ce47e7f1c994e26cd8fb5","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-iceberg","actorChain":[],"tool":"iceberg_drop_table","toolClass":"DESTRUCTIVE","source":"iceberg","resources":["iceberg:table:sales.scratch_knox"],"argsDigest":"sha256:0b686ce740e7fc26a6cf84bfdfdde829693243e10b4340547f8f8d2358aed459","binding":"sha256:29a602f54e723b5d50b90c0063f8ebd4d7f89fcb5a3c10e818df87cb343c5494","evidence":{"arguments":{"namespace":"sales","table":"scratch_knox"},"preview":{"content":[{"text":"[{\"type\":\"struct\",\"schema-id\":0,\"fields\":[{\"id\":1,\"name\":\"id\",\"required\":true,\"type\":\"long\"}]}]","type":"text"}],"structuredContent":{"value":[{"type":"struct","schema-id":0,"fields":[{"id":1,"name":"id","required":true,"type":"long"}]}]},"isError":false}},"createdAt":"2026-10-04T23:41:57.804235800Z","expiresAt":"2026-10-05T00:11:57.804235800Z","decidedBy":"tom","decidedAt":"2026-10-04T23:41:57.945731400Z","tokenExpiresAt":"2026-10-04T23:51:57.945731400Z"}
+
+=== requester collects the token | sam (OPERATOR) | GET approvals/apr_4975537bc17ce47e7f1c994e26cd8fb5 | HTTP 200
+{"id":"apr_4975537bc17ce47e7f1c994e26cd8fb5","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-iceberg","actorChain":[],"tool":"iceberg_drop_table","toolClass":"DESTRUCTIVE","source":"iceberg","resources":["iceberg:table:sales.scratch_knox"],"argsDigest":"sha256:0b686ce740e7fc26a6cf84bfdfdde829693243e10b4340547f8f8d2358aed459","binding":"sha256:29a602f54e723b5d50b90c0063f8ebd4d7f89fcb5a3c10e818df87cb343c5494","evidence":{"arguments":{"namespace":"sales","table":"scratch_knox"},"preview":{"content":[{"text":"[{\"type\":\"struct\",\"schema-id\":0,\"fields\":[{\"id\":1,\"name\":\"id\",\"required\":true,\"type\":\"long\"}]}]","type":"text"}],"structuredContent":{"value":[{"type":"struct","schema-id":0,"fields":[{"id":1,"name":"id","required":true,"type":"long"}]}]},"isError":false}},"createdAt":"2026-10-04T23:41:57.804235800Z","expiresAt":"2026-10-05T00:11:57.804235800Z","decidedBy":"tom","decidedAt":"2026-10-04T23:41:57.945731400Z","token":"<redacted>","tokenExpiresAt":"2026-10-04T23:51:57.945731400Z"}
+
+=== execute with approval and receipt | sam (OPERATOR) | tools/call iceberg_drop_table {"namespace":"sales","table":"scratch_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":8,"result":{"content":[{"text":"HTTP 200","type":"text"}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_107bf67602d5b1340f588fd9","traceId":"c3fa844fe32a76ff72f31209fada4f64"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-iceberg","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+--- the catalog answers 404 for sales.scratch_knox and still has finance.ledger
+
+=== replay of the same approval | sam (OPERATOR) | tools/call iceberg_drop_table {"namespace":"sales","table":"scratch_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":9,"result":{"content":[{"text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). approval token has already been used","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_dc8ecb8e6835e2eccb9a7567","code":"APPROVAL_REQUIRED","step":4,"reason":"approval token has already been used","traceId":"86e488e90e894fee83fb97e174a1495e"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-iceberg","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}

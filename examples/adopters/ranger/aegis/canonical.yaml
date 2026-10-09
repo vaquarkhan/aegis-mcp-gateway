@@ -1,0 +1,90 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Ranger: governed MCP tools over the Apache Ranger HTTP API, configuration only.
+# Ranger public V2 API: GET /service/public/v2/api/service,
+# GET /service/public/v2/api/service/{name}/policy, GET and DELETE
+# /service/public/v2/api/policy/{id}.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-ranger (taxonomy: governance).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-ranger
+
+access:
+  writeGroups: [ranger-operators]
+  approverGroups: [ranger-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [ranger-users, ranger-operators], classes: [READ]}
+    - {id: operate, groups: [ranger-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-ranger.jsonl
+
+sources:
+  - id: ranger
+    type: http
+    baseUrl: http://ranger-admin:6080
+    tools:
+      - name: ranger_list_services
+        description: "List Ranger services."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/service/public/v2/api/service"}
+
+      - name: ranger_list_policies
+        description: "List the policies of one service."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {service: {type: string, maxLength: 256}}
+          required: [service]
+          additionalProperties: false
+        request: {method: GET, path: "/service/public/v2/api/service/{service}/policy"}
+        resources: [{type: "ranger:service", pointer: /service}]
+
+      - name: ranger_get_policy
+        description: "One policy by id."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {policyId: {type: string, maxLength: 200}}
+          required: [policyId]
+          additionalProperties: false
+        request: {method: GET, path: "/service/public/v2/api/policy/{policyId}"}
+        resources: [{type: "ranger:policy", pointer: /policyId}]
+
+      - name: ranger_delete_policy
+        description: "Delete one authorization policy. This widens access."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {policyId: {type: string, maxLength: 200}}
+          required: [policyId]
+          additionalProperties: false
+        request: {method: DELETE, path: "/service/public/v2/api/policy/{policyId}"}
+        resources: [{type: "ranger:policy", pointer: /policyId}]
+        dryRun: {mode: TOOL, previewTool: ranger_get_policy}   # validate against the exact target first

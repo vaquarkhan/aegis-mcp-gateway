@@ -1,0 +1,96 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Doris: governed MCP tools over the Apache Doris HTTP API, configuration only.
+# Doris frontend HTTP API: GET /api/bootstrap, GET /rest/v1/system?path=/backends,
+# GET /api/show_proc?path=/, POST /api/query/{cluster}/{database}.
+# Read-only by design: this adapter exposes no MUTATE or DESTRUCTIVE tool.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-doris (taxonomy: olap).
+# doris_status replaces the 0.1 doris://status MCP resource.
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-doris
+
+access:
+  writeGroups: [doris-operators]
+  approverGroups: [doris-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+# This engine's HTTP API executes whatever statement it is given, so the tools below that
+# forward a statement are only honestly classified READ because of the sql-readonly hook.
+# If you remove the hook, reclassify those tools as MUTATE so every query needs an approval.
+# The hook is a keyword and shape guard, not a SQL parser: the control that actually enforces
+# read-only is a read-only credential on this source. See docs/CONFIGURATION.md.
+hooks:
+  - type: sql-readonly
+    # Bound to the statement-carrying tools only. The hook denies a call that carries none
+    # of its arguments, so binding it to every tool would refuse the rest of this source.
+    methods: [doris_run_sql_readonly]
+    settings: {arguments: [sql]}
+
+policy:
+  rules:
+    - {id: read, groups: [doris-users, doris-operators], classes: [READ]}
+    - {id: operate, groups: [doris-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-doris.jsonl
+
+sources:
+  - id: doris
+    type: http
+    baseUrl: http://127.0.0.1:54252
+    # Doris FE HTTP APIs authenticate with basic auth (default all-in-one: root / empty).
+    credentials: {type: basic, usernameEnv: DORIS_USER, passwordEnv: DORIS_PASSWORD}
+    tools:
+      - name: doris_status
+        description: "Frontend process list, used as a liveness read."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/show_proc", query: {path: "/"}}
+
+      - name: doris_cluster_overview
+        description: "Cluster bootstrap information."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/bootstrap"}
+
+      - name: doris_list_backends
+        description: "List backend nodes."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/rest/v1/system", query: {path: "/backends"}}
+
+      - name: doris_run_sql_readonly
+        description: "Run a read-only query against information_schema."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {sql: {type: string, maxLength: 4000}}
+          required: [sql]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/api/query/default_cluster/information_schema"
+          body: {"stmt": "{sql}"}

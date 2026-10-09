@@ -1,0 +1,29 @@
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2025-11-25", "session": true}
+{"http": "POST", "authorized": true, "protocolVersion": "2025-11-25", "session": true}
+{"http": "POST", "authorized": true, "protocolVersion": "2025-11-25", "session": true}
+{"tool": "list_jobs"}
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2025-11-25", "session": true}
+{"tool": "delete_job", "jobId": "job-scratch-legacy"}
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2026-07-28", "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2026-07-28", "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2026-07-28", "session": false}
+{"tool": "list_jobs"}
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2026-07-28", "session": false}
+{"tool": "delete_job", "jobId": "job-scratch-ownhost"}
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2026-07-28", "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2026-07-28", "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2026-07-28", "session": false}
+{"tool": "list_jobs"}
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}
+{"http": "POST", "authorized": true, "protocolVersion": "2026-07-28", "session": false}
+{"tool": "delete_job", "jobId": "job-scratch-knox"}
+{"http": "GET", "authorized": true, "protocolVersion": null, "session": false}

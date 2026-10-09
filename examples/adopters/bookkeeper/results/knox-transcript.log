@@ -1,0 +1,62 @@
+# bookkeeper through knox, 2026-10-05T00:07:35.338803500Z
+
+--- real BookKeeper 4.18.1 bookie, HTTP admin on 127.0.0.1:59530; ledgers [0, 1, 2]
+
+=== read by READER | guest (READER) | tools/call bookkeeper_bookie_info {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\r\n  \"freeSpace\" : 72132587520,\r\n  \"totalSpace\" : 509910970368\r\n}"}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_c1ea30a8c1a50132844aef2a","traceId":"605efc77378e39d603a032a42a537aa3"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-bookkeeper"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call bookkeeper_bookie_info {} | HTTP 403
+{
+"servlet":"aegis-bookkeeper-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-bookkeeper/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call bookkeeper_list_bookies {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\r\n  \"127.0.0.1:59529\" : null\r\n}"}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_c761ce502624b489eecc1fc0","traceId":"3435075a8af05852b5e8a760f17cfedc"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-bookkeeper"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call bookkeeper_list_bookies {} | HTTP 403
+{
+"servlet":"aegis-bookkeeper-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-bookkeeper/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call bookkeeper_list_ledgers {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"type":"text","text":"{\r\n  \"0\" : null,\r\n  \"2\" : null\r\n}"}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_b08790f0291de8d2dfbd63e8","traceId":"ff6bf8836b09766c0a058901428e7cbd"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-bookkeeper"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call bookkeeper_list_ledgers {} | HTTP 403
+{
+"servlet":"aegis-bookkeeper-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-bookkeeper/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== destructive by READER | guest (READER) | tools/call bookkeeper_delete_ledger {"ledgerId":"2"} | HTTP 200 decision=DENIED:READONLY_CALLER:step1
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"type":"text","text":"Aegis denied this call: READONLY_CALLER (step 1). caller is not in a group allowed to call DESTRUCTIVE tools"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:READONLY_CALLER:step1","requestId":"req_b7faf6817a2aba33907fee1f","code":"READONLY_CALLER","step":1,"reason":"caller is not in a group allowed to call DESTRUCTIVE tools","traceId":"a4b5b373dd6c72c260d99a577649e0f1"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-bookkeeper"}},"resultType":"complete"}}
+
+=== destructive without approval | sam (OPERATOR) | tools/call bookkeeper_delete_ledger {"ledgerId":"2"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":8,"result":{"content":[{"type":"text","text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). this DESTRUCTIVE call needs a per-call approval Approval request apr_d80bb4022bd8c6272c1b1ec925d2e75d is pending; retry with the approval token once approved."}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_cc30cd8a46df12eb1444a07a","code":"APPROVAL_REQUIRED","step":4,"reason":"this DESTRUCTIVE call needs a per-call approval","approvalRequestId":"apr_d80bb4022bd8c6272c1b1ec925d2e75d","argsDigest":"sha256:2fa2957dacff864fdba4bfd9a6732c374d0bb45ad75230c45b3ea3ee31027839","traceId":"04df23dcccece538d94bd85abd2f3bb6"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-bookkeeper"}},"resultType":"complete"}}
+
+=== dry run | sam (OPERATOR) | tools/call bookkeeper_delete_ledger {"ledgerId":"2"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":9,"result":{"content":[{"type":"text","text":"Dry run: this exact DESTRUCTIVE call passed every Aegis governance check. Nothing was sent to the backend."}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_53b787120fe37d134e0eb31d","dryRunReceipt":"<redacted>","traceId":"3b4c61a7b6a26dd804276eacb241c7cc","argsDigest":"sha256:2fa2957dacff864fdba4bfd9a6732c374d0bb45ad75230c45b3ea3ee31027839","approvalRequestId":"apr_d80bb4022bd8c6272c1b1ec925d2e75d","dryRunReceiptExpiresAt":"2026-10-05T00:22:45.305107Z"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-bookkeeper"}},"resultType":"complete"}}
+
+=== requester approves own request | sam (OPERATOR) | POST approvals/apr_d80bb4022bd8c6272c1b1ec925d2e75d/approve | HTTP 403
+{"error":"caller is not in an approver group"}
+
+=== independent approval | tom (APPROVER) | POST approvals/apr_d80bb4022bd8c6272c1b1ec925d2e75d/approve | HTTP 200
+{"id":"apr_d80bb4022bd8c6272c1b1ec925d2e75d","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-bookkeeper","actorChain":[],"tool":"bookkeeper_delete_ledger","toolClass":"DESTRUCTIVE","source":"bookkeeper","resources":["bookkeeper:ledger:2"],"argsDigest":"sha256:2fa2957dacff864fdba4bfd9a6732c374d0bb45ad75230c45b3ea3ee31027839","binding":"sha256:2ea2d23a9cdb61b5123575193638a75ec9e85a47a52910959aeaa0ff7210b3a0","evidence":{"arguments":{"ledgerId":"2"},"preview":{"content":[{"type":"text","text":"Dry run: this exact DESTRUCTIVE call passed every Aegis governance check. Nothing was sent to the backend."}],"isError":false}},"createdAt":"2026-10-05T00:07:45.223002Z","expiresAt":"2026-10-05T00:37:45.223002Z","decidedBy":"tom","decidedAt":"2026-10-05T00:07:45.423845200Z","tokenExpiresAt":"2026-10-05T00:17:45.423845200Z"}
+
+=== requester collects the token | sam (OPERATOR) | GET approvals/apr_d80bb4022bd8c6272c1b1ec925d2e75d | HTTP 200
+{"id":"apr_d80bb4022bd8c6272c1b1ec925d2e75d","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-bookkeeper","actorChain":[],"tool":"bookkeeper_delete_ledger","toolClass":"DESTRUCTIVE","source":"bookkeeper","resources":["bookkeeper:ledger:2"],"argsDigest":"sha256:2fa2957dacff864fdba4bfd9a6732c374d0bb45ad75230c45b3ea3ee31027839","binding":"sha256:2ea2d23a9cdb61b5123575193638a75ec9e85a47a52910959aeaa0ff7210b3a0","evidence":{"arguments":{"ledgerId":"2"},"preview":{"content":[{"type":"text","text":"Dry run: this exact DESTRUCTIVE call passed every Aegis governance check. Nothing was sent to the backend."}],"isError":false}},"createdAt":"2026-10-05T00:07:45.223002Z","expiresAt":"2026-10-05T00:37:45.223002Z","decidedBy":"tom","decidedAt":"2026-10-05T00:07:45.423845200Z","token":"<redacted>","tokenExpiresAt":"2026-10-05T00:17:45.423845200Z"}
+
+=== execute with approval and receipt | sam (OPERATOR) | tools/call bookkeeper_delete_ledger {"ledgerId":"2"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":10,"result":{"content":[{"type":"text","text":"\"Deleted ledger: 2\""}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_0ec922691ce7fdb0e3fca589","traceId":"5a20a3b600892b657410ebb91f4cbac8"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-bookkeeper"}},"resultType":"complete"}}
+
+--- the bookie no longer lists ledger 2 and still has ledger 0
+
+=== replay of the same approval | sam (OPERATOR) | tools/call bookkeeper_delete_ledger {"ledgerId":"2"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":11,"result":{"content":[{"type":"text","text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). approval token has already been used"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_e7d15b81ecaba20e916ffccd","code":"APPROVAL_REQUIRED","step":4,"reason":"approval token has already been used","traceId":"244a47aad977c22e44cd16e0d200540a"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-bookkeeper"}},"resultType":"complete"}}

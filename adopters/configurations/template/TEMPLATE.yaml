@@ -1,0 +1,72 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Template for any Apache project (or any REST/MCP backend). Copy, rename, fill in.
+# Every key is documented in docs/CONFIGURATION.md. Unknown keys stop startup, so typos cannot
+# silently disable a control.
+gateway:
+  name: aegis-<project>
+
+server:
+  versions: ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26"]   # quoted: YAML would read them as dates
+  legacySessions: true        # stateful Mcp-Session-Id for 2025 clients; false = stateless 2025 too
+  allowedOrigins: []          # browser origins; any other Origin gets 403
+
+access:
+  writeGroups: [<project>-operators]       # may call MUTATE tools
+  destructiveGroups: []                    # may call DESTRUCTIVE tools (empty = writeGroups)
+  approverGroups: [<project>-approvers]    # may approve; never the requester
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY   # or keyFile: path; >= 32 bytes
+  requiredFor: [MUTATE, DESTRUCTIVE]
+  requestTtlSeconds: 1800
+  tokenTtlSeconds: 600
+
+vrp:
+  enabled: true               # DESTRUCTIVE needs a dry-run receipt from the identical call
+  ttlSeconds: 900
+
+policy:
+  rules:
+    - {id: read, groups: [<project>-users], classes: [READ]}
+    - {id: operate, groups: [<project>-operators], classes: [MUTATE, DESTRUCTIVE]}
+  # opa: {url: "http://opa:8181/v1/data/aegis/allow", timeoutMs: 2000}   # composed: all must allow
+
+scopes: []                    # optional resource scopes per group
+
+rateLimits: {perCallerPerMinute: 120, perCallerPerToolPerMinute: 60, budgetPerHour: 2000}
+breaker: {failureThreshold: 5, openSeconds: 30}
+screening: {mode: ENFORCE, toolDefinitions: ENFORCE, decodeBase64: true}
+output: {maxBytes: 1048576, useDefaultRedactions: true, redact: []}
+
+egress:
+  allowHosts: []              # extra hosts; source baseUrl/url hosts are added automatically
+  allowCidrs: []              # private networks must be allowed explicitly
+  checkArgumentUrls: true     # URLs anywhere inside arguments must pass egress too
+
+audit:
+  file: audit/aegis.jsonl
+  fsync: true
+
+catalog: {mode: TOFU, pinFile: state/pins.json, refreshSeconds: 0}
+
+sources:
+  - id: <project>
+    type: http                # http | mcp | <plugin type>
+    baseUrl: http://<host>:<port>
+    tools:
+      - name: <project>_list_things
+        description: <what the model should know>
+        class: READ
+        request: {method: GET, path: /api/things}

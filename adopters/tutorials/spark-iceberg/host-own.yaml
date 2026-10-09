@@ -1,0 +1,27 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# The own-host flavor only: who the callers are. start-gateway.* appends this to aegis-spark-iceberg.yaml.
+# Development identities: static tokens read from environment variables (at least 16 characters each).
+host:
+  listen: {host: 127.0.0.1, port: 8080}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: READER_TOKEN, actor: ana, groups: [lake-readers]}
+        - {tokenEnv: ENGINEER_TOKEN, actor: eve, groups: [lake-engineers]}
+        - {tokenEnv: APPROVER_TOKEN, actor: bob, groups: [lake-approvers]}
+  # Used by --stdio, for IDEs that launch MCP servers as a local process.
+  stdio: {actor: ana, groups: [lake-readers]}
