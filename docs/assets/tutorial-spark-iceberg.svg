@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
+  <title id="title">Spark and Iceberg behind Aegis: the tutorial layout</title>
+  <desc id="desc">An IDE or agent sends MCP calls either to the Aegis own host on port 8080 or through Apache Knox on port 8443. Both reach the same Aegis governance engine, which governs two sources: the Iceberg REST catalog on port 8181 and Spark Connect on port 15002. Spark reads and writes the Iceberg tables in a local warehouse of Parquet and metadata files.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#516773"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="640" fill="#f5f8f8"/>
+  <text x="40" y="46" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#09243a">Tutorial: Spark and Iceberg governed by Aegis</text>
+  <text x="40" y="74" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#516773">Everything runs on one machine and binds to 127.0.0.1. Two ways in, one governance decision path.</text>
+
+  <!-- Client -->
+  <rect x="40" y="250" width="220" height="130" rx="12" fill="#ffffff" stroke="#9fb7bd" stroke-width="2"/>
+  <text x="150" y="290" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#09243a">IDE or agent</text>
+  <text x="150" y="316" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">VS Code, Kiro, Cursor,</text>
+  <text x="150" y="336" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">Claude Desktop, MCP SDK,</text>
+  <text x="150" y="356" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">mcp.ps1 / mcp.sh</text>
+
+  <!-- Front doors -->
+  <rect x="320" y="150" width="250" height="110" rx="12" fill="#09243a"/>
+  <text x="445" y="188" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#ffffff">Without Knox</text>
+  <text x="445" y="212" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#c7e3e4">Aegis own host :8080/mcp</text>
+  <text x="445" y="234" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#c7e3e4">bearer tokens (host-own.yaml)</text>
+  <rect x="320" y="370" width="250" height="110" rx="12" fill="#0b4055"/>
+  <text x="445" y="408" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#ffffff">With Knox</text>
+  <text x="445" y="432" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#c7e3e4">Knox 3.0.0 :8443, LDAP login,</text>
+  <text x="445" y="454" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#c7e3e4">groups and route ACL</text>
+
+  <line x1="262" y1="300" x2="316" y2="220" stroke="#516773" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="262" y1="330" x2="316" y2="410" stroke="#516773" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Engine -->
+  <rect x="630" y="200" width="250" height="230" rx="12" fill="#007c78"/>
+  <text x="755" y="236" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#ffffff">Aegis governance</text>
+  <text x="755" y="262" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#e8ffff">aegis-spark-iceberg.yaml</text>
+  <text x="755" y="292" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#e8ffff">tool class and groups</text>
+  <text x="755" y="314" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#e8ffff">typed resources and scopes</text>
+  <text x="755" y="336" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#e8ffff">policy (never drop finance)</text>
+  <text x="755" y="358" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#e8ffff">dry run, approval, receipt</text>
+  <text x="755" y="380" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#e8ffff">egress and screening</text>
+  <text x="755" y="402" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#e8ffff">hash-chained audit</text>
+
+  <line x1="572" y1="205" x2="626" y2="260" stroke="#516773" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="572" y1="425" x2="626" y2="370" stroke="#516773" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Sources -->
+  <rect x="940" y="140" width="220" height="110" rx="12" fill="#ffffff" stroke="#007c78" stroke-width="2"/>
+  <text x="1050" y="176" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#09243a">Iceberg REST catalog</text>
+  <text x="1050" y="200" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">1.10.1 on :8181</text>
+  <text x="1050" y="222" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">iceberg_* tools</text>
+  <rect x="940" y="380" width="220" height="110" rx="12" fill="#ffffff" stroke="#007c78" stroke-width="2"/>
+  <text x="1050" y="416" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#09243a">Spark Connect</text>
+  <text x="1050" y="440" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">Spark 4.0.1 on :15002</text>
+  <text x="1050" y="462" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">spark_* tools, catalog lake</text>
+
+  <line x1="882" y1="270" x2="936" y2="210" stroke="#516773" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="882" y1="360" x2="936" y2="420" stroke="#516773" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1050" y1="378" x2="1050" y2="254" stroke="#516773" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+  <text x="1062" y="320" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#516773">REST catalog</text>
+
+  <!-- Warehouse -->
+  <rect x="860" y="540" width="300" height="70" rx="12" fill="#e7f4f2" stroke="#9fb7bd" stroke-width="2"/>
+  <text x="1010" y="570" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#09243a">work/warehouse</text>
+  <text x="1010" y="592" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#516773">Parquet data and Iceberg metadata files</text>
+  <line x1="1050" y1="492" x2="1050" y2="536" stroke="#516773" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <text x="40" y="560" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">Credentials stay where they belong: callers authenticate to the front door;</text>
+  <text x="40" y="580" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">Aegis reaches the catalog and Spark with its own service identity.</text>
+</svg>

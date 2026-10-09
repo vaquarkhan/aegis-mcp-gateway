@@ -1,0 +1,100 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+image:
+  repository: aegis-gateway          # the image built from the repository Dockerfile, pushed to your registry
+  tag: ""                            # defaults to the chart appVersion
+  digest: ""                         # sha256:...; when set it is used instead of the tag
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# More than one replica needs shared approval and receipt state (config.state with type postgres);
+# otherwise an approval granted on one pod is unknown to the next. The chart refuses replicaCount > 1
+# unless sharedState is true. Each replica writes its own audit journal on its own volume.
+replicaCount: 1
+sharedState: false
+
+# The Aegis configuration, written to /etc/aegis/aegis.yaml. Required. Rules the chart checks:
+#   host.listen.host must be 0.0.0.0 and host.listen.port must equal containerPort;
+#   audit.file must be under persistence.mountPath, the only writable data directory.
+# Secrets are never written here: name them (keyEnv, tokenEnv, ...) and supply them with envFrom.
+config: {}
+# Alternatively, use a ConfigMap you manage, with the key aegis.yaml (config is then ignored).
+existingConfigMap: ""
+
+containerPort: 8080
+
+# Secrets for the names the configuration uses, for example AEGIS_SIGNING_KEY:
+#   envFrom: [{secretRef: {name: aegis-secrets}}]
+envFrom: []
+env: []
+javaOpts: "-XX:MaxRAMPercentage=75"
+
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+persistence:
+  mountPath: /var/lib/aegis
+  size: 1Gi
+  storageClassName: ""
+  accessModes: [ReadWriteOnce]
+
+resources:
+  requests: {cpu: 250m, memory: 512Mi}
+  limits: {memory: 1Gi}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile: {type: RuntimeDefault}
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: {drop: [ALL]}
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Optional NetworkPolicy. Aegis enforces its own egress allow list per call; this adds a network-level
+# limit. When enabled, ingressFrom must list one or more allowed peers; an empty list fails chart
+# rendering rather than creating a port-only rule that Kubernetes interprets as all sources allowed.
+# Egress allows the listed peers plus DNS.
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+  egressTo: []
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Extra volumes, for example a TLS keystore secret or plugin jars:
+#   extraVolumes: [{name: tls, secret: {secretName: aegis-tls}}]
+#   extraVolumeMounts: [{name: tls, mountPath: /etc/aegis/tls, readOnly: true}]
+extraVolumes: []
+extraVolumeMounts: []
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+terminationGracePeriodSeconds: 30

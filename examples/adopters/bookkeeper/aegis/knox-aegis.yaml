@@ -1,0 +1,78 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache BookKeeper: governed MCP tools over the Apache BookKeeper HTTP API, configuration only.
+# BookKeeper HTTP admin endpoints: GET /api/v1/bookie/info, /api/v1/bookie/list_bookies,
+# /api/v1/ledger/list, DELETE /api/v1/ledger/delete?ledger_id=.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-bookkeeper (taxonomy: logstore).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-bookkeeper
+
+access:
+  writeGroups: [bookkeeper-operators]
+  approverGroups: [bookkeeper-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [bookkeeper-users, bookkeeper-operators], classes: [READ]}
+    - {id: operate, groups: [bookkeeper-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-bookkeeper.jsonl
+
+sources:
+  - id: bookkeeper
+    type: http
+    baseUrl: http://127.0.0.1:59530
+    tools:
+      - name: bookkeeper_bookie_info
+        description: "Disk usage and state of this bookie."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v1/bookie/info"}
+
+      - name: bookkeeper_list_bookies
+        description: "List bookies in the ensemble."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v1/bookie/list_bookies"}
+
+      - name: bookkeeper_list_ledgers
+        description: "List ledgers."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v1/ledger/list"}
+
+      - name: bookkeeper_delete_ledger
+        description: "Delete one ledger and its entries."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {ledgerId: {type: string, maxLength: 200}}
+          required: [ledgerId]
+          additionalProperties: false
+        request: {method: DELETE, path: "/api/v1/ledger/delete", query: {ledger_id: "{ledgerId}"}}
+        resources: [{type: "bookkeeper:ledger", pointer: /ledgerId}]

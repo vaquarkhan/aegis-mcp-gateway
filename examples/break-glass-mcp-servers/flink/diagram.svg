@@ -1,0 +1,84 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1340" height="760" viewBox="0 0 1340 760" role="img" aria-labelledby="t-flink d-flink">
+<title id="t-flink">Flink MCP server: what talks to what</title>
+<desc id="d-flink">An IDE with an AI assistant on the developer laptop calls the Aegis MCP server over MCP. Aegis is a separate process: the ready-made gateway jar running the aegis.yaml you adjust, with a signed server catalog, an optional break-glass order and an audit journal. Aegis checks identity, policy and approvals, then calls the Flink engine through its own unchanged API. A different person approves risky calls.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3c4043"/></marker></defs>
+<rect width="1340" height="760" fill="#ffffff"/>
+<text x="30" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="bold" fill="#202124" text-anchor="start">Flink MCP server: what talks to what</text>
+<text x="30" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="normal" fill="#5f6368" text-anchor="start">Flink itself does not change: no code, plugin or jar is added to it. Aegis is a separate process in front of it.</text>
+<rect x="30" y="100" width="300" height="260" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+<text x="50" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1565c0" text-anchor="start">Developer laptop</text>
+<rect x="50" y="145" width="260" height="70" rx="10" fill="#ffffff" stroke="#1565c0" stroke-width="1.5"/>
+<text x="65" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">IDE + AI assistant</text>
+<text x="65" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="start">Kiro, VS Code, Cursor, Claude</text>
+<rect x="50" y="230" width="260" height="110" rx="10" fill="#ffffff" stroke="#1565c0" stroke-width="1.5"/>
+<text x="65" y="256" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">mcp.json  (you add)</text>
+<text x="65" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">url: http://&lt;host&gt;:18801/mcp</text>
+<text x="65" y="302" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">header: Bearer &lt;your token&gt;</text>
+<text x="65" y="324" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">or stdio: java -jar ... --stdio</text>
+<rect x="30" y="410" width="300" height="110" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+<text x="50" y="440" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="#1565c0" text-anchor="start">Approver (a different person)</text>
+<text x="50" y="466" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="start">Approves risky calls (kill, delete,</text>
+<text x="50" y="488" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="start">drop) in the admin API. Nobody can</text>
+<text x="50" y="510" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#202124" text-anchor="start">approve their own request.</text>
+<rect x="460" y="100" width="470" height="560" rx="10" fill="#fafafa" stroke="#3c4043" stroke-width="2.5"/>
+<text x="480" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" fill="#202124" text-anchor="start">Aegis MCP server (own process, port 18801)</text>
+<rect x="480" y="148" width="430" height="52" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+<text x="495" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#2e7d32" text-anchor="start">java -jar aegis-gateway-all.jar</text>
+<text x="495" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">ready-made program, the same for every engine</text>
+<rect x="480" y="212" width="430" height="132" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+<text x="495" y="236" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#1565c0" text-anchor="start">aegis.yaml: the MCP server (you adjust)</text>
+<text x="495" y="260" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">sources: engine address, tools, READ / MUTATE / DESTRUCTIVE</text>
+<text x="495" y="279" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">policy + access: who may call what; approval for risky calls</text>
+<text x="495" y="298" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">egress: where the gateway may connect</text>
+<text x="495" y="317" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">host: listener and identity (tokens or JWT); stdio for IDEs</text>
+<text x="495" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">serverCatalog + breakGlass: point at the signed files</text>
+<rect x="480" y="356" width="430" height="46" rx="10" fill="#fff8e1" stroke="#b26a00" stroke-width="2"/>
+<text x="495" y="376" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#b26a00" text-anchor="start">run/servers.json + .sig  (signed catalog)</text>
+<text x="495" y="394" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">which sources may start, exact tools; review key signs it</text>
+<rect x="480" y="412" width="430" height="46" rx="10" fill="#fff8e1" stroke="#c62828" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="495" y="432" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#c62828" text-anchor="start">run/order.json (break-glass, incident only)</text>
+<text x="495" y="450" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">separate key; can only switch sources off; max 24 hours</text>
+<rect x="480" y="468" width="430" height="34" rx="10" fill="#fff8e1" stroke="#b26a00" stroke-width="2"/>
+<text x="495" y="490" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="bold" fill="#b26a00" text-anchor="start">run/audit/ (hash-chained log of every decision)</text>
+<text x="480" y="518" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="bold" fill="#3c4043" text-anchor="start">Each call: identity &gt; policy &gt; approval &gt; log &gt; engine</text>
+<line x1="330" y1="230" x2="456" y2="230" stroke="#3c4043" stroke-width="2.5" marker-end="url(#arrow)"/><text x="395" y="210" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#3c4043" text-anchor="middle">MCP (HTTP + token,</text>
+<text x="395" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#3c4043" text-anchor="middle">or stdio)</text>
+<line x1="330" y1="465" x2="456" y2="465" stroke="#3c4043" stroke-width="2.5" marker-end="url(#arrow)"/><text x="395" y="455" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#3c4043" text-anchor="middle">approves</text>
+<text x="1010" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="bold" fill="#5f6368" text-anchor="start">Flink (unchanged)</text>
+<rect x="1010" y="130" width="300" height="150" rx="10" fill="#f1f3f4" stroke="#c62828" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="1025" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">Flink JobManager</text>
+<text x="1025" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">REST API, port 18081</text>
+<text x="1025" y="198" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">jobs, checkpoints, savepoints, cancel</text>
+<text x="1025" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#c62828" text-anchor="start">break-glass example target</text>
+<line x1="930" y1="205" x2="1006" y2="205" stroke="#3c4043" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="970" y="195" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#3c4043" text-anchor="middle">own API</text>
+<text x="30" y="560" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#c62828" text-anchor="start">Break-glass in this example:</text>
+<text x="30" y="582" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="bold" fill="#202124" text-anchor="start">flink=QUARANTINED:</text>
+<text x="30" y="602" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">the only source is off, so the server refuses to start</text>
+<text x="30" y="672" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#202124" text-anchor="start">Legend</text>
+<rect x="30" y="686" width="26" height="18" rx="4" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+<text x="64" y="700" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">ready-made by the Aegis project</text>
+<rect x="311" y="686" width="26" height="18" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+<text x="345" y="700" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">you create or adjust</text>
+<rect x="515" y="686" width="26" height="18" rx="4" fill="#f1f3f4" stroke="#5f6368" stroke-width="1.5"/>
+<text x="549" y="700" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">the engine, unchanged</text>
+<rect x="726" y="686" width="26" height="18" rx="4" fill="#fff8e1" stroke="#b26a00" stroke-width="1.5"/>
+<text x="760" y="700" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">generated when you sign or run</text>
+<rect x="1000" y="686" width="26" height="18" rx="4" fill="#fff8e1" stroke="#c62828" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="1034" y="700" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="normal" fill="#202124" text-anchor="start">break-glass: incident only</text>
+</svg>

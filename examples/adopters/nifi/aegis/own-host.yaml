@@ -1,0 +1,131 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache NiFi: governed MCP tools over the Apache NiFi HTTP API, configuration only.
+# NiFi REST API: GET /flow/about, GET /flow/process-groups/root, GET /process-groups/{id},
+# PUT /flow/process-groups/{id} with a state of RUNNING or STOPPED.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-nifi (taxonomy: dataflow).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-nifi
+
+access:
+  writeGroups: [nifi-operators]
+  approverGroups: [nifi-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [nifi-users, nifi-operators], classes: [READ]}
+    - {id: operate, groups: [nifi-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-nifi.jsonl
+
+sources:
+  - id: nifi
+    type: http
+    baseUrl: http://127.0.0.1:63659/nifi-api
+    # NiFi single-user mode uses HTTP basic (username/password from the container env).
+    credentials: {type: basic, usernameEnv: NIFI_API_USER, passwordEnv: NIFI_API_PASSWORD}
+    tools:
+      - name: nifi_get_about
+        description: "NiFi version and build information."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/flow/about"}
+
+      - name: nifi_list_process_groups
+        description: "The root process group and its children."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/flow/process-groups/root"}
+
+      - name: nifi_get_process_group
+        description: "Details of one process group."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {groupId: {type: string, maxLength: 200}}
+          required: [groupId]
+          additionalProperties: false
+        request: {method: GET, path: "/process-groups/{groupId}"}
+        resources: [{type: "nifi:process-group", pointer: /groupId}]
+
+      - name: nifi_start_process_group
+        description: "Start every component in one process group."
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties:
+            groupId: {type: string, maxLength: 200}
+            # NiFi optimistic locking: version and clientId from GET /process-groups/{id}.
+            # version must be a JSON number (NiFi rejects a string).
+            revisionVersion: {type: integer, minimum: 0, maximum: 2147483647}
+            revisionClientId: {type: string, maxLength: 64}
+          required: [groupId, revisionVersion, revisionClientId]
+          additionalProperties: false
+        request:
+          method: PUT
+          path: "/flow/process-groups/{groupId}"
+          body:
+            id: "{groupId}"
+            state: "RUNNING"
+            disconnectedNodeAcknowledged: true
+            revision: {version: "{revisionVersion}", clientId: "{revisionClientId}"}
+        resources: [{type: "nifi:process-group", pointer: /groupId}]
+
+      - name: nifi_stop_process_group
+        description: "Stop every component in one process group, halting the flow."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties:
+            groupId: {type: string, maxLength: 200}
+            revisionVersion: {type: integer, minimum: 0, maximum: 2147483647}
+            revisionClientId: {type: string, maxLength: 64}
+          required: [groupId, revisionVersion, revisionClientId]
+          additionalProperties: false
+        request:
+          method: PUT
+          path: "/flow/process-groups/{groupId}"
+          body:
+            id: "{groupId}"
+            state: "STOPPED"
+            disconnectedNodeAcknowledged: true
+            revision: {version: "{revisionVersion}", clientId: "{revisionClientId}"}
+        resources: [{type: "nifi:process-group", pointer: /groupId}]
+        dryRun: {mode: TOOL, previewTool: nifi_get_process_group}   # validate against the exact target first
+
+# Appended for the own-host front door: loopback listener, static tokens per persona.
+host:
+  listen: {host: 127.0.0.1, port: 0}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_READER, actor: guest, groups: [nifi-users]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OPERATOR, actor: sam, groups: [nifi-operators]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_APPROVER, actor: tom, groups: [nifi-approvers]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OUTSIDER, actor: admin, groups: []}

@@ -1,0 +1,157 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Tutorial configuration (docs/TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md). Two doors into one Kafka
+# deployment, governed by one gateway:
+#   1. kafka-connect: the Kafka Connect REST API on 127.0.0.1:18083, a plain HTTP source.
+#   2. kafka-admin:   the broker itself on 127.0.0.1:19092 through the Kafka AdminClient, a plugin
+#                     source, because the broker speaks its own binary protocol and has no REST API.
+# Development identities are static tokens read from environment variables. Everything binds to
+# 127.0.0.1. Do not reuse this file in production (use JWT identity and TLS there).
+gateway:
+  name: aegis-kafka-tutorial
+
+access:
+  writeGroups: [kafka-operators]
+  approverGroups: [kafka-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: read, groups: [kafka-users, kafka-operators], classes: [READ]}
+    - {id: operate, groups: [kafka-operators], classes: [MUTATE, DESTRUCTIVE]}
+    # Kafka's internal topics are off limits to everyone, approval or not. __consumer_offsets and
+    # __transaction_state are how the cluster remembers where consumers are and what transactions
+    # are open; deleting one is not a data loss, it is a cluster incident.
+    - {id: protect-internal, effect: DENY, groups: ["*"], resources: ["kafka:topic:__*", "kafka:topic:_*"]}
+    # A connector may be paused or restarted by an operator, but this deployment never lets an agent
+    # delete the change-data-capture connector, because deleting it silently stops replication.
+    - {id: protect-cdc, effect: DENY, groups: ["*"], tools: [connect_delete_connector], resources: ["kafka:connector:*cdc*"]}
+
+egress:
+  allowHosts: [127.0.0.1]
+  allowCidrs: [127.0.0.0/8]
+  schemes: [http]
+
+audit:
+  file: work/audit/aegis-kafka-tutorial.jsonl
+
+sources:
+  # Door 1: Kafka Connect REST. Configuration, not data: connectors, their status and their lifecycle.
+  - id: kafka-connect
+    type: http
+    baseUrl: http://127.0.0.1:18083
+    tools:
+      - name: connect_worker_info
+        description: Kafka Connect worker version and the cluster id it belongs to.
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /}
+
+      - name: connect_list_connectors
+        description: List Kafka Connect connectors.
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /connectors}
+
+      - name: connect_connector_status
+        description: Status of one connector and each of its tasks.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: GET, path: "/connectors/{name}/status"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+      - name: connect_connector_config
+        description: Current configuration of one connector.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: GET, path: "/connectors/{name}/config"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+      - name: connect_pause_connector
+        description: Pause a connector. Reversible, so MUTATE rather than DESTRUCTIVE.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: PUT, path: "/connectors/{name}/pause"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+      - name: connect_resume_connector
+        description: Resume a paused connector.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: PUT, path: "/connectors/{name}/resume"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+
+      - name: connect_delete_connector
+        description: Delete a connector and its configuration. Not reversible from the REST API.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {name: {type: string, maxLength: 249}}
+          required: [name]
+          additionalProperties: false
+        request: {method: DELETE, path: "/connectors/{name}"}
+        resources: [{type: "kafka:connector", pointer: /name}]
+        # The preview of a delete is the configuration that would be lost.
+        dryRun: {mode: TOOL, previewTool: connect_connector_config}
+
+  # Door 2: the broker, through the AdminClient plugin source (ServiceLoader, type: kafka-admin).
+  - id: kafka-admin
+    type: kafka-admin
+    unlistedTools: HIDE
+    settings:
+      bootstrapServers: 127.0.0.1:19092
+      requestTimeoutMs: 15000
+    tools:
+      kafka_list_topics: {class: READ}
+      kafka_describe_topic:
+        class: READ
+        resources: [{type: "kafka:topic", pointer: /topic}]
+      kafka_create_topic:
+        class: MUTATE
+        resources: [{type: "kafka:topic", pointer: /topic}]
+        # Kafka's own CreateTopics(validateOnly=true): the broker validates and creates nothing.
+        dryRun: {mode: ARGUMENT, argument: validateOnly}
+      kafka_delete_topic:
+        class: DESTRUCTIVE
+        resources: [{type: "kafka:topic", pointer: /topic}]
+
+host:
+  listen: {host: 127.0.0.1, port: 8080}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: ANALYST_TOKEN, actor: ana, groups: [kafka-users]}
+        - {tokenEnv: OPERATOR_TOKEN, actor: oscar, groups: [kafka-users, kafka-operators]}
+        - {tokenEnv: APPROVER_TOKEN, actor: petra, groups: [kafka-approvers]}
+  stdio: {actor: ana, groups: [kafka-users]}

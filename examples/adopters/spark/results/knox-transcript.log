@@ -1,0 +1,51 @@
+# spark through knox, 2026-10-05T01:07:30.986637100Z
+
+--- real Spark application local-1791162363923 (UI port 56881); standalone Master REST 56868 accepted driver driver-20261004200739-0001 in state SUBMITTED
+
+=== read by READER | guest (READER) | tools/call spark_list_applications {"status":"running"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"text":"[{\"id\":\"local-1791162363923\",\"name\":\"aegis-spark-example\",\"attempts\":[{\"startTime\":\"2026-10-05T01:06:01.647GMT\",\"endTime\":\"1969-12-31T23:59:59.999GMT\",\"lastUpdated\":\"2026-10-05T01:06:01.647GMT\",\"duration\":98704,\"sparkUser\":\"vaquar\",\"completed\":false,\"appSparkVersion\":\"4.0.1\",\"startTimeEpoch\":1791162361647,\"endTimeEpoch\":-1,\"lastUpdatedEpoch\":1791162361647}]}]","type":"text"}],"structuredContent":{"value":[{"id":"local-1791162363923","name":"aegis-spark-example","attempts":[{"startTime":"2026-10-05T01:06:01.647GMT","endTime":"1969-12-31T23:59:59.999GMT","lastUpdated":"2026-10-05T01:06:01.647GMT","duration":98704,"sparkUser":"vaquar","completed":false,"appSparkVersion":"4.0.1","startTimeEpoch":1791162361647,"endTimeEpoch":-1,"lastUpdatedEpoch":1791162361647}]}]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_2e15d55cc7230760a5ce35b5","traceId":"9893a1ede5b380bc45e109b7247ad422"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-spark"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call spark_list_applications {"status":"running"} | HTTP 403
+{
+"servlet":"aegis-spark-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-spark/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call spark_submission_status {"submissionId":"driver-20261004200739-0001"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"{\"action\":\"SubmissionStatusResponse\",\"driverState\":\"SUBMITTED\",\"serverSparkVersion\":\"4.0.1\",\"submissionId\":\"driver-20261004200739-0001\",\"success\":true}","type":"text"}],"structuredContent":{"action":"SubmissionStatusResponse","driverState":"SUBMITTED","serverSparkVersion":"4.0.1","submissionId":"driver-20261004200739-0001","success":true},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_7b0598e2dba70ff17fe18507","traceId":"2eceea5e369617a8642d7e0740156c03"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-spark"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call spark_submission_status {"submissionId":"driver-20261004200739-0001"} | HTTP 403
+{
+"servlet":"aegis-spark-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-spark/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== destructive by READER | guest (READER) | tools/call spark_kill_submission {"submissionId":"driver-20261004200739-0001"} | HTTP 200 decision=DENIED:READONLY_CALLER:step1
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"text":"Aegis denied this call: READONLY_CALLER (step 1). caller is not in a group allowed to call DESTRUCTIVE tools","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:READONLY_CALLER:step1","requestId":"req_360458818188cbc0e3a42d4b","code":"READONLY_CALLER","step":1,"reason":"caller is not in a group allowed to call DESTRUCTIVE tools","traceId":"45cb095c1a1d5ef46fd9de2a6af76f36"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-spark"}},"resultType":"complete"}}
+
+=== destructive without approval | sam (OPERATOR) | tools/call spark_kill_submission {"submissionId":"driver-20261004200739-0001"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":6,"result":{"content":[{"text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). this DESTRUCTIVE call needs a per-call approval Approval request apr_0647e283c72b00f04d0cffa415f7f8c1 is pending; retry with the approval token once approved.","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_835edad7e483a9fff73eb89b","code":"APPROVAL_REQUIRED","step":4,"reason":"this DESTRUCTIVE call needs a per-call approval","argsDigest":"sha256:f7f014d38e6f1147cf3058e7953275ecfdceec3185502fd5141bce3a114bc28a","approvalRequestId":"apr_0647e283c72b00f04d0cffa415f7f8c1","traceId":"046c51004f1b7b24b5bad3be5d0a2f71"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-spark"}},"resultType":"complete"}}
+
+=== dry run | sam (OPERATOR) | tools/call spark_kill_submission {"submissionId":"driver-20261004200739-0001"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"text":"{\"action\":\"SubmissionStatusResponse\",\"driverState\":\"SUBMITTED\",\"serverSparkVersion\":\"4.0.1\",\"submissionId\":\"driver-20261004200739-0001\",\"success\":true}","type":"text"}],"structuredContent":{"action":"SubmissionStatusResponse","driverState":"SUBMITTED","serverSparkVersion":"4.0.1","submissionId":"driver-20261004200739-0001","success":true},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_153c1c22d037a06e143a237e","dryRunReceipt":"<redacted>","traceId":"44ab7fdb53b6b3ac2e501c957b9d03a1","argsDigest":"sha256:f7f014d38e6f1147cf3058e7953275ecfdceec3185502fd5141bce3a114bc28a","approvalRequestId":"apr_0647e283c72b00f04d0cffa415f7f8c1","dryRunReceiptExpiresAt":"2026-10-05T01:22:40.756186200Z"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-spark"}},"resultType":"complete"}}
+
+=== requester approves own request | sam (OPERATOR) | POST approvals/apr_0647e283c72b00f04d0cffa415f7f8c1/approve | HTTP 403
+{"error":"caller is not in an approver group"}
+
+=== independent approval | tom (APPROVER) | POST approvals/apr_0647e283c72b00f04d0cffa415f7f8c1/approve | HTTP 200
+{"id":"apr_0647e283c72b00f04d0cffa415f7f8c1","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-spark","actorChain":[],"tool":"spark_kill_submission","toolClass":"DESTRUCTIVE","source":"spark-master","resources":["spark:submission:driver-20261004200739-0001"],"argsDigest":"sha256:f7f014d38e6f1147cf3058e7953275ecfdceec3185502fd5141bce3a114bc28a","binding":"sha256:109361710fc2aa8d937a737740a86465f2d60d4d257014878b40084ea5852b9d","evidence":{"arguments":{"submissionId":"driver-20261004200739-0001"},"preview":{"content":[{"text":"{\"action\":\"SubmissionStatusResponse\",\"driverState\":\"SUBMITTED\",\"serverSparkVersion\":\"4.0.1\",\"submissionId\":\"driver-20261004200739-0001\",\"success\":true}","type":"text"}],"structuredContent":{"action":"SubmissionStatusResponse","driverState":"SUBMITTED","serverSparkVersion":"4.0.1","submissionId":"driver-20261004200739-0001","success":true},"isError":false}},"createdAt":"2026-10-05T01:07:40.698935200Z","expiresAt":"2026-10-05T01:37:40.698935200Z","decidedBy":"tom","decidedAt":"2026-10-05T01:07:40.839577800Z","tokenExpiresAt":"2026-10-05T01:17:40.839577800Z"}
+
+=== requester collects the token | sam (OPERATOR) | GET approvals/apr_0647e283c72b00f04d0cffa415f7f8c1 | HTTP 200
+{"id":"apr_0647e283c72b00f04d0cffa415f7f8c1","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-spark","actorChain":[],"tool":"spark_kill_submission","toolClass":"DESTRUCTIVE","source":"spark-master","resources":["spark:submission:driver-20261004200739-0001"],"argsDigest":"sha256:f7f014d38e6f1147cf3058e7953275ecfdceec3185502fd5141bce3a114bc28a","binding":"sha256:109361710fc2aa8d937a737740a86465f2d60d4d257014878b40084ea5852b9d","evidence":{"arguments":{"submissionId":"driver-20261004200739-0001"},"preview":{"content":[{"text":"{\"action\":\"SubmissionStatusResponse\",\"driverState\":\"SUBMITTED\",\"serverSparkVersion\":\"4.0.1\",\"submissionId\":\"driver-20261004200739-0001\",\"success\":true}","type":"text"}],"structuredContent":{"action":"SubmissionStatusResponse","driverState":"SUBMITTED","serverSparkVersion":"4.0.1","submissionId":"driver-20261004200739-0001","success":true},"isError":false}},"createdAt":"2026-10-05T01:07:40.698935200Z","expiresAt":"2026-10-05T01:37:40.698935200Z","decidedBy":"tom","decidedAt":"2026-10-05T01:07:40.839577800Z","token":"<redacted>","tokenExpiresAt":"2026-10-05T01:17:40.839577800Z"}
+
+=== execute with approval and receipt | sam (OPERATOR) | tools/call spark_kill_submission {"submissionId":"driver-20261004200739-0001"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":8,"result":{"content":[{"text":"{\"action\":\"KillSubmissionResponse\",\"message\":\"Kill request for driver-20261004200739-0001 submitted\",\"serverSparkVersion\":\"4.0.1\",\"submissionId\":\"driver-20261004200739-0001\",\"success\":true}","type":"text"}],"structuredContent":{"action":"KillSubmissionResponse","message":"Kill request for driver-20261004200739-0001 submitted","serverSparkVersion":"4.0.1","submissionId":"driver-20261004200739-0001","success":true},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_888744732ba68483f526661b","traceId":"f255eb9812728c605e9ebff8d85d71ad"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-spark"}},"resultType":"complete"}}
+
+--- the Spark Master reports driver driver-20261004200739-0001 KILLED
+
+=== replay of the same approval | sam (OPERATOR) | tools/call spark_kill_submission {"submissionId":"driver-20261004200739-0001"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":9,"result":{"content":[{"text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). approval token has already been used","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_a3373cee716d49eaa1d222b2","code":"APPROVAL_REQUIRED","step":4,"reason":"approval token has already been used","traceId":"175a1cba0340deef5b675e34cc910bf9"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-spark"}},"resultType":"complete"}}

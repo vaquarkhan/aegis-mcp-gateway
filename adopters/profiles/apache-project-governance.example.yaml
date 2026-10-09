@@ -1,0 +1,150 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# ILLUSTRATIVE ONLY. This is an Aegis example for a project community to adapt and review.
+# It is not an ASF policy, an ASF release procedure, legal advice, or an EU AI Act compliance claim.
+#
+# The guardrails are inspired by four operational themes used in risk-based AI governance:
+#   - traceability: durable decision records
+#   - transparency: explicit source/evidence and restricted administrative actions
+#   - human oversight: independent approval for meaningful writes
+#   - robustness: default deny, bounded inputs and source quarantine
+#
+# Replace every illustrative group, endpoint, tool and resource with project-reviewed values before use.
+
+gateway:
+  name: apache-project-governance-example
+
+# Illustrative project roles. These names do not represent any ASF, PMC or committer identity system.
+access:
+  writeGroups: [project-maintainers]
+  destructiveGroups: [project-release-managers]
+  approverGroups: [project-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+  requiredFor: [MUTATE, DESTRUCTIVE]
+  requestTtlSeconds: 1800
+  tokenTtlSeconds: 600
+
+# Destructive actions need a matching dry-run receipt in addition to human approval.
+vrp:
+  enabled: true
+  ttlSeconds: 900
+
+# Default deny. Project roles are narrow, and the resource is part of the authorization decision.
+policy:
+  rules:
+    - id: project-read-evidence
+      groups: [project-contributors, project-maintainers, project-release-managers]
+      classes: [READ]
+      resources: [project:evidence:*]
+    - id: project-maintainer-change
+      groups: [project-maintainers]
+      classes: [MUTATE]
+      resources: [project:configuration:*]
+    - id: project-release-approval
+      groups: [project-release-managers]
+      classes: [DESTRUCTIVE]
+      resources: [project:release:*]
+    # Immutable project control objects are not changed by an agent action.
+    - id: deny-control-plane-change
+      effect: DENY
+      groups: ["*"]
+      resources: [project:governance:*]
+
+# A durable local store is suitable for one Aegis process. Use a shared provider before claiming HA.
+state:
+  type: derby-local
+  settings:
+    path: state/project-governance
+
+# Traceability without placing raw arguments into the audit file by default.
+audit:
+  file: audit/project-governance.jsonl
+  fsync: true
+  includeArguments: false
+
+rateLimits:
+  perCallerPerMinute: 30
+  perCallerPerToolPerMinute: 10
+  budgetPerHour: 300
+  costs: {READ: 1, MUTATE: 5, DESTRUCTIVE: 20}
+
+screening:
+  mode: ENFORCE
+  toolDefinitions: ENFORCE
+  content: ENFORCE
+  decodeBase64: true
+
+# The reusable guardrail requires an evidence reference on high-impact actions and keeps governance
+# resources off limits regardless of caller class. Existing Aegis policy, approval, receipt and audit
+# checks still run around it.
+hooks:
+  - type: project-governance
+    mode: ENFORCE
+    operations: [TOOL_CALL]
+    settings:
+      requireEvidenceFor: [MUTATE, DESTRUCTIVE]
+      evidenceArgument: evidenceId
+      minEvidenceLength: 8
+      protectedResources: ["project:governance:*"]
+
+output:
+  maxBytes: 262144
+  useDefaultRedactions: true
+
+# Placeholder source. The .invalid domain ensures this example cannot accidentally contact a service.
+# The resource types are also illustrative and must be approved by the adopting project.
+sources:
+  - id: project-admin
+    type: http
+    baseUrl: https://project-admin.invalid
+    trust:
+      state: ACTIVE
+    tools:
+      - name: project_get_evidence
+        description: "Read one project evidence record."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {evidenceId: {type: string, maxLength: 128}}
+          required: [evidenceId]
+          additionalProperties: false
+        request: {method: GET, path: "/evidence/{evidenceId}"}
+        resources: [{type: "project:evidence", pointer: /evidenceId}]
+
+      - name: project_update_configuration
+        description: "Apply one reviewed project configuration update."
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties:
+            {configurationId: {type: string, maxLength: 128}, change: {type: string, maxLength: 4096}, evidenceId: {type: string, minLength: 8, maxLength: 512}}
+          required: [configurationId, change, evidenceId]
+          additionalProperties: false
+        request: {method: PATCH, path: "/configuration/{configurationId}", body: {change: "{change}"}}
+        resources: [{type: "project:configuration", pointer: /configurationId}]
+
+      - name: project_publish_release
+        description: "Publish one project release after independent approval and matching dry run."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {releaseId: {type: string, maxLength: 128}, evidenceId: {type: string, minLength: 8, maxLength: 512}}
+          required: [releaseId, evidenceId]
+          additionalProperties: false
+        request: {method: POST, path: "/releases/{releaseId}/publish", body: {}}
+        resources: [{type: "project:release", pointer: /releaseId}]
+        dryRun: {mode: GATEWAY}

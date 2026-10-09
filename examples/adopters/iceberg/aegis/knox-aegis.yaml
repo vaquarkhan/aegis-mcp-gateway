@@ -1,0 +1,149 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Iceberg: governed tools over the Iceberg REST catalog API (open-api/rest-catalog-open-api.yaml):
+# GET /v1/namespaces, GET /v1/namespaces/{namespace}/tables, GET/DELETE /v1/namespaces/{namespace}/tables/{table},
+# POST /v1/namespaces. Limitation: multi-level namespaces (joined with the 0x1F unit separator in the
+# spec) are not templated here; this example governs single-level namespaces. If your catalog uses a
+# prefix (from GET /v1/config), put it in baseUrl, e.g. http://catalog:8181/v1/<prefix>.
+#
+# Three tools from the Aegis 0.1 Iceberg adapter are deliberately NOT here, because they are not REST
+# catalog operations at all (0.1 already had them failing closed unless dryRun was set):
+#   expire_snapshots, remove_orphan_files, rewrite_data_files
+# These are engine procedures, run by Spark or Flink, so they belong to that engine's source. 0.1's
+# dry_run_maintenance companion is also gone: dry run is built into 2.0 for every write tool, so a
+# separate preview tool is no longer needed.
+# commit_transaction is not exposed either: the REST body is a list of arbitrary table changes, which
+# cannot be bound to one typed resource, so approving it would approve an unbounded change set.
+gateway:
+  name: aegis-iceberg
+
+access:
+  writeGroups: [data-engineers]
+  approverGroups: [data-stewards]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: browse, groups: [analysts, data-engineers], classes: [READ]}
+    - {id: engineer-writes, groups: [data-engineers], classes: [MUTATE, DESTRUCTIVE]}
+    - {id: never-drop-finance, effect: DENY, groups: ["*"], tools: [iceberg_drop_table], resources: ["iceberg:table:finance.*"]}
+
+# Resource scopes: analysts may only touch the sales and marketing namespaces at all.
+scopes:
+  - {groups: [analysts], resources: ["iceberg:namespace:sales", "iceberg:namespace:marketing", "iceberg:table:sales.*", "iceberg:table:marketing.*"]}
+  - {groups: [data-engineers], resources: ["iceberg:*"]}
+
+egress:
+  allowCidrs: [127.0.0.0/8]
+
+audit:
+  file: audit/aegis-iceberg.jsonl
+
+sources:
+  - id: iceberg
+    type: http
+    baseUrl: http://127.0.0.1:62817
+    credentials: {type: bearer, tokenEnv: ICEBERG_CATALOG_TOKEN}   # the gateway's own catalog credential
+    tools:
+      - name: iceberg_list_namespaces
+        description: List top-level namespaces in the catalog.
+        class: READ
+        request: {method: GET, path: /v1/namespaces}
+        response: {pointer: /namespaces}
+
+      - name: iceberg_list_tables
+        description: List tables in a namespace.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}}
+          required: [namespace]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/namespaces/{namespace}/tables"}
+        response: {pointer: /identifiers}
+        resources: [{type: "iceberg:namespace", pointer: /namespace}]
+
+      - name: iceberg_load_table
+        description: Load table metadata (schema, snapshots, location).
+        class: READ
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [namespace, table]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/namespaces/{namespace}/tables/{table}"}
+        response: {pointer: /metadata/schemas}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+
+      - name: iceberg_get_table_metadata
+        description: "Full table metadata: format version, current snapshot, partition specs, properties."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [namespace, table]
+          additionalProperties: false
+        # Same endpoint as iceberg_load_table, without narrowing to /metadata/schemas.
+        request: {method: GET, path: "/v1/namespaces/{namespace}/tables/{table}"}
+        response: {pointer: /metadata}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+
+      - name: iceberg_create_namespace
+        description: Create a namespace.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}}
+          required: [namespace]
+          additionalProperties: false
+        request:
+          method: POST
+          path: /v1/namespaces
+          body: {"namespace": ["{namespace}"], "properties": {}}
+        resources: [{type: "iceberg:namespace", pointer: /namespace}]
+
+      - name: iceberg_set_table_properties
+        description: Set table properties, for example retention or write settings.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties:
+            namespace: {type: string, maxLength: 256}
+            table: {type: string, maxLength: 256}
+            properties: {type: object}
+          required: [namespace, table, properties]
+          additionalProperties: false
+        # The REST catalog updateTable call. Limitation worth knowing: "requirements" is empty here, so
+        # this is a blind update rather than an optimistic one. A deployment that cares should add an
+        # assert-table-uuid requirement, which needs the uuid from iceberg_get_table_metadata first.
+        request:
+          method: POST
+          path: "/v1/namespaces/{namespace}/tables/{table}"
+          body: {"requirements": [], "updates": [{"action": "set-properties", "updates": "{properties}"}]}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+        dryRun: {mode: TOOL, previewTool: iceberg_get_table_metadata}
+
+      - name: iceberg_drop_table
+        description: Drop a table and purge its data files.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [namespace, table]
+          additionalProperties: false
+        request: {method: DELETE, path: "/v1/namespaces/{namespace}/tables/{table}", query: {purgeRequested: "true"}}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+        dryRun: {mode: TOOL, previewTool: iceberg_load_table}   # validate = load the exact table first

@@ -1,0 +1,115 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Pulsar: governed MCP tools over the Apache Pulsar HTTP API, configuration only.
+# Pulsar admin REST API v2: GET /admin/v2/clusters, /admin/v2/tenants,
+# /admin/v2/persistent/{tenant}/{namespace}, /admin/v2/persistent/{tenant}/{namespace}/{topic}/stats,
+# PUT and DELETE /admin/v2/persistent/{tenant}/{namespace}/{topic}.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-pulsar (taxonomy: messaging).
+# 0.1 took the namespace and topic as one slash-bearing string. Here tenant, namespace and
+# topic are separate arguments, so each is validated and encoded as its own path segment
+# and the typed resource is precise (pulsar:topic:<tenant>.<namespace>.<topic>).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-pulsar
+
+access:
+  writeGroups: [pulsar-operators]
+  approverGroups: [pulsar-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [pulsar-users, pulsar-operators], classes: [READ]}
+    - {id: operate, groups: [pulsar-operators], classes: [MUTATE, DESTRUCTIVE]}
+    # the pulsar tenant holds the broker's own system topics
+    - {id: never-delete-system-topics, effect: DENY, groups: ["*"], tools: [pulsar_delete_topic], resources: ["pulsar:topic:pulsar.*"]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-pulsar.jsonl
+
+sources:
+  - id: pulsar
+    type: http
+    baseUrl: http://pulsar-broker:8080
+    tools:
+      - name: pulsar_list_clusters
+        description: "List clusters."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/admin/v2/clusters"}
+
+      - name: pulsar_list_tenants
+        description: "List tenants."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/admin/v2/tenants"}
+
+      - name: pulsar_list_topics
+        description: "List persistent topics in one namespace."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {tenant: {type: string, maxLength: 256}, namespace: {type: string, maxLength: 256}}
+          required: [tenant, namespace]
+          additionalProperties: false
+        request: {method: GET, path: "/admin/v2/persistent/{tenant}/{namespace}"}
+        resources: [{type: "pulsar:namespace", pointers: [/tenant, /namespace]}]
+
+      - name: pulsar_get_topic_stats
+        description: "Producer, subscription and backlog statistics of one topic."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {tenant: {type: string, maxLength: 256}, namespace: {type: string, maxLength: 256}, topic: {type: string, maxLength: 256}}
+          required: [tenant, namespace, topic]
+          additionalProperties: false
+        request: {method: GET, path: "/admin/v2/persistent/{tenant}/{namespace}/{topic}/stats"}
+        resources: [{type: "pulsar:topic", pointers: [/tenant, /namespace, /topic]}]
+
+      - name: pulsar_create_topic
+        description: "Create a persistent topic."
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties: {tenant: {type: string, maxLength: 256}, namespace: {type: string, maxLength: 256}, topic: {type: string, maxLength: 256}}
+          required: [tenant, namespace, topic]
+          additionalProperties: false
+        request:
+          method: PUT
+          path: "/admin/v2/persistent/{tenant}/{namespace}/{topic}"
+          body: {}
+        resources: [{type: "pulsar:topic", pointers: [/tenant, /namespace, /topic]}]
+
+      - name: pulsar_delete_topic
+        description: "Delete a persistent topic and its backlog."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {tenant: {type: string, maxLength: 256}, namespace: {type: string, maxLength: 256}, topic: {type: string, maxLength: 256}}
+          required: [tenant, namespace, topic]
+          additionalProperties: false
+        request: {method: DELETE, path: "/admin/v2/persistent/{tenant}/{namespace}/{topic}"}
+        resources: [{type: "pulsar:topic", pointers: [/tenant, /namespace, /topic]}]
+        dryRun: {mode: TOOL, previewTool: pulsar_get_topic_stats}   # validate against the exact target first

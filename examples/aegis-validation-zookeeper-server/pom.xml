@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>aegis-validation-zookeeper-server</artifactId>
+  <packaging>pom</packaging>
+  <name>Aegis 2.0 validation: ZooKeeper server classpath (opt-in)</name>
+  <description>No code. Resolves the Apache ZooKeeper 3.9.3 SERVER with the Jetty its AdminServer needs (ZooKeeper
+    declares Jetty as provided, because the binary distribution ships it in lib/), and writes the runtime classpath to
+    target/server.classpath, so the ZooKeeper adopter example can run org.apache.zookeeper.server.ZooKeeperServerMain
+    in its own JVM, as bin/zkServer.sh does. Only built with -Preal-engines.</description>
+
+  <!-- ZooKeeper 3.9.3 declares these server-side libraries as provided, because its binary distribution
+       ships them in lib/. The versions are the ones ZooKeeper's own parent POM pins. -->
+  <properties>
+    <zookeeper.jetty.version>9.4.56.v20240826</zookeeper.jetty.version>
+    <zookeeper.dropwizard.version>4.1.12.1</zookeeper.dropwizard.version>
+    <zookeeper.jackson.version>2.15.2</zookeeper.jackson.version>
+    <zookeeper.commons-cli.version>1.5.0</zookeeper.commons-cli.version>
+    <zookeeper.snappy.version>1.1.10.5</zookeeper.snappy.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.zookeeper</groupId>
+      <artifactId>zookeeper</artifactId>
+      <version>${zookeeper.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <version>${zookeeper.jetty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>${zookeeper.jetty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-client</artifactId>
+      <version>${zookeeper.jetty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.dropwizard.metrics</groupId>
+      <artifactId>metrics-core</artifactId>
+      <version>${zookeeper.dropwizard.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${zookeeper.jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-cli</groupId>
+      <artifactId>commons-cli</artifactId>
+      <version>${zookeeper.commons-cli.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.xerial.snappy</groupId>
+      <artifactId>snappy-java</artifactId>
+      <version>${zookeeper.snappy.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.8.1</version>
+        <executions>
+          <execution>
+            <id>server-classpath</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>build-classpath</goal>
+            </goals>
+            <configuration>
+              <outputFile>${project.build.directory}/server.classpath</outputFile>
+              <includeScope>runtime</includeScope>
+              <excludeGroupIds>org.junit.jupiter,org.junit.platform,org.opentest4j,org.apiguardian</excludeGroupIds>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

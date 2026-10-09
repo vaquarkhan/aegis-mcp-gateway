@@ -1,0 +1,88 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Atlas: governed MCP tools over the Apache Atlas HTTP API, configuration only.
+# Atlas V2 REST API: GET /api/atlas/v2/types/typedefs, GET /api/atlas/v2/search/basic,
+# GET and DELETE /api/atlas/v2/entity/guid/{guid}.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-atlas (taxonomy: metadata).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-atlas
+
+access:
+  writeGroups: [atlas-operators]
+  approverGroups: [atlas-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [atlas-users, atlas-operators], classes: [READ]}
+    - {id: operate, groups: [atlas-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-atlas.jsonl
+
+sources:
+  - id: atlas
+    type: http
+    baseUrl: http://atlas:21000
+    tools:
+      - name: atlas_list_typedefs
+        description: "List type definitions in the catalog."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/atlas/v2/types/typedefs"}
+
+      - name: atlas_search_entities
+        description: "Basic search over catalog entities."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {query: {type: string, maxLength: 256}}
+          required: [query]
+          additionalProperties: false
+        request: {method: GET, path: "/api/atlas/v2/search/basic", query: {query: "{query}"}}
+
+      - name: atlas_get_entity
+        description: "One entity by GUID."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {guid: {type: string, maxLength: 200}}
+          required: [guid]
+          additionalProperties: false
+        request: {method: GET, path: "/api/atlas/v2/entity/guid/{guid}"}
+        resources: [{type: "atlas:entity", pointer: /guid}]
+
+      - name: atlas_delete_entity
+        description: "Delete one entity by GUID."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {guid: {type: string, maxLength: 200}}
+          required: [guid]
+          additionalProperties: false
+        request: {method: DELETE, path: "/api/atlas/v2/entity/guid/{guid}"}
+        resources: [{type: "atlas:entity", pointer: /guid}]
+        dryRun: {mode: TOOL, previewTool: atlas_get_entity}   # validate against the exact target first

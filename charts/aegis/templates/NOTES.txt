@@ -1,0 +1,18 @@
+{{- /*
+Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+Licensed under the Apache License, Version 2.0
+https://www.apache.org/licenses/LICENSE-2.0
+*/ -}}
+Aegis {{ .Chart.AppVersion }} is installed as {{ include "aegis.fullname" . }} ({{ .Values.replicaCount }} replica(s)).
+
+MCP endpoint inside the cluster:
+  http://{{ include "aegis.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/mcp
+
+Check readiness (every configured source listed its tools):
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "aegis.fullname" . }} {{ .Values.service.port }}
+  curl -s http://127.0.0.1:{{ .Values.service.port }}/readyz
+
+The audit journal is on the PersistentVolumeClaim data-{{ include "aegis.fullname" . }}-0. Verify it with:
+  kubectl -n {{ .Release.Namespace }} exec {{ include "aegis.fullname" . }}-0 -- java -jar /opt/aegis/aegis-gateway.jar --verify-audit <audit.file>
+
+The Service is plain HTTP. Terminate TLS in front of it, or configure host.tls with a keystore volume.

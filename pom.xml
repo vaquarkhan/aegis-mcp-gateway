@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Author: Viquar Khan -->
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
+  <!-- Aegis Gateway 2.0 root build. The 0.1 modules are not part of this line; see docs/HISTORY.md. -->
   <groupId>io.github.vaquarkhan.aegis</groupId>
-  <artifactId>aegis-mcp-gateway</artifactId>
-  <version>0.1.0</version>
+  <artifactId>aegis-gateway-2-parent</artifactId>
+  <version>2.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Aegis MCP Governance Gateway</name>
-  <description>Vendor-neutral, secure-by-default MCP governance gateway for data and streaming engines.</description>
+  <name>Aegis Gateway 2.0 (parent)</name>
+  <description>Config-driven MCP governance: one engine, two front doors (its own server and an Apache Knox extension).</description>
   <url>https://github.com/vaquarkhan/aegis-mcp-gateway</url>
   <inceptionYear>2026</inceptionYear>
 
@@ -19,61 +34,26 @@
     <license>
       <name>The Apache License, Version 2.0</name>
       <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-      <distribution>repo</distribution>
     </license>
   </licenses>
 
-  <developers>
-    <developer>
-      <id>vaquarkhan</id>
-      <name>Viquar Khan</name>
-      <url>https://github.com/vaquarkhan</url>
-    </developer>
-  </developers>
-
-  <scm>
-    <connection>scm:git:https://github.com/vaquarkhan/aegis-mcp-gateway.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/vaquarkhan/aegis-mcp-gateway.git</developerConnection>
-    <url>https://github.com/vaquarkhan/aegis-mcp-gateway</url>
-    <tag>HEAD</tag>
-  </scm>
-
   <modules>
-    <module>mcp-gateway-core</module>
-    <module>mcp-adapter-flink</module>
-    <module>mcp-adapter-kafka</module>
-    <module>mcp-adapter-spark</module>
-    <module>mcp-adapter-iceberg</module>
-    <module>mcp-adapter-pulsar</module>
-    <module>mcp-adapter-activemq</module>
-    <module>mcp-adapter-nifi</module>
-    <module>mcp-adapter-beam</module>
-    <module>mcp-adapter-storm</module>
-    <module>mcp-adapter-flume</module>
-    <module>mcp-adapter-hudi</module>
-    <module>mcp-adapter-paimon</module>
-    <module>mcp-adapter-hive</module>
-    <module>mcp-adapter-pinot</module>
-    <module>mcp-adapter-druid</module>
-    <module>mcp-adapter-doris</module>
-    <module>mcp-adapter-calcite</module>
-    <module>mcp-adapter-impala</module>
-    <module>mcp-adapter-hadoop</module>
-    <module>mcp-adapter-hbase</module>
-    <module>mcp-adapter-cassandra</module>
-    <module>mcp-adapter-kudu</module>
-    <module>mcp-adapter-ignite</module>
-    <module>mcp-adapter-bookkeeper</module>
-    <module>mcp-adapter-ozone</module>
-    <module>mcp-adapter-airflow</module>
-    <module>mcp-adapter-zookeeper</module>
-    <module>mcp-adapter-solr</module>
-    <module>mcp-adapter-superset</module>
-    <module>mcp-adapter-arrow</module>
-    <module>mcp-adapter-ranger</module>
-    <module>mcp-adapter-atlas</module>
-    <module>mcp-adapter-couchdb</module>
-    <module>mcp-gateway-dist</module>
+    <!-- The gateway itself: engine, protocol, configuration, and the two front doors. -->
+    <module>aegis-engine</module>
+    <module>aegis-mcp</module>
+    <module>aegis-observability-otlp</module>
+    <module>aegis-config</module>
+    <module>aegis-mcp-guardrails</module>
+    <module>aegis-mcp-security</module>
+    <module>aegis-gateway</module>
+    <module>aegis-source-jdbc</module>
+    <module>aegis-source-zookeeper</module>
+    <module>aegis-source-a2a</module>
+    <module>aegis-state-derby</module>
+    <module>aegis-state-postgres</module>
+    <module>aegis-knox3-extension</module>
+    <!-- Adoption examples, plugin sources, runnable bundles and real-engine validation. -->
+    <module>examples</module>
   </modules>
 
   <properties>
@@ -81,38 +61,53 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-    <mcp.sdk.version>1.1.3</mcp.sdk.version>
-    <jetty.version>12.0.16</jetty.version>
-    <slf4j.version>2.0.16</slf4j.version>
-    <logback.version>1.5.12</logback.version>
+    <!-- Pinned versions. The engine, mcp and config modules have ZERO runtime dependencies. -->
     <junit.version>5.10.2</junit.version>
-    <snakeyaml.version>2.2</snakeyaml.version>
-    <kafka.version>3.8.0</kafka.version>
-    <nimbus.jose.jwt.version>9.37.3</nimbus.jose.jwt.version>
+    <!-- Same snakeyaml line Apache Knox 3.0.0 ships (knox pom: snakeyaml.version=2.4). Optional only. -->
+    <snakeyaml.version>2.4</snakeyaml.version>
+    <!-- Exact Knox release the extension is compiled against (provided scope, never bundled). -->
+    <knox.version>3.0.0</knox.version>
+    <javax.ws.rs.version>2.0</javax.ws.rs.version>
+    <javax.servlet.version>4.0.1</javax.servlet.version>
+    <kafka.version>3.9.1</kafka.version>
+    <!-- Two uses. Test scope in aegis-source-jdbc: a real embedded SQL engine so that module has no test
+         double. Compile scope in aegis-state-derby: the embedded store behind state.type: derby-local, which
+         the own-server aegis-gateway jar bundles. 10.16 is the line that runs on Java 17; 10.17 is compiled
+         for a newer JDK and fails with UnsupportedClassVersionError here. -->
+    <derby.version>10.16.1.1</derby.version>
+    <!-- PostgreSQL JDBC driver for the optional shared multi-replica state provider. Pinned to the
+         current locally cached pgJDBC release and exercised against a real local PostgreSQL server. -->
+    <postgresql.version>42.7.12</postgresql.version>
+    <zookeeper.version>3.9.3</zookeeper.version>
+    <!-- Test scope only, in aegis-source-zookeeper: curator-test provides a real embedded ZooKeeper
+         server so that module is proven against the actual software. Never shipped. -->
+    <curator.version>5.4.0</curator.version>
+    <!-- Coverage gate defaults; modules override with their measured floor. -->
+    <coverage.line.minimum>0.00</coverage.line.minimum>
+    <coverage.branch.minimum>0.00</coverage.branch.minimum>
   </properties>
 
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>io.modelcontextprotocol.sdk</groupId>
-        <artifactId>mcp</artifactId>
-        <version>${mcp.sdk.version}</version>
+        <groupId>io.github.vaquarkhan.aegis</groupId>
+        <artifactId>aegis-engine</artifactId>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.eclipse.jetty.ee10</groupId>
-        <artifactId>jetty-ee10-servlet</artifactId>
-        <version>${jetty.version}</version>
+        <groupId>io.github.vaquarkhan.aegis</groupId>
+        <artifactId>aegis-mcp</artifactId>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-        <version>${slf4j.version}</version>
+        <groupId>io.github.vaquarkhan.aegis</groupId>
+        <artifactId>aegis-config</artifactId>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>${logback.version}</version>
-        <scope>runtime</scope>
+        <groupId>io.github.vaquarkhan.aegis</groupId>
+        <artifactId>aegis-gateway</artifactId>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.yaml</groupId>
@@ -120,14 +115,9 @@
         <version>${snakeyaml.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.kafka</groupId>
-        <artifactId>kafka-clients</artifactId>
-        <version>${kafka.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.nimbusds</groupId>
-        <artifactId>nimbus-jose-jwt</artifactId>
-        <version>${nimbus.jose.jwt.version}</version>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${postgresql.version}</version>
       </dependency>
       <dependency>
         <groupId>org.junit.jupiter</groupId>
@@ -135,13 +125,16 @@
         <version>${junit.version}</version>
         <scope>test</scope>
       </dependency>
-      <dependency>
-        <groupId>io.github.vaquarkhan.aegis</groupId>
-        <artifactId>mcp-gateway-core</artifactId>
-        <version>${project.version}</version>
-      </dependency>
     </dependencies>
   </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
   <build>
     <pluginManagement>
@@ -152,12 +145,23 @@
           <version>3.13.0</version>
           <configuration>
             <release>17</release>
+            <compilerArgs>
+              <arg>-Xlint:all,-serial,-processing,-options</arg>
+            </compilerArgs>
           </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>3.2.5</version>
+          <configuration>
+            <trimStackTrace>false</trimStackTrace>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.rat</groupId>
+          <artifactId>apache-rat-plugin</artifactId>
+          <version>0.16.1</version>
         </plugin>
         <plugin>
           <groupId>org.jacoco</groupId>
@@ -168,14 +172,40 @@
     </pluginManagement>
 
     <plugins>
+      <!-- Every source, build and documentation file must carry the Apache License 2.0 header.
+           Files that cannot carry a comment (JSON data, captured logs) are excluded explicitly. -->
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
+        <groupId>org.apache.rat</groupId>
+        <artifactId>apache-rat-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>license-headers</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <consoleOutput>true</consoleOutput>
+          <excludes>
+            <exclude>**/target/**</exclude>
+            <exclude>**/*.json</exclude>
+            <exclude>**/*.jsonl</exclude>
+            <exclude>docs/evidence/**/*.log</exclude>
+            <!-- Captured run output (transcripts, Surefire summaries) is evidence and cannot carry a header. -->
+            <exclude>**/adopters/*/results/**</exclude>
+            <!-- Generated by examples/break-glass-mcp-servers/Run-EndToEnd.ps1 (records, logs, keys). -->
+            <exclude>examples/break-glass-mcp-servers/*/run/**</exclude>
+            <exclude>examples/break-glass-mcp-servers/SUMMARY.generated.md</exclude>
+            <exclude>**/dependency-reduced-pom.xml</exclude>
+            <exclude>**/.idea/**</exclude>
+            <exclude>**/*.iml</exclude>
+          </excludes>
+        </configuration>
       </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-      </plugin>
+      <!-- Line/branch coverage: report per module, and a gate per module (thresholds set in each
+           module from measured coverage; the gate only ever ratchets up). -->
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
@@ -188,10 +218,37 @@
           </execution>
           <execution>
             <id>report</id>
-            <phase>test</phase>
+            <phase>verify</phase>
             <goals>
               <goal>report</goal>
             </goals>
+          </execution>
+          <execution>
+            <id>coverage-gate</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <haltOnFailure>true</haltOnFailure>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit>
+                      <counter>LINE</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>${coverage.line.minimum}</minimum>
+                    </limit>
+                    <limit>
+                      <counter>BRANCH</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>${coverage.branch.minimum}</minimum>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -199,17 +256,21 @@
   </build>
 
   <profiles>
+    <!-- mvn -Prelease package: writes an aggregate CycloneDX SBOM (target/bom.json and bom.xml)
+         for supply-chain review, as the 0.1 release build did. Off in the default build. -->
     <profile>
       <id>release</id>
       <build>
         <plugins>
+          <!-- Attach source jars for candidate review. Signing, voting and distribution remain release-process steps. -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
             <version>3.3.1</version>
             <executions>
               <execution>
-                <id>attach-sources</id>
+                <id>attach-source-jars</id>
+                <phase>package</phase>
                 <goals>
                   <goal>jar-no-fork</goal>
                 </goals>
@@ -217,48 +278,11 @@
             </executions>
           </plugin>
           <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.6.3</version>
-            <configuration>
-              <doclint>none</doclint>
-              <failOnError>false</failOnError>
-            </configuration>
-            <executions>
-              <execution>
-                <id>attach-javadocs</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>3.2.4</version>
-            <configuration>
-              <gpgArguments>
-                <arg>--pinentry-mode</arg>
-                <arg>loopback</arg>
-              </gpgArguments>
-            </configuration>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
             <groupId>org.cyclonedx</groupId>
             <artifactId>cyclonedx-maven-plugin</artifactId>
-            <version>2.8.0</version>
+            <version>2.9.1</version>
             <configuration>
-              <projectType>library</projectType>
+              <projectType>application</projectType>
               <schemaVersion>1.5</schemaVersion>
               <outputFormat>all</outputFormat>
             </configuration>

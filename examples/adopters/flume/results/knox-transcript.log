@@ -1,0 +1,25 @@
+# flume through knox, 2026-10-05T00:01:41.597813900Z
+
+--- real Flume 1.11.0 agent a1 (seq source, memory channel, null sink), HTTP monitoring on 127.0.0.1:57749
+
+=== read by READER | guest (READER) | tools/call flume_get_metrics {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"text":"{\"CHANNEL.mem\":{\"ChannelFillPercentage\":\"74.8\",\"ChannelCapacity\":\"1000\",\"Type\":\"CHANNEL\",\"EventTakeSuccessCount\":\"19950700\",\"ChannelSize\":\"748\",\"EventTakeAttemptCount\":\"19950701\",\"StartTime\":\"1791158414318\",\"EventPutAttemptCount\":\"19951448\",\"EventPutSuccessCount\":\"19951448\",\"StopTime\":\"0\"},\"SOURCE.seq\":{\"AppendBatchAcceptedCount\":\"0\",\"GenericProcessingFail\":\"0\",\"AppendReceivedCount\":\"0\",\"EventAcceptedCount\":\"19951448\",\"StartTime\":\"1791158414573\",\"AppendBatchReceivedCount\":\"0\",\"ChannelWriteFail\":\"0\",\"EventReceivedCount\":\"0\",\"Type\":\"SOURCE\",\"EventReadFail\":\"0\",\"AppendAcceptedCount\":\"0\",\"OpenConnectionCount\":\"0\",\"StopTime\":\"0\"}}","type":"text"}],"structuredContent":{"CHANNEL.mem":{"ChannelFillPercentage":"74.8","ChannelCapacity":"1000","Type":"CHANNEL","EventTakeSuccessCount":"19950700","ChannelSize":"748","EventTakeAttemptCount":"19950701","StartTime":"1791158414318","EventPutAttemptCount":"19951448","EventPutSuccessCount":"19951448","StopTime":"0"},"SOURCE.seq":{"AppendBatchAcceptedCount":"0","GenericProcessingFail":"0","AppendReceivedCount":"0","EventAcceptedCount":"19951448","StartTime":"1791158414573","AppendBatchReceivedCount":"0","ChannelWriteFail":"0","EventReceivedCount":"0","Type":"SOURCE","EventReadFail":"0","AppendAcceptedCount":"0","OpenConnectionCount":"0","StopTime":"0"}},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_9cea7ac5b60a934930a2380e","traceId":"d2ab4311b3a47ef562f801b4ab7af335"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-flume","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call flume_get_metrics {} | HTTP 403
+{
+"servlet":"aegis-flume-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-flume/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call flume_get_health {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"For Flume metrics please click <a href = \"./metrics\"> here</a>.","type":"text"}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_648c50cb83f19c6c42e33066","traceId":"dc34cad49de7c8373a4edc616a636747"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-flume","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call flume_get_health {} | HTTP 403
+{
+"servlet":"aegis-flume-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-flume/aegis-mcp/v1/mcp",
+"status":"403"
+}

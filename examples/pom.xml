@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>aegis-examples-parent</artifactId>
+  <packaging>pom</packaging>
+  <name>Aegis 2.0 examples</name>
+  <description>Everything that shows how to adopt Aegis, and nothing the gateway itself needs: ready-to-adapt
+    configurations for Apache projects, the plugin sources that back them (Kafka AdminClient, Spark Connect),
+    runnable distributions used by the tutorial, and the opt-in validation against real engines. None of these
+    modules is required to run the gateway; the core is aegis-engine, aegis-mcp, aegis-config plus one front door.</description>
+
+  <modules>
+    <!-- Classpath of a real Kafka 3.9.1 KRaft broker; aegis-examples starts it for the kafka-admin test. -->
+    <module>aegis-validation-kafka-server</module>
+    <module>aegis-examples</module>
+    <module>aegis-spark-connect</module>
+    <module>aegis-gateway-spark</module>
+    <module>aegis-gateway-kafka</module>
+  </modules>
+
+  <profiles>
+    <profile>
+      <!-- mvn -Preal-engines verify : validation against real Apache engines (downloads their runtimes). -->
+      <id>real-engines</id>
+      <modules>
+        <module>aegis-windows-localfs</module>
+        <module>aegis-validation-spark-connect-server</module>
+        <module>aegis-validation-zookeeper-server</module>
+        <module>aegis-validation-calcite-server</module>
+        <module>aegis-validation-iceberg-server</module>
+        <module>aegis-validation-activemq-server</module>
+        <module>aegis-validation-ignite-server</module>
+        <module>aegis-validation-flume-server</module>
+        <module>aegis-validation-bookkeeper-server</module>
+        <module>aegis-validation</module>
+        <module>aegis-validation-spark-connect</module>
+      </modules>
+    </profile>
+  </profiles>
+</project>

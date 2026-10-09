@@ -1,0 +1,89 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Paimon: governed MCP tools over the Apache Paimon HTTP API, configuration only.
+# The Paimon REST catalog: GET /v1/databases, GET /v1/databases/{db}/tables,
+# GET and DELETE /v1/databases/{db}/tables/{table}.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-paimon (taxonomy: lakehouse).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-paimon
+
+access:
+  writeGroups: [paimon-operators]
+  approverGroups: [paimon-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [paimon-users, paimon-operators], classes: [READ]}
+    - {id: operate, groups: [paimon-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-paimon.jsonl
+
+sources:
+  - id: paimon
+    type: http
+    baseUrl: http://paimon-rest:8082
+    tools:
+      - name: paimon_list_databases
+        description: "List databases in the catalog."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/v1/databases"}
+
+      - name: paimon_list_tables
+        description: "List tables in one database."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {database: {type: string, maxLength: 256}}
+          required: [database]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/databases/{database}/tables"}
+        resources: [{type: "paimon:database", pointer: /database}]
+
+      - name: paimon_get_table
+        description: "Schema and snapshots of one table."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {database: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [database, table]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/databases/{database}/tables/{table}"}
+        resources: [{type: "paimon:table", pointers: [/database, /table]}]
+
+      - name: paimon_drop_table
+        description: "Drop one table and its data files."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {database: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [database, table]
+          additionalProperties: false
+        request: {method: DELETE, path: "/v1/databases/{database}/tables/{table}"}
+        resources: [{type: "paimon:table", pointers: [/database, /table]}]
+        dryRun: {mode: TOOL, previewTool: paimon_get_table}   # validate against the exact target first

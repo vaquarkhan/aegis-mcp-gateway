@@ -67,6 +67,14 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+# Local Helm/chart render outputs (no license header; breaks RAT if left in repo root)
+/rendered*.yaml
+/aegis-rendered.yaml
+
+# Retained Keep HTTP transcripts must stay in git even when a user/global ignore has *.log.
+!examples/adopters/**/results/*-transcript.log
+!examples/adopters/**/results/**/*-transcript.log
+
 # Local secrets and runtime state (never commit)
 *.env
 .env

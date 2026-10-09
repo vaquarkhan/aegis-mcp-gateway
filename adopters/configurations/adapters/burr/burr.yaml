@@ -1,0 +1,216 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Burr (incubating): governed MCP tools over the Burr tracking server, configuration only.
+#
+# WHY THIS ONE IS DIFFERENT FROM EVERY OTHER ADAPTER HERE
+# Every other adapter governs a data system: a broker, a catalog, a cluster. This one governs an
+# *observability store for agents*. The Burr tracking server holds, per application run, the state at
+# every step, the inputs and outputs of every action, and the attributes recorded around LLM calls. In
+# practice that means prompts, model responses, retrieved documents, tool arguments, and whatever the
+# application happened to put in its state: customer records, ticket text, identifiers.
+#
+# So the dangerous operation here is a GET. `burr_get_application_trace` returns another team's agent
+# run in full. There is nothing destructive about it and that is exactly the problem: an unguarded read
+# surface over agent traces is a disclosure channel, and the obvious consumer of it is another agent.
+# This config therefore does something none of the other adapter configs need to do: it puts a READ
+# behind `allowedGroups`, and it makes the project a scoped resource so one team cannot read another's.
+#
+# ENDPOINTS
+# Taken from the Burr tracking server's own route definitions (apache/burr, main branch,
+# burr/tracking/server/run.py), not from prose documentation:
+#   GET  /api/v0/version
+#   GET  /api/v0/ready
+#   GET  /api/v0/metadata/app_spec
+#   GET  /api/v0/projects
+#   GET  /api/v0/indexing_jobs
+#   GET  /api/v0/{project_id}/{partition_key}/apps                       list runs in a project
+#   GET  /api/v0/{project_id}/{app_id}/{partition_key}/apps              one run, every step
+#   GET  /api/v0/{project_id}/annotations
+#   POST /api/v0/{project_id}/{app_id}/{partition_key}/{sequence_id}/annotations
+#   PUT  /api/v0/{project_id}/{annotation_id}/update_annotations
+# When an application has no partition key, Burr uses the literal sentinel "__none__" in the path.
+#
+# NOT EXPOSED ON PURPOSE
+#   GET /api/v0/{...}/apps with the React UI routes, /manifest.json and the catch-all: UI plumbing.
+#   The snapshot download and save endpoints on the S3 backend: they move whole trace archives, which
+#   is a backup operation for an operator, not something an agent should be able to trigger.
+
+gateway:
+  name: aegis-burr
+
+access:
+  writeGroups: [burr-operators]
+  approverGroups: [burr-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [burr-users, burr-operators], classes: [READ]}
+    - {id: operate, groups: [burr-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-burr.jsonl
+
+sources:
+  - id: burr
+    type: http
+    baseUrl: http://burr-tracking:7241
+    tools:
+      - name: burr_get_version
+        description: "Burr tracking server version."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v0/version"}
+
+      - name: burr_get_ready
+        description: "Whether the tracking backend has finished initialising."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v0/ready"}
+
+      - name: burr_get_backend_spec
+        description: "Which tracking backend is in use and whether it supports indexing, snapshotting and annotations."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v0/metadata/app_spec"}
+
+      - name: burr_list_projects
+        description: "List Burr projects visible to the tracking server."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v0/projects"}
+
+      - name: burr_list_indexing_jobs
+        description: "Recent tracking-server indexing jobs and how many records each processed."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/api/v0/indexing_jobs"}
+
+      - name: burr_list_applications
+        description: "List application runs in one Burr project, newest first."
+        class: READ
+        inputSchema:
+          type: object
+          properties:
+            projectId: {type: string, maxLength: 256}
+            partitionKey: {type: string, maxLength: 256}
+          required: [projectId, partitionKey]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v0/{projectId}/{partitionKey}/apps"}
+        resources: [{type: "burr:project", pointer: /projectId}]
+
+      - name: burr_get_application_trace
+        description: "Every step of one application run, including the state and attributes recorded at each step."
+        class: READ
+        # An agent run's trace carries prompts, model output and whatever the application put in state.
+        # A READ that returns that is a disclosure, so it is listed only to operators. If you would not
+        # let a caller read the application's logs, do not let them read its trace.
+        allowedGroups: [burr-operators]
+        inputSchema:
+          type: object
+          properties:
+            projectId: {type: string, maxLength: 256}
+            appId: {type: string, maxLength: 256}
+            partitionKey: {type: string, maxLength: 256}
+          required: [projectId, appId, partitionKey]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v0/{projectId}/{appId}/{partitionKey}/apps"}
+        # Both the project and the run are governed objects, so a scope or policy rule can confine a
+        # caller to their own project without naming every run.
+        resources:
+          - {type: "burr:project", pointer: /projectId}
+          - {type: "burr:app", pointers: [/projectId, /appId], join: "/"}
+
+      - name: burr_list_annotations
+        description: "Human annotations recorded against runs in one project."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {projectId: {type: string, maxLength: 256}}
+          required: [projectId]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v0/{projectId}/annotations"}
+        resources: [{type: "burr:project", pointer: /projectId}]
+
+      - name: burr_annotate_step
+        description: "Record an annotation against one step of one run: a thumbs up or down, tags, and a note."
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties:
+            projectId: {type: string, maxLength: 256}
+            appId: {type: string, maxLength: 256}
+            partitionKey: {type: string, maxLength: 256}
+            sequenceId: {type: integer, minimum: 0, maximum: 1000000}
+            stepName: {type: string, maxLength: 256}
+            tags: {type: array, items: {type: string, maxLength: 64}, maxItems: 32}
+            thumbsUp: {type: boolean}
+            note: {type: string, maxLength: 4096}
+          required: [projectId, appId, partitionKey, sequenceId, stepName, tags, thumbsUp]
+          additionalProperties: false
+        # tags and thumbsUp are required: a real Burr 0.42.0 server answers 422 when tags or an observation's
+        # thumbs_up_thumbs_down is missing, and an absent argument would drop that field from the body.
+        # The body is Burr's AnnotationCreate: span_id, step_name, tags, observations[]. Each
+        # observation carries free-form data_fields, an optional thumbs up or down, and pointers into
+        # the step's state; this tool writes one observation with the note in data_fields.
+        request:
+          method: POST
+          path: "/api/v0/{projectId}/{appId}/{partitionKey}/{sequenceId}/annotations"
+          body:
+            span_id: null
+            step_name: "{stepName}"
+            tags: "{tags}"
+            observations:
+              - data_fields: {note: "{note}"}
+                thumbs_up_thumbs_down: "{thumbsUp}"
+                data_pointers: []
+        resources:
+          - {type: "burr:project", pointer: /projectId}
+          - {type: "burr:app", pointers: [/projectId, /appId], join: "/"}
+
+      - name: burr_update_annotation
+        description: "Replace an existing annotation."
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties:
+            projectId: {type: string, maxLength: 256}
+            annotationId: {type: integer, minimum: 0, maximum: 1000000000}
+            stepName: {type: string, maxLength: 256}
+            tags: {type: array, items: {type: string, maxLength: 64}, maxItems: 32}
+            thumbsUp: {type: boolean}
+            note: {type: string, maxLength: 4096}
+          required: [projectId, annotationId, stepName, tags, thumbsUp]
+          additionalProperties: false
+        request:
+          method: PUT
+          path: "/api/v0/{projectId}/{annotationId}/update_annotations"
+          body:
+            span_id: null
+            step_name: "{stepName}"
+            tags: "{tags}"
+            observations:
+              - data_fields: {note: "{note}"}
+                thumbs_up_thumbs_down: "{thumbsUp}"
+                data_pointers: []
+        resources: [{type: "burr:project", pointer: /projectId}]

@@ -1,0 +1,69 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Configuration for the client-language demo in this directory. It governs the functional local
+# example_inventory_service.py. This proves that clients in several languages reach the same
+# governance; it is not a target-product compatibility claim.
+gateway:
+  name: aegis-clients-demo
+
+access:
+  writeGroups: [demo-operators]
+  approverGroups: [demo-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: read, groups: [demo-users, demo-operators], classes: [READ]}
+    - {id: operate, groups: [demo-operators], classes: [DESTRUCTIVE]}
+
+egress:
+  allowCidrs: [127.0.0.0/8]          # the example service is loopback and must be allowed explicitly
+
+audit:
+  file: audit/clients-demo.jsonl
+
+sources:
+  - id: demo
+    type: http
+    baseUrl: http://127.0.0.1:9109
+    tools:
+      - name: demo_list_things
+        description: List the things this service knows about.
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /things}
+        response: {pointer: /things}
+
+      - name: demo_delete_thing
+        description: Delete one thing. Irreversible.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {id: {type: string, maxLength: 64}}
+          required: [id]
+          additionalProperties: false
+        request: {method: DELETE, path: "/things/{id}"}
+        resources: [{type: "demo:thing", pointer: /id}]
+
+host:
+  listen: {host: 127.0.0.1, port: 8099}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: ANALYST_TOKEN, actor: ana, groups: [demo-users]}
+        - {tokenEnv: OPERATOR_TOKEN, actor: oscar, groups: [demo-operators]}
+        - {tokenEnv: APPROVER_TOKEN, actor: bob, groups: [demo-approvers]}

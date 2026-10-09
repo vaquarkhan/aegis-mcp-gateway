@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <!-- Explicit: the default ../pom.xml is examples/pom.xml, a different artifact, so without this
+         Maven falls back to the local repository and builds against whatever was installed there. -->
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>aegis-gateway-spark</artifactId>
+  <name>Aegis 2.0 gateway with the Spark Connect source</name>
+  <description>No code: the gateway plus the spark-connect source in one runnable jar
+    (target/aegis-gateway-spark-2.0.0-SNAPSHOT-all.jar). Used by docs/TUTORIAL-SPARK-AND-SPARK-CONNECT.md.
+    The plain aegis-gateway jar stays free of Spark.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-gateway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-spark-connect</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedClassifierName>all</shadedClassifierName>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <transformers>
+                <!-- Merges the ServiceLoader files, so type: spark-connect is found next to the built-ins. -->
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>io.github.vaquarkhan.aegis.gateway.Main</mainClass>
+                </transformer>
+              </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/versions/*/module-info.class</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

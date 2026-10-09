@@ -1,0 +1,75 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="720" viewBox="0 0 1400 720" role="img" aria-labelledby="title description">
+  <title id="title">Aegis is an MCP-first governance core with optional hosts</title>
+  <desc id="description">The Aegis MCP engine, protocol, policy, catalog, approval, receipt, audit, egress, state, security, guardrails, observability, and source modules form the core. Aegis can use its own host or integrate with an Apache Knox topology, where Knox supplies identity and route admission before Aegis evaluates the MCP action.</desc>
+  <defs>
+    <linearGradient id="head" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#061e35"/><stop offset="1" stop-color="#08726f"/></linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e1f6f1"/><stop offset="1" stop-color="#f8fffd"/></linearGradient>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#122c3a" flood-opacity=".16"/></filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,1 L11,6 L0,11 Z" fill="#27768a"/></marker>
+    <style>
+      text { font-family: &quot;Segoe UI&quot;, Arial, sans-serif; }
+      .title { font-size: 36px; font-weight: 800; fill: #fff; }
+      .sub { font-size: 17px; fill: #d6f1ee; }
+      .eyebrow { font-size: 13px; font-weight: 800; letter-spacing: 1.5px; fill: #507181; }
+      .heading { font-size: 23px; font-weight: 800; fill: #123246; }
+      .label { font-size: 16px; font-weight: 750; fill: #193b4b; }
+      .body { font-size: 13px; fill: #496976; }
+      .tiny { font-size: 12px; font-weight: 700; fill: #52717b; }
+      .line { fill:none; stroke:#27768a; stroke-width:3; marker-end:url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1400" height="720" fill="#f5fafb"/>
+  <rect x="25" y="22" width="1350" height="108" rx="22" fill="url(#head)"/>
+  <text x="65" y="68" class="title">Aegis is the MCP-first governance platform. Hosts are deployment choices.</text>
+  <text x="65" y="100" class="sub">HTTP perimeter admission and MCP semantic governance apply at distinct, composable layers.</text>
+
+  <text x="58" y="180" class="eyebrow">MCP CLIENTS</text>
+  <g filter="url(#shadow)"><rect x="58" y="205" width="240" height="315" rx="20" fill="#fff" stroke="#a8cad4"/></g>
+  <text x="178" y="251" class="heading" text-anchor="middle">Agents and clients</text>
+  <text x="178" y="282" class="body" text-anchor="middle">IDE, desktop, service,</text><text x="178" y="302" class="body" text-anchor="middle">or agent framework</text>
+  <rect x="88" y="340" width="180" height="48" rx="10" fill="#eef7fa"/><text x="178" y="369" class="label" text-anchor="middle">MCP request</text>
+  <text x="178" y="423" class="tiny" text-anchor="middle">tool name, structured arguments,</text><text x="178" y="442" class="tiny" text-anchor="middle">resources, protocol metadata</text>
+
+  <path d="M298 362 H390" class="line"/>
+  <text x="344" y="343" class="tiny" text-anchor="middle">MCP</text>
+
+  <text x="390" y="180" class="eyebrow">AEGIS OWNED MCP GOVERNANCE CORE</text>
+  <g filter="url(#shadow)"><rect x="390" y="205" width="650" height="405" rx="24" fill="url(#core)" stroke="#48a392" stroke-width="2"/></g>
+  <text x="425" y="250" class="heading">Aegis decides whether the action may execute</text>
+  <text x="425" y="278" class="body">The decision is semantic: caller, tool class, typed resource, arguments, definition digest, approval, receipt, and evidence.</text>
+  <g>
+    <rect x="425" y="314" width="180" height="75" rx="12" fill="#fff" stroke="#9ed0c4"/><text x="515" y="344" class="label" text-anchor="middle">MCP and catalog</text><text x="515" y="367" class="tiny" text-anchor="middle">protocol, schemas, pins</text>
+    <rect x="625" y="314" width="180" height="75" rx="12" fill="#fff" stroke="#9ed0c4"/><text x="715" y="344" class="label" text-anchor="middle">Governance engine</text><text x="715" y="367" class="tiny" text-anchor="middle">policy, scope, egress</text>
+    <rect x="825" y="314" width="180" height="75" rx="12" fill="#fff" stroke="#9ed0c4"/><text x="915" y="344" class="label" text-anchor="middle">Human controls</text><text x="915" y="367" class="tiny" text-anchor="middle">approval and receipt</text>
+    <rect x="425" y="414" width="180" height="75" rx="12" fill="#fff" stroke="#9ed0c4"/><text x="515" y="444" class="label" text-anchor="middle">Evidence and state</text><text x="515" y="467" class="tiny" text-anchor="middle">audit, Derby, PostgreSQL</text>
+    <rect x="625" y="414" width="180" height="75" rx="12" fill="#fff" stroke="#9ed0c4"/><text x="715" y="444" class="label" text-anchor="middle">Security and hooks</text><text x="715" y="467" class="tiny" text-anchor="middle">identity, guardrails, CORS</text>
+    <rect x="825" y="414" width="180" height="75" rx="12" fill="#fff" stroke="#9ed0c4"/><text x="915" y="444" class="label" text-anchor="middle">Sources and telemetry</text><text x="915" y="467" class="tiny" text-anchor="middle">MCP, HTTP, JDBC, plugins</text>
+  </g>
+  <rect x="425" y="526" width="580" height="48" rx="12" fill="#0b5d62"/><text x="715" y="556" style="font:750 14px 'Segoe UI',Arial;fill:#fff" text-anchor="middle">Aegis owns the MCP action decision and passes service credentials only after journaled approval.</text>
+
+  <path d="M1040 340 H1110" class="line"/><path d="M1040 474 H1110" class="line"/>
+  <text x="1075" y="321" class="tiny" text-anchor="middle">host choice</text>
+
+  <text x="1110" y="180" class="eyebrow">OPTIONAL HOST INTEGRATIONS</text>
+  <g filter="url(#shadow)"><rect x="1110" y="205" width="235" height="172" rx="20" fill="#fff" stroke="#8cb6ca"/></g>
+  <text x="1227" y="246" class="heading" text-anchor="middle">Aegis own host</text><text x="1227" y="277" class="body" text-anchor="middle">Aegis listener, TLS,</text><text x="1227" y="297" class="body" text-anchor="middle">JWT/static identity, routes</text><text x="1227" y="329" class="tiny" text-anchor="middle">aegis-gateway + security</text>
+  <g filter="url(#shadow)"><rect x="1110" y="438" width="235" height="172" rx="20" fill="#fff" stroke="#b8a6d7"/></g>
+  <text x="1227" y="479" class="heading" text-anchor="middle">Optional Knox adapter</text><text x="1227" y="510" class="body" text-anchor="middle">uses Knox-provided identity</text><text x="1227" y="530" class="body" text-anchor="middle">and route admission</text><text x="1227" y="562" class="tiny" text-anchor="middle">thin extension, public APIs only</text>
+
+  <text x="700" y="668" style="font:750 15px 'Segoe UI',Arial;fill:#176b61" text-anchor="middle">Knox route admission and Aegis MCP action governance compose at distinct control layers.</text>
+</svg>

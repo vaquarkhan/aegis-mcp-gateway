@@ -1,0 +1,2 @@
+# Tutorial runtime state (audit journal, KRaft log dirs, Connect offsets). Never commit it.
+work/

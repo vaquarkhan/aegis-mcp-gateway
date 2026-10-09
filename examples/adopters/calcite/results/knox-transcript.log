@@ -1,0 +1,33 @@
+# calcite through knox, 2026-10-05T01:15:56.319686200Z
+
+--- real Calcite 1.42.0 behind Avatica 1.28.0 on 127.0.0.1:49258; SALES.ORDERS has 3 rows
+
+=== read by READER | guest (READER) | tools/call jdbc_list_tables {"schema":"SALES"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"tables\":[{\"TABLE_CAT\":null,\"TABLE_SCHEM\":\"SALES\",\"TABLE_NAME\":\"ORDERS\",\"TABLE_TYPE\":\"TABLE\",\"REMARKS\":null,\"TYPE_CAT\":null,\"TYPE_SCHEM\":null,\"TYPE_NAME\":null,\"SELF_REFERENCING_COL_NAME\":null,\"REF_GENERATION\":null}],\"rowCount\":1,\"truncated\":false}"}],"structuredContent":{"tables":[{"TABLE_CAT":null,"TABLE_SCHEM":"SALES","TABLE_NAME":"ORDERS","TABLE_TYPE":"TABLE","REMARKS":null,"TYPE_CAT":null,"TYPE_SCHEM":null,"TYPE_NAME":null,"SELF_REFERENCING_COL_NAME":null,"REF_GENERATION":null}],"rowCount":1,"truncated":false},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_b5a6aed56daa9e619240aae4","traceId":"c5ed6227c667fdd9667a0dcb87c67cbd"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-calcite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call jdbc_list_tables {"schema":"SALES"} | HTTP 403
+{
+"servlet":"aegis-calcite-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-calcite/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call jdbc_run_query {"sql":"SELECT ITEM, PRICE FROM SALES.ORDERS WHERE PRICE > 5 ORDER BY ID"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\"rows\":[{\"ITEM\":\"widget\",\"PRICE\":\"9.5\"},{\"ITEM\":\"gadget\",\"PRICE\":\"12.0\"}],\"rowCount\":2,\"truncated\":false}"}],"structuredContent":{"rows":[{"ITEM":"widget","PRICE":"9.5"},{"ITEM":"gadget","PRICE":"12.0"}],"rowCount":2,"truncated":false},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_8e6112ace45c51d76aa80da4","traceId":"9b0db409908d2858321fcedbaebf914d"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-calcite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call jdbc_run_query {"sql":"SELECT ITEM, PRICE FROM SALES.ORDERS WHERE PRICE > 5 ORDER BY ID"} | HTTP 403
+{
+"servlet":"aegis-calcite-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-calcite/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== write smuggled into the read-only SQL tool | sam (OPERATOR) | tools/call jdbc_run_query {"sql":"DELETE FROM SALES.ORDERS"} | HTTP 200 decision=DENIED:INVALID_INPUT:step8
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"type":"text","text":"Aegis denied this call: INVALID_INPUT (step 8). hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DELETE', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:INVALID_INPUT:step8","requestId":"req_30c32706281badcf8c9f8fa1","code":"INVALID_INPUT","step":8,"reason":"hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DELETE', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]","traceId":"429bed37e1606c236469598b71007139"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-calcite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== write hidden after a comment | sam (OPERATOR) | tools/call jdbc_run_query {"sql":"/* report */ DROP TABLE SALES.ORDERS"} | HTTP 200 decision=DENIED:INVALID_INPUT:step8
+{"jsonrpc":"2.0","id":6,"result":{"content":[{"type":"text","text":"Aegis denied this call: INVALID_INPUT (step 8). hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:INVALID_INPUT:step8","requestId":"req_251aadde1514fbbe2f4302cf","code":"INVALID_INPUT","step":8,"reason":"hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]","traceId":"b37454a8f476fe4e67b522d98ebdedb6"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-calcite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+--- Calcite reports SALES.ORDERS with 3 rows after both refused writes

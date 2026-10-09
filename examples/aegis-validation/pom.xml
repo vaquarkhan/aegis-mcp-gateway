@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <!-- Explicit: the default ../pom.xml is examples/pom.xml, a different artifact, so without this
+         Maven falls back to the local repository and builds against whatever was installed there. -->
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>aegis-validation</artifactId>
+  <name>Aegis 2.0 validation against real engines (opt-in)</name>
+  <description>Runs the shipped example configuration against a REAL Apache Flink cluster started in-process
+    (MiniCluster with its REST endpoint). Opt-in (profile real-engines) because it pulls the Flink runtime.</description>
+
+  <properties>
+    <flink.version>1.20.1</flink.version>
+    <spark.version>4.0.1</spark.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-config</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- The own-host front door, so each adopter scenario also runs over real HTTP without Knox. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-gateway</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- The zookeeper source plugin for the ZooKeeper example; the server itself runs in its own JVM. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-source-zookeeper</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- The a2a source plugin for the A2A agent example; the agent itself is a separate Python process. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-source-a2a</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- The jdbc source plugin and the Avatica client driver an operator adds for the Calcite example. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-source-jdbc</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.calcite.avatica</groupId>
+      <artifactId>avatica</artifactId>
+      <version>1.28.0</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Build order only: the server classpath files and unpacked distributions must exist. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-bookkeeper-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-flume-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-ignite-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-activemq-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-iceberg-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-kafka-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-calcite-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-zookeeper-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-examples</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-streaming-java</artifactId>
+      <version>${flink.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-clients</artifactId>
+      <version>${flink.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-core_2.13</artifactId>
+      <version>${spark.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <!-- Flink 1.20 on Java 17 needs these opens (Flink's documented JVM options for Java 17). -->
+          <argLine>@{argLine} --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
+            --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED
+            --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED
+            --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED
+            --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.text=ALL-UNNAMED
+            --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+            --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED
+            --add-opens=java.base/sun.util.calendar=ALL-UNNAMED -Djdk.reflect.useDirectMethodHandle=false
+            -Dio.netty.tryReflectionSetAccessible=true</argLine>
+          <systemPropertyVariables>
+            <!-- Each two-front-door scenario writes its HTTP transcript and audit journal here. -->
+            <aegis.results.dir>${project.build.directory}/adopter-results</aegis.results.dir>
+            <aegis.knox.bundle>${project.basedir}/../../aegis-knox3-extension/target/aegis-knox3-extension-${project.version}-knox-bundle.jar</aegis.knox.bundle>
+            <aegis.activemq.home>${project.basedir}/../aegis-validation-activemq-server/target/dist/apache-activemq-6.3.2</aegis.activemq.home>
+            <aegis.bookkeeper.serverClasspathFile>${project.basedir}/../aegis-validation-bookkeeper-server/target/server.classpath</aegis.bookkeeper.serverClasspathFile>
+            <aegis.flume.serverClasspathFile>${project.basedir}/../aegis-validation-flume-server/target/server.classpath</aegis.flume.serverClasspathFile>
+            <aegis.ignite.serverClasspathFile>${project.basedir}/../aegis-validation-ignite-server/target/server.classpath</aegis.ignite.serverClasspathFile>
+            <aegis.iceberg.serverClasspathFile>${project.basedir}/../aegis-validation-iceberg-server/target/server.classpath</aegis.iceberg.serverClasspathFile>
+            <aegis.kafka.serverClasspathFile>${project.basedir}/../aegis-validation-kafka-server/target/server.classpath</aegis.kafka.serverClasspathFile>
+            <aegis.kafka.pluginJar>${project.basedir}/../aegis-examples/target/aegis-examples-${project.version}.jar</aegis.kafka.pluginJar>
+            <aegis.kafka.pluginClasspathFile>${project.basedir}/../aegis-examples/target/plugin.classpath</aegis.kafka.pluginClasspathFile>
+            <aegis.calcite.serverClasspathFile>${project.basedir}/../aegis-validation-calcite-server/target/server.classpath</aegis.calcite.serverClasspathFile>
+            <aegis.jdbc.pluginJar>${project.basedir}/../../aegis-source-jdbc/target/aegis-source-jdbc-${project.version}.jar</aegis.jdbc.pluginJar>
+            <aegis.jdbc.pluginClasspathFile>${project.basedir}/../../aegis-source-jdbc/target/plugin.classpath</aegis.jdbc.pluginClasspathFile>
+            <aegis.calcite.driverJar>${org.apache.calcite.avatica:avatica:jar}</aegis.calcite.driverJar>
+            <aegis.zookeeper.serverClasspathFile>${project.basedir}/../aegis-validation-zookeeper-server/target/server.classpath</aegis.zookeeper.serverClasspathFile>
+            <aegis.zookeeper.pluginJar>${project.basedir}/../../aegis-source-zookeeper/target/aegis-source-zookeeper-${project.version}.jar</aegis.zookeeper.pluginJar>
+            <aegis.zookeeper.pluginClasspathFile>${project.basedir}/../../aegis-source-zookeeper/target/plugin.classpath</aegis.zookeeper.pluginClasspathFile>
+            <aegis.a2a.pluginJar>${project.basedir}/../../aegis-source-a2a/target/aegis-source-a2a-${project.version}.jar</aegis.a2a.pluginJar>
+            <aegis.a2a.pluginClasspathFile>${project.basedir}/../../aegis-source-a2a/target/plugin.classpath</aegis.a2a.pluginClasspathFile>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+      <!-- Sets ${groupId:artifactId:type} to each dependency's file, so tests know which driver jar an operator
+           would copy into Knox ext/. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.8.1</version>
+        <executions>
+          <execution>
+            <id>dependency-paths</id>
+            <goals>
+              <goal>properties</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- The two-front-door harness (package ...validation.frontdoor) is reused by examples whose engine
+           client cannot share this classpath, such as Spark Connect, so the test classes ship as a test-jar. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.1</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <!-- Explicit: the default ../pom.xml is examples/pom.xml, a different artifact, so without this
+         Maven falls back to the local repository and builds against whatever was installed there. -->
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>aegis-examples</artifactId>
+  <name>Aegis 2.0 examples (Spark, Iceberg, Flink, Kafka)</name>
+  <description>The Kafka AdminClient plugin source (type: kafka-admin), and the tests that run every adopter
+    configuration under adopters/configurations (Spark, Spark Connect, Iceberg REST catalog, Flink, Kafka
+    Connect REST and the 25 deployable adapter configurations) through the governance engine. The configurations
+    themselves live in adopters/; this module holds only code and tests. The Kafka AdminClient plugin shows
+    the ServiceLoader seam for backends that have neither an MCP server nor a REST API.</description>
+  <properties>
+    <!-- Coverage floor = measured default-build coverage minus about 2 points (docs/VALIDATION.md). -->
+    <coverage.line.minimum>0.74</coverage.line.minimum>
+    <coverage.branch.minimum>0.42</coverage.branch.minimum>
+  </properties>
+
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+    </dependency>
+    <!-- Only the kafka-admin plugin source needs it; deployments that do not use it do not ship it. -->
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafka.version}</version>
+      <optional>true</optional>
+    </dependency>
+    <!-- Build order only (nothing from it lands on this classpath): the kafka-admin test starts a real
+         KRaft broker in its own JVM from that module's target/server.classpath. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-kafka-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-mcp</artifactId>
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- Test scope only: the adapter-config harness loads the jdbc-source configs (hive and the other
+         SQL engines) to check they parse and expose the tool surface the file declares. The source's own
+         behaviour is tested in aegis-source-jdbc; nothing here needs a driver or a database. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-source-jdbc</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Test scope only, and for two reasons. The adapter-config harness needs the zookeeper source on
+         the classpath to load zookeeper.yaml at all. It also brings ZooKeeper's own jar, which lets
+         ZooKeeperAdminCommandsTest resolve the /commands/<name> paths this config declares through
+         org.apache.zookeeper.server.admin.Commands: ZooKeeper's own registry is the oracle, so an
+         invented command name cannot ship. The source's behaviour is tested in aegis-source-zookeeper
+         against a real embedded server. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-source-zookeeper</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Test scope only: validates the Apache-project governance example with its durable local-state
+         provider in a temporary directory, so the sample never writes state beside source files. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-state-derby</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-mcp-guardrails</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <derby.stream.error.file>${project.build.directory}/derby/derby.log</derby.stream.error.file>
+            <aegis.kafka.serverClasspathFile>${project.basedir}/../aegis-validation-kafka-server/target/server.classpath</aegis.kafka.serverClasspathFile>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <!-- What an operator copies into Knox ext/ to use the kafka-admin source inside Knox: this module's jar
+           plus target/plugin.classpath (kafka-clients and its compression libraries; kafka-clients is optional
+           for consumers of this module, so it has to be listed explicitly). The Kafka adopter example installs
+           exactly this. -->
+      <id>real-engines</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.8.1</version>
+            <executions>
+              <execution>
+                <id>plugin-classpath</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>build-classpath</goal>
+                </goals>
+                <configuration>
+                  <outputFile>${project.build.directory}/plugin.classpath</outputFile>
+                  <includeScope>runtime</includeScope>
+                  <excludeGroupIds>io.github.vaquarkhan.aegis,org.yaml,org.junit.jupiter,org.junit.platform,org.opentest4j,org.apiguardian</excludeGroupIds>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
