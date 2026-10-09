@@ -19,7 +19,7 @@ Aegis Gateway 2.0 is a configuration-driven governance boundary for Model Contex
 
 This handbook explains the product from problem through deployment and operation. Evidence has two positive stages: a configuration/contract profile demonstrates that Aegis parses and governs a declared integration shape; a retained run against the named target version establishes target-version verification.
 
-> **Build governed MCP actions with evidence.** The [validation report](VALIDATION.md) records deterministic regression evidence and retained target evidence. The [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/examples/adopters/README.md) identifies 26 profiles with retained own-host and Knox-host target evidence and 6 configuration/contract profiles that still need a full product stack (Atlas, Cassandra, Hive, Impala, Paimon, Ranger).
+> **Build governed MCP actions with evidence.** The [validation report](VALIDATION.md) records deterministic regression evidence and retained target evidence. The [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-gateway-20261009/examples/adopters/README.md) identifies 26 profiles with retained own-host and Knox-host target evidence and 6 configuration/contract profiles that still need a full product stack (Atlas, Cassandra, Hive, Impala, Paimon, Ranger).
 
 ## Contents
 
@@ -192,7 +192,7 @@ The repository retains **26 historical two-door profile/scenario runs**: ActiveM
 
 The following **6 profiles are configuration/contract supported but not real-engine verified** on this host: Atlas, Cassandra, Hive, Impala, Paimon, and Ranger. Their folders carry an exact canonical YAML copy and an explicit prerequisite; they intentionally do not carry fabricated result logs or topology snapshots.
 
-The 25 deployable adapter configurations contain 116 declared tools. The executable 0.1-to-2.0 comparison surface is 165 tools, including the two Kafka Admin read capabilities and Burr. Five former adapter surfaces without a real API were removed rather than represented as nonexistent HTTP APIs. See [Validation](VALIDATION.md), [coverage contract](COVERAGE-0.1-VS-2.0.md), and the [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/examples/adopters/README.md) for exact evidence and limitations.
+The 25 deployable adapter configurations contain 116 declared tools. The executable 0.1-to-2.0 comparison surface is 165 tools, including the two Kafka Admin read capabilities and Burr. Five former adapter surfaces without a real API were removed rather than represented as nonexistent HTTP APIs. See [Validation](VALIDATION.md), [coverage contract](COVERAGE-0.1-VS-2.0.md), and the [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-gateway-20261009/examples/adopters/README.md) for exact evidence and limitations.
 
 ### What is proven, and what is not
 
@@ -299,7 +299,7 @@ What each part does:
 - `serverCatalog` (optional) is an offline signed register of which configured sources may start and which tools each may bind. A break-glass order signed with a separate key can quarantine or revoke a server for up to 24 hours. Both are read at startup only; see [CONFIGURATION.md](CONFIGURATION.md#servercatalog).
 - The source maps the upstream operation to a governed name/class/resource. Its backend bearer token is resolved only after the engine commits audit intent.
 
-The shipped configuration is at [`adopters/configurations/existing-mcp-server/existing-mcp-server.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/existing-mcp-server/existing-mcp-server.yaml). It also shows an optional stdio source with `unlistedTools: HIDE`.
+The shipped configuration is at [`adopters/configurations/existing-mcp-server/existing-mcp-server.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-gateway-20261009/adopters/configurations/existing-mcp-server/existing-mcp-server.yaml). It also shows an optional stdio source with `unlistedTools: HIDE`.
 
 ### A declarative REST tool with semantic success checking
 

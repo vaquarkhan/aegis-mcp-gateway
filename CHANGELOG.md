@@ -17,6 +17,8 @@
 
 ## 2.0.0 (unreleased)
 
+- The Superset front-door test seeds two charts from a local SQLite table when the public
+  example-data download is unavailable, so the own-host run does not depend on that host.
 - Public docs link the adopter catalog, configurations, and tutorials on
   `aegis-2.0-gateway-20261009`. Those paths are not on `main`.
 - The OTLP drain test's local collector reads the POST off the accept thread and answers with a
