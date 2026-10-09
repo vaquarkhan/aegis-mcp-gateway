@@ -179,7 +179,7 @@ This project addresses the portion of all ten risks visible at the gateway bound
 
 A project does not modify its code. An operator selects the backend boundary that actually exists, declares only real operations, applies Aegis configuration, gives the gateway a least-privilege service credential, and verifies the target version through the selected front door.
 
-1. Start from an existing profile in [`adopters/configurations`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-mcp-gateway-2.0-review-ready/adopters/configurations), or create a new source definition using [Configuration](CONFIGURATION.md).
+1. Start from an existing profile in [`adopters/configurations`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-gateway-20261009/adopters/configurations), or create a new source definition using [Configuration](CONFIGURATION.md).
 2. Name each tool accurately and set `READ`, `MUTATE`, or `DESTRUCTIVE`; do not label a broad execution surface as read-only.
 3. Extract a typed resource from every named backend object, such as a topic, table, namespace, connector, or job.
 4. Restrict caller groups, policy, and backend network destinations.

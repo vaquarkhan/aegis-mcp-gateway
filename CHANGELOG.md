@@ -18,7 +18,7 @@
 ## 2.0.0 (unreleased)
 
 - Public docs link the adopter catalog, configurations, and tutorials on
-  `aegis-mcp-gateway-2.0-review-ready`. Those paths are not on `main`.
+  `aegis-2.0-gateway-20261009`. Those paths are not on `main`.
 - The OTLP drain test's local collector reads the POST off the accept thread and answers with a
   fixed-length body, so a Windows JDK does not time out the export and report zero spans.
 - Host trust anchor for the server catalog: `--require-server-catalog <review.pub>`,
