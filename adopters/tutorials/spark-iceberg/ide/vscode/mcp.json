@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "aegis-token",
+      "description": "Aegis bearer token for this tutorial (the value of READER_TOKEN or ENGINEER_TOKEN)",
+      "password": true
+    }
+  ],
+  "servers": {
+    "aegis-lake": {
+      "type": "http",
+      "url": "http://127.0.0.1:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:aegis-token}"
+      }
+    }
+  }
+}

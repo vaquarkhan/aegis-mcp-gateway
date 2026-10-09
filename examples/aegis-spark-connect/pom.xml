@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <!-- Explicit: the default ../pom.xml is examples/pom.xml, a different artifact, so without this
+         Maven falls back to the local repository and builds against whatever was installed there. -->
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>aegis-spark-connect</artifactId>
+  <name>Aegis 2.0 Spark Connect source</name>
+  <description>A governed tool source for Apache Spark Connect (type: spark-connect). The gateway talks to a Spark
+    Connect server over gRPC with the official Spark Connect JVM client; Spark itself never runs inside the gateway.
+    Separate module so deployments that do not govern Spark Connect never ship the client.</description>
+
+  <properties>
+    <!-- Coverage floor = measured default-build coverage minus about 2 points (docs/VALIDATION.md). -->
+    <coverage.line.minimum>0.41</coverage.line.minimum>
+    <coverage.branch.minimum>0.37</coverage.branch.minimum>
+    <spark.version>4.0.1</spark.version>
+    <!-- Set by -Preal-engines; empty means the real-server test is skipped (reported as skipped, not passed). -->
+    <aegis.sparkConnect.serverClasspathFile></aegis.sparkConnect.serverClasspathFile>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-connect-client-jvm_2.13</artifactId>
+      <version>${spark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <!-- The Spark Connect client uses Arrow, which needs these opens on Java 17 (Spark's documented options). -->
+          <argLine>@{argLine} --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+            --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED</argLine>
+          <systemPropertyVariables>
+            <aegis.sparkConnect.serverClasspathFile>${aegis.sparkConnect.serverClasspathFile}</aegis.sparkConnect.serverClasspathFile>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <!-- mvn -Preal-engines verify : also runs the plugin against a REAL Spark Connect server (separate JVM). -->
+      <id>real-engines</id>
+      <properties>
+        <aegis.sparkConnect.serverClasspathFile>${project.basedir}/../aegis-validation-spark-connect-server/target/server.classpath</aegis.sparkConnect.serverClasspathFile>
+      </properties>
+      <build>
+        <plugins>
+          <!-- What an operator copies into Knox ext/ next to the Aegis bundle to use this source inside Knox:
+               this module's jar plus target/plugin.classpath (its runtime dependencies, without the Aegis
+               modules the bundle already contains). The Knox front-door example installs exactly this. -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.8.1</version>
+            <executions>
+              <execution>
+                <id>plugin-classpath</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>build-classpath</goal>
+                </goals>
+                <configuration>
+                  <outputFile>${project.build.directory}/plugin.classpath</outputFile>
+                  <includeScope>runtime</includeScope>
+                  <excludeGroupIds>io.github.vaquarkhan.aegis,org.junit.jupiter,org.junit.platform,org.opentest4j,org.apiguardian</excludeGroupIds>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+      <dependencies>
+        <!-- Build-order only: the server module's classpath file must exist. Nothing leaks into this classpath. -->
+        <dependency>
+          <groupId>io.github.vaquarkhan.aegis</groupId>
+          <artifactId>aegis-validation-spark-connect-server</artifactId>
+          <version>${project.version}</version>
+          <type>pom</type>
+          <scope>test</scope>
+          <exclusions>
+            <exclusion>
+              <groupId>*</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+          </exclusions>
+        </dependency>
+      </dependencies>
+    </profile>
+  </profiles>
+</project>

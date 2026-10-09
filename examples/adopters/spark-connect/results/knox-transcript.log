@@ -1,0 +1,51 @@
+# spark-connect through knox, 2026-10-05T00:14:24.726030700Z
+
+--- real Spark Connect 4.0.1 server on 127.0.0.1:58281; global temp views: orders, scratch_knox
+
+=== read by READER | guest (READER) | tools/call spark_list_tables {"database":"global_temp"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"2 tables"}],"structuredContent":{"tables":[{"name":"orders","namespace":["global_temp"],"tableType":"TEMPORARY","temporary":true},{"name":"scratch_knox","namespace":["global_temp"],"tableType":"TEMPORARY","temporary":true}]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_0434e0b7f8e5cc625de6a004","traceId":"a13d6d707c1bf550b7e281ecc34f21a1"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-spark-connect","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call spark_list_tables {"database":"global_temp"} | HTTP 403
+{
+"servlet":"aegis-spark-connect-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-spark-connect/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call spark_preview_table {"table":"global_temp.orders","limit":2} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"2 rows"}],"structuredContent":{"rows":[{"id":1,"item":"widget","price":9.5},{"id":2,"item":"gadget","price":12}]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_adb0b7d87e5f12b2eb69a9f0","traceId":"278bbc2135f840e53e97a964601a76cb"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-spark-connect","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call spark_preview_table {"table":"global_temp.orders","limit":2} | HTTP 403
+{
+"servlet":"aegis-spark-connect-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-spark-connect/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== destructive by READER | guest (READER) | tools/call spark_drop_table {"table":"global_temp.scratch_knox"} | HTTP 200 decision=DENIED:READONLY_CALLER:step1
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"type":"text","text":"Aegis denied this call: READONLY_CALLER (step 1). caller is not in a group allowed to call DESTRUCTIVE tools"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:READONLY_CALLER:step1","requestId":"req_1dc6bb129a6b75065c18e5fb","code":"READONLY_CALLER","step":1,"reason":"caller is not in a group allowed to call DESTRUCTIVE tools","traceId":"08d4d5e6deb4c545b37bd47ae352c37f"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-spark-connect","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== destructive without approval | sam (OPERATOR) | tools/call spark_drop_table {"table":"global_temp.scratch_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":6,"result":{"content":[{"type":"text","text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). this DESTRUCTIVE call needs a per-call approval Approval request apr_53c042340cffab3bee7eb1b63870ddbe is pending; retry with the approval token once approved."}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_9cd0a11c8d4df6527efe5794","code":"APPROVAL_REQUIRED","step":4,"reason":"this DESTRUCTIVE call needs a per-call approval","approvalRequestId":"apr_53c042340cffab3bee7eb1b63870ddbe","argsDigest":"sha256:2ba08378ee5ec8924881c4405670f4885bada059eb3c5f02ee9bdc6491b5fe57","traceId":"08c869fcff62487df5df343d63c54afe"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-spark-connect","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== dry run | sam (OPERATOR) | tools/call spark_drop_table {"table":"global_temp.scratch_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"type":"text","text":"1 columns"}],"structuredContent":{"table":"global_temp.scratch_knox","columns":[{"name":"x","nullable":false,"type":"int"}]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_dfcbb904b24650b0e9d1d437","dryRunReceiptExpiresAt":"2026-10-05T00:29:46.938861500Z","approvalRequestId":"apr_53c042340cffab3bee7eb1b63870ddbe","argsDigest":"sha256:2ba08378ee5ec8924881c4405670f4885bada059eb3c5f02ee9bdc6491b5fe57","traceId":"b6145e398957567779cfe744dae14b51","dryRunReceipt":"<redacted>"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-spark-connect","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== requester approves own request | sam (OPERATOR) | POST approvals/apr_53c042340cffab3bee7eb1b63870ddbe/approve | HTTP 403
+{"error":"caller is not in an approver group"}
+
+=== independent approval | tom (APPROVER) | POST approvals/apr_53c042340cffab3bee7eb1b63870ddbe/approve | HTTP 200
+{"id":"apr_53c042340cffab3bee7eb1b63870ddbe","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-spark-connect","actorChain":[],"tool":"spark_drop_table","toolClass":"DESTRUCTIVE","source":"spark-connect","resources":["spark:table:global_temp.scratch_knox"],"argsDigest":"sha256:2ba08378ee5ec8924881c4405670f4885bada059eb3c5f02ee9bdc6491b5fe57","binding":"sha256:613c9df520135cecf9e4c251e91d14470ceba6ca0d17615e2fb97339cfb156dc","evidence":{"arguments":{"table":"global_temp.scratch_knox"},"preview":{"content":[{"type":"text","text":"1 columns"}],"structuredContent":{"table":"global_temp.scratch_knox","columns":[{"name":"x","nullable":false,"type":"int"}]},"isError":false}},"createdAt":"2026-10-05T00:14:46.449909300Z","expiresAt":"2026-10-05T00:44:46.449909300Z","decidedBy":"tom","decidedAt":"2026-10-05T00:14:47.189694500Z","tokenExpiresAt":"2026-10-05T00:24:47.189694500Z"}
+
+=== requester collects the token | sam (OPERATOR) | GET approvals/apr_53c042340cffab3bee7eb1b63870ddbe | HTTP 200
+{"id":"apr_53c042340cffab3bee7eb1b63870ddbe","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-spark-connect","actorChain":[],"tool":"spark_drop_table","toolClass":"DESTRUCTIVE","source":"spark-connect","resources":["spark:table:global_temp.scratch_knox"],"argsDigest":"sha256:2ba08378ee5ec8924881c4405670f4885bada059eb3c5f02ee9bdc6491b5fe57","binding":"sha256:613c9df520135cecf9e4c251e91d14470ceba6ca0d17615e2fb97339cfb156dc","evidence":{"arguments":{"table":"global_temp.scratch_knox"},"preview":{"content":[{"type":"text","text":"1 columns"}],"structuredContent":{"table":"global_temp.scratch_knox","columns":[{"name":"x","nullable":false,"type":"int"}]},"isError":false}},"createdAt":"2026-10-05T00:14:46.449909300Z","expiresAt":"2026-10-05T00:44:46.449909300Z","decidedBy":"tom","decidedAt":"2026-10-05T00:14:47.189694500Z","token":"<redacted>","tokenExpiresAt":"2026-10-05T00:24:47.189694500Z"}
+
+=== execute with approval and receipt | sam (OPERATOR) | tools/call spark_drop_table {"table":"global_temp.scratch_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":8,"result":{"content":[{"type":"text","text":"Dropped global_temp.scratch_knox"}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_f3e9d59236b798e0b355703e","traceId":"f57b8d5d1548d407daf3ca26e3bde6af"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-spark-connect","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+--- Spark reports global_temp.scratch_knox no longer exists
+
+=== replay of the same approval | sam (OPERATOR) | tools/call spark_drop_table {"table":"global_temp.scratch_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":9,"result":{"content":[{"type":"text","text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). approval token has already been used"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_74108d461fd65fdd38382d41","code":"APPROVAL_REQUIRED","step":4,"reason":"approval token has already been used","traceId":"37688a6cb81bb0c9b96b91203103d1cd"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-spark-connect","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}

@@ -1,0 +1,111 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Apache Calcite: governed MCP tools over Calcite SQL, through Avatica's own JDBC driver.
+#
+# WHY THIS IS A jdbc SOURCE AND NOT AN http ONE
+# Apache Calcite is a library, not a server. There is no Calcite process listening on a port, so there
+# is no Calcite HTTP API: the earlier version of this file declared GET /, POST /explain and POST /sql,
+# and none of those exist anywhere. That defect and the audit that found it are in docs/DEFECT-LOG.md.
+#
+# What is real is Avatica. Calcite's JDBC driver is powered by Avatica and can be local or remote, with
+# the remote form speaking JSON or Protobuf over HTTP (https://calcite.apache.org/docs/adapter.html).
+# That HTTP protocol is an RPC transport with its own framing, not a REST API with paths a declarative
+# http source could build. The supported way in is the driver. So this is a jdbc source, and it is also
+# structurally safer: every metadata read below is a typed call on java.sql.DatabaseMetaData that the
+# compiler checks, rather than a URL path somebody typed.
+#
+# WHAT YOU MUST PROVIDE
+#   1. The Avatica client jar on the gateway's classpath. Aegis ships no JDBC drivers, deliberately: the
+#      version is yours to choose and we do not redistribute anybody else's.
+#   2. The url below pointing at your Avatica endpoint. The host, port and path come from whatever serves
+#      your Calcite SQL, so there is no universal default. Apache Druid, for example, serves Avatica at
+#      http://BROKER:8082/druid/v2/sql/avatica/ (https://druid.apache.org/docs/latest/api-reference/sql-jdbc/).
+#   3. A read-only account. This is the control that matters. The read-only SQL check below is an
+#      indicator, not a guarantee: SELECT my_udf() passes a keyword check and a UDF can write.
+#
+# READ-ONLY BY DESIGN
+# allowWrites stays false, so this source never offers jdbc_execute_statement and there is no MUTATE or
+# DESTRUCTIVE tool here at all.
+#
+# EXPLAIN
+# 0.1 had a separate explain tool. It is not needed: EXPLAIN is a statement, not an endpoint, and the
+# read-only classifier accepts EXPLAIN as a leading keyword, so `EXPLAIN PLAN FOR SELECT ...` goes
+# through jdbc_run_query like any other read.
+
+gateway:
+  name: aegis-calcite
+
+access:
+  writeGroups: [calcite-operators]
+  approverGroups: [calcite-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+# Free-text SQL cannot be classified by reading the configuration, so the guard is bound explicitly.
+# jdbc_run_query also applies the same classifier inside its own executor, so a deployment that forgets
+# this section is still refused rather than silently ungoverned.
+hooks:
+  - type: sql-readonly
+    operations: [TOOL_CALL]
+    mode: ENFORCE
+    methods: [jdbc_run_query]
+    settings:
+      arguments: [sql]
+      maxChars: 4000
+
+policy:
+  rules:
+    - {id: read, groups: [calcite-users, calcite-operators], classes: [READ]}
+    - {id: operate, groups: [calcite-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 60             # a SQL endpoint is heavier than a status read
+  budgetPerHour: 500
+
+egress:
+  # A JDBC driver opens its own socket, so step 5 has nothing to inspect: the target is the url below,
+  # which is configuration rather than an argument, so an agent cannot redirect it. The allow list is
+  # kept for any http source added to this file later.
+  allowCidrs: [127.0.0.0/8]
+
+audit:
+  file: audit/aegis-calcite.jsonl
+
+sources:
+  - id: calcite
+    type: jdbc
+    settings:
+      url: jdbc:avatica:remote:url=http://127.0.0.1:49258
+      driverClass: org.apache.calcite.avatica.remote.Driver
+      userEnv: CALCITE_USER
+      passwordEnv: CALCITE_PASSWORD
+      maxRows: 200                   # hard cap; a wide table cannot fill the model's context
+      maxCellChars: 4096
+      loginTimeoutSeconds: 15
+      allowWrites: false             # true would also offer jdbc_execute_statement
+    tools:
+      jdbc_server_info: {class: READ}
+      jdbc_list_catalogs: {class: READ}
+      jdbc_list_schemas: {class: READ}
+      jdbc_list_tables:
+        class: READ
+        # The schema is the governed object, so a scope or policy rule can confine a caller to their
+        # own schemas without naming every table.
+        resources: [{type: "calcite:schema", pointer: /schema, required: false}]
+      jdbc_describe_table:
+        class: READ
+        resources: [{type: "calcite:table", pointer: /table}]
+      jdbc_run_query: {class: READ}

@@ -1,0 +1,54 @@
+# druid through knox, 2026-10-05T17:07:34.137047400Z
+
+--- apache/druid:28.0.1 nano-quickstart on http://127.0.0.1:58695; disable datasource aegis_knox
+
+=== read by READER | guest (READER) | tools/call druid_list_datasources {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"text":"[\"aegis_knox\"]","type":"text"}],"structuredContent":{"value":["aegis_knox"]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_8718297f2bf634e968550988","traceId":"6f103b0206b7943d536059c52021e4bb"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-druid","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call druid_list_datasources {} | HTTP 403
+{
+"servlet":"aegis-druid-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-druid/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call druid_run_sql_readonly {"sql":"SELECT 1 AS n"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"[{\"n\":1}]","type":"text"}],"structuredContent":{"value":[{"n":1}]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_fff163b4e2ca29b7f93555b4","traceId":"9b0568465d8e05d0b3e3b7ea56f3f9d8"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-druid","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call druid_run_sql_readonly {"sql":"SELECT 1 AS n"} | HTTP 403
+{
+"servlet":"aegis-druid-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-druid/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== write smuggled into druid SQL | guest (READER) | tools/call druid_run_sql_readonly {"sql":"DROP TABLE aegis_should_fail"} | HTTP 200 decision=DENIED:INVALID_INPUT:step8
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"text":"Aegis denied this call: INVALID_INPUT (step 8). hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:INVALID_INPUT:step8","requestId":"req_a340107ebb62e1c849a16e0f","code":"INVALID_INPUT","step":8,"reason":"hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]","traceId":"84036f218b3aad1484f9baa55cfde08f"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-druid","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== destructive by READER | guest (READER) | tools/call druid_disable_datasource {"datasource":"aegis_knox"} | HTTP 200 decision=DENIED:READONLY_CALLER:step1
+{"jsonrpc":"2.0","id":6,"result":{"content":[{"text":"Aegis denied this call: READONLY_CALLER (step 1). caller is not in a group allowed to call DESTRUCTIVE tools","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:READONLY_CALLER:step1","requestId":"req_939bd748d5663249e0c67244","code":"READONLY_CALLER","step":1,"reason":"caller is not in a group allowed to call DESTRUCTIVE tools","traceId":"e1abcb93fda03bfabbca7691f6e05c9b"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-druid","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== destructive without approval | sam (OPERATOR) | tools/call druid_disable_datasource {"datasource":"aegis_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). this DESTRUCTIVE call needs a per-call approval Approval request apr_2323f6ae80ca92876985c0f579b75a70 is pending; retry with the approval token once approved.","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_efd6c81acc0ce61be1f32fc2","code":"APPROVAL_REQUIRED","step":4,"reason":"this DESTRUCTIVE call needs a per-call approval","argsDigest":"sha256:b6fc9e52d5322d991ff8b623a9dab2499e66ab32ecb5ae39ef03b0f2e636d8e2","approvalRequestId":"apr_2323f6ae80ca92876985c0f579b75a70","traceId":"50434284f978fb422eeeece41a135f8d"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-druid","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== dry run | sam (OPERATOR) | tools/call druid_disable_datasource {"datasource":"aegis_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":8,"result":{"content":[{"text":"{\"tiers\":{\"_default_tier\":{\"size\":817,\"replicatedSize\":817,\"segmentCount\":1}},\"segments\":{\"maxTime\":\"2020-01-02T00:00:00.000Z\",\"size\":817,\"minTime\":\"2020-01-01T00:00:00.000Z\",\"count\":1,\"replicatedSize\":817}}","type":"text"}],"structuredContent":{"tiers":{"_default_tier":{"size":817,"replicatedSize":817,"segmentCount":1}},"segments":{"maxTime":"2020-01-02T00:00:00.000Z","size":817,"minTime":"2020-01-01T00:00:00.000Z","count":1,"replicatedSize":817}},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_a3f4285f682aeb202bec6e23","dryRunReceipt":"<redacted>","dryRunReceiptExpiresAt":"2026-10-05T17:22:44.786259400Z","approvalRequestId":"apr_2323f6ae80ca92876985c0f579b75a70","argsDigest":"sha256:b6fc9e52d5322d991ff8b623a9dab2499e66ab32ecb5ae39ef03b0f2e636d8e2","traceId":"7abc421b9ba4a1b0bd354606f13743c8"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-druid","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== requester approves own request | sam (OPERATOR) | POST approvals/apr_2323f6ae80ca92876985c0f579b75a70/approve | HTTP 403
+{"error":"caller is not in an approver group"}
+
+=== independent approval | tom (APPROVER) | POST approvals/apr_2323f6ae80ca92876985c0f579b75a70/approve | HTTP 200
+{"id":"apr_2323f6ae80ca92876985c0f579b75a70","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-druid","actorChain":[],"tool":"druid_disable_datasource","toolClass":"DESTRUCTIVE","source":"druid","resources":["druid:datasource:aegis_knox"],"argsDigest":"sha256:b6fc9e52d5322d991ff8b623a9dab2499e66ab32ecb5ae39ef03b0f2e636d8e2","binding":"sha256:3ef5252410e6b8ee63db37a3b91670aa7b8bbfc119a7abbb6131cf8b31cc094a","evidence":{"arguments":{"datasource":"aegis_knox"},"preview":{"content":[{"text":"{\"tiers\":{\"_default_tier\":{\"size\":817,\"replicatedSize\":817,\"segmentCount\":1}},\"segments\":{\"maxTime\":\"2020-01-02T00:00:00.000Z\",\"size\":817,\"minTime\":\"2020-01-01T00:00:00.000Z\",\"count\":1,\"replicatedSize\":817}}","type":"text"}],"structuredContent":{"tiers":{"_default_tier":{"size":817,"replicatedSize":817,"segmentCount":1}},"segments":{"maxTime":"2020-01-02T00:00:00.000Z","size":817,"minTime":"2020-01-01T00:00:00.000Z","count":1,"replicatedSize":817}},"isError":false}},"createdAt":"2026-10-05T17:07:44.533688600Z","expiresAt":"2026-10-05T17:37:44.533688600Z","decidedBy":"tom","decidedAt":"2026-10-05T17:07:44.900391Z","tokenExpiresAt":"2026-10-05T17:17:44.900391Z"}
+
+=== requester collects the token | sam (OPERATOR) | GET approvals/apr_2323f6ae80ca92876985c0f579b75a70 | HTTP 200
+{"id":"apr_2323f6ae80ca92876985c0f579b75a70","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-druid","actorChain":[],"tool":"druid_disable_datasource","toolClass":"DESTRUCTIVE","source":"druid","resources":["druid:datasource:aegis_knox"],"argsDigest":"sha256:b6fc9e52d5322d991ff8b623a9dab2499e66ab32ecb5ae39ef03b0f2e636d8e2","binding":"sha256:3ef5252410e6b8ee63db37a3b91670aa7b8bbfc119a7abbb6131cf8b31cc094a","evidence":{"arguments":{"datasource":"aegis_knox"},"preview":{"content":[{"text":"{\"tiers\":{\"_default_tier\":{\"size\":817,\"replicatedSize\":817,\"segmentCount\":1}},\"segments\":{\"maxTime\":\"2020-01-02T00:00:00.000Z\",\"size\":817,\"minTime\":\"2020-01-01T00:00:00.000Z\",\"count\":1,\"replicatedSize\":817}}","type":"text"}],"structuredContent":{"tiers":{"_default_tier":{"size":817,"replicatedSize":817,"segmentCount":1}},"segments":{"maxTime":"2020-01-02T00:00:00.000Z","size":817,"minTime":"2020-01-01T00:00:00.000Z","count":1,"replicatedSize":817}},"isError":false}},"createdAt":"2026-10-05T17:07:44.533688600Z","expiresAt":"2026-10-05T17:37:44.533688600Z","decidedBy":"tom","decidedAt":"2026-10-05T17:07:44.900391Z","token":"<redacted>","tokenExpiresAt":"2026-10-05T17:17:44.900391Z"}
+
+=== execute with approval and receipt | sam (OPERATOR) | tools/call druid_disable_datasource {"datasource":"aegis_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":9,"result":{"content":[{"text":"{\"numChangedSegments\":1}","type":"text"}],"structuredContent":{"numChangedSegments":1},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_8789d7b5016414a9fdffdd3a","traceId":"f73cdb41c3efe99806c065785bbd2588"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-druid","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+--- Druid disabled datasource aegis_knox
+
+=== replay of the same approval | sam (OPERATOR) | tools/call druid_disable_datasource {"datasource":"aegis_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":10,"result":{"content":[{"text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). approval token has already been used","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_34f53b23944ef7c882e72170","code":"APPROVAL_REQUIRED","step":4,"reason":"approval token has already been used","traceId":"219fbbd8209eb54c186b22daf3426b45"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-druid","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}

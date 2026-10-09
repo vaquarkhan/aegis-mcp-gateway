@@ -1,0 +1,17 @@
+{{/*
+Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+Licensed under the Apache License, Version 2.0
+https://www.apache.org/licenses/LICENSE-2.0
+*/}}
+{{- include "aegis.validate" . -}}
+{{- if not .Values.existingConfigMap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aegis.fullname" . }}
+  labels:
+    {{- include "aegis.labels" . | nindent 4 }}
+data:
+  aegis.yaml: |
+    {{- toYaml .Values.config | nindent 4 }}
+{{- end }}

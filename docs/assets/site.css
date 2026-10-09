@@ -1,0 +1,49 @@
+/*
+ * Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+:root {
+  --ink: #0b1f32;
+  --paper: #f6fbff;
+  --panel: #ffffff;
+  --line: #c9dce9;
+  --navy: #0a2b45;
+  --aqua: #007f9d;
+  --green: #0b6d58;
+  --gold: #9a5d00;
+}
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: var(--paper); font: 16px/1.55 Arial, Helvetica, sans-serif; }
+a { color: #005d87; font-weight: 700; text-decoration-thickness: 1.5px; }
+a:hover { color: #003a56; }
+.button-link { display: inline-block; padding: 10px 16px; color: #073f5c; background: #ffffff; border-radius: 7px; text-decoration: none; }
+.button-link:hover { color: #05293d; background: #e4f7fa; }
+header { color: #f4fbff; background: linear-gradient(135deg, #071423, #135176); padding: 56px max(24px, calc((100vw - 1180px) / 2)); }
+header p { max-width: 790px; color: #c8e4f0; font-size: 1.15rem; }
+main { width: min(1180px, calc(100% - 48px)); margin: 40px auto 68px; }
+h1 { margin: 0; font-size: clamp(2.25rem, 5vw, 4.3rem); line-height: 1.06; }
+h2 { margin: 46px 0 14px; color: var(--navy); font-size: 1.65rem; }
+.hero-image { display: block; width: 100%; max-width: 1120px; margin: 30px auto 0; border-radius: 14px; box-shadow: 0 16px 40px #03131e55; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 13px; padding: 22px; box-shadow: 0 5px 16px #17324a12; }
+.card h3 { margin: 0 0 8px; color: var(--navy); }
+.card p { margin: 0; }
+.evidence { border-left: 5px solid var(--green); background: #effcf7; padding: 20px 24px; border-radius: 0 12px 12px 0; }
+.warning { border-left-color: var(--gold); background: #fff9ed; }
+table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); }
+th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { color: #f4fbff; background: var(--navy); }
+footer { color: #d3e4ed; background: #071423; padding: 30px max(24px, calc((100vw - 1180px) / 2)); }
+footer a { color: #9ce6f1; }
+@media (max-width: 620px) { main { width: min(100% - 28px, 1180px); } header { padding: 42px 18px; } th, td { padding: 9px; } }

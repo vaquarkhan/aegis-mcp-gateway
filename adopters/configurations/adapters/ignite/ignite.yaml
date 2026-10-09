@@ -1,0 +1,89 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Ignite: governed MCP tools over the Apache Ignite HTTP API, configuration only.
+# The Ignite REST v1 command endpoint: GET /ignite?cmd=version|top|size|destcache.
+# Every Ignite REST v1 command is a GET, including destructive ones; the tool class, not the
+# HTTP method, is what Aegis governs.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-ignite (taxonomy: datastore).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-ignite
+
+access:
+  writeGroups: [ignite-operators]
+  approverGroups: [ignite-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [ignite-users, ignite-operators], classes: [READ]}
+    - {id: operate, groups: [ignite-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-ignite.jsonl
+
+sources:
+  - id: ignite
+    type: http
+    baseUrl: http://ignite:8080
+    tools:
+      - name: ignite_get_version
+        description: "Ignite version."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/ignite", query: {cmd: "version"}}
+        response: {status: {pointer: /successStatus, equals: 0}}
+
+      - name: ignite_list_caches
+        description: "Cluster topology and its caches."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/ignite", query: {cmd: "top"}}
+        response: {status: {pointer: /successStatus, equals: 0}}
+
+      - name: ignite_cache_size
+        description: "Number of entries in one cache."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {cache: {type: string, maxLength: 256}}
+          required: [cache]
+          additionalProperties: false
+        request: {method: GET, path: "/ignite", query: {cmd: "size", cacheName: "{cache}"}}
+        response: {status: {pointer: /successStatus, equals: 0}}
+        resources: [{type: "ignite:cache", pointer: /cache}]
+
+      - name: ignite_destroy_cache
+        description: "Destroy one cache and all entries in it."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {cache: {type: string, maxLength: 256}}
+          required: [cache]
+          additionalProperties: false
+        request: {method: GET, path: "/ignite", query: {cmd: "destcache", cacheName: "{cache}"}}
+        resources: [{type: "ignite:cache", pointer: /cache}]
+        response: {status: {pointer: /successStatus, equals: 0}}
+        dryRun: {mode: TOOL, previewTool: ignite_cache_size}   # validate against the exact target first

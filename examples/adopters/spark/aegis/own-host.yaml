@@ -1,0 +1,178 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Spark: read tools over the Spark monitoring REST API (/api/v1 on the History Server or a
+# driver UI), and a destructive kill over the standalone master REST submission server.
+# Note: the kill endpoint exists only for standalone cluster mode and only when
+# spark.master.rest.enabled=true on the master (it is disabled by default). Leave that source out
+# if you run on YARN or Kubernetes.
+gateway:
+  name: aegis-spark
+
+access:
+  writeGroups: [spark-operators]
+  approverGroups: [spark-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: read-apps, groups: [spark-users, spark-operators], classes: [READ]}
+    - {id: kill-apps, groups: [spark-operators], classes: [DESTRUCTIVE], tools: [spark_kill_submission]}
+    # Submitting a jar starts code on the cluster, so the jar is allow-listed rather than the action.
+    # Change the pattern to your artifact location; an unlisted jar is POLICY_DENIED at step 3.
+    - {id: submit-approved-jars, groups: [spark-operators], classes: [DESTRUCTIVE], tools: [spark_submit_batch],
+       resources: ["spark:jar:hdfs:///approved/*"]}
+
+egress:
+  allowCidrs: [127.0.0.0/8]
+
+audit:
+  file: audit/aegis-spark.jsonl
+
+sources:
+  - id: spark-history
+    type: http
+    baseUrl: http://127.0.0.1:56881
+    tools:
+      - name: spark_list_applications
+        description: List Spark applications known to the History Server.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {status: {type: string, enum: [completed, running]}, limit: {type: integer, minimum: 1, maximum: 500}}
+          additionalProperties: false
+        request: {method: GET, path: /api/v1/applications, query: {status: "{status}", limit: "{limit}"}}
+
+      - name: spark_get_application
+        description: Attempts, duration and completion state of one Spark application.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {appId: {type: string, maxLength: 128}}
+          required: [appId]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v1/applications/{appId}"}
+        resources: [{type: "spark:app", pointer: /appId}]
+
+      - name: spark_list_jobs
+        description: List jobs of one Spark application.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {appId: {type: string, maxLength: 128}}
+          required: [appId]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v1/applications/{appId}/jobs"}
+        resources: [{type: "spark:app", pointer: /appId}]
+
+      - name: spark_list_stages
+        description: Stage summaries of one Spark application, the same data the Stages tab shows.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {appId: {type: string, maxLength: 128}}
+          required: [appId]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v1/applications/{appId}/stages"}
+        resources: [{type: "spark:app", pointer: /appId}]
+
+      - name: spark_list_executors
+        description: Executor list with task, memory and shuffle counters for one application.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {appId: {type: string, maxLength: 128}}
+          required: [appId]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v1/applications/{appId}/executors"}
+        resources: [{type: "spark:app", pointer: /appId}]
+
+      - name: spark_get_environment
+        description: Spark properties and classpath of one application, useful for drift questions.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {appId: {type: string, maxLength: 128}}
+          required: [appId]
+          additionalProperties: false
+        request: {method: GET, path: "/api/v1/applications/{appId}/environment"}
+        resources: [{type: "spark:app", pointer: /appId}]
+
+  - id: spark-master
+    type: http
+    baseUrl: http://127.0.0.1:56868
+    tools:
+      - name: spark_submission_status
+        description: Status of one driver submitted in standalone cluster mode.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {submissionId: {type: string, maxLength: 128}}
+          required: [submissionId]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/submissions/status/{submissionId}"}
+        resources: [{type: "spark:submission", pointer: /submissionId}]
+
+      - name: spark_kill_submission
+        description: Kill a driver submitted in standalone cluster mode.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {submissionId: {type: string, maxLength: 128}}
+          required: [submissionId]
+          additionalProperties: false
+        request: {method: POST, path: "/v1/submissions/kill/{submissionId}"}
+        resources: [{type: "spark:submission", pointer: /submissionId}]
+        dryRun: {mode: TOOL, previewTool: spark_submission_status}
+
+      - name: spark_submit_batch
+        description: Submit a jar as a new driver in standalone cluster mode. This starts code on the cluster.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties:
+            appResource: {type: string, maxLength: 1024}
+            mainClass: {type: string, maxLength: 512}
+            appArgs: {type: array, items: {type: string, maxLength: 1024}, maxItems: 64}
+            sparkProperties: {type: object}
+          required: [appResource, mainClass]
+          additionalProperties: false
+        # The standalone REST submission body. clientSparkVersion and action are fixed by the operator
+        # here, so a caller cannot change what kind of request this is.
+        request:
+          method: POST
+          path: /v1/submissions/create
+          body:
+            action: CreateSubmissionRequest
+            clientSparkVersion: "4.0.1"
+            appResource: "{appResource}"
+            mainClass: "{mainClass}"
+            appArgs: "{appArgs}"
+            sparkProperties: "{sparkProperties}"
+            environmentVariables: {}
+        # The jar being submitted is the governed resource, so policy decides which jars may run.
+        resources: [{type: "spark:jar", pointer: /appResource}]
+
+# Appended for the own-host front door: loopback listener, static tokens per persona.
+host:
+  listen: {host: 127.0.0.1, port: 0}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_READER, actor: guest, groups: [spark-users]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OPERATOR, actor: sam, groups: [spark-operators]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_APPROVER, actor: tom, groups: [spark-approvers]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OUTSIDER, actor: admin, groups: []}

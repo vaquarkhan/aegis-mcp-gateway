@@ -1,0 +1,122 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Builds and tests Aegis 2.0 from the repository root. Action SHAs are pinned.
+name: Aegis 2.0 build
+
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [ '17', '21' ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: maven
+      - name: Build, license-header check, tests, coverage gate
+        run: mvn -B verify
+      - name: Check generated tutorial and IDE assets are current
+        run: python3 tools/build-project-tutorials.py --check
+      # Iceberg REST and Kafka validation need running servers (AEGIS_ICEBERG_REST_URL, AEGIS_KAFKA_*);
+      # without them those two tests report as skipped. See docs/VALIDATION.md for the local recipe.
+      - name: Real-engine validation (Flink MiniCluster, Spark local driver, Spark Connect server in its own JVM)
+        run: mvn -B -Preal-engines verify
+
+  # The gateway jar as a running process, called over MCP: a real http.server backend and the three
+  # reference hook services. Every check reads the backend log or the audit journal for its evidence.
+  live-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build the gateway jar
+        run: mvn -B -DskipTests -Djacoco.skip=true -pl aegis-gateway -am package
+      - name: Reference hook unit tests
+        working-directory: adopters/hooks
+        run: python3 -m unittest -v test_hooks
+      - name: Live end-to-end run against the running gateway
+        working-directory: adopters/hooks
+        run: python3 e2e_gateway.py --jar ../../aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar
+
+  # The container image and the Helm chart. Tool versions are pinned and their checksums verified.
+  image-and-chart:
+    runs-on: ubuntu-latest
+    env:
+      HELM_VERSION: v4.3.0
+      KUBECONFORM_VERSION: v0.8.0
+      HADOLINT_VERSION: v2.15.1
+      HADOLINT_SHA256: c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install helm, kubeconform and hadolint
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin"; cd "$RUNNER_TEMP"
+          curl -fsSLO "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum" | sha256sum -c -
+          tar -xzf "helm-${HELM_VERSION}-linux-amd64.tar.gz" && mv linux-amd64/helm bin/
+          curl -fsSLO "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/CHECKSUMS" | grep ' kubeconform-linux-amd64.tar.gz$' | sha256sum -c -
+          tar -xzf kubeconform-linux-amd64.tar.gz -C bin kubeconform
+          curl -fsSL -o bin/hadolint "https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/hadolint-linux-x86_64"
+          echo "${HADOLINT_SHA256}  bin/hadolint" | sha256sum -c - && chmod +x bin/hadolint
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Lint the Dockerfile
+        run: hadolint Dockerfile
+      - name: Lint and render the chart, validate the manifests
+        run: |
+          set -euo pipefail
+          helm lint charts/aegis --strict -f charts/aegis/ci/test-values.yaml
+          helm template aegis charts/aegis -f charts/aegis/ci/test-values.yaml --namespace mcp > rendered.yaml
+          kubeconform -strict -summary -kubernetes-version 1.33.0 rendered.yaml
+          if helm template x charts/aegis -f charts/aegis/ci/test-values.yaml -f charts/aegis/ci/deny-empty-ingress.yaml >/dev/null 2>&1; then
+            echo "NetworkPolicy without allowed ingress peers must not render"; exit 1
+          fi
+          if helm template x charts/aegis -f charts/aegis/ci/test-values.yaml --set replicaCount=2 >/dev/null 2>&1; then
+            echo "two replicas without shared state must not render"; exit 1
+          fi
+      - name: Build the image
+        run: docker build -t aegis-gateway:ci .
+      - name: Start the image with the rendered configuration
+        run: |
+          set -euo pipefail
+          python3 -c "import yaml" 2>/dev/null || python3 -m pip install --user PyYAML==6.0.2
+          python3 - <<'EOF'
+          import yaml
+          docs = [d for d in yaml.safe_load_all(open("rendered.yaml")) if d]
+          cm = next(d for d in docs if d["kind"] == "ConfigMap")
+          open("aegis.yaml", "w").write(cm["data"]["aegis.yaml"])
+          EOF
+          docker run -d --name aegis --read-only --tmpfs /tmp --tmpfs /var/lib/aegis:uid=10001,gid=10001 \
+            -e AEGIS_SIGNING_KEY="$(openssl rand -hex 32)" -e CATALOG_TOKEN=ci-token \
+            -v "$PWD/aegis.yaml:/etc/aegis/aegis.yaml:ro" -p 18080:8080 aegis-gateway:ci
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:18080/readyz; then echo; docker exec aegis id; exit 0; fi
+            sleep 2
+          done
+          docker logs aegis; exit 1

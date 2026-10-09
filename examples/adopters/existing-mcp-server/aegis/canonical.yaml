@@ -1,0 +1,67 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# A project that ALREADY has an MCP server: Aegis fronts it unchanged. Works for 2026-07-28
+# (stateless) and 2025 (initialize + Mcp-Session-Id) servers over Streamable HTTP, and for stdio
+# servers launched as subprocesses. Unlisted tools default to DESTRUCTIVE (fail-safe) until the
+# operator classifies them; downstream annotations can only raise a class, never lower it.
+gateway:
+  name: aegis-existing-mcp
+
+access:
+  writeGroups: [operators]
+  approverGroups: [approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: read, groups: [analysts, operators], classes: [READ]}
+    - {id: write, groups: [operators], classes: [MUTATE, DESTRUCTIVE]}
+
+catalog:
+  mode: TOFU                  # pin tool definitions on first sight; REQUIRE_PINS for pre-approved digests only
+  pinFile: state/pins.json    # survives restarts, so a changed definition is caught after a restart too
+  refreshSeconds: 300         # re-list tools; a changed definition is quarantined (rug-pull defence)
+
+egress:
+  allowCidrs: [10.0.0.0/8]
+
+audit:
+  file: audit/aegis-existing-mcp.jsonl
+
+sources:
+  - id: engine-mcp
+    type: mcp
+    transport: http
+    url: http://engine-mcp:9000/mcp
+    era: AUTO                 # probe 2026-07-28 first, fall back to the 2025 handshake
+    namePrefix: "engine_"
+    credentials: {type: bearer, tokenEnv: ENGINE_MCP_TOKEN}
+    tools:
+      list_jobs: {class: READ}
+      get_job: {class: READ, resources: [{type: "engine:job", pointer: /jobId}]}
+      delete_job:
+        class: DESTRUCTIVE
+        resources: [{type: "engine:job", pointer: /jobId}]
+
+  - id: local-files
+    type: mcp
+    transport: stdio
+    command: [node, /opt/mcp/filesystem-server/index.js, /data/reports]
+    unlistedTools: HIDE       # only the tools listed below are exposed at all
+    tools:
+      # read_text_file, not read_file: @modelcontextprotocol/server-filesystem marks read_file deprecated.
+      read_text_file: {class: READ, resources: [{type: "file:path", pointer: /path}]}
+      list_directory: {class: READ, resources: [{type: "file:path", pointer: /path}]}

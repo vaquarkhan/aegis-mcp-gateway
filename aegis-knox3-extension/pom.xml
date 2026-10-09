@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>aegis-knox3-extension</artifactId>
+  <name>Aegis 2.0 Apache Knox 3.0 extension</name>
+  <description>Thin Knox front door: a native JAX-RS service (the Knox "Service API" pattern, not HTTP dispatch)
+    that reads the identity Knox's provider chain already established and hands the MCP request to the shared
+    Aegis engine. Deployed by dropping jars into Knox's ext/ directory; Aegis keeps its own release train.
+    Compiled against the exact Apache Knox 3.0.0 artifacts, all provided scope, so nothing from Knox is bundled.</description>
+  <properties>
+    <!-- Coverage floor = measured default-build coverage minus about 2 points (docs/VALIDATION.md). -->
+    <coverage.line.minimum>0.83</coverage.line.minimum>
+    <coverage.branch.minimum>0.72</coverage.branch.minimum>
+  </properties>
+
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-config</artifactId>
+    </dependency>
+    <!-- Shared PostgreSQL provider: shaded into the Knox bundle without any Knox implementation classes. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-state-postgres</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.knox</groupId>
+      <artifactId>gateway-spi</artifactId>
+      <version>${knox.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.knox</groupId>
+      <artifactId>gateway-provider-jersey</artifactId>
+      <version>${knox.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>javax.ws.rs</groupId>
+      <artifactId>javax.ws.rs-api</artifactId>
+      <version>${javax.ws.rs.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>${javax.servlet.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-mcp</artifactId>
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <!-- Provided by Knox at runtime and available to the test classpath: the real 3.0.0 AclsAuthz filter,
+         so KnoxAclRouteScopeTest executes shipped Knox authorization code without ever bundling it. -->
+    <dependency>
+      <groupId>org.apache.knox</groupId>
+      <artifactId>gateway-provider-security-authz-acls</artifactId>
+      <version>${knox.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Knox builds the gateway from the process environment, as in production: the test backend's
+           service credential is provided the same way. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <environmentVariables>
+            <ENGINE_TOKEN>engine-service-token</ENGINE_TOKEN>
+          </environmentVariables>
+        </configuration>
+      </plugin>
+      <!-- Optional single-file install: target/aegis-knox3-extension-2.0.0-SNAPSHOT-knox-bundle.jar holds
+           the base Aegis modules Knox needs plus the optional PostgreSQL shared-state provider and pgJDBC.
+           aegis-config refers to the OTLP exporter type, so leaving observability out fails at class load.
+           No Knox, Jersey, Jackson, servlet or snakeyaml class is included: Knox provides them. The base
+           five separate jars remain the default; PostgreSQL deployments add the provider and driver. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedClassifierName>knox-bundle</shadedClassifierName>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <artifactSet>
+                <includes>
+                  <include>io.github.vaquarkhan.aegis:aegis-engine</include>
+                  <include>io.github.vaquarkhan.aegis:aegis-mcp</include>
+                  <include>io.github.vaquarkhan.aegis:aegis-observability-otlp</include>
+                  <include>io.github.vaquarkhan.aegis:aegis-config</include>
+                  <include>io.github.vaquarkhan.aegis:aegis-state-postgres</include>
+                  <include>org.postgresql:postgresql</include>
+                  <include>io.github.vaquarkhan.aegis:aegis-knox3-extension</include>
+                </includes>
+              </artifactSet>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
