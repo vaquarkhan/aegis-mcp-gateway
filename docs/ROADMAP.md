@@ -106,8 +106,19 @@ kept under `examples/adopters/<engine>/results/`, a regenerated tutorial, and th
 | Impala | An Impala coordinator; SQL can move to the `jdbc` source |
 | Atlas | Atlas with Kafka, Solr and HBase |
 
-Every other target version gets the same treatment before its profile is promoted to
-`verified-current` in the [claims matrix](evidence/CLAIMS-MATRIX.md).
+## Next: release-candidate evidence
+
+The validation report records the runs already completed. This pass repeats them on the release candidate and finishes the distribution work around them. Product-stack runs for Hive, Paimon, Cassandra, Ranger, Impala, and Atlas are in the table above. Arrow Flight, Beam JobService, Hudi, Kudu, and Ozone are under [Later: sources and engine operations](#later-sources-and-engine-operations).
+
+| Item | What it adds |
+| --- | --- |
+| Two-door repeat on the release candidate | Flink, Spark, Spark Connect, Iceberg, Kafka, and the Knox front-door set on the candidate build |
+| Security-suite repeat on the release candidate | The S1 to S31 selection on the candidate build |
+| PostgreSQL on the release candidate | Provider and two-gateway runs against the deployment you will ship |
+| OpenBao, Vault, and Keycloak on the release candidate | Secret-provider and token-exchange runs on the candidate build |
+| Source-match review | An external source-match scan with the raw results and a human disposition |
+| Distribution LICENSE and NOTICE | A reviewed distribution notice, including the Knox-provided `jsp-api` license metadata |
+| Dependency advisory review | A recorded disposition for the Derby dependency and the Knox 3.0.0 host |
 
 ## Not planned
 
