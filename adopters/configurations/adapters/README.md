@@ -52,13 +52,9 @@ already supports the real backend protocol.
 | Spark Connect gRPC | typed Spark Connect source |
 | New non-HTTP protocol | a focused `ToolSourceFactory`, with real target evidence before release |
 
-A source type is a protocol decision, not a label. Hive and Calcite use JDBC because their old REST
-paths were not real product APIs. ZooKeeper uses its client protocol for znodes and HTTP only for the
-real AdminServer command surface.
+A source type is a protocol decision, not a label. Hive and Calcite use JDBC. ZooKeeper uses its client protocol for znodes and HTTP for the AdminServer command surface.
 
-The former Arrow, Beam, Hudi, Kudu and Ozone profiles are intentionally absent. Their old HTTP routes
-did not exist in those products. Their 18 frozen 0.1 tools have explicit absent verdicts until real
-typed sources are implemented.
+Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources for a later release. They are not part of this catalog.
 
 ## Run an adopter
 

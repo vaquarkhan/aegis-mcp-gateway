@@ -136,7 +136,7 @@ If the control can live in another process, you do not need Java at all: configu
 `hooks: [{type: remote, settings: {url: ...}}]` and answer `{"allow": true|false}` over HTTP. See
 [CONFIGURATION.md](CONFIGURATION.md#hooks-extension-controls). Three reference services in Python's
 standard library (PII guard, secrets guard, change window), with unit tests and a live run against the
-gateway jar, are in [adopters/hooks](../adopters/hooks/README.md).
+gateway jar, are in [adopters/hooks](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/hooks/README.md).
 
 For an in-process control, implement `GovernanceHook`, ship a `GovernanceHookFactory`, and enable it
 with `hooks: [{type: my-hook, settings: {...}}]`. `aegis-mcp-guardrails` is a small worked example

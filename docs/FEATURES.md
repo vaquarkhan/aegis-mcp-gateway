@@ -23,9 +23,7 @@ Each entry has five parts:
 - **Tests:** which tests prove it.
 - **Source:** where the issue came from.
 
-"0.1 defect" means a defect confirmed by reading the 0.1 source (`mcp-gateway-core`, now preserved
-in Git history) during the Knox review work. [COVERAGE-0.1-VS-2.0.md](COVERAGE-0.1-VS-2.0.md) maps each
-0.1 capability to its 2.0 replacement, and [DEFECT-LOG.md](DEFECT-LOG.md) records defects found in 2.0.
+[COVERAGE-0.1-VS-2.0.md](COVERAGE-0.1-VS-2.0.md) maps each 0.1 capability to its 2.0 replacement.
 
 ---
 
@@ -403,11 +401,7 @@ in Git history) during the Knox review work. [COVERAGE-0.1-VS-2.0.md](COVERAGE-0
   new engine meant new code to review, and every adapter was a place a governance mistake could hide.
 - **Solution:** Twenty-four usable 0.1 adapter surfaces plus the new Apache Burr (incubating) integration are now **25
   deployable adapter configurations and 116 tools** under `adopters/configurations/adapters/`. REST surfaces use
-  declarative `http` tools. Hive and Calcite use the JDBC converter because their earlier HTTP paths did
-  not exist; ZooKeeper uses its client-protocol converter for znodes and HTTP only for its real
-  AdminServer commands. The Arrow, Beam, Hudi, Kudu and Ozone files were removed: a product-named
-  configuration whose backend routes do not exist is not a feature. Their 18 old tools have explicit
-  absent verdicts until real typed sources exist. The shared governance engine remains the sole policy owner: arguments are
+  declarative `http` tools. Hive and Calcite use the JDBC converter. ZooKeeper uses its client-protocol converter for znodes and HTTP for AdminServer commands. Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources for a later release. The shared governance engine remains the sole policy owner: arguments are
   schema-validated; named objects become typed resources; writes need approval; destructive calls need a
   dry-run receipt.
 - **Where the mapping is not one to one**, stated rather than hidden:
@@ -628,7 +622,7 @@ in Git history) during the Knox review work. [COVERAGE-0.1-VS-2.0.md](COVERAGE-0
 - **Solution:** a non-root image with digest-pinned bases, and a StatefulSet chart whose templates refuse
   unsafe values (loopback listener, journal off the volume, several replicas without shared state).
 - **Tests:** helm lint, kubeconform, hadolint and `charts/aegis/ci/start_rendered.py`; the image is built
-  and started in CI ([chart README](../charts/aegis/README.md)).
+  and started in CI ([chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/charts/aegis/README.md)).
 
 ## F39. Per-tool OAuth action scopes
 
@@ -670,7 +664,7 @@ in Git history) during the Knox review work. [COVERAGE-0.1-VS-2.0.md](COVERAGE-0
   `anOlderSignedCatalogOrOrderIsRefusedOnceANewerOneWasAccepted`), `ServerCatalogFlowTest`; the
   real-engine `FlinkFrontDoorsTest`, `IcebergFrontDoorsTest`, `SparkFrontDoorsTest` and
   `KafkaFrontDoorsTest` run with a signed catalog through both doors (local, not retained); four runnable servers in
-  [examples/break-glass-mcp-servers](../examples/break-glass-mcp-servers/README.md).
+  [examples/break-glass-mcp-servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/break-glass-mcp-servers/README.md).
 - **Limit:** startup only (no hot reload, no runtime registration). Rollback protection lasts as long
   as the state store: across restarts with `derby-local` or `postgres` state, for one process with
   in-memory state. The host trust anchor applies when the host sets it.

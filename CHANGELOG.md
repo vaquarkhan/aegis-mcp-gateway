@@ -20,7 +20,7 @@
 - The Superset front-door test seeds two charts from a local SQLite table when the public
   example-data download is unavailable, so the own-host run does not depend on that host.
 - Public docs link the adopter catalog, configurations, and tutorials on
-  `aegis-2.0-gateway-20261009`. Those paths are not on `main`.
+  `aegis-2.0-review-20261009`.
 - The OTLP drain test's local collector reads the POST off the accept thread and answers with a
   fixed-length body, so a Windows JDK does not time out the export and report zero spans.
 - Host trust anchor for the server catalog: `--require-server-catalog <review.pub>`,
@@ -137,8 +137,7 @@
   `adopters/configurations/` and shared typed sources (JDBC, ZooKeeper, Spark Connect, Kafka Admin).
   The 0.1 source remains in Git history. See [docs/HISTORY.md](docs/HISTORY.md) and
   [docs/COVERAGE-0.1-VS-2.0.md](docs/COVERAGE-0.1-VS-2.0.md).
-- Five former product-named HTTP configurations (Arrow, Beam, Hudi, Kudu, Ozone) are not shipped,
-  because their routes were not real product APIs.
+- Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources and are not part of this release.
 - Stricter startup validation: enumerated values (`unlistedTools`, rule `effect`, credential `type`,
   `era`, `catalog.mode`, screening and hook modes, `defaultClass`, `server.versions`) accept only their
   documented names; the OPA URL is checked like other off-host endpoints, including `egress`; OAuth

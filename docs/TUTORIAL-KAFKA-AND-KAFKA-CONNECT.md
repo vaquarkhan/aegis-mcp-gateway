@@ -27,7 +27,7 @@ environment. Where something was not executed, the text says so. Platform-specif
 Troubleshooting in part 7.
 
 Do not confuse that older manual topic-create and topic-delete narrative with the current retained
-Kafka Keep. The retained [`KafkaFrontDoorsTest` evidence](../examples/adopters/kafka/README.md) runs
+Kafka Keep. The retained [`KafkaFrontDoorsTest` evidence](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/kafka/README.md) runs
 through the own-host and Knox front doors. Its destructive operation is Kafka Connect connector
 deletion. It does not start or exercise Schema Registry, and it does not attest the manual topic
 creation or deletion sequence below.
@@ -564,7 +564,7 @@ The table below summarizes the historical manual run. It is recorded-unattested 
 the manual topic creation and deletion sequence. The current retained Keep is separate: it runs
 `KafkaFrontDoorsTest` through the own-host and Knox front doors, exercises connector deletion as its
 destructive action, and does not start or exercise Schema Registry. See the retained
-[Kafka example and results](../examples/adopters/kafka/README.md).
+[Kafka example and results](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/kafka/README.md).
 
 | What was attempted | By | Outcome | Deny code and step | Reached Kafka? |
 | --- | --- | --- | --- | --- |

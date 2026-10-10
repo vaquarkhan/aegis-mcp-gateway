@@ -81,7 +81,7 @@
           <h3>2. You run an Apache engine with a shipped profile</h3>
           <p>Copy a retained adopter config (Kafka, Spark, Flink, Airflow, ZooKeeper, …). Start the engine, start Aegis, paste the IDE JSON.</p>
           <a href="../TUTORIALS.html">Tutorial index</a>
-          · <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-gateway-20261009/examples/adopters">Adopter catalog</a>
+          · <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/examples/adopters">Adopter catalog</a>
         </article>
         <article>
           <h3>3. You only have a REST API</h3>
@@ -161,7 +161,7 @@ java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
         <li><strong>APPROVAL_REQUIRED</strong> / deny for <code>MUTATE</code> / <code>DESTRUCTIVE</code> until an independent approver and (for destructive) a fresh dry-run receipt are in place</li>
         <li>An audit line in the configured <code>audit.file</code> JSONL journal</li>
       </ul>
-      <p>Full IDE-and-dataset walkthrough: <a href="../TUTORIAL-SPARK-ICEBERG.html">Spark and Iceberg from your IDE</a>. Plain-language IDE folder guide: <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-gateway-20261009/adopters/tutorials/README.md">adopters/tutorials/README.md</a>.</p>
+      <p>Full IDE-and-dataset walkthrough: <a href="../TUTORIAL-SPARK-ICEBERG.html">Spark and Iceberg from your IDE</a>. Plain-language IDE folder guide: <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/README.md">adopters/tutorials/README.md</a>.</p>
     </section>
 
     <section id="cycle" class="band">
@@ -183,7 +183,7 @@ java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
           <p>One Aegis configuration per governed surface; host identity (JWT or static tokens); approver groups; egress allow list; IDE MCP entry that targets Aegis.</p>
         </div>
       </div>
-      <p>Container and cluster options: <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-gateway-20261009/Dockerfile">Dockerfile</a> and <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-gateway-20261009/charts/aegis/README.md">Helm chart</a>. Operator details: <a href="developer.html">developer guide</a> and <a href="../CONFIGURATION.html">configuration reference</a>.</p>
+      <p>Container and cluster options: <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/Dockerfile">Dockerfile</a> and <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/charts/aegis/README.md">Helm chart</a>. Operator details: <a href="developer.html">developer guide</a> and <a href="../CONFIGURATION.html">configuration reference</a>.</p>
     </section>
 
     <section id="apache">
@@ -204,7 +204,7 @@ java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
 
       <h3>Operator checklist for a new Apache surface</h3>
       <ol>
-        <li>Find the closest profile in <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-gateway-20261009/adopters/configurations">adopters/configurations</a> (or generate an OpenAPI draft for a REST API).</li>
+        <li>Find the closest profile in <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/adopters/configurations">adopters/configurations</a> (or generate an OpenAPI draft for a REST API).</li>
         <li>Classify every tool: <code>READ</code>, <code>MUTATE</code>, or <code>DESTRUCTIVE</code>. Unlisted tools default to <code>DESTRUCTIVE</code> (or use <code>unlistedTools: HIDE</code>).</li>
         <li>Name typed resources with JSON pointers (for example <code>kafka:topic</code> from <code>/topic</code>) so policy can constrain objects, not only tool names.</li>
         <li>Set <code>egress.allowCidrs</code> (or hosts) to the engine’s real addresses only.</li>

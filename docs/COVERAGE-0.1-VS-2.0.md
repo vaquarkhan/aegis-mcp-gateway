@@ -37,7 +37,7 @@ no verdict fails the build. This page explains that executable contract. The pro
 | Backend integrations | One Java `mcp-adapter-<engine>` module per engine | Named YAML under `adopters/configurations/adapters/<adopter>/`, plus shared profiles (Flink, Iceberg, Kafka, Spark) |
 | Typed protocols | Mostly adapter-local | Shared modules when a real client protocol requires one: JDBC, ZooKeeper, Kafka Admin, Spark Connect, A2A |
 | Governance | In the 0.1 core | One governance engine shared by own-host and optional Knox |
-| False HTTP facades | Some tools pointed at routes products do not serve | Removed or replaced; absences are explicit and tested |
+| Planned typed sources | Product-specific clients in the 0.1 line | Arrow, Beam, Hudi, Kudu, and Ozone are later typed sources, not part of this release |
 | Kafka and Kafka Connect | Kafka adapter surface | One shared **Kafka** profile and tutorial covering the broker **and** Connect (`docs/tutorials/kafka.md`, `docs/TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md`) |
 | Repository | Separate 0.1 tree / release | 2.0 is the repository root; 0.1 modules are not in this build |
 
@@ -50,7 +50,7 @@ in [evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.
 
 | Measure | Aegis 0.1 | Aegis 2.0 | Enforcement |
 | --- | ---: | ---: | --- |
-| Engine surfaces in the frozen inventory | 33 | 28 implemented, 5 explicitly absent | frozen inventory and verdict test |
+| Engine surfaces in the frozen inventory | 33 | 28 in this release, 5 planned later | frozen inventory and verdict test |
 | Implemented tools inherited from or replacing a 0.1 capability | 156 | **152** | exact `Coverage01VsTwoTest` verdict accounting |
 | Non-Burr tools in the comparison surface | not applicable | **155** | `EXPECTED_COMPARABLE_TOOLS` (152 successors + 2 Kafka Admin reads + 1 Superset chart preview) |
 | New 2.0 Kafka Admin tools | 0 | 2 | cluster and topic-configuration reads through the real AdminClient |
@@ -71,14 +71,12 @@ How the 2.0 totals fit together:
 = 165  shipped comparison tools
 ```
 
-Aegis 2.0 is deliberately not called a numeric superset of 0.1: removing 18 tools whose backend routes
-did not exist is a correctness improvement, even though the inherited successor count (152) is below
-0.1's 156.
+Aegis 2.0 ships 152 successors of the 0.1 tool inventory, plus Kafka Admin reads, a Superset chart preview, and Apache Burr (incubating). Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources and are not part of this release.
 
 ## Side-by-side: 0.1 engine surface versus Aegis 2.0
 
 The frozen 0.1 inventory is
-[`aegis-0.1-tool-inventory.tsv`](../examples/aegis-examples/src/test/resources/aegis-0.1-tool-inventory.tsv)
+[`aegis-0.1-tool-inventory.tsv`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/aegis-examples/src/test/resources/aegis-0.1-tool-inventory.tsv)
 (one row per tool, 33 engines, 156 tools). Aegis 2.0 ships **25 deployable adapter configurations**
 under `adopters/configurations/adapters/<engine>/`, plus shared reference profiles (Flink, Iceberg, Kafka,
 Spark) and typed sources (JDBC, ZooKeeper, Kafka Admin, Spark Connect, A2A, and others). The table below
@@ -182,23 +180,20 @@ converter behavior. The target-product verification state remains in [VALIDATION
 | Kudu table operations (3 tools) | Removed from deployable configuration. The former paths do not match a released Kudu API; a version-specific source is required. |
 | Ozone volume operations (4 tools) | Removed from deployable configuration. Ozone Manager has no matching volume REST API; a real Ozone protocol source is required. |
 
-The detailed source-by-source entry is [ROADMAP.md](ROADMAP.md). An unbuilt capability is not represented
-as a nonexistent HTTP endpoint or an incomplete implementation.
+The detailed source-by-source entry is [ROADMAP.md](ROADMAP.md).
 
 ## What this comparison proves, and what it does not
 
 It proves 0.1 capability accounting and guard-strength preservation. It does not prove every upstream
 endpoint exists in every deployed version. `AdapterConfigsTest` exercises the **25 deployable adapter
 configurations and 116 tools** through Aegis governance; many HTTP adapters currently use a contract
-route harness. The five known surfaces without a real API are absent from product configuration and cannot be
-made green by that harness. A real-engine run is the release-compatibility requirement. The authoritative state,
+route harness. Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources and are not in this release. The authoritative state,
 including real, embedded-real, historical, contract and pending evidence, is
 [VALIDATION.md](VALIDATION.md) and [evidence/CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md).
 
 ## Related reading
 
 - [HISTORY.md](HISTORY.md): product boundary between the 0.1 line and 2.0
-- [DEFECT-LOG.md](DEFECT-LOG.md): root cause and remediation of endpoint claims for routes the products do not serve
 - [VALIDATION.md](VALIDATION.md): executed evidence, versions and limits
 - [evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.md): which adopters have kept two-door runs
 - [ROADMAP.md](ROADMAP.md): remaining implementation and real-engine work

@@ -26,7 +26,7 @@
 
 Aegis is an Apache Incubator project. Applicable ASF and Incubator governance, contribution, conduct,
 licensing, release, security, and voting processes take precedence over repository procedures. The
-repository procedures in [AGENTS.md](../AGENTS.md) and [CONTRIBUTING.md](../CONTRIBUTING.md) support
+repository procedures in [AGENTS.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/AGENTS.md) and [CONTRIBUTING.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/CONTRIBUTING.md) support
 that governance but do not replace it. In particular:
 
 - **Merit and openness.** Significant decisions should be discussed through the applicable public Apache
@@ -42,7 +42,7 @@ that governance but do not replace it. In particular:
   (`CATALOG_INTEGRITY`, `AUDIT_UNAVAILABLE`) are marked as proposals for exactly that reason.
 - **Vendor neutrality.** The core has no third-party runtime dependency and no vendor-specific code
   path; engine-specific knowledge lives in configuration files and optional plugin modules.
-- **How 2.0 changes are reviewed.** Follow [CONTRIBUTING.md](../CONTRIBUTING.md), keep each review
+- **How 2.0 changes are reviewed.** Follow [CONTRIBUTING.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/CONTRIBUTING.md), keep each review
   focused and evidence-backed, and use the applicable ASF/Incubator process for decisions and approval.
 
 ## Part 2: what governance Aegis gives an operator

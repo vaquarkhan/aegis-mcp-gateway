@@ -20,7 +20,7 @@ development cycle and how to put governed MCP in front of an existing MCP server
 
 Each tutorial runs real Apache software on one machine and puts Aegis between an agent and it. The
 outputs in each one are copied from a recorded run; the files they use are in
-[`adopters/tutorials/`](../adopters/tutorials/).
+[`adopters/tutorials/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/adopters/tutorials).
 
 | Tutorial | Engines | Front doors | IDE setup and prompts | Start here if you... |
 | --- | --- | --- | --- | --- |
@@ -29,9 +29,9 @@ outputs in each one are copied from a recorded run; the files they use are in
 | [Iceberg REST catalog](TUTORIAL-ICEBERG.md) | Iceberg 1.10.1 `RESTCatalogServer` | own host | scripted client | govern catalog operations: namespaces, properties, drops |
 | [Kafka and Kafka Connect](TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md) | Kafka 3.9.1 KRaft broker and Connect worker | own host | scripted client | govern topics and connectors |
 | [Flink](TUTORIAL-FLINK.md) | Flink 1.20.1 | own host | scripted client | govern jobs, savepoints and cancellation |
-| [Break-glass MCP servers](../examples/break-glass-mcp-servers/README.md) | Spark 4.0.1, Kafka 3.9.1, Iceberg 1.10.1 and Flink 1.20.1, one independent server each | own host and stdio; Knox steps in each README | IDE settings in each README | want a signed server catalog and incident containment end to end |
+| [Break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/break-glass-mcp-servers/README.md) | Spark 4.0.1, Kafka 3.9.1, Iceberg 1.10.1 and Flink 1.20.1, one independent server each | own host and stdio; Knox steps in each README | IDE settings in each README | want a signed server catalog and incident containment end to end |
 
-The engine profiles marked **passed** in [`examples/adopters/`](../examples/adopters/README.md) also have
+The engine profiles marked **passed** in [`examples/adopters/`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md) also have
 a retained run through both front doors (own host and Knox), with the exact configuration, topology and
 results; the Spark and Iceberg tutorial's run is kept there as `spark-iceberg`.
 
@@ -84,5 +84,5 @@ IDEs themselves were not driven by a test.
 Atlas, Cassandra, Hive, Impala, Paimon and Ranger have a configuration profile that passes the contract
 test, which proves route rendering and governance order, not that the product answers. None has a real
 run on record, so none has a tutorial. The status and blocker of each are in
-[examples/adopters/README.md](../examples/adopters/README.md) and
+[examples/adopters/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md) and
 [evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.md).
