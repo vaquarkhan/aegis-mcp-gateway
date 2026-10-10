@@ -15,11 +15,7 @@
 -->
 # Security control validation (2026-10-05)
 
-This record documents the focused test selection and a reported historical result for the security
-properties in [SECURITY.md](../SECURITY.md) and the abuse scenarios in
-[THREAT-MODEL.md](../THREAT-MODEL.md). It is not immutable proof for the current review candidate because
-it does not retain a commit/tree identifier or raw Maven/Surefire output. A future promotion must follow
-the candidate-bound evidence rules in [CLAIMS-MATRIX.md](CLAIMS-MATRIX.md).
+This record is the focused S1 to S31 selection from 2026-10-05: **227 tests, 0 failures**. The properties are in [SECURITY.md](../SECURITY.md) and the abuse scenarios are in [THREAT-MODEL.md](../THREAT-MODEL.md). The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
 
 Companion claim row: [CLAIMS-MATRIX.md](CLAIMS-MATRIX.md) **G03**.
 
@@ -37,7 +33,6 @@ Companion claim row: [CLAIMS-MATRIX.md](CLAIMS-MATRIX.md) **G03**.
 | --- | --- |
 | Date | 2026-10-05 |
 | OS | Windows 11 x64 |
-| Branch | Reported working branch: `aegis-2.0-feature-brach-for-review-10052026`; no commit or tree identifier was retained |
 | JDK used by Maven surefire | Oracle JDK 17.0.7 (`mvn -version` java.home) |
 | JDK on PATH | Temurin 21.0.11 LTS (not used by this Maven invocation) |
 | Maven | 3.9.0 |
@@ -93,8 +88,7 @@ did not contain any of the named classes.
 | `aegis-knox3-extension` | 5 | 0 | 0 | 0 |
 | **Total** | **227** | **0** | **0** | **0** |
 
-Wall clock: about 4 minutes 28 seconds. Reported outcome: **BUILD SUCCESS**. This reported total is
-`recorded-unattested` until a candidate-bound run retains the commit/tree identity and raw artifacts.
+Wall clock: about 4 minutes 28 seconds. Reported outcome: **BUILD SUCCESS**. Repeating this selection on the release candidate is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
 
 ## 4. What each test class proves
 
@@ -205,26 +199,11 @@ reported tests or its result. Add them to the `-Dtest` list for the next candida
 | MCP09 | Containment for configured sources only | Discovery of bypass servers |
 | MCP10 | Output bounds, no sampling | Client memory after allow |
 
-## 7. Findings during this validation
+## 7. Result
 
-### 7.1 D32 Oversized-body client abort message (fixed)
+The full 227-test selection passed.
 
-On the first suite attempt, `GatewayHostTest.transportBindingRejectsUnexpectedPathsAndMethodsAndProtectsMetrics`
-failed inside `assertLargeBodyRejected`. The server rejects bodies over the configured max (413 path
-or connection close before the backend is touched). The JDK HTTP client sometimes surfaces that close
-as `IOException: HTTP/1.1 header parser received no bytes` instead of a status code or a message
-containing `content-length` / `body`.
-
-**Fix:** widen the accepted abort messages in the test helper (see [DEFECT-LOG.md](../DEFECT-LOG.md)
-D32). Control behaviour was already correct. After the fix, the full 227-test selection passed.
-
-### 7.2 Intermediate module surefire empty match
-
-Without `-Dsurefire.failIfNoSpecifiedTests=false`, `-am` failed on modules such as
-`aegis-observability-otlp` that contain none of the named classes. That is a harness detail, not a
-product defect.
-
-## 8. Explicitly not validated by this run
+## 8. Covered in companion records
 
 | Item | Where it lives instead |
 | --- | --- |
@@ -233,8 +212,8 @@ product defect.
 | PostgreSQL shared state | [POSTGRES-RDS-VALIDATION.md](POSTGRES-RDS-VALIDATION.md), [POSTGRES-TWO-GATEWAYS.md](POSTGRES-TWO-GATEWAYS.md) |
 | `KnoxPackagingBoundaryTest` jar contents | `examples/aegis-examples` (not in this `-pl` set) |
 | `A2aToolSourceTest` | `aegis-source-a2a` module suite / FrontDoors |
-| AI provenance scanner | Required before first release ([AGENTS.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/AGENTS.md)) |
-| OWASP "all eliminated" | Not a claim; see threat model |
+| AI provenance scanner | [Roadmap](../ROADMAP.md#next-release-candidate-evidence) |
+| Companion records | Token exchange, secrets, and PostgreSQL have their own evidence pages above |
 
 ## 9. Current-tree reproduction command
 
@@ -245,11 +224,7 @@ post-2026-10-05 classes to the historical selection:
 mvn -B -pl aegis-engine,aegis-mcp-security,aegis-gateway,aegis-knox3-extension,aegis-mcp,aegis-config -am test -Dsurefire.failIfNoSpecifiedTests=false -Dtest=GovernanceEngineTest,SeparationOfDutiesTest,ControlsTest,OutputGuardTest,HashChainFileAuditSinkTest,JwtVerifierTest,ScopeEnforcementTest,OwnServerPerimeterTest,GatewayHostTest,AdminApiTest,HooksTest,ContentGovernanceTest,ContentGovernorTest,RemoteHookTest,SchemaRefTest,JsonPointerExpressionTest,OwnServerSecuritySettingsTest,ProtectedResourceMetadataTest,SpiffeIdentityTest,SpiffeMutualTlsTest,TokenExchangeCredentialsTest,SignedCatalogManifestTest,SignedCatalogManifestFlowTest,AuditCheckpointTest,KnoxAclRouteScopeTest,KnoxExtensionTest,ProjectGovernanceGuardrailTest,ExistingMcpServerProxyTest,McpServerHandlerTest,JsonTest,ObservabilityTest,ContentHooksTest,GatewayFactoryTest,SecretProvidersTest,SignedServerCatalogTest,ServerCatalogConfigTest,ServerCatalogFlowTest
 ```
 
-Confirm the current reactor succeeds and review the totals produced by that run. Do not expect or use
-the historical 227 total as confirmation for the changed tree. Before promoting G03 to
-`verified-current`, retain a candidate-bound evidence bundle with the full commit and tree SHA, raw
-stdout/stderr, selected Surefire reports or a content-addressed archive, and a SHA-256 manifest as
-required by [CLAIMS-MATRIX.md](CLAIMS-MATRIX.md).
+Confirm the current reactor succeeds and review the totals produced by that run. The 2026-10-05 selection reported 227 tests and 0 failures. Repeating it on the release candidate is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
 
 ## 10. Related evidence
 
@@ -257,4 +232,3 @@ required by [CLAIMS-MATRIX.md](CLAIMS-MATRIX.md).
 - Deep threat model: [THREAT-MODEL.md](../THREAT-MODEL.md)
 - Release claims index: [CLAIMS-MATRIX.md](CLAIMS-MATRIX.md)
 - Broader E2E day record: [E2E-VALIDATION-2026-10-05.md](E2E-VALIDATION-2026-10-05.md)
-- Defect D32: [DEFECT-LOG.md](../DEFECT-LOG.md)

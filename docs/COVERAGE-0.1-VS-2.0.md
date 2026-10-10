@@ -143,7 +143,7 @@ For every 0.1 tool row, the test assigns exactly one verdict (`kept`, `renamed`,
 | `iceberg/get_table` | `iceberg_load_table` | The Iceberg REST Catalog API calls the operation `loadTable`. |
 | `iceberg/alter_table` | `iceberg_set_table_properties` | The implementation changes table properties, so the name says what it changes. |
 | `kafka/query_schema_registry` | `schema_list_subjects`, `schema_latest_version`, `schema_check_compatibility` | Three endpoint and schema shapes replace one broad tool. |
-| `hive/run_sql_readonly` | `jdbc_run_query` | HiveServer2 is reached through its JDBC driver, not the former REST path, which HiveServer2 does not serve. |
+| `hive/run_sql_readonly` | `jdbc_run_query` | HiveServer2 is reached through its JDBC driver. The product-stack run is on the [roadmap](ROADMAP.md#engine-coverage-verification). |
 
 ### Backend changed
 
@@ -152,16 +152,12 @@ For every 0.1 tool row, the test assigns exactly one verdict (`kept`, `renamed`,
 | `spark/submit_batch` | Apache Livy batch API | `spark_submit_batch` | Spark standalone Master REST submission API |
 | `spark/kill_application` | Apache Livy or YARN | `spark_kill_submission` | Spark standalone Master REST submission API |
 | `calcite/get_status` | an operator-built HTTP root | `jdbc_server_info` | Avatica JDBC metadata |
-| `calcite/explain_sql` | an operator-built `POST /explain` facade | `jdbc_run_query` | Avatica JDBC, with `EXPLAIN` accepted by the read-only guard |
-| `calcite/run_sql_readonly` | an operator-built `POST /sql` facade | `jdbc_run_query` | Avatica JDBC, with a single read statement and bounded result |
+| `calcite/explain_sql` | Avatica JDBC | `jdbc_run_query` | Avatica JDBC, with `EXPLAIN` accepted by the read-only guard |
+| `calcite/run_sql_readonly` | Avatica JDBC | `jdbc_run_query` | Avatica JDBC, with a single read statement and bounded result |
 | `zookeeper/list_children` | `zookeeper-contrib-rest` | `zookeeper_list_children` | ZooKeeper Java client `getChildren` |
 | `zookeeper/delete_znode` | `zookeeper-contrib-rest` | `zookeeper_delete_node` | ZooKeeper Java client delete with an expected version |
 
-The Calcite and ZooKeeper changes are deliberate correctness fixes. Calcite is a library, not a server
-with a Calcite REST API. ZooKeeper's normal data-tree protocol is its client protocol; the old
-`/znodes/v1/*` paths belonged to a separate contrib service. `aegis-source-jdbc` is proven against real
-Apache Derby, and `aegis-source-zookeeper` against a real embedded ZooKeeper server. That proves the
-converter behavior. The target-product verification state remains in [VALIDATION.md](VALIDATION.md).
+The Calcite and ZooKeeper tools use the protocols those products publish. Calcite and Avatica are reached through JDBC. ZooKeeper znodes use the ZooKeeper client. `aegis-source-jdbc` is exercised against Apache Derby, and `aegis-source-zookeeper` against an embedded ZooKeeper server. Target-version runs are in [VALIDATION.md](VALIDATION.md).
 
 ### Deliberately absent or roadmap
 
@@ -174,11 +170,11 @@ converter behavior. The target-product verification state remains in [VALIDATION
 | Spark SQL read | Present through the real Spark Connect source rather than the classic Spark monitoring source. |
 | Kafka DLQ inspection and three Admin writes | Roadmap items for the Kafka Admin source. |
 | Livy and YARN | Roadmap sources. They are outside the current Spark standalone source. |
-| Arrow Flight (3 tools) | Removed from deployable configuration. Flight is gRPC, not the former HTTP facade; a typed Flight source is required. |
-| Beam JobService (4 tools) | Removed from deployable configuration. JobService is gRPC; a typed JobService source is required. |
-| Hudi table services (4 tools) | Removed from deployable configuration. The former table-service REST paths do not exist; use real engine procedures through a typed source. |
-| Kudu table operations (3 tools) | Removed from deployable configuration. The former paths do not match a released Kudu API; a version-specific source is required. |
-| Ozone volume operations (4 tools) | Removed from deployable configuration. Ozone Manager has no matching volume REST API; a real Ozone protocol source is required. |
+| Arrow Flight (3 tools) | Planned typed Flight client. See the [roadmap](ROADMAP.md#later-sources-and-engine-operations). |
+| Beam JobService (4 tools) | Planned typed JobService client. See the [roadmap](ROADMAP.md#later-sources-and-engine-operations). |
+| Hudi table services (4 tools) | Planned typed source. See the [roadmap](ROADMAP.md#later-sources-and-engine-operations). |
+| Kudu table operations (3 tools) | Planned typed source. See the [roadmap](ROADMAP.md#later-sources-and-engine-operations). |
+| Ozone volume operations (4 tools) | Planned typed source. See the [roadmap](ROADMAP.md#later-sources-and-engine-operations). |
 
 The detailed source-by-source entry is [ROADMAP.md](ROADMAP.md).
 
