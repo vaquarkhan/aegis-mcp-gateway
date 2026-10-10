@@ -233,7 +233,7 @@ product defect.
 | PostgreSQL shared state | [POSTGRES-RDS-VALIDATION.md](POSTGRES-RDS-VALIDATION.md), [POSTGRES-TWO-GATEWAYS.md](POSTGRES-TWO-GATEWAYS.md) |
 | `KnoxPackagingBoundaryTest` jar contents | `examples/aegis-examples` (not in this `-pl` set) |
 | `A2aToolSourceTest` | `aegis-source-a2a` module suite / FrontDoors |
-| AI provenance scanner | Required before first release ([AGENTS.md](../../AGENTS.md)) |
+| AI provenance scanner | Required before first release ([AGENTS.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/AGENTS.md)) |
 | OWASP "all eliminated" | Not a claim; see threat model |
 
 ## 9. Current-tree reproduction command

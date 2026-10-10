@@ -45,7 +45,7 @@ sources:
       delete_job: {class: DESTRUCTIVE, resources: [{type: "engine:job", pointer: /jobId}]}
 ```
 
-The full shipped configuration is [`adopters/configurations/existing-mcp-server/existing-mcp-server.yaml`](../adopters/configurations/existing-mcp-server/existing-mcp-server.yaml). Aegis discovers downstream tool schemas and puts its fixed governance chain in front of every call. After durable `ALLOW_INTENT`, the downstream server receives either the configured static gateway service credential or an exchanged backend-audience token. It never receives the inbound caller token.
+The full shipped configuration is [`adopters/configurations/existing-mcp-server/existing-mcp-server.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/existing-mcp-server/existing-mcp-server.yaml). Aegis discovers downstream tool schemas and puts its fixed governance chain in front of every call. After durable `ALLOW_INTENT`, the downstream server receives either the configured static gateway service credential or an exchanged backend-audience token. It never receives the inbound caller token.
 
 | Your server | Aegis configuration | Result |
 | --- | --- | --- |
@@ -69,7 +69,7 @@ To try it, copy the shipped profile, set the source URL, classify tools and reso
 
 Aegis 0.1 had one Maven module per engine (`mcp-adapter-<engine>`). In 2.0, 24 usable 0.1
 surfaces plus the new Apache Burr (incubating) integration are **25 deployable adapter folders and 116 tools** under
-[`adopters/configurations/adapters/`](../adopters/configurations/adapters). Each folder contains a
+[`adopters/configurations/adapters/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/adopters/configurations/adapters). Each folder contains a
 same-named executable YAML profile and developer README. Most use
 `type: http`; Hive and Calcite use the JDBC converter, and ZooKeeper combines its real AdminServer HTTP
 commands with its client-protocol converter. Arrow, Beam, Hudi, Kudu and Ozone are explicit roadmap
@@ -183,7 +183,7 @@ Details are in [KNOX-EXTENSION.md](KNOX-EXTENSION.md).
   With a signed `serverCatalog`, run-time acceptance is refused; re-sign the catalog instead.
 - **Incidents:** a break-glass order signed with a separate key quarantines or revokes named servers
   for up to 24 hours at the next restart. It can only take capability away. See
-  [break-glass MCP servers](../examples/break-glass-mcp-servers/README.md) for four runnable examples.
+  [break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/break-glass-mcp-servers/README.md) for four runnable examples.
 - **Health:** `/healthz`, and `/readyz` (the gateway's own server). `.../aegis-mcp/v1/health` (Knox).
 
 ## What a project has to change

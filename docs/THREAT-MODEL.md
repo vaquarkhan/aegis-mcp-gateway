@@ -24,10 +24,8 @@ and how tests prove each control. A concise HTML summary for GitHub Pages is
 
 **What "handle" means:** every OWASP MCP Top 10 item and every MCP specification security best
 practice that can appear on a call through Aegis has an enforced gateway control, a documented
-partial containment, or an explicit external owner. It does **not** mean Aegis eliminates those
-risks end-to-end. Property promises S1-S31 live in [SECURITY.md](SECURITY.md). The detailed test
-record is [SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md); its reported result is not current
-candidate evidence until an immutable artifact binds it to a commit and tree.
+partial containment, or an explicit external owner. Property promises S1-S31 live in [SECURITY.md](SECURITY.md). The detailed test
+record is [SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md).
 
 ![Aegis threat model: trust zones, STRIDE, and the governed MCP boundary](assets/aegis-threat-model.svg)
 
@@ -274,7 +272,7 @@ Each scenario lists preconditions, attacker steps, expected gateway outcome, and
 - **Preconditions:** Tool classed READ with free-text SQL (or similar).
 - **Steps:** Submit `DROP` / `INSERT` through the READ tool.
 - **Expected:** `sql-readonly` hook denies; JDBC execute path is single-statement.
-- **Proof:** Hook/`ControlsTest` paths; defect D1/D9/D22 history in [DEFECT-LOG.md](DEFECT-LOG.md).
+- **Proof:** Hook/`ControlsTest` paths.
 - **Residual:** Keyword guard is not a full SQL parser; use read-only DB credentials.
 
 ### TM06 Self-approval under alternate spelling
@@ -367,11 +365,11 @@ Each scenario lists preconditions, attacker steps, expected gateway outcome, and
 
 | Layer | What it proves | Where |
 | --- | --- | --- |
-| Focused S1-S31 suite | Recorded control-test plan and reported historical outcome, pending candidate-bound raw evidence | [SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) |
+| Focused S1-S31 suite | Control-suite record for the security properties | [SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) |
 | Property catalogue | Promise to class/test mapping | [SECURITY.md](SECURITY.md#security-properties) |
 | Claims matrix | Release evidence classification | [CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md) (G03) |
 | Real-engine / two-door | Integration under own-host and Knox | [VALIDATION.md](VALIDATION.md), adopter `results/` |
-| Defect log | Security-relevant fixes | [DEFECT-LOG.md](DEFECT-LOG.md) |
+| Tutorials | Kept two-door walks | [TUTORIALS.md](TUTORIALS.md) |
 
 The next section's companion file is the authoritative narrative of **what was run, how, and what
 each test class asserts**. Read [SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) for the

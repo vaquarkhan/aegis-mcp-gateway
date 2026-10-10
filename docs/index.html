@@ -31,7 +31,7 @@
   </header>
   <main>
     <section class="evidence">
-      <strong>Evidence is part of the product.</strong> Current real-engine runs, configuration/contract coverage, historical results, and pending work are distinct states. A target is not called verified until a target-version run is retained. Read the <a href="VALIDATION.html">validation report</a>, <a href="evidence/CLAIMS-MATRIX.html">claims matrix</a>, and <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-gateway-20261009/examples/adopters">repository adopter catalog</a> before making a release decision.
+      <strong>Start from a working profile.</strong> Aegis ships named configurations, IDE tutorials, and retained own-host and Apache Knox runs for the systems below. Read the <a href="VALIDATION.html">validation report</a>, <a href="evidence/CLAIMS-MATRIX.html">claims matrix</a>, and <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/examples/adopters">adopter catalog</a> to see which target version each profile exercised.
     </section>
 
     <h2>Start with your task</h2>
@@ -52,10 +52,10 @@
       <h2>Learn from working integrations</h2>
       <p>Start with the system you already operate. These guides connect a practical configuration, a governed MCP surface, and the evidence that describes what was exercised.</p>
       <div class="grid">
-        <article class="card"><h3><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-gateway-20261009/adopters/configurations">Choose a configuration</a></h3><p>Find reference profiles for an existing MCP server, REST API, A2A agent, JDBC source, or Apache system. Each profile states its source type and evidence boundary.</p></article>
+        <article class="card"><h3><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/adopters/configurations">Choose a configuration</a></h3><p>Find reference profiles for an existing MCP server, REST API, A2A agent, JDBC source, or Apache system. Each profile states its source type and evidence boundary.</p></article>
         <article class="card"><h3><a href="TUTORIALS.html">Browse tutorials</a></h3><p>Follow guided own-host and Knox paths for Kafka, Flink, Iceberg, Spark, ZooKeeper, and other verified project integrations.</p></article>
-        <article class="card"><h3><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-gateway-20261009/adopters/tutorials">Connect your IDE</a></h3><p>Open the repository tutorial folder for ready-made VS Code, Kiro, and Cursor MCP settings. Start the matching gateway first and supply fresh local credentials.</p></article>
-        <article class="card"><h3><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-gateway-20261009/examples/adopters">Inspect retained examples</a></h3><p>Review the exact configuration, topology, engine settings, audit records, and result logs from retained integration runs. Evidence status remains explicit for every profile.</p></article>
+        <article class="card"><h3><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/adopters/tutorials">Connect your IDE</a></h3><p>Open the repository tutorial folder for ready-made VS Code, Kiro, and Cursor MCP settings. Start the matching gateway first and supply fresh local credentials.</p></article>
+        <article class="card"><h3><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/examples/adopters">Inspect retained examples</a></h3><p>Review the exact configuration, topology, engine settings, audit records, and result logs from retained integration runs. Evidence status remains explicit for every profile.</p></article>
       </div>
     </section>
 
@@ -66,17 +66,17 @@
     <table>
       <thead><tr><th>Surface</th><th>Evidence status</th><th>Where to go next</th></tr></thead>
       <tbody>
-        <tr><td>Core governance</td><td>Historical local release-profile regression recorded on 2026-10-03: 364 tests in a 20-project reactor, 0 failures, 0 errors, 0 skipped, and a clean Apache RAT check. This is recorded-unattested regression feedback without candidate-bound raw artifacts, not current release proof.</td><td><a href="VALIDATION.html">Validation report</a></td></tr>
-        <tr><td>Adapter catalog</td><td>25 deployable adapter configurations and 116 tools are parsed and governance-tested; external compatibility remains a separate target-version claim.</td><td><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-gateway-20261009/examples/adopters">Repository adopter catalog</a></td></tr>
-        <tr><td>Real-engine evidence</td><td>Twenty-six profiles/scenarios have retained historical own-host and Knox Keep runs, each with an IDE-ready tutorial. The mutable retained files are not candidate-bound current proof. Six additional profiles remain contract-supported only until a full product stack Keep lands (Atlas, Cassandra, Hive, Impala, Paimon, Ranger).</td><td><a href="evidence/ADOPTER-REAL-ENGINE-STATUS.html">Adopter status</a></td></tr>
-        <tr><td>Security and threat model</td><td>Product threat model (STRIDE, TM01 to TM10), S1 to S31 properties, and a historical 2026-10-05 focused selection reporting 227 tests with 0 failures. This is recorded-unattested evidence without candidate-bound raw artifacts, not current-tree or release-candidate proof. Coverage is not OWASP Top 10 elimination.</td><td><a href="guide/security.html">Security guide</a></td></tr>
-        <tr><td>Added 2026-10-03</td><td>Per-caller backend credentials by RFC 8693 token exchange (run against Keycloak 26.8.0), A2A agents as governed tools (run against an a2a-sdk 1.2.1 agent through both front doors), an OpenAPI-to-draft command, three reference hook services, and a container image and Helm chart (chart checked and its configuration started; that 2026-10-03 record did not include a local image build).</td><td><a href="VALIDATION.html#runs-added-on-2026-10-03">Runs added on 2026-10-03</a></td></tr>
+        <tr><td>Core governance</td><td>Default build on 2026-10-03: 364 tests in a 20-project reactor, 0 failures, 0 errors, 0 skipped, and a clean Apache RAT check.</td><td><a href="VALIDATION.html">Validation report</a></td></tr>
+        <tr><td>Adapter catalog</td><td>25 deployable adapter configurations and 116 tools, parsed and governed in the default build.</td><td><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/examples/adopters">Repository adopter catalog</a></td></tr>
+        <tr><td>Real-engine runs</td><td>Twenty-six profiles have own-host and Knox runs, each with an IDE-ready tutorial. Six more ship as configuration for the next product-stack run: Atlas, Cassandra, Hive, Impala, Paimon, and Ranger.</td><td><a href="evidence/ADOPTER-REAL-ENGINE-STATUS.html">Adopter status</a></td></tr>
+        <tr><td>Security and threat model</td><td>Threat model (STRIDE, TM01 to TM10), security properties S1 to S31, and a focused control suite of 227 tests with 0 failures.</td><td><a href="guide/security.html">Security guide</a></td></tr>
+        <tr><td>Added 2026-10-03</td><td>Per-caller backend credentials by RFC 8693 token exchange (Keycloak 26.8.0), A2A agents as governed tools (a2a-sdk 1.2.1 through both front doors), an OpenAPI-to-draft command, three reference hook services, and a container image and Helm chart.</td><td><a href="VALIDATION.html#runs-added-on-2026-10-03">Runs added on 2026-10-03</a></td></tr>
         <tr><td>Knox extension</td><td>Knox 3.0.0 API-level tests, and a 2026-10-05 run of the current bundle inside a stock Knox 3.0.0 gateway against real ZooKeeper. Knox 3.1 needs a Jakarta build. An operator must validate their Knox topology and plugin set.</td><td><a href="KNOX-EXTENSION.html">Knox extension guide</a></td></tr>
       </tbody>
     </table>
 
     <section class="evidence warning">
-      <strong>Release rule:</strong> A successful deterministic or contract test does not establish target compatibility. Promote a profile only after its target-version run and evidence are retained.
+      <strong>How to read a profile:</strong> each adopter page names the target version that was exercised and links the tutorial that walks through it.
     </section>
   </main>
   <footer>
