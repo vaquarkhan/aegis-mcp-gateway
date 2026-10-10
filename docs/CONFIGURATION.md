@@ -235,7 +235,7 @@ is `OpenApiDraftIcebergTest`.
 | --- | --- | --- |
 | `kafka-admin` | `examples/aegis-examples` (+ `kafka-clients`) | `bootstrapServers`, `clientPropertiesFile`, `requestTimeoutMs` |
 | `spark-connect` | `examples/aegis-spark-connect` (+ the Spark Connect JVM client) | `host`, `port` (15002), `useSsl` (false), `tokenEnv` (needs `useSsl: true`), `userId` (aegis-gateway), `maxRows` (100), `threads` (8) |
-| `a2a` | `aegis-source-a2a` (no other dependencies) | `cardUrl` (required), `endpointUrl` (pins the JSON-RPC URL), `toolName` (source id with `_`), `maxTextChars` (16000), `maxResponseBytes` (1 MiB), `cardTimeoutMs` (5000); see [adopters/configurations/a2a](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/a2a/README.md) |
+| `a2a` | `aegis-source-a2a` (no other dependencies) | `cardUrl` (required), `endpointUrl` (pins the JSON-RPC URL), `toolName` (source id with `_`), `maxTextChars` (16000), `maxResponseBytes` (1 MiB), `cardTimeoutMs` (5000); see [adopters/configurations/a2a](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/configurations/a2a/README.md) |
 
 The `a2a` source offers one A2A 1.0 agent as one tool with arguments `text` and optional `data`, sent as
 one JSON-RPC `SendMessage`. An A2A message cannot select a skill, so classify the tool by the strongest
@@ -549,7 +549,7 @@ hooks:
 
 Three reference endpoints written against this contract (a PII guard, a secrets guard and a change
 window), with tests and a live end-to-end run against the gateway jar, are in
-[adopters/hooks](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/hooks/README.md).
+[adopters/hooks](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/hooks/README.md).
 
 ### `type: sql-readonly`: keep a statement-forwarding tool accurately classified READ
 
@@ -609,7 +609,7 @@ tool argument, so declare it in the tool's `inputSchema`.
 
 #### Illustrative Apache-project governance profile
 
-[`apache-project-governance.example.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/profiles/apache-project-governance.example.yaml) is an illustrative Aegis profile for a project community to review and adapt. It is not an ASF policy, an ASF release rule, legal advice, or a statement that an adopting project complies with a regulation. Each community must replace the example identities, groups, sources, tools, endpoints, resources, evidence rules, and operational controls with values it approves.
+[`apache-project-governance.example.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/profiles/apache-project-governance.example.yaml) is an illustrative Aegis profile for a project community to review and adapt. It is not an ASF policy, an ASF release rule, legal advice, or a statement that an adopting project complies with a regulation. Each community must replace the example identities, groups, sources, tools, endpoints, resources, evidence rules, and operational controls with values it approves.
 
 | Governance theme | Aegis control in the example | What a project decides |
 | --- | --- | --- |
