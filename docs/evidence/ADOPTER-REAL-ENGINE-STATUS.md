@@ -6,26 +6,16 @@
 # Adopter real-engine status (2026-10-05)
 
 Companion to [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md) and
-[CLAIMS-MATRIX.md](CLAIMS-MATRIX.md). **Contract support** (AdapterConfigsTest) is not the same as a
-real two-door run.
+[CLAIMS-MATRIX.md](CLAIMS-MATRIX.md).
 
 ## What adopter coverage means here
 
-Every shipped profile has an implemented governance configuration and contract assertion. That is
-implementation and contract coverage, not candidate-bound target verification. **Target verification**
-means a retained own-host and Knox run against a real product process, with immutable artifacts bound
-to the candidate commit/tree. A runnable surface can be HTTP, a JDBC driver and server, or a typed
-plugin such as Spark Connect. Coverage is not closed by inventing REST routes, and it is not the same
-as release process work (see [release process items](RELEASE-ASSURANCE.md#release-process-items)).
+Every shipped profile has a governance configuration. A two-door run is a retained own-host and Knox exercise against a real product process. Product-stack runs still ahead are on the [roadmap](../ROADMAP.md#engine-coverage-verification).
 
-## Retained two-door runs (historical until candidate-bound rerun)
+## Retained two-door runs
 
-The historical inventory recorded **26** profiles with own-host and Knox Keep runs: the adopter/scenario
-rows marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md), including
-the `spark-iceberg` scenario. Those results are not bound to the current dirty tree by an immutable
-manifest, so they are historical rather than `verified-current`. The 26 profiles drive the generated
-IDE tutorials. **A2A** also has a recorded two-door run below; it is an additional typed-source Keep,
-not one of the six contract-only backlog items.
+The inventory records **26** profiles with own-host and Knox runs: the adopter rows marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md), including
+the `spark-iceberg` scenario. Those 26 profiles have IDE tutorials. **A2A** also has a two-door run below. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
 
 | Adopter | Engine | Evidence |
 | --- | --- | --- |
@@ -78,8 +68,8 @@ generic gRPC proxy. Arrow Flight and Beam JobService are different protocols and
 ## ASF / Incubator / release process (not this engineering backlog)
 
 Provenance scans, software-grant header switches and private security and conduct channel proof are
-tracked under [release process items](RELEASE-ASSURANCE.md#release-process-items); a published image
-and a cluster install are on the [roadmap](../ROADMAP.md). None of them blocks adopter engineering.
+tracked under [release process items](RELEASE-ASSURANCE.md#release-process-items). A published image
+and a cluster install are on the [roadmap](../ROADMAP.md).
 
 ## How to reproduce an adopter run
 
@@ -90,5 +80,4 @@ $env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'
 ./examples/adopters/run-example.ps1 <adopter> -Keep
 ```
 
-A new run remains `recorded-unattested` until its exact commit/tree identity, raw output, retained
-result files, and SHA-256 manifest are preserved as candidate-bound evidence.
+A new run is kept with its result files under `examples/adopters/<adopter>/results/`. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).

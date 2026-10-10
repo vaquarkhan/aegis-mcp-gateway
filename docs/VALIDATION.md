@@ -146,7 +146,7 @@ executable:
 | Shared reference configurations | **7 executable reference profiles** plus a separate teaching template | one executable YAML and developer README in each `adopters/configurations/<profile>/` directory; `DocumentationClaimsTest` rejects flat root YAML and missing catalog links |
 | Adapter configurations | **25 deployable adapter configurations** | one executable YAML in each `adopters/configurations/adapters/<adopter>/` directory |
 | Adapter tools | **116 tools** | summed from the same parsed YAML |
-| 0.1 frozen inventory | 156 tools, 33 engines | checked against every implemented or explicitly absent verdict |
+| 0.1 frozen inventory | 156 tools, 33 engines | checked against the shipped 2.0 configuration |
 | Implemented 0.1 successor surface | 152 tools | exact frozen verdict accounting |
 | New Kafka Admin capabilities | 2 tools | real AdminClient cluster and configuration reads |
 | Full comparison surface, including Apache Burr (incubating) | 165 tools | exact `Coverage01VsTwoTest` assertion |
@@ -186,28 +186,19 @@ supplemental source/converter detail.
 | Flink 1.20.1 | `RealFlinkTest` starts a real Flink MiniCluster and verifies read, denied cancel, dry-run, approval and real cancellation against the canonical config | recorded local source behavior; rerun when Flink source, Flink version or config changes |
 | Spark 4.0.1 | `RealSparkTest` starts a real local Spark driver and verifies History/driver-UI reads through the canonical config; standalone-master submission/kill remains unexercised | recorded local read-source behavior; standalone-master write path still needs its own run |
 | Spark Connect 4.0.1 | `RealSparkConnectServerTest` starts a real Spark Connect server in a separate JVM and exercises reads plus a dry-run, independent approval and real destructive drop | recorded local source behavior; rerun when Spark Connect source, Spark version or config changes |
-| Iceberg 1.10.1 REST catalog | `IcebergFrontDoorsTest`: real `RESTCatalogServer`, own host and Knox; recorded 2026-10-05 on a mutable working-tree snapshot | recorded local source behavior; rerun on the exact candidate before a release claim |
-| Kafka 3.9.1 and Connect | `KafkaFrontDoorsTest`: real KRaft broker and Connect worker, own host and Knox; rerun 2026-10-05; and in every default build `ExampleConfigsTest` drives the `kafka-admin` source against a real broker | recorded local source behavior; rerun on the exact candidate before a release claim |
-| 6 profiles without real-engine evidence (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) | deterministic `AdapterConfigsTest` contract route and governance flow (and documented environment prerequisites in `examples/adopters/`) | config/contract supported; target runs pending, no compatibility claim |
-| Arrow, Beam, Hudi, Kudu and Ozone | planned typed sources; not part of this release | later release |
-| `aegis-state-postgres` | `PostgresStateStoreIT` reported five tests against a temporary external PostgreSQL instance, covering two-provider nonce/rate sharing, persistence, expiration, escaped scans, invalid rate requests, environment-named credentials, and signed-serial high-water rollback; the engine version was not retained | recorded local source behavior; see [PostgreSQL validation evidence](evidence/POSTGRES-RDS-VALIDATION.md). Re-run from the exact candidate before release or active-active claims |
+| Iceberg 1.10.1 REST catalog | `IcebergFrontDoorsTest`: real `RESTCatalogServer`, own host and Knox, recorded 2026-10-05 | recorded local source behavior; the release-candidate repeat is on the [roadmap](ROADMAP.md#next-release-candidate-evidence) |
+| Kafka 3.9.1 and Connect | `KafkaFrontDoorsTest`: real KRaft broker and Connect worker, own host and Knox, recorded 2026-10-05; every default build also drives the `kafka-admin` source against a real broker | recorded local source behavior; the release-candidate repeat is on the [roadmap](ROADMAP.md#next-release-candidate-evidence) |
+| Atlas, Cassandra, Hive, Impala, Paimon, Ranger | configuration and `AdapterConfigsTest` governance flow | product-stack runs are on the [roadmap](ROADMAP.md#engine-coverage-verification) |
+| Arrow, Beam, Hudi, Kudu and Ozone | planned typed sources | [roadmap](ROADMAP.md#later-sources-and-engine-operations) |
+| `aegis-state-postgres` | `PostgresStateStoreIT`: five tests for shared nonce and rate state, persistence, expiration, escaped scans, invalid rate requests, environment-named credentials, and signed-serial high-water rollback | [PostgreSQL validation evidence](evidence/POSTGRES-RDS-VALIDATION.md); the release-candidate repeat is on the [roadmap](ROADMAP.md#next-release-candidate-evidence) |
 | Two gateway processes, one `postgres` namespace | `TwoGatewayProcessesPostgresIT` starts two `Main` JVMs against a real PostgreSQL 17.6 server: an approval requested on A is decided on B, the approved delete runs once on B, the replay on A is refused, and a rate window of 3 is one window across both | recorded local source behavior; see [two-gateway evidence](evidence/POSTGRES-TWO-GATEWAYS.md). Re-run from the exact candidate before a release claim |
 | Knox extension | API-level tests include the real `AclsAuthz` route-scope check; on 2026-10-05 a dated `ZooKeeperFrontDoorsTest` run installed that run's `knox-bundle` jar (SHA-256 `0726C4CE71D23856F8FE9A58BE2C80E7FC7E4AE740ED70E8ECC8CBFB2617B780`) into stock Knox 3.0.0 `ext/` and ran the full scenario against real ZooKeeper 3.9.3 (claims matrix H10). Knox 3.1 (Jakarta) needs a separate build, see [ADR-002](adr/ADR-002-KNOX-3.1-JAKARTA-TARGET.md) |
 
-The important distinction is that Aegis is not waiting for a test to decide whether it governs an action.
-Every current config still traverses the same enforcement chain. The target run is required to claim that
-the particular endpoint or driver works with the particular upstream release.
+Every current configuration follows the same enforcement chain. Each profile names the version that was exercised. Later runs are on the [roadmap](ROADMAP.md#next-release-candidate-evidence).
 
-## What must run before a release claim
+## Later work
 
-1. Re-run Flink, Spark, Spark Connect, Iceberg and Kafka on the exact release candidate tree.
-2. Re-run `PostgresStateStoreIT` from the exact release candidate against a real PostgreSQL deployment and retain the multi-provider evidence before claiming active-active approval/rate-window support.
-3. Add typed sources for Arrow Flight, Beam JobService, Hudi, Kudu, and Ozone in a later release.
-4. Run every remaining HTTP adapter against its documented product version, preserve the raw output under
-   `docs/evidence/`, then update its claim-matrix row.
-5. Re-run the Knox front-door scenarios on the exact release candidate bundle (the 2026-10-05 Keep set is historical working-tree evidence), and re-capture the manual cold-install transcript with that bundle.
-6. Run an OpenTelemetry collector interoperability test, and re-run `TwoGatewayProcessesPostgresIT` on the exact candidate.
-7. Run the provenance scan required by `AGENTS.md` and attach the result.
+Product-stack runs, typed sources, and the release-candidate repeat are on the [roadmap](ROADMAP.md).
 
 ## Explicit limits
 
