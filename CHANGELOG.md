@@ -20,6 +20,7 @@
 - The Superset front-door test seeds two charts from a local SQLite table when the public
   example-data download is unavailable, so the own-host run does not depend on that host.
 - The validation report now points later runs, typed sources, and distribution follow-up at the roadmap.
+- GitHub Pages renders Mermaid diagrams in the architecture and tutorial pages.
 - The OTLP drain test's local collector reads the POST off the accept thread and answers with a
   fixed-length body, so a Windows JDK does not time out the export and report zero spans.
 - Host trust anchor for the server catalog: `--require-server-catalog <review.pub>`,
