@@ -149,7 +149,7 @@ sequenceDiagram
     G->>G: commit: consume approval and receipt in separate atomic nonce operations
     G->>A: ALLOW_INTENT
     alt audit write fails
-        G-->>C: AUDIT_UNAVAILABLE (nothing executed; consumed controls stay consumed)
+        G-->>C: AUDIT_UNAVAILABLE (nothing executed, consumed controls stay consumed)
     end
     G->>P: credentials for this source (only now)
     G->>B: execute (traceparent forwarded, caller token never)
