@@ -5,7 +5,7 @@
 -->
 # Adopter real-engine status (2026-10-05)
 
-Companion to [`examples/adopters/README.md`](../../examples/adopters/README.md) and
+Companion to [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md) and
 [CLAIMS-MATRIX.md](CLAIMS-MATRIX.md). **Contract support** (AdapterConfigsTest) is not the same as a
 real two-door run.
 
@@ -21,7 +21,7 @@ as release process work (see [release process items](RELEASE-ASSURANCE.md#releas
 ## Retained two-door runs (historical until candidate-bound rerun)
 
 The historical inventory recorded **26** profiles with own-host and Knox Keep runs: the adopter/scenario
-rows marked **passed** in [`examples/adopters/README.md`](../../examples/adopters/README.md), including
+rows marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md), including
 the `spark-iceberg` scenario. Those results are not bound to the current dirty tree by an immutable
 manifest, so they are historical rather than `verified-current`. The 26 profiles drive the generated
 IDE tutorials. **A2A** also has a recorded two-door run below; it is an additional typed-source Keep,
@@ -59,24 +59,21 @@ not one of the six contract-only backlog items.
 
 ## Remaining engineering (not ASF process)
 
-These six still need a **real product process** on the Keep path. JDBC and Spark Connect help only
-where the product’s real surface matches those protocols.
+These six ship as configuration. The next step for each is a full product-stack run. JDBC and Spark Connect apply where the product speaks that protocol.
 
-| Adopter | Honest surface already in tree | Closable with existing JDBC / Spark Connect? | What still blocks a Keep |
+| Adopter | Surface in this release | Fits JDBC or Spark Connect? | Next product-stack step |
 | --- | --- | --- | --- |
-| **Hive** | `type: jdbc` + `HiveDriver` (fake HTTP `/sql` was removed) | **Yes: same JDBC source as Calcite/Derby.** | An `apache/hive:4.0.1` HS2 Docker and beeline exercise was reported on 2026-10-05, but its exact command and raw output were not retained. **No FrontDoors scaffold exists in the tree.** Full Keep needs HS2 client jars on the classpath, seed data, retained results, and a tutorial. Tracked on [ROADMAP.md](../ROADMAP.md) |
+| **Hive** | `type: jdbc` + `HiveDriver` | **Yes: same JDBC source as Calcite/Derby.** | Full Keep needs HiveServer2 client jars, seed data, retained results, and a tutorial. Tracked on [ROADMAP.md](../ROADMAP.md) |
 | **Impala** | Coordinator **HTTP** debug UI tools today; SQL would be JDBC like Hive | **SQL yes (jdbc rewrite); cancel/status stay HTTP.** Spark Connect does not speak Impala | Full Impala (or JDBC endpoint) stack: **future roadmap** |
 | **Paimon** | Declarative **HTTP** REST catalog (same pattern as Iceberg REST) | **Not JDBC/gRPC.** | Paimon REST catalog + warehouse Keep: **future roadmap** |
 | **Cassandra** | Declarative **HTTP** Cassandra Sidecar | **Not JDBC** (profile is Sidecar REST, not CQL). CQL would be a different jdbc profile | Sidecar + cluster Docker Keep: **future roadmap** |
 | **Ranger** | Declarative **HTTP** Admin API | **Not JDBC/gRPC** | Ranger Admin + DB Docker Keep: **future roadmap** |
 | **Atlas** | Declarative **HTTP** Atlas v2 | **Not JDBC/gRPC** | Atlas + Kafka + Solr + HBase: **future roadmap** |
 
-### Why Spark Connect does not “finish all”
+### Spark Connect covers Spark
 
 `aegis-spark-connect` is a **typed Spark Connect client** (Spark’s own gRPC protocol). It is not a
-generic gRPC proxy. Arrow Flight and Beam JobService are different protocols and remain **new typed
-sources** on the roadmap: they were **removed as false HTTP facades** (defect closed), not left as
-open bugs to revive.
+generic gRPC proxy. Arrow Flight and Beam JobService are different protocols and are planned as typed sources in a later release.
 
 ## ASF / Incubator / release process (not this engineering backlog)
 

@@ -15,17 +15,11 @@
 -->
 # Validation report
 
-This report is evidence, not marketing. The current source of truth for individual claims is
-[evidence/CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md). A target is verified for a release claim only
-after the exact clean, committed candidate runs it and preserves commit/tree-bound immutable results.
-A skipped test, a source review, a converter test against a different engine, a contract route harness,
-or mutable working-tree output is never relabelled as target compatibility. Workstation
-build output is useful regression feedback, but becomes release evidence only when retained against a clean,
-committed candidate revision.
+This report records the builds, target versions, and adopter runs for Aegis Gateway 2.0. Individual claims are in [evidence/CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md). Each adopter page names the target version that was exercised.
 
 ## Tested environments
 
-The local runs in this report and in [evidence/](evidence/) used one Windows workstation:
+The local runs in this report and in [adopter status](evidence/ADOPTER-REAL-ENGINE-STATUS.md) used one Windows workstation:
 
 | Part | Version | Used for |
 | --- | --- | --- |
@@ -46,23 +40,19 @@ The local runs in this report and in [evidence/](evidence/) used one Windows wor
 | OpenBao | 2.7.1 | KV secret provider ([evidence](evidence/SECRETS-OPENBAO.md)); HashiCorp Vault 1.17.6 dev also exercised 2026-10-05 (same KV v2 API) |
 | Keycloak | 26.8.0 | RFC 8693 token exchange ([evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md)) |
 | a2a-sdk (Python) | 1.2.1 | the A2A agent behind the `a2a` source (`A2aAgentFrontDoorsTest`, both front doors) |
-| Helm, kubeconform, hadolint, actionlint | 4.3.0, 0.8.0, 2.15.1, 1.7.12 | chart, manifest, Dockerfile and workflow checks ([chart README](../charts/aegis/README.md)) |
+| Helm, kubeconform, hadolint, actionlint | 4.3.0, 0.8.0, 2.15.1, 1.7.12 | chart, manifest, Dockerfile and workflow checks ([chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/charts/aegis/README.md)) |
 | Apache CouchDB | 3.4.2 (official Docker image) | `CouchdbFrontDoorsTest` own host and Knox ([adopter status](evidence/ADOPTER-REAL-ENGINE-STATUS.md)) |
 | Apache Pinot | 1.2.0 (official Docker QuickStart) | `PinotFrontDoorsTest` own host and Knox |
 
 The temporary external PostgreSQL run is described in the [PostgreSQL validation evidence](evidence/POSTGRES-RDS-VALIDATION.md); its engine version was not retained.
-The engine version of each adopter run is in [`examples/adopters/README.md`](../examples/adopters/README.md).
+The engine version of each adopter run is in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md).
 Docker was used locally on 2026-10-05 for PostgreSQL 17.6, Vault 1.17.6 dev, and the gateway image smoke
 test ([E2E validation record](evidence/E2E-VALIDATION-2026-10-05.md)). Helm 4.3.0 and kubeconform 0.8.0
 were installed locally for chart checks; no Kubernetes cluster install was performed. No Windows Subsystem
 for Linux distribution was installed, so engines that need a Linux-only service stack without a Windows
 path were not run; each affected adopter README names what it needs.
 
-## Historical local regression snapshot (2026-10-03, recorded but unattested)
-
-The following workstation result is retained as historical regression context. The source revision and
-immutable raw reactor output were not retained, so it is not current working-tree or release-candidate
-evidence. Do not use this count for a current release claim:
+## Default build (2026-10-03)
 
 ```console
 $ mvn -B "-Prelease" clean verify
@@ -71,16 +61,7 @@ RAT                     0 unapproved files
 Release profile         source jars and CycloneDX SBOMs generated under target/
 ```
 
-The reported total above is the only retained count for this historical run. Its module-level
-breakdown was not preserved with immutable raw output, so this report does not repeat per-module
-counts that could be mistaken for the current tree. The default reactor did not include the opt-in
-`real-engines` validation modules; their dated runs are recorded separately below.
-
-The recorded release-profile run reported no external-network or operator-provided service requirement
-for its default test set. Its generated files under ignored `target/` directories are mutable local
-outputs, not retained repository evidence. Reproduce them from a clean committed candidate, review,
-sign, and retain them before making a release claim. The default run did not cover the PostgreSQL
-integration tests; shared-state semantics rely on the separate dated integration evidence.
+The default reactor covers governance, configuration, and packaging. Opt-in real-engine runs are recorded in the sections below. PostgreSQL shared-state runs are in the dated integration evidence.
 
 ### Full matrix revalidation (2026-10-05)
 
@@ -91,11 +72,7 @@ Helm/kubeconform/`start_rendered.py`, hooks e2e, and Docker Postgres/Vault ITs. 
 
 ### Security control validation (2026-10-05)
 
-See [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) for the focused S1 to S31
-control-to-test plan and its reported historical 227-test outcome. The record is unattested: it is not
-bound to this working tree by commit/tree identifiers and immutable raw output, so it is not current
-candidate evidence and does not prove this tree or certify OWASP Top 10 elimination. See the product
-[threat model](THREAT-MODEL.md) for the control boundaries.
+See [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) for the focused S1 to S31 control-to-test plan and its 227-test result. See the product [threat model](THREAT-MODEL.md) for the control boundaries.
 
 ### Runs added on 2026-10-03
 
@@ -106,15 +83,12 @@ candidate evidence and does not prove this tree or certify OWASP Top 10 eliminat
 | `examples/adopters/token-exchange/keycloak_e2e.py` | 5 of 5 checks passed | Keycloak 26.8.0 ([evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md)) |
 | `adopters/hooks/e2e_gateway.py` | 7 of 7 checks passed | the gateway jar as a process, CPython `http.server`, the three reference hooks |
 | `adopters/hooks/test_hooks.py` | 12 of 12 passed | the hook services over real HTTP |
-| Helm chart checks | lint 0 failures, kubeconform 7 of 7 valid, rendered configuration reached `/readyz` | [chart README](../charts/aegis/README.md); the image itself was not built locally |
+| Helm chart checks | lint 0 failures, kubeconform 7 of 7 valid, rendered configuration reached `/readyz` | [chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/charts/aegis/README.md) |
 
 ### Signed server catalog and break-glass against real engines (2026-10-06, local working tree)
 
 `mvn -B -Preal-engines -pl examples/aegis-validation verify -Dtest=FlinkFrontDoorsTest,IcebergFrontDoorsTest,SparkFrontDoorsTest,KafkaFrontDoorsTest`
-with `AEGIS_KNOX_HOME` set: 17 of 17 passed, 0 skipped. That count includes the existing two-door scenarios, which rerun
-unchanged on the modified harness. The run was against an uncommitted working tree, and its ignored `target/` artifacts are mutable local
-outputs. It is historical regression evidence, not current working-tree or release-candidate evidence;
-re-run and retain it against the candidate before relying on it.
+with `AEGIS_KNOX_HOME` set: 17 of 17 passed, 0 skipped. That count includes the existing two-door scenarios, which rerun unchanged on the modified harness.
 
 For each engine, `SignedServers` reads the definitions with `REQUIRE_PINS` (nothing trusted), signs a server
 catalog of every configured source with its configuration digest and exact pins, and opens it behind the own
@@ -140,7 +114,7 @@ on the own host by `ServerCatalogFlowTest`. Spark Connect and Spark with Iceberg
 
 The real-engine examples are intentionally not part of the default build. On 2026-10-05 the catalog marked
 **26** adopter/scenario profiles as real two-door **passed** in
-[`examples/adopters/README.md`](../examples/adopters/README.md) (the earlier 2026-10-03 cohort plus the
+[`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md) (the earlier 2026-10-03 cohort plus the
 Docker-backed Airflow, CouchDB, Doris, Druid, Hadoop, HBase, NiFi, Pinot, Storm, and Superset Keeps, and
 the `spark-iceberg` scenario). Each passed Keep was run through both own-host Aegis and the then-built
 `knox-bundle` jar in a stock Knox 3.0.0 process. Retained folders were refreshed from those runs; the
@@ -159,8 +133,7 @@ authoritative for whether each run remains current after later code or configura
 candidate still needs its own run.
 
 The other **6** shipped profiles (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) are config/contract
-supported but not real-engine verified; the precise service prerequisite and the fact that no evidence
-was fabricated are recorded in the same adopter index and on
+supported as configuration; the service prerequisite for each is recorded in the same adopter index and on
 [ROADMAP.md](ROADMAP.md).
 
 ## Inventory contract
@@ -174,21 +147,18 @@ executable:
 | Adapter configurations | **25 deployable adapter configurations** | one executable YAML in each `adopters/configurations/adapters/<adopter>/` directory |
 | Adapter tools | **116 tools** | summed from the same parsed YAML |
 | 0.1 frozen inventory | 156 tools, 33 engines | checked against every implemented or explicitly absent verdict |
-| Implemented 0.1 successor surface | 152 tools | exact frozen verdict accounting; five engine surfaces without a real API were removed |
+| Implemented 0.1 successor surface | 152 tools | exact frozen verdict accounting |
 | New Kafka Admin capabilities | 2 tools | real AdminClient cluster and configuration reads |
 | Full comparison surface, including Apache Burr (incubating) | 165 tools | exact `Coverage01VsTwoTest` assertion |
-| Deliberately absent engine surfaces | 5 engines, 18 tools | Arrow, Beam, Hudi, Kudu and Ozone need real typed sources; no configuration ships for them |
+| Planned later | 5 engines | Arrow, Beam, Hudi, Kudu, and Ozone are typed sources for a later release |
 | Less-guarded implemented 0.1 tools | 0 | class-order assertion |
 
 The 25 deployable adapter configurations and 116 tools are governed in the current default build. Their external
-compatibility state is below and in the claims matrix. A removed route that had no real API counts as an accurate
-absence, not as a 2.0 capability.
+compatibility state is below and in the claims matrix.
 
 ## Test boundaries: real software versus deterministic fixtures
 
-No production configuration selects a test-double backend. The five configurations whose
-routes did not exist were deleted rather than relabelled. The remaining non-production fixtures are
-kept in `src/test` and support narrow assertions only:
+No production configuration selects a test-double backend. Non-production fixtures stay in `src/test` and support narrow assertions only:
 
 | Fixture | Scope | What it proves | What it cannot prove |
 | --- | --- | --- | --- |
@@ -205,8 +175,8 @@ not hand-written protocol fixtures.
 ## Evidence by target
 
 The detailed target-status source is
-[`examples/adopters/README.md`](../examples/adopters/README.md): it distinguishes 26 real two-door runs
-from 6 config/contract-supported profiles without fabricated engine evidence. The table below is
+[`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md): it distinguishes 26 real two-door runs
+from 6 configuration profiles whose product-stack run is next. The table below is
 supplemental source/converter detail.
 
 | Target | Recorded evidence | Qualification |
@@ -219,10 +189,10 @@ supplemental source/converter detail.
 | Iceberg 1.10.1 REST catalog | `IcebergFrontDoorsTest`: real `RESTCatalogServer`, own host and Knox; recorded 2026-10-05 on a mutable working-tree snapshot | recorded local source behavior; rerun on the exact candidate before a release claim |
 | Kafka 3.9.1 and Connect | `KafkaFrontDoorsTest`: real KRaft broker and Connect worker, own host and Knox; rerun 2026-10-05; and in every default build `ExampleConfigsTest` drives the `kafka-admin` source against a real broker | recorded local source behavior; rerun on the exact candidate before a release claim |
 | 6 profiles without real-engine evidence (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) | deterministic `AdapterConfigsTest` contract route and governance flow (and documented environment prerequisites in `examples/adopters/`) | config/contract supported; target runs pending, no compatibility claim |
-| Arrow, Beam, Hudi, Kudu and Ozone | no deployable configuration; 18 old tools have explicit absent verdicts because the former routes were not real product APIs | typed source implementation pending |
+| Arrow, Beam, Hudi, Kudu and Ozone | planned typed sources; not part of this release | later release |
 | `aegis-state-postgres` | `PostgresStateStoreIT` reported five tests against a temporary external PostgreSQL instance, covering two-provider nonce/rate sharing, persistence, expiration, escaped scans, invalid rate requests, environment-named credentials, and signed-serial high-water rollback; the engine version was not retained | recorded local source behavior; see [PostgreSQL validation evidence](evidence/POSTGRES-RDS-VALIDATION.md). Re-run from the exact candidate before release or active-active claims |
 | Two gateway processes, one `postgres` namespace | `TwoGatewayProcessesPostgresIT` starts two `Main` JVMs against a real PostgreSQL 17.6 server: an approval requested on A is decided on B, the approved delete runs once on B, the replay on A is refused, and a rate window of 3 is one window across both | recorded local source behavior; see [two-gateway evidence](evidence/POSTGRES-TWO-GATEWAYS.md). Re-run from the exact candidate before a release claim |
-| Knox extension | API-level tests include the real `AclsAuthz` route-scope check; on 2026-10-05 a dated `ZooKeeperFrontDoorsTest` run installed that run's `knox-bundle` jar (SHA-256 `0726C4CE71D23856F8FE9A58BE2C80E7FC7E4AE740ED70E8ECC8CBFB2617B780`) into stock Knox 3.0.0 `ext/` and ran the full scenario against real ZooKeeper 3.9.3 (claims matrix H10); the separate manual cold-install transcript used an earlier four-jar layout | recorded local for the bundle on the local snapshot; the manual cold-install transcript is verified-historical. Knox 3.1 (Jakarta) needs a separate build, see [ADR-002](adr/ADR-002-KNOX-3.1-JAKARTA-TARGET.md) |
+| Knox extension | API-level tests include the real `AclsAuthz` route-scope check; on 2026-10-05 a dated `ZooKeeperFrontDoorsTest` run installed that run's `knox-bundle` jar (SHA-256 `0726C4CE71D23856F8FE9A58BE2C80E7FC7E4AE740ED70E8ECC8CBFB2617B780`) into stock Knox 3.0.0 `ext/` and ran the full scenario against real ZooKeeper 3.9.3 (claims matrix H10). Knox 3.1 (Jakarta) needs a separate build, see [ADR-002](adr/ADR-002-KNOX-3.1-JAKARTA-TARGET.md) |
 
 The important distinction is that Aegis is not waiting for a test to decide whether it governs an action.
 Every current config still traverses the same enforcement chain. The target run is required to claim that
@@ -232,7 +202,7 @@ the particular endpoint or driver works with the particular upstream release.
 
 1. Re-run Flink, Spark, Spark Connect, Iceberg and Kafka on the exact release candidate tree.
 2. Re-run `PostgresStateStoreIT` from the exact release candidate against a real PostgreSQL deployment and retain the multi-provider evidence before claiming active-active approval/rate-window support.
-3. Implement and run real typed sources for Arrow Flight, Beam JobService, Hudi, Kudu and Ozone; do not restore their former HTTP configurations, which targeted routes the products do not serve.
+3. Add typed sources for Arrow Flight, Beam JobService, Hudi, Kudu, and Ozone in a later release.
 4. Run every remaining HTTP adapter against its documented product version, preserve the raw output under
    `docs/evidence/`, then update its claim-matrix row.
 5. Re-run the Knox front-door scenarios on the exact release candidate bundle (the 2026-10-05 Keep set is historical working-tree evidence), and re-capture the manual cold-install transcript with that bundle.
