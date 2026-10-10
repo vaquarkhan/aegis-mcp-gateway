@@ -82,7 +82,7 @@ mvn -B -Preal-engines -DskipTests -pl ":aegis-windows-localfs,:aegis-validation-
 
 The second command resolves Spark 4.0.1 with Spark Connect and Iceberg's Spark runtime
 (`iceberg-spark-runtime-4.0_2.13:1.10.1`), and the Spark Connect client the tutorial's seed program uses.
-The tutorial files are in [`adopters/tutorials/spark-iceberg/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg);
+The tutorial files are in [`adopters/tutorials/spark-iceberg/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg);
 every command below runs from that folder.
 
 > **Platform note (Windows).** Hadoop's local file system calls a native `winutils.exe` to set file
@@ -112,7 +112,7 @@ Then Spark, as a Spark Connect server with one Iceberg catalog called `lake`:
 
 It is ready when it logs `Spark Connect server started at: 127.0.0.1:15002`. Now create the data, the way
 a data engineer would, with a Spark Connect client outside Aegis
-([`SeedLake.java`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/SeedLake.java), run by Java's single-file launcher):
+([`SeedLake.java`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/SeedLake.java), run by Java's single-file launcher):
 
 ```powershell
 .\seed-data.ps1              # ./seed-data.sh
@@ -177,12 +177,12 @@ INFO: Aegis gateway listening on http://127.0.0.1:8080/mcp
 
 `http://127.0.0.1:8080/readyz` answers `{"activeTools":10,"status":"ready"}`: five Iceberg tools and five
 Spark tools. The script joins two files, the governance
-([`aegis-spark-iceberg.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/aegis-spark-iceberg.yaml)) and the
-own-host identities ([`host-own.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/host-own.yaml)), into
+([`aegis-spark-iceberg.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/aegis-spark-iceberg.yaml)) and the
+own-host identities ([`host-own.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/host-own.yaml)), into
 `aegis-own-host.local.yaml`.
 
-First calls with the bundled client ([`mcp.ps1`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/mcp.ps1) or
-[`mcp.sh`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/mcp.sh)):
+First calls with the bundled client ([`mcp.ps1`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/mcp.ps1) or
+[`mcp.sh`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/mcp.sh)):
 
 ```powershell
 .\mcp.ps1 -Token $env:READER_TOKEN -Name iceberg_list_tables -Arguments @{namespace='sales'}
@@ -201,7 +201,7 @@ The preview's structured result:
 ```
 
 The same with the official MCP Python SDK, which is what agent frameworks use
-([`agent_client.py`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/agent_client.py)):
+([`agent_client.py`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/agent_client.py)):
 
 ```powershell
 python agent_client.py --token $env:READER_TOKEN list
@@ -223,13 +223,13 @@ Ana is a reader, so her list has no `spark_sql` and no `iceberg_drop_table`. Eve
 
 ## 6. Connect your IDE
 
-The configurations are in [`ide/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/ide). Each follows the IDE's
+The configurations are in [`ide/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/ide). Each follows the IDE's
 documented MCP format; the transport they use was verified in this tutorial with the official MCP Python
 SDK over HTTP and over stdio. Start with the reader token: the agent can explore, and every change still
 needs eve's token and bob's approval.
 
 **VS Code** (GitHub Copilot agent mode): copy
-[`ide/vscode/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/ide/vscode/mcp.json) to `.vscode/mcp.json` in
+[`ide/vscode/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/ide/vscode/mcp.json) to `.vscode/mcp.json` in
 your workspace. VS Code prompts for the token once and keeps it in its secret storage, as its
 [MCP configuration reference](https://code.visualstudio.com/docs/agents/reference/mcp-configuration) describes.
 
@@ -243,12 +243,12 @@ your workspace. VS Code prompts for the token once and keeps it in its secret st
 }
 ```
 
-**Kiro:** copy [`ide/kiro/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/ide/kiro/mcp.json) to
+**Kiro:** copy [`ide/kiro/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/ide/kiro/mcp.json) to
 `.kiro/settings/mcp.json` and replace the token placeholder. Kiro's
 [MCP configuration](https://kiro.dev/docs/mcp/configuration/) accepts a remote `url` with `headers`, and
 plain HTTP for localhost. Leave `autoApprove` empty, so Kiro also asks you before each tool call.
 
-**Cursor:** copy [`ide/cursor/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/ide/cursor/mcp.json) to
+**Cursor:** copy [`ide/cursor/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/ide/cursor/mcp.json) to
 `.cursor/mcp.json` and replace the token placeholder.
 
 **Claude Desktop, or any IDE that launches MCP servers as a local process (stdio):** write the stdio
@@ -258,7 +258,7 @@ configuration once, then point the IDE at `java` directly:
 .\start-gateway.ps1 -WriteConfigOnly      # ./start-gateway.sh --write-config-only
 ```
 
-Use [`ide/claude-desktop/claude_desktop_config.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/ide/claude-desktop/claude_desktop_config.json),
+Use [`ide/claude-desktop/claude_desktop_config.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/ide/claude-desktop/claude_desktop_config.json),
 replacing `REPO` with your repository path and the four values with the ones from section 4. A stdio
 session runs as `ana` (`host.stdio` in `host-own.yaml`) and writes its own audit journal
 (`work/audit/aegis-spark-iceberg-stdio.jsonl`), so it can run beside the HTTP gateway.
@@ -361,7 +361,7 @@ since Knox uses port 8443.
 ..\..\..\examples\adopters\knox\install-knox.ps1 -Destination C:\knox     # Linux/macOS: ../../../examples/adopters/knox/install-knox.sh /opt/knox
 ```
 
-**Install Aegis into Knox** ([`knox/install-into-knox.ps1`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/knox/install-into-knox.ps1)). Before running the installer, generate a new master secret in the current terminal. Do not write it to a file, history, or committed configuration:
+**Install Aegis into Knox** ([`knox/install-into-knox.ps1`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/knox/install-into-knox.ps1)). Before running the installer, generate a new master secret in the current terminal. Do not write it to a file, history, or committed configuration:
 
 ```powershell
 $master = New-Object byte[] 32
@@ -372,7 +372,7 @@ $env:AEGIS_KNOX_MASTER_SECRET = [Convert]::ToBase64String($master)
 
 The installer adds the Aegis `knox-bundle` jar and the `spark-connect` source plugin into `ext/` (jars Knox already ships are
 kept, logging jars are never added), the governance file into `conf/aegis/`, and the topology
-([`knox/aegis-spark-iceberg.xml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/knox/aegis-spark-iceberg.xml)) into
+([`knox/aegis-spark-iceberg.xml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/knox/aegis-spark-iceberg.xml)) into
 `conf/topologies/`. It refuses to overwrite an existing tutorial extension.
 
 ```powershell
@@ -389,7 +389,7 @@ Installed. Start Knox with .\start-knox.ps1 -KnoxHome C:\knox\knox-3.0.0
 ```
 
 **Start Knox** with the signing key from section 4 in the environment
-([`knox/start-knox.ps1`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/knox/start-knox.ps1)). It starts the demo LDAP
+([`knox/start-knox.ps1`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/knox/start-knox.ps1)). It starts the demo LDAP
 and runs the gateway with Spark Connect's Java 17 options:
 
 ```powershell
@@ -419,15 +419,15 @@ unset KNOX_PASSWORD AUTH
 
 The route ACL refuses callers outside the configured group and Knox rejects invalid credentials. Use those checks with locally prompted credentials rather than publishing credential values.
 
-For an IDE, use [`ide/vscode/mcp.knox.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/ide/vscode/mcp.knox.json)
-or the `aegis-lake-knox` entry in [`ide/kiro/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/ide/kiro/mcp.json)
+For an IDE, use [`ide/vscode/mcp.knox.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/ide/vscode/mcp.knox.json)
+or the `aegis-lake-knox` entry in [`ide/kiro/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/ide/kiro/mcp.json)
 with credentials supplied from the local secure prompt or your secret manager, and add the exported PEM to your user's trusted
 certificates for the duration of the tutorial (remove it afterwards). In production, Knox uses a
 certificate from your CA, and you would typically use KnoxSSO or JWT federation instead of Basic.
 
 ## 10. The governance file, line by line
 
-[`aegis-spark-iceberg.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/spark-iceberg/aegis-spark-iceberg.yaml) is the only
+[`aegis-spark-iceberg.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/aegis-spark-iceberg.yaml) is the only
 place the rules live. Both flavors load it unchanged.
 
 | Section | Setting | Effect |
@@ -463,9 +463,9 @@ on a schedule; the chain proves integrity relative to a head kept elsewhere. Ins
 journal sits beside the configuration, in `conf/aegis/work/audit/aegis-spark-iceberg.jsonl`.
 
 The same scenario runs as an automated two-front-door test against real engines,
-[`SparkIcebergFrontDoorsTest`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/aegis-validation-spark-connect/src/test/java/io/github/vaquarkhan/aegis/validation/SparkIcebergFrontDoorsTest.java)
+[`SparkIcebergFrontDoorsTest`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/aegis-validation-spark-connect/src/test/java/io/github/vaquarkhan/aegis/validation/SparkIcebergFrontDoorsTest.java)
 (`examples/adopters/run-example.ps1 spark-iceberg -Keep`). Its retained results, configuration and Knox
-topology are in [`examples/adopters/spark-iceberg/`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/spark-iceberg/README.md).
+topology are in [`examples/adopters/spark-iceberg/`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/spark-iceberg/README.md).
 
 To clean up, stop the terminals (Ctrl+C) and delete `adopters/tutorials/spark-iceberg/work/` and the two
 `*.local.yaml` files. For the Knox flavor, remove only the exact files installed by this tutorial after

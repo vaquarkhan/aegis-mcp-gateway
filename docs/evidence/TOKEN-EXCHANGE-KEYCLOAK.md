@@ -7,7 +7,7 @@
 
 The script was run on 2026-10-03 and reportedly repeated on **2026-10-05** against Keycloak 26.8.0
 `start-dev` and a gateway jar from that working tree:
-[`examples/adopters/token-exchange/keycloak_e2e.py`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/token-exchange/keycloak_e2e.py).
+[`examples/adopters/token-exchange/keycloak_e2e.py`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/token-exchange/keycloak_e2e.py).
 
 These runs are historical `recorded-unattested` evidence. The five reported checks and environment
 were recorded, but no immutable raw process output, commit/tree manifest, or content-addressed bundle

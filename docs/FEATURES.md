@@ -622,7 +622,7 @@ Each entry has five parts:
 - **Solution:** a non-root image with digest-pinned bases, and a StatefulSet chart whose templates refuse
   unsafe values (loopback listener, journal off the volume, several replicas without shared state).
 - **Tests:** helm lint, kubeconform, hadolint and `charts/aegis/ci/start_rendered.py`; the image is built
-  and started in CI ([chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/charts/aegis/README.md)).
+  and started in CI ([chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/charts/aegis/README.md)).
 
 ## F39. Per-tool OAuth action scopes
 
@@ -664,7 +664,7 @@ Each entry has five parts:
   `anOlderSignedCatalogOrOrderIsRefusedOnceANewerOneWasAccepted`), `ServerCatalogFlowTest`; the
   real-engine `FlinkFrontDoorsTest`, `IcebergFrontDoorsTest`, `SparkFrontDoorsTest` and
   `KafkaFrontDoorsTest` run with a signed catalog through both doors (local, not retained); four runnable servers in
-  [examples/break-glass-mcp-servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/break-glass-mcp-servers/README.md).
+  [examples/break-glass-mcp-servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/break-glass-mcp-servers/README.md).
 - **Limit:** startup only (no hot reload, no runtime registration). Rollback protection lasts as long
   as the state store: across restarts with `derby-local` or `postgres` state, for one process with
   in-memory state. The host trust anchor applies when the host sets it.

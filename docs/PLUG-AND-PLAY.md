@@ -56,7 +56,7 @@ sequenceDiagram
     G-->>A: redacted, bounded result + decision _meta
 ```
 
-Config: [`adopters/configurations/spark/spark.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/spark/spark.yaml). Point
+Config: [`adopters/configurations/spark/spark.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/configurations/spark/spark.yaml). Point
 `baseUrl` at a History Server (`:18080`) or a running driver (`:4040`). The destructive
 `spark_kill_submission` uses the standalone master's REST submission server, which exists only in
 standalone cluster mode with `spark.master.rest.enabled=true`; leave that source out on YARN or Kubernetes.
@@ -85,7 +85,7 @@ sequenceDiagram
     G->>S: sql(query)
 ```
 
-Config: [`adopters/configurations/spark-connect/spark-connect.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/spark-connect/spark-connect.yaml).
+Config: [`adopters/configurations/spark-connect/spark-connect.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/configurations/spark-connect/spark-connect.yaml).
 Needs the `examples/aegis-spark-connect` jar (or the ready `aegis-gateway-spark-*-all.jar`).
 
 - Spark runs in its own process; the gateway is a Spark Connect **client**, so there is no classpath
@@ -111,7 +111,7 @@ flowchart LR
     G -->|"Admin.deleteTopics (gateway's SASL/SSL properties)"| K["Kafka brokers"]
 ```
 
-Config: the `kafka-admin` source in [`adopters/configurations/kafka/kafka.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/kafka/kafka.yaml).
+Config: the `kafka-admin` source in [`adopters/configurations/kafka/kafka.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/configurations/kafka/kafka.yaml).
 `kafka_create_topic` uses Kafka's own validate-only mode as its dry run (`ARGUMENT validateOnly`).
 SASL/SSL client properties go in a separate `clientPropertiesFile`, so no secret sits in the Aegis file.
 Each bootstrap server is reported to the egress control as `tcp://host:port`: its host joins the allow
@@ -161,7 +161,7 @@ sources:
 
 One A2A 1.0 agent becomes one tool; Aegis is the A2A client and offers no A2A endpoint. The agent's
 host must be in `egress.allowHosts`. Profile and limits:
-[adopters/configurations/a2a](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/a2a/README.md).
+[adopters/configurations/a2a](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/configurations/a2a/README.md).
 
 ## Where Aegis runs
 
@@ -169,8 +169,8 @@ host must be in `egress.allowHosts`. Profile and limits:
 | --- | --- | --- |
 | Own server | no Knox, or a dedicated MCP edge | `java -jar aegis-gateway-*-all.jar --config aegis.yaml` (add `examples/aegis-spark-connect` or use `examples/aegis-gateway-spark`) |
 | Inside Apache Knox 3.0 | Knox already fronts the cluster | five jars (or one bundle) in `ext/`, `AEGIS_MCP` service in a topology: [KNOX-EXTENSION.md](KNOX-EXTENSION.md) |
-| stdio | a desktop client launching a local gateway | `--stdio` with `host.stdio` identity (it carries no OAuth scopes, so tools with `actionScopes` are denied); the [break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/break-glass-mcp-servers/README.md) include a stdio IDE setup |
-| Container or Kubernetes | a cluster deployment of the own server | the repository `Dockerfile` and [`charts/aegis`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/charts/aegis/README.md) (StatefulSet; the image is built in CI, not published) |
+| stdio | a desktop client launching a local gateway | `--stdio` with `host.stdio` identity (it carries no OAuth scopes, so tools with `actionScopes` are denied); the [break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/break-glass-mcp-servers/README.md) include a stdio IDE setup |
+| Container or Kubernetes | a cluster deployment of the own server | the repository `Dockerfile` and [`charts/aegis`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/charts/aegis/README.md) (StatefulSet; the image is built in CI, not published) |
 
 Source definitions and the policy/governance core are portable across all four choices, but a complete
 configuration is not necessarily interchangeable. Own-host and container deployments use `host`;

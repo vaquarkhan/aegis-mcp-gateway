@@ -238,8 +238,8 @@ shows what that means in practice: her own reads are denied.
 
 ### 4.4 The configuration, read as a Flink engineer
 
-The whole file is [`adopters/tutorials/flink/aegis-flink-tutorial.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/tutorials/flink/aegis-flink-tutorial.yaml).
-It is [`adopters/configurations/flink/flink.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/flink/flink.yaml) with
+The whole file is [`adopters/tutorials/flink/aegis-flink-tutorial.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/flink/aegis-flink-tutorial.yaml).
+It is [`adopters/configurations/flink/flink.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/configurations/flink/flink.yaml) with
 a local address, static tokens instead of JWT, and one extra restriction on the configuration read. The
 parts worth reading closely:
 
@@ -528,7 +528,7 @@ taken. The outcome lives in `operation`: `location` on success, `failure-cause` 
 This is why the tool returns the whole response and no `response: {pointer: /status}` narrowing it. It
 would be tempting to narrow it, because `status` is the field with the encouraging name, and the result
 would be an agent that confidently reports a completed savepoint for a job it did not stop. The
-[Apache Burr (incubating) example](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/frameworks/burr/aegis_burr_agent.py) has a `confirm` step that reads
+[Apache Burr (incubating) example](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/frameworks/burr/aegis_burr_agent.py) has a `confirm` step that reads
 `operation` and then re-checks the job state, for exactly this reason.
 
 The failing case was produced by a `targetDirectory` value that matched the schema but named a

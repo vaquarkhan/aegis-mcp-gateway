@@ -218,7 +218,7 @@ Use this workflow for a new source or an existing MCP server.
     target-version run before claiming a real integration is verified.
 
 The illustrative
-[Apache-project governance profile](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/profiles/apache-project-governance.example.yaml)
+[Apache-project governance profile](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/profiles/apache-project-governance.example.yaml)
 shows a configuration shape for a project community to adapt. It is not an ASF policy, release
 checklist, or proof of compliance. The
 [configuration guide](CONFIGURATION.md#type-project-governance-evidence-on-high-impact-actions)
