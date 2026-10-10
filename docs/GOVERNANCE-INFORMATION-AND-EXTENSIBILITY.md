@@ -194,7 +194,7 @@ PolicyDecisionPoint pdp = RulePolicy.allOf(List.of(builtIn, opa, ranger));
 So "the organisation's own rules" and "this deployment's rules" coexist without either having to know
 about the other. Adding Apache Ranger, Casbin or a KIE rule set is one class implementing one method;
 no engine change, no new deny code, no chain reordering. The
-[client, backend or policy](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/frameworks/README.md#client-backend-or-policy) section of the
+[client, backend or policy](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/frameworks/README.md#client-backend-or-policy) section of the
 frameworks README describes where a policy engine fits relative to Aegis.
 
 What this seam deliberately does not allow: a PDP cannot grant something the earlier steps refused. It

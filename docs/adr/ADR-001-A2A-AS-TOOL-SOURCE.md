@@ -66,8 +66,8 @@ current source:
 
 ### Update 2026-10-03: part 2 is implemented, with four changes from the sketch above
 
-The `a2a` source now exists ([`aegis-source-a2a`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/aegis-source-a2a),
-[profile](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/a2a/README.md)). Part 1 is unchanged: there is still no A2A
+The `a2a` source now exists ([`aegis-source-a2a`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/aegis-source-a2a),
+[profile](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/configurations/a2a/README.md)). Part 1 is unchanged: there is still no A2A
 front door. Three points differ from the sketch, each for a reason found while building it:
 
 - **One tool per agent, not one per skill.** An A2A 1.0 message has no field that selects a skill;
@@ -127,7 +127,7 @@ against an agent built on the official `a2a-sdk` 1.2.1, through both front doors
   `SendMessage`, with evidence against an A2A 1.0 agent. Future work is an explicit interoperability
   policy and evidence for later 1.x versions, card-signature verification, other bindings, streaming,
   and task continuation. The implementation is documented in
-  [adopters/configurations/a2a](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/a2a/README.md).
+  [adopters/configurations/a2a](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/configurations/a2a/README.md).
 - **A2A front door (part 1):** requires A2A to define typed, side-effect-declaring skills so a message
   maps to a classifiable action, and a community decision to add a second protocol engine with its own
   tests rather than stretching this one.

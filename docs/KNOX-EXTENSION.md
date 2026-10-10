@@ -33,7 +33,7 @@ section of the Aegis config (JWT, TLS, listener, CORS and OAuth route scopes) is
 Knox identities carry no OAuth scopes, so a tool with `actionScopes` is denied inside Knox. A signed
 `serverCatalog` and a break-glass order apply in Knox mode as on the own host, because Knox builds the
 gateway through the same `GatewayFactory`; the real-engine `FlinkFrontDoorsTest`, `IcebergFrontDoorsTest`,
-`SparkFrontDoorsTest` and `KafkaFrontDoorsTest` runs exercised both doors with a signed catalog. The [break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/break-glass-mcp-servers/README.md) show a Knox topology
+`SparkFrontDoorsTest` and `KafkaFrontDoorsTest` runs exercised both doors with a signed catalog. The [break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/break-glass-mcp-servers/README.md) show a Knox topology
 for Spark, Kafka, Iceberg and Flink.
 
 Approvers must be non-delegated. If an identity-assertion provider maps the authenticated user to
@@ -150,7 +150,7 @@ The real-engine harness can run each adopter through a stock Knox 3.0.0 process 
 `knox-bundle` jar in `ext/`. A recorded 2026-10-03 set reported 16 scenarios passing this way, each covering Knox
 authentication and `AclsAuthz`, Aegis denial of a reader's destructive call, independent approval,
 the dry-run receipt, the real change and the refused replay (see the
-[ZooKeeper example](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/zookeeper/README.md) and claims matrix H10).
+[ZooKeeper example](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/zookeeper/README.md) and claims matrix H10).
 
 ## Knox 3.1 and the Jakarta namespace
 

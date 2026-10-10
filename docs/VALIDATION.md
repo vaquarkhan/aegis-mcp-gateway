@@ -40,12 +40,12 @@ The local runs in this report and in [adopter status](evidence/ADOPTER-REAL-ENGI
 | OpenBao | 2.7.1 | KV secret provider ([evidence](evidence/SECRETS-OPENBAO.md)); HashiCorp Vault 1.17.6 dev also exercised 2026-10-05 (same KV v2 API) |
 | Keycloak | 26.8.0 | RFC 8693 token exchange ([evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md)) |
 | a2a-sdk (Python) | 1.2.1 | the A2A agent behind the `a2a` source (`A2aAgentFrontDoorsTest`, both front doors) |
-| Helm, kubeconform, hadolint, actionlint | 4.3.0, 0.8.0, 2.15.1, 1.7.12 | chart, manifest, Dockerfile and workflow checks ([chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/charts/aegis/README.md)) |
+| Helm, kubeconform, hadolint, actionlint | 4.3.0, 0.8.0, 2.15.1, 1.7.12 | chart, manifest, Dockerfile and workflow checks ([chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/charts/aegis/README.md)) |
 | Apache CouchDB | 3.4.2 (official Docker image) | `CouchdbFrontDoorsTest` own host and Knox ([adopter status](evidence/ADOPTER-REAL-ENGINE-STATUS.md)) |
 | Apache Pinot | 1.2.0 (official Docker QuickStart) | `PinotFrontDoorsTest` own host and Knox |
 
 The temporary external PostgreSQL run is described in the [PostgreSQL validation evidence](evidence/POSTGRES-RDS-VALIDATION.md); its engine version was not retained.
-The engine version of each adopter run is in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md).
+The engine version of each adopter run is in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md).
 Docker was used locally on 2026-10-05 for PostgreSQL 17.6, Vault 1.17.6 dev, and the gateway image smoke
 test ([E2E validation record](evidence/E2E-VALIDATION-2026-10-05.md)). Helm 4.3.0 and kubeconform 0.8.0
 were installed locally for chart checks; no Kubernetes cluster install was performed. No Windows Subsystem
@@ -83,7 +83,7 @@ See [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) for the f
 | `examples/adopters/token-exchange/keycloak_e2e.py` | 5 of 5 checks passed | Keycloak 26.8.0 ([evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md)) |
 | `adopters/hooks/e2e_gateway.py` | 7 of 7 checks passed | the gateway jar as a process, CPython `http.server`, the three reference hooks |
 | `adopters/hooks/test_hooks.py` | 12 of 12 passed | the hook services over real HTTP |
-| Helm chart checks | lint 0 failures, kubeconform 7 of 7 valid, rendered configuration reached `/readyz` | [chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/charts/aegis/README.md) |
+| Helm chart checks | lint 0 failures, kubeconform 7 of 7 valid, rendered configuration reached `/readyz` | [chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/charts/aegis/README.md) |
 
 ### Signed server catalog and break-glass against real engines (2026-10-06, local working tree)
 
@@ -114,7 +114,7 @@ on the own host by `ServerCatalogFlowTest`. Spark Connect and Spark with Iceberg
 
 The real-engine examples are intentionally not part of the default build. On 2026-10-05 the catalog marked
 **26** adopter/scenario profiles as real two-door **passed** in
-[`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md) (the earlier 2026-10-03 cohort plus the
+[`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) (the earlier 2026-10-03 cohort plus the
 Docker-backed Airflow, CouchDB, Doris, Druid, Hadoop, HBase, NiFi, Pinot, Storm, and Superset Keeps, and
 the `spark-iceberg` scenario). Each passed Keep was run through both own-host Aegis and the then-built
 `knox-bundle` jar in a stock Knox 3.0.0 process. Retained folders were refreshed from those runs; the
@@ -175,7 +175,7 @@ not hand-written protocol fixtures.
 ## Evidence by target
 
 The detailed target-status source is
-[`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md): it distinguishes 26 real two-door runs
+[`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md): it distinguishes 26 real two-door runs
 from 6 configuration profiles whose product-stack run is next. The table below is
 supplemental source/converter detail.
 

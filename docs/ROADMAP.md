@@ -30,7 +30,7 @@ licensing review, signing and publishing) is tracked in
 
 The server-catalog trust anchor, rollback protection for signed files, the offline policy test, egress
 for the Kafka Admin bootstrap endpoints and Spark Connect source, the step-up challenge for tool scopes and the subject
-check on issued JWTs have shipped; see [FEATURES.md](FEATURES.md) and the [changelog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/CHANGELOG.md).
+check on issued JWTs have shipped; see [FEATURES.md](FEATURES.md) and the [changelog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/CHANGELOG.md).
 
 ## Next: evidence, identity and operations
 

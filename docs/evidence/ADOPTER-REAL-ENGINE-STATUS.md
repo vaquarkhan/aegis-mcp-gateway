@@ -5,7 +5,7 @@
 -->
 # Adopter real-engine status (2026-10-05)
 
-Companion to [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md) and
+Companion to [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) and
 [CLAIMS-MATRIX.md](CLAIMS-MATRIX.md).
 
 ## What adopter coverage means here
@@ -14,7 +14,7 @@ Every shipped profile has a governance configuration. A two-door run is a retain
 
 ## Retained two-door runs
 
-The inventory records **26** profiles with own-host and Knox runs: the adopter rows marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md), including
+The inventory records **26** profiles with own-host and Knox runs: the adopter rows marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md), including
 the `spark-iceberg` scenario. Those 26 profiles have IDE tutorials. **A2A** also has a two-door run below. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
 
 | Adopter | Engine | Evidence |

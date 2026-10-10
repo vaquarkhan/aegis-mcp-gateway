@@ -88,6 +88,6 @@ These tests run against `TestMcpServer` and `TestStdioMcpServer`, independent pr
 the `aegis-mcp` test jar that do not reuse the production handler. They provide deterministic evidence
 for the listed requirements and deliberate refusals. They do not prove full specification conformance
 or interoperability with every third-party MCP implementation.
-Each adopter run under [examples/adopters](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/examples/adopters) uses real MCP 2026-07-28 requests over
+Each adopter run under [examples/adopters](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/examples/adopters) uses real MCP 2026-07-28 requests over
 Streamable HTTP through both front doors (Aegis's own server and Apache Knox); interoperability with a
 named external MCP server is recorded only where such a run exists, in [VALIDATION.md](VALIDATION.md).

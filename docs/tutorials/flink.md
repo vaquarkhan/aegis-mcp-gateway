@@ -16,7 +16,7 @@
 
 # Tutorial: Apache Flink with Aegis, from your IDE, with and without Knox
 
-Built by `tools/build-project-tutorials.py` using retained evidence from the real run of `FlinkFrontDoorsTest` on 2026-10-04 (2 tests, 0 failures, 0 skipped: the own-host door and the Knox 3.0.0 door). The retained files in [`examples/adopters/flink/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/examples/adopters/flink) provide the scenario's tools, people, outcomes, test count, and date. The generator synthesizes the shared build, runner, endpoint, IDE, audit, and cleanup commands; choose ports, paths, and keys for your environment.
+Built by `tools/build-project-tutorials.py` using retained evidence from the real run of `FlinkFrontDoorsTest` on 2026-10-04 (2 tests, 0 failures, 0 skipped: the own-host door and the Knox 3.0.0 door). The retained files in [`examples/adopters/flink/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/examples/adopters/flink) provide the scenario's tools, people, outcomes, test count, and date. The generator synthesizes the shared build, runner, endpoint, IDE, audit, and cleanup commands; choose ports, paths, and keys for your environment.
 
 For background on the product's own security model and a longer walkthrough, read [the deep-dive tutorial](../TUTORIAL-FLINK.md).
 
@@ -35,7 +35,7 @@ For background on the product's own security model and a longer walkthrough, rea
 
 ## 1. What Aegis governs here
 
-The gateway exposes these tools (from [`aegis/own-host.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/flink/aegis/own-host.yaml)). Aegis decides each call before the backend sees it. `READ` runs for callers allowed by policy; `MUTATE` needs a write group and an independent per-call approval; `DESTRUCTIVE` needs a write group, an independent per-call approval, and a fresh dry-run receipt bound to the same arguments.
+The gateway exposes these tools (from [`aegis/own-host.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/flink/aegis/own-host.yaml)). Aegis decides each call before the backend sees it. `READ` runs for callers allowed by policy; `MUTATE` needs a write group and an independent per-call approval; `DESTRUCTIVE` needs a write group, an independent per-call approval, and a fresh dry-run receipt bound to the same arguments.
 
 | Tool | Class | Source | What it does |
 | --- | --- | --- | --- |
@@ -107,7 +107,7 @@ The data the scenario works on (topics, tables, queues, jobs) is created by the 
 
 ## 5. Flavor A: without Knox
 
-The file: [`aegis/own-host.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/flink/aegis/own-host.yaml), exactly what this door loaded: the shipped adopter profile with the engine address and egress network substituted, plus a `host:` section (loopback listener on a free port, one static bearer token per person, read from the environment).
+The file: [`aegis/own-host.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/flink/aegis/own-host.yaml), exactly what this door loaded: the shipped adopter profile with the engine address and egress network substituted, plus a `host:` section (loopback listener on a free port, one static bearer token per person, read from the environment).
 
 Environment the gateway reads:
 
@@ -144,7 +144,7 @@ For an IDE you want a fixed port: in your copy of `own-host.yaml` set `host.list
 ## 6. Flavor B: with Knox
 
 The manual commands in this section are POSIX shell commands. On Windows, use the supported `examples/adopters/run-example.ps1 flink -Keep` runner from section 3.
-The files: [`aegis/knox-aegis.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/flink/aegis/knox-aegis.yaml), the same adopter profile with no `host:` section (Knox is the host), and [`aegis/knox-topology.xml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/flink/aegis/knox-topology.xml), the Knox topology: ShiroProvider against Knox's demo LDAP, Default identity assertion with `group.principal.mapping` (person to adopter groups), `AclsAuthz` on the route, and the `AEGIS_MCP` service.
+The files: [`aegis/knox-aegis.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/flink/aegis/knox-aegis.yaml), the same adopter profile with no `host:` section (Knox is the host), and [`aegis/knox-topology.xml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/flink/aegis/knox-topology.xml), the Knox topology: ShiroProvider against Knox's demo LDAP, Default identity assertion with `group.principal.mapping` (person to adopter groups), `AclsAuthz` on the route, and the `AEGIS_MCP` service.
 
 Steps, in the order the test performed them on a stock Knox 3.0.0 (`$AEGIS_KNOX_HOME`, from `examples/adopters/knox/install-knox.ps1` or `.sh`):
 
@@ -193,7 +193,7 @@ For an IDE, set `gateway.port` to 8443 in `conf/gateway-site.xml`.
 
 ## 7. Connect your IDE
 
-Ready-made files, in each IDE's documented format, are in [`adopters/tutorials/flink/ide/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/adopters/tutorials/flink/ide):
+Ready-made files, in each IDE's documented format, are in [`adopters/tutorials/flink/ide/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/adopters/tutorials/flink/ide):
 
 | IDE | File | Door |
 | --- | --- | --- |
@@ -249,7 +249,7 @@ A `DESTRUCTIVE` call takes four turns, all visible in section 9: the call is den
 | 9 | execute with approval and receipt | `sam` | `tools/call flink_cancel_job {"jobId":"d40e564b1dadfc2e3009e6119dd9f613"}` | HTTP 200, `ALLOWED` |
 | 10 | replay of the same approval | `sam` | `tools/call flink_cancel_job {"jobId":"d40e564b1dadfc2e3009e6119dd9f613"}` | HTTP 200, `DENIED:APPROVAL_REQUIRED:step4` |
 
-Full requests and responses: [own host](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/flink/results/own-host-transcript.log), [Knox](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/flink/results/knox-transcript.log).
+Full requests and responses: [own host](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/flink/results/own-host-transcript.log), [Knox](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/flink/results/knox-transcript.log).
 
 ## 10. Audit and clean up
 
@@ -265,4 +265,4 @@ In your own deployment, add `audit.checkpoint` so the head is exported to storag
 When you ran the full scenario, the test teardown stopped the processes and containers it started. For a manual run, stop the foreground Aegis, Knox, and engine processes with Ctrl+C in their terminals, then stop any background process you started from section 4.
 Remove temporary configuration copies, exported certificates, logs, and audit journals only after retaining any evidence your review or incident process requires.
 
-Limits of this run are listed in [the example README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/flink/README.md).
+Limits of this run are listed in [the example README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/flink/README.md).

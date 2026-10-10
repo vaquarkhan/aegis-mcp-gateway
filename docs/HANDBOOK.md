@@ -19,7 +19,7 @@ Aegis Gateway 2.0 is a configuration-driven governance boundary for Model Contex
 
 This handbook explains the product from problem through deployment and operation. Evidence has two positive stages: a configuration/contract profile demonstrates that Aegis parses and governs a declared integration shape; a retained run against the named target version establishes target-version verification.
 
-> **Build governed MCP actions with evidence.** The [validation report](VALIDATION.md) records deterministic regression evidence and retained target evidence. The [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md) identifies 26 profiles with retained own-host and Knox-host target evidence and 6 configuration/contract profiles that still need a full product stack (Atlas, Cassandra, Hive, Impala, Paimon, Ranger).
+> **Build governed MCP actions with evidence.** The [validation report](VALIDATION.md) records deterministic regression evidence and retained target evidence. The [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) identifies 26 profiles with retained own-host and Knox-host target evidence and 6 configuration/contract profiles that still need a full product stack (Atlas, Cassandra, Hive, Impala, Paimon, Ranger).
 
 ## Contents
 
@@ -179,7 +179,7 @@ This project addresses the portion of all ten risks visible at the gateway bound
 
 A project does not modify its code. An operator selects the backend boundary that actually exists, declares only real operations, applies Aegis configuration, gives the gateway a least-privilege service credential, and verifies the target version through the selected front door.
 
-1. Start from an existing profile in [`adopters/configurations`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/aegis-2.0-review-20261009/adopters/configurations), or create a new source definition using [Configuration](CONFIGURATION.md).
+1. Start from an existing profile in [`adopters/configurations`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/adopters/configurations), or create a new source definition using [Configuration](CONFIGURATION.md).
 2. Name each tool accurately and set `READ`, `MUTATE`, or `DESTRUCTIVE`; do not label a broad execution surface as read-only.
 3. Extract a typed resource from every named backend object, such as a topic, table, namespace, connector, or job.
 4. Restrict caller groups, policy, and backend network destinations.
@@ -192,7 +192,7 @@ The repository includes **26 profiles exercised through both front doors**: Acti
 
 Six more profiles ship as configuration for their product-stack run: Atlas, Cassandra, Hive, Impala, Paimon, and Ranger. Each folder has the canonical YAML and the prerequisite for that stack.
 
-The catalog has 25 deployable adapter configurations and 116 tools. The comparison surface is 165 tools, including Kafka Admin reads and Apache Burr (incubating). Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources for a later release. See [Validation](VALIDATION.md), the [coverage contract](COVERAGE-0.1-VS-2.0.md), and the [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md).
+The catalog has 25 deployable adapter configurations and 116 tools. The comparison surface is 165 tools, including Kafka Admin reads and Apache Burr (incubating). Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources for a later release. See [Validation](VALIDATION.md), the [coverage contract](COVERAGE-0.1-VS-2.0.md), and the [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md).
 
 ### What is proven, and what is not
 
@@ -299,7 +299,7 @@ What each part does:
 - `serverCatalog` (optional) is an offline signed register of which configured sources may start and which tools each may bind. A break-glass order signed with a separate key can quarantine or revoke a server for up to 24 hours. Both are read at startup only; see [CONFIGURATION.md](CONFIGURATION.md#servercatalog).
 - The source maps the upstream operation to a governed name/class/resource. Its backend bearer token is resolved only after the engine commits audit intent.
 
-The shipped configuration is at [`adopters/configurations/existing-mcp-server/existing-mcp-server.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/adopters/configurations/existing-mcp-server/existing-mcp-server.yaml). It also shows an optional stdio source with `unlistedTools: HIDE`.
+The shipped configuration is at [`adopters/configurations/existing-mcp-server/existing-mcp-server.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/configurations/existing-mcp-server/existing-mcp-server.yaml). It also shows an optional stdio source with `unlistedTools: HIDE`.
 
 ### A declarative REST tool with semantic success checking
 
@@ -406,7 +406,7 @@ The authenticated HTTP verifier does not accept a filename from the caller: it c
 - Monitor health/readiness and Prometheus metrics without adding caller or argument values to telemetry.
 - Rotate backend credentials outside the YAML; restart or refresh deployment configuration under your change process.
 - Review catalog quarantine events. A changed tool or prompt definition remains unavailable until an authorized operator accepts it; configured pins cannot be overridden through the API.
-- In an incident, contain a server with a break-glass order signed by the incident key, then restart. The order can only take capability away and lasts at most 24 hours; an expired order stops the next startup until it is removed or replaced. A walk-through for Spark, Kafka, Iceberg and Flink is in [break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/break-glass-mcp-servers/README.md).
+- In an incident, contain a server with a break-glass order signed by the incident key, then restart. The order can only take capability away and lasts at most 24 hours; an expired order stops the next startup until it is removed or replaced. A walk-through for Spark, Kafka, Iceberg and Flink is in [break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/break-glass-mcp-servers/README.md).
 - Drain pending approvals and receipts before an upgrade. Current action binding changes intentionally invalidate older approval/receipt formats.
 - Preserve audit journals, redacted run evidence, and source configuration as operational records.
 
@@ -436,7 +436,7 @@ For a configuration/contract profile, read its prerequisite and treat the canoni
 | --- | --- | --- |
 | Understand the threat model | [Threat scenarios and gateway boundary](#threat-scenarios-and-why-the-gateway-boundary-matters) | [HTML security guide](guide/security.html), [Threat model](THREAT-MODEL.md), [Security](SECURITY.md), [security validation](evidence/SECURITY-VALIDATION.md) |
 | Configure a source or policy | [Adoption guide](ADOPTION-GUIDE.md) | [Configuration](CONFIGURATION.md) |
-| Sign which servers may start, or contain one in an incident | [Break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/break-glass-mcp-servers/README.md) | [`serverCatalog`](CONFIGURATION.md#servercatalog) |
+| Sign which servers may start, or contain one in an incident | [Break-glass MCP servers](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/break-glass-mcp-servers/README.md) | [`serverCatalog`](CONFIGURATION.md#servercatalog) |
 | Review architecture and extension seams | [Architecture](ARCHITECTURE.md) | [Developer guide](DEVELOPER.md) |
 | Try Aegis end to end from an IDE | [Spark and Iceberg tutorial](TUTORIAL-SPARK-ICEBERG.md) | [all tutorials](TUTORIALS.md) |
 | Integrate Spark, Kafka, or existing MCP | [Plug and play](PLUG-AND-PLAY.md) | [engine tutorials](TUTORIALS.md) and adopter folders |

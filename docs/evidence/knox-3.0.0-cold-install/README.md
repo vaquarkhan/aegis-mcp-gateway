@@ -46,7 +46,7 @@ those missing artifacts.
 Knox, its providers, and the Aegis jars were reported as real in these runs. The backend behind Aegis
 was a test MCP server on loopback (`engine-mcp` in `aegis.json`), so the exercise concerned the Knox
 integration path, not a real engine behind it. Automated adopter runs are described separately in
-[examples/adopters](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/adopters/README.md).
+[examples/adopters](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md).
 
 ## Provenance: which code this was captured against
 

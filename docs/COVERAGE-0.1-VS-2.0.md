@@ -76,7 +76,7 @@ Aegis 2.0 ships 152 successors of the 0.1 tool inventory, plus Kafka Admin reads
 ## Side-by-side: 0.1 engine surface versus Aegis 2.0
 
 The frozen 0.1 inventory is
-[`aegis-0.1-tool-inventory.tsv`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/aegis-2.0-review-20261009/examples/aegis-examples/src/test/resources/aegis-0.1-tool-inventory.tsv)
+[`aegis-0.1-tool-inventory.tsv`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/aegis-examples/src/test/resources/aegis-0.1-tool-inventory.tsv)
 (one row per tool, 33 engines, 156 tools). Aegis 2.0 ships **25 deployable adapter configurations**
 under `adopters/configurations/adapters/<engine>/`, plus shared reference profiles (Flink, Iceberg, Kafka,
 Spark) and typed sources (JDBC, ZooKeeper, Kafka Admin, Spark Connect, A2A, and others). The table below

@@ -22,6 +22,7 @@
 - The validation report now points later runs, typed sources, and distribution follow-up at the roadmap.
 - GitHub Pages renders Mermaid diagrams in the architecture and tutorial pages.
 - The architecture sequence diagram no longer uses a semicolon inside a message, which Mermaid 11.12.0 treats as the end of the statement.
+- Repository links on the published site use the branch GitHub Pages is building, so replacing that branch does not leave the site pointed at a removed name.
 - The OTLP drain test's local collector reads the POST off the accept thread and answers with a
   fixed-length body, so a Windows JDK does not time out the export and report zero spans.
 - Host trust anchor for the server catalog: `--require-server-catalog <review.pub>`,
