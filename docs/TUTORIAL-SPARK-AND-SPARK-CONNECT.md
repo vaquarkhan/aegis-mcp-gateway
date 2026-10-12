@@ -409,7 +409,7 @@ per tool: every tool definition is pinned, so a later change is quarantined inst
 
 ### 5.2 What each person can see
 
-Terminal 3 (variables set). `mcp.ps1` and `mcp.sh` are 40-line MCP clients that send one JSON-RPC
+Terminal 3 (variables set). `mcp.ps1` (59 lines) and `mcp.sh` (38 lines) are small MCP clients that send one JSON-RPC
 request with the headers MCP 2026-07-28 requires. Other MCP clients that speak Streamable HTTP
 (2025-03-26 or later) connect to the same URL with the same bearer token; this tutorial was run with
 the two scripts only.

@@ -166,7 +166,7 @@ mvn -B -pl aegis-source-a2a -am test
 1. The JSON-RPC endpoint is the call's egress target and must pass the egress allow list; the
    same-origin and pin rules are fail-closed.
 2. Profile example: [`adopters/configurations/a2a`](../adopters/configurations/a2a/).
-3. Live front-door evidence uses the official `a2a-sdk` agent under `examples/adopters/a2a/`.
+3. The opt-in front-door test uses the official `a2a-sdk` agent under `examples/adopters/a2a/`. Without `AEGIS_A2A_PYTHON` that test is skipped, and a skip is not a retained pass.
 
 ## Further reading
 

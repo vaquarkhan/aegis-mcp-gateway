@@ -22,6 +22,11 @@
   from the Knox installation.
 - The Kafka tutorial reads Apache's GPG-style SHA-512 file and tells the Connect terminal to set
   `KAFKA_HOME`. The Spark and Iceberg Knox script stops the demo LDAP process it started.
+- Tutorial wording now matches the scripts and the retained Iceberg Keep. The Spark and Iceberg IDE
+  README uses the reader token you set, the Keep attests one reader scope denial, the local tutorial
+  index links to the repository folder, and the Kafka and Spark clients are 59 and 38 lines.
+- A2A stays an opt-in two-door test. It is not counted in the 28 retained profiles, because this tree
+  has no saved A2A results and the test is skipped without `AEGIS_A2A_PYTHON`.
 - Cursor and Kiro setup now says which JSON to copy into the open project, and that the agent is on
   Aegis only after the gateway is still listening and the editor lists that server's tools.
 - Adopter READMEs now say which file to copy, where it goes, and which command leaves the gateway

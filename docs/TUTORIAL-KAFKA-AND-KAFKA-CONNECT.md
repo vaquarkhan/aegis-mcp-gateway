@@ -414,7 +414,7 @@ a real cluster") covers putting the Connect REST authentication extension in fro
 
 Everything below is the recorded output of the historical manual run described at the top of this
 document. It is recorded-unattested, not output from the current retained Keep.
-`adopters/tutorials/kafka/mcp.ps1` and `mcp.sh` are 40-line MCP clients if you want to issue the calls
+`adopters/tutorials/kafka/mcp.ps1` (59 lines) and `mcp.sh` (38 lines) are small MCP clients if you want to issue the calls
 by hand; any MCP client that speaks Streamable HTTP works against the same URL with the same bearer
 token.
 
@@ -670,8 +670,8 @@ them without sending additional delete operations to a running broker.
   (an `AccessDeniedException` renaming the partition directory to `...-delete`, after which the broker
   fails its log directory and stops). This is a platform limitation, not a governance failure; the
   delete has already been authorised and executed. Run the broker on Linux for topic deletion tests.
-  The historical notes say that delete completed and the broker stayed healthy, as 5.7b records; the
-  current retained Keep avoids this platform-dependent topic deletion and tests connector deletion.
+  Section 5.7b records one later allowed `kafka_list_topics` from that historical host. The current
+  retained Keep avoids this platform-dependent topic deletion and tests connector deletion.
 
 ### Taking this to a real cluster
 

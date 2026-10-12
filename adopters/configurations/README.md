@@ -24,7 +24,7 @@ configurations/
 
 | Directory | Executable configuration | Use it when | Source type | Evidence |
 | --- | --- | --- | --- | --- |
-| [a2a](a2a/README.md) | [a2a.yaml](a2a/a2a.yaml) | Offering an A2A agent to MCP clients | typed `a2a` | official a2a-sdk 1.2.1 agent run |
+| [a2a](a2a/README.md) | [a2a.yaml](a2a/a2a.yaml) | Offering an A2A agent to MCP clients | typed `a2a` | opt-in `A2aAgentFrontDoorsTest`; no retained results in this tree |
 | [existing-mcp-server](existing-mcp-server/README.md) | [existing-mcp-server.yaml](existing-mcp-server/existing-mcp-server.yaml) | The project already exposes MCP over HTTP or stdio | `mcp` | protocol/governance test harness |
 | [flink](flink/README.md) | [flink.yaml](flink/flink.yaml) | Governing Flink JobManager operations | `http` | current local Flink MiniCluster run |
 | [spark](spark/README.md) | [spark.yaml](spark/spark.yaml) | Governing Spark UI/History reads and standalone submission actions | `http` | current local Spark driver-UI read run; standalone writes need separate evidence |
