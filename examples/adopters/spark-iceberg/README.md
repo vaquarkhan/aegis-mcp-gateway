@@ -35,7 +35,7 @@ catalog and Spark ports substituted.
 | [`results/`](results/) | transcripts, both audit journals, the Knox plugin installation log and the Surefire report |
 | [`SparkIcebergFrontDoorsTest.java`](../../aegis-validation-spark-connect/src/test/java/io/github/vaquarkhan/aegis/validation/SparkIcebergFrontDoorsTest.java) | the test and every assertion |
 
-## What the run proved (2026-10-03)
+## What the run proved (2026-10-04, US Central)
 
 | Step | Caller | Call | Own host | Knox |
 | --- | --- | --- | --- | --- |

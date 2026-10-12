@@ -61,7 +61,7 @@ Iceberg, Flink), see [break-glass MCP servers](../break-glass-mcp-servers/README
 | [Flume](flume/) | supported | 1.11.0 | passed | passed | real agent with live HTTP monitoring counters |
 | [Flink](flink/) | supported | 1.20.1 | passed | passed | real Flink MiniCluster JobManager REST API |
 | [Hadoop HDFS](hadoop/) | supported | 3.2.1 | passed | passed | Docker NameNode and DataNode; WebHDFS governed path; Keep 2026-10-05 |
-| [HBase](hbase/) | supported | REST via `dajobe/hbase` | passed | passed | HBase REST Docker; governed table reads/writes; Keep 2026-10-05 |
+| [HBase](hbase/) | supported | REST via `dajobe/hbase@sha256:daa36a6d90b118ced866b6c76fcd918e7da73302b0e4971f506f0f61f645a9fe` | passed | passed | HBase REST Docker; governed table reads/writes; Keep 2026-10-05 |
 | [Hive](hive/) | supported | 4.0.1 | passed | passed | official `apache/hive` HiveServer2; JDBC reads and a refused write; Keep 2026-10-11 |
 | [Iceberg REST catalog](iceberg/) | supported | 1.10.1 | passed | passed | official REST catalog server with a JDBC catalog |
 | [Ignite](ignite/) | supported | 2.18.0 | passed | passed | real Ignite node with REST v1 |
@@ -84,7 +84,7 @@ Iceberg, Flink), see [break-glass MCP servers](../break-glass-mcp-servers/README
 
 | Scenario | Aegis config | Real engines | Own host | Knox | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| [Spark + Iceberg](spark-iceberg/) | tutorial governance file | Spark 4.0.1 Spark Connect, Iceberg 1.10.1 REST catalog | passed | passed | 2026-10-03 run of [`docs/TUTORIAL-SPARK-ICEBERG.md`](../../docs/TUTORIAL-SPARK-ICEBERG.md) on the current source and `knox-bundle` jar |
+| [Spark + Iceberg](spark-iceberg/) | tutorial governance file | Spark 4.0.1 Spark Connect, Iceberg 1.10.1 REST catalog | passed | passed | 2026-10-04 (US Central) run of [`docs/TUTORIAL-SPARK-ICEBERG.md`](../../docs/TUTORIAL-SPARK-ICEBERG.md) on the current source and `knox-bundle` jar |
 
 **What “passed” means:** Surefire reports 0 failures, 0 errors and 0 skipped for the two parameterized
 front doors; the retained audit journals pass `--verify-audit`; and a secret scan of retained inputs and

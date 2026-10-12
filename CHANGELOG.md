@@ -27,6 +27,8 @@
   index links to the repository folder, and the Kafka and Spark clients are 59 and 38 lines.
 - A2A stays an opt-in two-door test. It is not counted in the 28 retained profiles, because this tree
   has no saved A2A results and the test is skipped without `AEGIS_A2A_PYTHON`.
+- The Spark and Iceberg retained run is dated 2026-10-04 (US Central). The HBase front-door test pins
+  the only published `dajobe/hbase` digest.
 - Cursor and Kiro setup now says which JSON to copy into the open project, and that the agent is on
   Aegis only after the gateway is still listening and the editor lists that server's tools.
 - Adopter READMEs now say which file to copy, where it goes, and which command leaves the gateway
