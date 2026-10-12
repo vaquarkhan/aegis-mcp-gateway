@@ -479,8 +479,9 @@ The same scenario runs as an automated two-front-door test against real engines,
 topology are in [`examples/adopters/spark-iceberg/`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/spark-iceberg/README.md).
 
 To clean up, stop the terminals (Ctrl+C) and delete `adopters/tutorials/spark-iceberg/work/` and the two
-`*.local.yaml` files. Ctrl+C stops the Knox gateway. The demo LDAP process started by `start-knox.ps1`
-keeps running; stop the `java` process whose command line contains `bin\ldap.jar`. Remove the Knox
+`*.local.yaml` files. Ctrl+C stops the Knox gateway. `start-knox.ps1` and `start-knox.sh` then stop the
+demo LDAP process they started. An LDAP that was already listening on port 33389 is left running.
+Remove the Knox
 certificate imported above from `Cert:\CurrentUser\Root`. For the Knox flavor, remove only the exact files
 installed by this tutorial after confirming their paths under the selected Knox directory. The installer
 refuses to overwrite pre-existing Aegis extensions, so it never needs a wildcard cleanup command.

@@ -21,10 +21,13 @@ $ErrorActionPreference = 'Stop'
 if (-not $KnoxHome -or -not (Test-Path (Join-Path $KnoxHome 'bin\gateway.jar'))) { Write-Error 'Pass -KnoxHome' }
 if (-not $env:AEGIS_SIGNING_KEY) { Write-Error 'Set $env:AEGIS_SIGNING_KEY first (tutorial step 3)' }
 $KnoxHome = (Resolve-Path $KnoxHome).Path
-$listening = Test-NetConnection -ComputerName 127.0.0.1 -Port 33389 -InformationLevel Quiet -WarningAction SilentlyContinue
+$listening = Get-NetTCPConnection -State Listen -LocalPort 33389 -ErrorAction SilentlyContinue
+$ldap = $null
 if (-not $listening) {
-    Start-Process -FilePath java -ArgumentList @('-jar', 'bin\ldap.jar', 'conf') -WorkingDirectory $KnoxHome -WindowStyle Hidden
-    Write-Host 'Started Knox demo LDAP on ldap://localhost:33389 (it keeps running after Ctrl+C; stop the java process running bin\ldap.jar)'
+    $ldap = Start-Process -FilePath java -ArgumentList @('-jar', 'bin\ldap.jar', 'conf') -WorkingDirectory $KnoxHome -WindowStyle Hidden -PassThru
+    Write-Host "Started Knox demo LDAP on ldap://localhost:33389 (pid $($ldap.Id)); it stops when Knox stops"
+} else {
+    Write-Host 'Knox demo LDAP is already listening on 33389; this script did not start it and will not stop it'
 }
 $opens = @('java.lang', 'java.lang.invoke', 'java.lang.reflect', 'java.io', 'java.net', 'java.nio', 'java.util',
     'java.util.concurrent', 'java.util.concurrent.atomic', 'sun.nio.ch', 'sun.nio.cs', 'sun.security.action',
@@ -38,4 +41,9 @@ $ErrorActionPreference = 'Continue'
     & java @opens '-Djdk.reflect.useDirectMethodHandle=false' '-Dio.netty.tryReflectionSetAccessible=true' -jar bin\gateway.jar
 } finally {
     Pop-Location
+    # Runs when the gateway exits and on Ctrl+C. An LDAP this script did not start is left alone.
+    if ($ldap -and -not $ldap.HasExited) {
+        Stop-Process -Id $ldap.Id -Force -ErrorAction SilentlyContinue
+        Write-Host "Stopped Knox demo LDAP (pid $($ldap.Id))"
+    }
 }

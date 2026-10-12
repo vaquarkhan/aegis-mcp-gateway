@@ -200,12 +200,15 @@ Non-default Kafka ports are used on purpose so this never collides with a real l
 
 Download the Apache Kafka 3.9.1 binary distribution and **verify it**, which is a habit worth keeping.
 The start scripts edit the Kafka 3.9.x `config/kraft/server.properties` text. A 4.x distribution does not match those lines, and the script stops instead of starting a broker with the wrong ports.
-On Linux or macOS:
+
+Apache publishes the `.sha512` file in GPG `--print-md` form (`kafka_2.13-3.9.1.tgz:` followed by the digest split across lines). That is not the `sha512sum -c` form, and the first word of the file is the archive name, not the digest. Strip the name and the whitespace, then compare the 128 hex characters. On Linux or macOS:
 
 ```bash
 curl -sSLO https://archive.apache.org/dist/kafka/3.9.1/kafka_2.13-3.9.1.tgz
 curl -sSLO https://archive.apache.org/dist/kafka/3.9.1/kafka_2.13-3.9.1.tgz.sha512
-sha512sum -c kafka_2.13-3.9.1.tgz.sha512
+expected="$(sed 's/^[^:]*://' kafka_2.13-3.9.1.tgz.sha512 | tr -d ' \r\n' | tr 'A-F' 'a-f')"
+actual="$(sha512sum kafka_2.13-3.9.1.tgz | cut -d' ' -f1)"   # macOS: shasum -a 512 kafka_2.13-3.9.1.tgz | cut -d' ' -f1
+[[ "$expected" == "$actual" ]] || { echo "SHA-512 mismatch" >&2; exit 1; }
 tar -xzf kafka_2.13-3.9.1.tgz
 export KAFKA_HOME="$PWD/kafka_2.13-3.9.1"
 ```
@@ -217,9 +220,10 @@ set `KAFKA_HOME` to the absolute extracted directory in the current terminal:
 $archive = 'kafka_2.13-3.9.1.tgz'
 curl.exe -sSLO "https://archive.apache.org/dist/kafka/3.9.1/$archive"
 curl.exe -sSLO "https://archive.apache.org/dist/kafka/3.9.1/$archive.sha512"
-$expected = ((Get-Content "$archive.sha512" -Raw) -split '\s+')[0].ToUpperInvariant()
+# Drop the "<file name>:" prefix and every space or line break of the GPG-style digest.
+$expected = (((Get-Content "$archive.sha512" -Raw) -replace '^[^:]*:', '') -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
 $actual = (Get-FileHash $archive -Algorithm SHA512).Hash.ToUpperInvariant()
-if ($actual -ne $expected) {
+if ($expected.Length -ne 128 -or $actual -ne $expected) {
     throw "SHA-512 mismatch for $archive. Expected $expected but computed $actual"
 }
 tar -xzf $archive
@@ -357,10 +361,11 @@ paths, formats the metadata log on first run, and waits for:
 INFO [KafkaRaftServer nodeId=1] Kafka Server started (kafka.server.KafkaRaftServer)
 ```
 
-Terminal 2, the Connect worker with one `FileStreamSource` connector named `aegis-file-source`:
+Terminal 2, the Connect worker with one `FileStreamSource` connector named `aegis-file-source`. This is a new terminal, so set `KAFKA_HOME` again to the same path as 4.2, then start from `adopters/tutorials/kafka`:
 
 ```powershell
-.\start-connect.ps1        # bash: ./start-connect.sh
+$env:KAFKA_HOME = 'C:\path\to\kafka_2.13-3.9.1'   # bash: export KAFKA_HOME=/path/to/kafka_2.13-3.9.1
+.\start-connect.ps1                                # bash: ./start-connect.sh
 ```
 
 Terminal 3 (with the 4.3 variables set), the gateway:
@@ -649,7 +654,7 @@ them without sending additional delete operations to a running broker.
 
 | Symptom | Cause and fix |
 |---|---|
-| `Set $env:KAFKA_HOME ...` | Point it at an extracted Kafka 3.9.x distribution (4.2). |
+| `Set $env:KAFKA_HOME ...` | Terminal 2 does not inherit terminal 1. Set `KAFKA_HOME` again in that terminal, to the extracted Kafka 3.9.x directory from 4.2, before `start-connect`. |
 | `Missing ...aegis-gateway-kafka...jar` | Return to the Aegis repository root and run `mvn -B install -DskipTests`. |
 | Every `kafka_*` call ends in `BACKEND_ERROR` or hangs then times out | The broker is not on 127.0.0.1:19092. Check terminal 1 for `Kafka Server started`. |
 | `Timed out waiting for a node assignment` from `kafka-topics` | Same cause. On Windows also check terminal 1 for a failed log directory after a topic delete (see Platform notes below). |

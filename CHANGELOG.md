@@ -20,6 +20,8 @@
 - A self-contained Hello World starts the example inventory service and leaves Aegis listening, and the
   generated tutorials put the source plugin jar on the classpath and read Knox's exported certificate
   from the Knox installation.
+- The Kafka tutorial reads Apache's GPG-style SHA-512 file and tells the Connect terminal to set
+  `KAFKA_HOME`. The Spark and Iceberg Knox script stops the demo LDAP process it started.
 - Cursor and Kiro setup now says which JSON to copy into the open project, and that the agent is on
   Aegis only after the gateway is still listening and the editor lists that server's tools.
 - Adopter READMEs now say which file to copy, where it goes, and which command leaves the gateway
