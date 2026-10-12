@@ -39,7 +39,7 @@ The local runs in this report and in [adopter status](evidence/ADOPTER-REAL-ENGI
 | PostgreSQL | 17.6 | two gateway processes ([evidence](evidence/POSTGRES-TWO-GATEWAYS.md)) |
 | OpenBao | 2.7.1 | KV secret provider ([evidence](evidence/SECRETS-OPENBAO.md)); HashiCorp Vault 1.17.6 dev also exercised 2026-10-05 (same KV v2 API) |
 | Keycloak | 26.8.0 | RFC 8693 token exchange ([evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md)) |
-| a2a-sdk (Python) | 1.2.1 | the A2A agent behind the `a2a` source (`A2aAgentFrontDoorsTest`, both front doors) |
+| a2a-sdk (Python) | 1.2.1 | the A2A agent behind the `a2a` source (`A2aAgentFrontDoorsTest`, both front doors) (recorded, no saved results) |
 | Helm, kubeconform, hadolint, actionlint | 4.3.0, 0.8.0, 2.15.1, 1.7.12 | chart, manifest, Dockerfile and workflow checks ([chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/charts/aegis/README.md)) |
 | Apache CouchDB | 3.4.2 (official Docker image) | `CouchdbFrontDoorsTest` own host and Knox ([adopter status](evidence/ADOPTER-REAL-ENGINE-STATUS.md)) |
 | Apache Pinot | 1.2.0 (official Docker QuickStart) | `PinotFrontDoorsTest` own host and Knox |
@@ -79,7 +79,7 @@ See [evidence/SECURITY-VALIDATION.md](evidence/SECURITY-VALIDATION.md) for the f
 
 | Run | Result | Against |
 | --- | --- | --- |
-| `A2aAgentFrontDoorsTest` (`-Preal-engines`, `AEGIS_A2A_PYTHON`) | 2 of 2 passed, 0 skipped | an agent on the official `a2a-sdk` 1.2.1, own host and stock Knox 3.0.0 |
+| `A2aAgentFrontDoorsTest` (`-Preal-engines`, `AEGIS_A2A_PYTHON`) | 2 of 2 passed, 0 skipped (recorded, no saved results) | an agent on the official `a2a-sdk` 1.2.1, own host and stock Knox 3.0.0 |
 | `OpenApiDraftIcebergTest` (`-Preal-engines`) | 1 of 1 passed | the Iceberg 1.10.1 REST document and the official `RESTCatalogServer` |
 | `examples/adopters/token-exchange/keycloak_e2e.py` | 5 of 5 checks passed | Keycloak 26.8.0 ([evidence](evidence/TOKEN-EXCHANGE-KEYCLOAK.md)) |
 | `adopters/hooks/e2e_gateway.py` | 7 of 7 checks passed | the gateway jar as a process, CPython `http.server`, the three reference hooks |

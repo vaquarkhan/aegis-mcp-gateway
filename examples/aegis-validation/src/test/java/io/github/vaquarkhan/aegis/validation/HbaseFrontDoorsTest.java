@@ -40,11 +40,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * {@code adopters/configurations/adapters/hbase/hbase.yaml} against a real HBase REST (Stargate)
- * endpoint through both front doors. Uses the {@code dajobe/hbase} all-in-one image when available.
+ * endpoint through both front doors. Uses the third-party {@code dajobe/hbase} all-in-one image,
+ * pinned to the only digest Docker Hub has published for {@code latest} (pushed 2019-02-10).
  */
 class HbaseFrontDoorsTest {
 
-    private static final String IMAGE = "dajobe/hbase:latest";
+    private static final String IMAGE =
+            "dajobe/hbase@sha256:daa36a6d90b118ced866b6c76fcd918e7da73302b0e4971f506f0f61f645a9fe";
     private static final HttpClient HTTP = HttpClient.newHttpClient();
 
     private static DockerContainer hbase;

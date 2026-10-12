@@ -359,7 +359,7 @@ def portable_commands(text, project):
                             'spark-connect-server/warehouse"')
     if project == "hbase":
         text = text.replace("dajobe/hbase:latest",
-                            '"${HBASE_IMAGE:?Set HBASE_IMAGE to an immutable dajobe/hbase digest}"')
+                            "dajobe/hbase@sha256:daa36a6d90b118ced866b6c76fcd918e7da73302b0e4971f506f0f61f645a9fe")
 
     lines, out, language, block = text.split("\n"), [], None, []
     for line in lines:
@@ -515,9 +515,10 @@ def tutorial(project, title, deep):
                "Set it first. From the repository root, PowerShell: `$REPO = (Get-Location).Path`. "
                "Bash: `export REPO=\"$(pwd)\"`.\n")
     if project == "hbase":
-        out.append("The retained run used the mutable image tag `dajobe/hbase:latest`, with no version or digest "
-                   "recorded. The command below deliberately requires `HBASE_IMAGE` to be an immutable "
-                   "`dajobe/hbase@sha256:...` digest selected and recorded by the operator.\n")
+        out.append("The retained command printed `dajobe/hbase:latest`. Docker Hub has published only that tag, "
+                   "last pushed 2019-02-10, at "
+                   "`sha256:daa36a6d90b118ced866b6c76fcd918e7da73302b0e4971f506f0f61f645a9fe`. "
+                   "`HbaseFrontDoorsTest` pins that digest, and the command below uses it.\n")
     engine_body = engine.replace("](engine/", f"]({pages_url(f'examples/adopters/{project}/engine', 'blob')}/")
     out.append(portable_commands(engine_body, project).strip())
 

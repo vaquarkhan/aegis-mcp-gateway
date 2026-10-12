@@ -16,7 +16,7 @@
 # Apache HBase: both front doors passed
 
 [`aegis/canonical.yaml`](aegis/canonical.yaml) is the shipped profile. [`HOW-TO-RUN.md`](HOW-TO-RUN.md)
-and the files beside it are what `HbaseFrontDoorsTest` used. The container is `dajobe/hbase:latest`, a third-party all-in-one image, not an Apache release and not a pinned tag. Its REST port answered the profile through the own host and through Knox. Retained results are in [`results/`](results/).
+and the files beside it are what `HbaseFrontDoorsTest` used. The retained command printed `dajobe/hbase:latest`. Docker Hub has published only that tag, last pushed 2019-02-10, and its digest is `sha256:daa36a6d90b118ced866b6c76fcd918e7da73302b0e4971f506f0f61f645a9fe`. The test now pins that digest. The image is a third-party all-in-one image, not an Apache release. Its REST port answered the profile through the own host and through Knox. Retained results are in [`results/`](results/).
 The IDE tutorial is [docs/tutorials/hbase.md](../../../docs/tutorials/hbase.md).
 
 ## Run it yourself

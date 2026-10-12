@@ -32,7 +32,7 @@ the `spark-iceberg` scenario. Those 28 profiles have IDE tutorials. A2A is a sep
 | Flink | 1.20.1 | `examples/adopters/flink/results/` |
 | Flume | 1.11.0 | `examples/adopters/flume/results/` |
 | **Hadoop HDFS** | 3.2.1 Docker | `examples/adopters/hadoop/results/` |
-| **HBase** | REST via `dajobe/hbase` | `examples/adopters/hbase/results/` |
+| **HBase** | REST via `dajobe/hbase@sha256:daa36a6d90b118ced866b6c76fcd918e7da73302b0e4971f506f0f61f645a9fe` | `examples/adopters/hbase/results/` |
 | **Hive** | 4.0.1 HiveServer2 Docker | `examples/adopters/hive/results/` |
 | Iceberg REST | 1.10.1 | `examples/adopters/iceberg/results/` |
 | Ignite | 2.18.0 | `examples/adopters/ignite/results/` |
