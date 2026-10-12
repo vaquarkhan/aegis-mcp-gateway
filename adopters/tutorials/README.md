@@ -69,8 +69,9 @@ still decides the MCP action.
 
 1. Build Aegis: `mvn -B -Preal-engines -DskipTests install` from the repository root.
 2. Open the tutorial for your engine in [`docs/TUTORIALS.md`](../../docs/TUTORIALS.md).
-3. Start the real engine and Aegis as that tutorial describes (or run
-   `examples/adopters/run-example.ps1 <project> -Keep` / `run-example.sh <project> --keep`).
+3. Start the real engine and Aegis as that tutorial describes, and leave the gateway listening.
+   `examples/adopters/run-example.ps1 <project>` is a test: it stops what it started. Adding `-Keep`
+   (bash: `--keep`) also overwrites the retained evidence files. It is not the way to start an IDE session.
 4. Open `adopters/tutorials/<project>/ide/README.md` and copy the Cursor or Kiro file into the project
    the editor has open (`.cursor/mcp.json` or `.kiro/settings/mcp.json`).
 5. Replace `REPLACE_WITH_YOUR_TOKEN` with the same value as `AEGIS_VALIDATION_TOKEN_READER`.

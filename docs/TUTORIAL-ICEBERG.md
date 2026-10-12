@@ -445,15 +445,14 @@ Keep does not prove either observation.
 
 ### 5.7 Drop a finance table: refused on the object, by everyone
 
-**Evidence: current retained Keep.**
+**Evidence: the Keep attests this denial for `sam`, the operator persona.** The lines below are the historical transcript, which walks through the same denial as the tutorial user `eve`. `IcebergFrontDoorsTest` calls `iceberg_drop_table` on `finance.ledger` as `sam` and checks that the catalog still returns HTTP 200.
 
 ```text
 drop finance.ledger      POLICY_DENIED (step 3)  denied by rule never-drop-finance
 catalog check            GET /v1/namespaces/finance/tables/ledger -> HTTP 200
 ```
 
-Eve is a data engineer and `iceberg_drop_table` is hers to call. She still cannot drop this one, the
-rule matched `iceberg:table:finance.ledger` at step 3, and the table is still there.
+In the tutorial, eve is a data engineer and `iceberg_drop_table` is hers to call. She still cannot drop this one. The retained Keep shows the same rule for `sam`: it matches `iceberg:table:finance.ledger` at step 3, and the table is still there.
 
 ### 5.8 Drop a sales table: preview, approve, promote
 
@@ -548,7 +547,7 @@ current retained Keep.
 | `iceberg_create_namespace` with token | eve | ALLOWED | - | yes, catalog returns 200 for it | Historical recorded-unattested |
 | `iceberg_set_table_properties` dry run | eve | ALLOWED, real metadata returned | - | yes, read only | Historical recorded-unattested |
 | `iceberg_set_table_properties` promoted | eve | ALLOWED, new metadata location reported | - | yes | Historical recorded-unattested |
-| `iceberg_drop_table finance.ledger` | eve | DENIED | `POLICY_DENIED` step 3 | no, table entry still returns 200 | Current Keep: drop |
+| `iceberg_drop_table finance.ledger` | sam in the Keep; eve in the tutorial transcript | DENIED | `POLICY_DENIED` step 3 | no, table entry still returns 200 | Current Keep, caller is sam |
 | `iceberg_drop_table` on `sales.scratch_ownhost` or `sales.scratch_knox`, no approval | eve | DENIED | `APPROVAL_REQUIRED` step 4 | no | Current Keep |
 | `iceberg_drop_table` dry run | eve | ALLOWED, schema plus receipt | - | yes, read only, scratch table still returns 200 | Current Keep |
 | promote with approval but no receipt | eve | DENIED | `VRP_FAILED` step 9 | no | Historical recorded-unattested |
