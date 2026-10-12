@@ -563,8 +563,9 @@ Four takeaways, with their evidence status kept explicit:
 
 1. **Historical recorded-unattested totals:** the 2026-09-27 run had twelve refusals, nine successes,
    and four direct catalog checks. These totals are not attested by the current retained Keep.
-2. **Scopes stop calls before policy.** The current Keep attests the finance scope decisions. The two
-   attack examples included in the historical total are recorded-unattested.
+2. **Scopes stop calls before policy.** The current Keep attests one reader `SCOPE_DENIED` call: the
+   analyst's `iceberg_list_tables` for `finance`. The historical `iceberg_load_table` on
+   `finance.ledger`, and the two attack examples included in the historical total, are recorded-unattested.
 3. **The destructive request needed a preview, a second human, and a receipt.** The Keep attests the
    missing approval, the self-approval refusal, the dry-run receipt, the allowed drop, and the refused
    replay. The historical transcript also shows a promotion with no receipt refused as `VRP_FAILED`;

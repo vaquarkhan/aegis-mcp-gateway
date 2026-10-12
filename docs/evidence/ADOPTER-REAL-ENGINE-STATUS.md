@@ -15,7 +15,7 @@ Every shipped profile has a governance configuration. A two-door run is a retain
 ## Retained two-door runs
 
 The inventory records **28** profiles with own-host and Knox runs: the adopter rows marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md), including
-the `spark-iceberg` scenario. Those 28 profiles have IDE tutorials. **A2A** also has a two-door run below. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
+the `spark-iceberg` scenario. Those 28 profiles have IDE tutorials. A2A is a separate opt-in test and is not one of the 28. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
 
 | Adopter | Engine | Evidence |
 | --- | --- | --- |
@@ -47,7 +47,8 @@ the `spark-iceberg` scenario. Those 28 profiles have IDE tutorials. **A2A** also
 | **Superset** | 4.0.2 Docker | `examples/adopters/superset/results/` |
 | ZooKeeper | 3.9.3 | `examples/adopters/zookeeper/results/` |
 | Spark+Iceberg tutorial | Spark Connect + Iceberg | `examples/adopters/spark-iceberg/results/` |
-| A2A | a2a-sdk 1.2.1 | `examples/adopters/a2a/` |
+
+`A2aAgentFrontDoorsTest` can exercise an official a2a-sdk 1.2.1 agent through both doors. It is skipped unless `AEGIS_A2A_PYTHON` is set, and this tree keeps no `results/` for it. A skipped run is not a retained pass.
 
 ## Remaining engineering (not ASF process)
 
@@ -80,4 +81,4 @@ $env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'
 ./examples/adopters/run-example.ps1 <adopter> -Keep
 ```
 
-A new run is kept with its result files under `examples/adopters/<adopter>/results/`. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
+`-Keep` copies a passing run over the tracked files in `examples/adopters/<adopter>/results/`. Review that diff before committing it. The runner still stops the processes it started, so this command is not how an IDE session is left listening. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
