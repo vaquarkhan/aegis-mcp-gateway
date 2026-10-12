@@ -25,12 +25,15 @@ level, checked before any policy rule runs, so a finance table is refused at ste
 filter its output and the analyst can learn that the `finance` namespace exists. If namespace names
 are sensitive, do not expose this tool to the narrower group.
 
-The current retained Keep evidence attests the list/exposure, resource-scope, and drop observations in
-5.1 to 5.3 and 5.7 to 5.8. The additional deep-dive output is preserved from a historical run of these
-exact steps on 2026-09-27, but is **recorded-unattested** because the currently retained Keep does not
-attest it (`iceberg-open-api` 1.10.1 from Maven Central with a verified SHA-512, JDK 17.0.17; host
-details are in [Platform notes](#platform-notes)). Ids, uuids and paths differ between runs. Section
-labels and the evidence-status column in part 6 keep these two evidence classes separate.
+`IcebergFrontDoorsTest` is the current retained Keep. On each front door it calls `iceberg_list_tables`
+for `sales` (the reply contains `orders`), refuses the analyst's `iceberg_list_tables` for `finance`
+with `SCOPE_DENIED`, refuses `iceberg_drop_table` on `finance.ledger` with `POLICY_DENIED`, and drops
+`sales.scratch_ownhost` or `sales.scratch_knox` through the shared destructive flow (reader refused,
+approval required, dry-run receipt, self-approval HTTP 403, independent approval, one allowed drop,
+refused replay). It does not call `tools/list`, `iceberg_list_namespaces`, `iceberg_load_table` as a
+user tool, or any `MUTATE` tool, and it does not drop `sales.returns` or assert `VRP_FAILED`. The
+2026-09-27 transcript is kept below as recorded-unattested output. Ids, uuids and paths differ between
+runs. Section labels and the evidence-status column in part 6 keep these two evidence classes separate.
 
 ## Contents
 
@@ -321,17 +324,18 @@ itself a governed action:
 .\seed-catalog.ps1         # bash: ./seed-catalog.sh
 ```
 ```text
-namespace sales      -> HTTP 409     (already existed)
-namespace marketing  -> HTTP 200
-namespace finance    -> HTTP 409     (already existed)
-table sales.orders           -> HTTP 200
-table sales.returns          -> HTTP 200
-table marketing.campaigns    -> HTTP 200
-table finance.ledger         -> HTTP 200
-namespaces: {"namespaces":[["finance"],["marketing"],["sales"]],"next-page-token":null}
+namespace sales
+namespace marketing
+namespace finance
+table sales.orders -> created
+table sales.returns -> created
+table marketing.campaigns -> created
+table finance.ledger -> created
+
+namespaces now: <the catalog's GET /v1/namespaces body>
 ```
 
-A 409 on a repeated run is expected: the namespace already exists.
+Those are the lines the script prints. A second run still prints the three namespace names, and each table line prints the catalog's conflict error instead of `created`. The last line is whatever the catalog returns; this page does not record one captured body.
 
 Terminal 2 (with the 4.3 variables set), the gateway:
 
@@ -346,7 +350,7 @@ Wait for `Aegis gateway listening on http://127.0.0.1:8080/mcp`, preceded by sev
 
 ### 5.1 What each person can see
 
-**Evidence: current retained Keep.**
+**Evidence: historical recorded-unattested output.** `IcebergFrontDoorsTest` does not call `tools/list`.
 
 ```text
 ana  (analysts)          -> 4 tools
@@ -361,7 +365,7 @@ eve  (data-engineers)    -> 7 tools
 
 ### 5.2 Browsing as an analyst
 
-**Evidence: current retained Keep.**
+**Evidence: mixed.** The Keep attests `iceberg_list_tables` on `sales` and that the reply contains `orders`. The namespace list and `iceberg_load_table` lines are historical recorded-unattested output.
 
 ```text
 list_namespaces          ALLOWED  [["finance"],["marketing"],["sales"]]
@@ -386,7 +390,7 @@ are filtered by exposure and URI patterns, not by resource scope, and that is st
 
 ### 5.3 Scopes: an analyst cannot reach the finance namespace
 
-**Evidence: current retained Keep.**
+**Evidence: mixed.** The Keep attests the analyst's `iceberg_list_tables` on `finance` as `SCOPE_DENIED`. The `iceberg_load_table` line and eve's allowed finance listing are historical recorded-unattested output.
 
 ```text
 list_tables finance      SCOPE_DENIED (step 2)  resource out of scope: iceberg:namespace:finance
@@ -453,7 +457,7 @@ rule matched `iceberg:table:finance.ledger` at step 3, and the table is still th
 
 ### 5.8 Drop a sales table: preview, approve, promote
 
-**Evidence: current retained Keep.**
+**Evidence: mixed.** The Keep drops `sales.scratch_ownhost` or `sales.scratch_knox`, not `sales.returns`. It attests approval required, a dry-run receipt, self-approval HTTP 403, one allowed drop, catalog 404, and a refused replay. It does not assert `VRP_FAILED`. The block below is the historical `sales.returns` transcript.
 
 ```text
 drop, no approval        APPROVAL_REQUIRED (step 4)
@@ -529,14 +533,14 @@ current retained Keep.
 
 | What was attempted | By | Outcome | Deny code and step | Reached the catalog? | Evidence status |
 | --- | --- | --- | --- | --- | --- |
-| `tools/list` | ana | 4 tools | - | no | Current Keep: list/exposure |
-| `tools/list` | eve | 7 tools | - | no | Current Keep: list/exposure |
-| `iceberg_list_namespaces` | ana | ALLOWED, all three namespaces | - | yes | Current Keep: list |
-| `iceberg_list_tables sales` | ana | ALLOWED | - | yes | Current Keep: list |
+| `tools/list` | ana | 4 tools | - | no | Historical recorded-unattested |
+| `tools/list` | eve | 7 tools | - | no | Historical recorded-unattested |
+| `iceberg_list_namespaces` | ana | ALLOWED, all three namespaces | - | yes | Historical recorded-unattested |
+| `iceberg_list_tables sales` | ana | ALLOWED, reply contains `orders` | - | yes | Current Keep |
 | `iceberg_load_table sales.orders` | ana | ALLOWED, schema only | - | yes | Historical recorded-unattested |
-| `iceberg_list_tables finance` | ana | DENIED | `SCOPE_DENIED` step 2 | no | Current Keep: scope |
-| `iceberg_load_table finance.ledger` | ana | DENIED | `SCOPE_DENIED` step 2 | no | Current Keep: scope |
-| `iceberg_list_tables finance` | eve | ALLOWED | - | yes | Current Keep: scope |
+| `iceberg_list_tables finance` | ana | DENIED | `SCOPE_DENIED` step 2 | no | Current Keep |
+| `iceberg_load_table finance.ledger` | ana | DENIED | `SCOPE_DENIED` step 2 | no | Historical recorded-unattested |
+| `iceberg_list_tables finance` | eve | ALLOWED | - | yes | Historical recorded-unattested |
 | `iceberg_create_namespace` | ana | DENIED | `READONLY_CALLER` step 1 | no | Historical recorded-unattested |
 | `iceberg_create_namespace scratch` | eve | DENIED | `APPROVAL_REQUIRED` step 4 | no | Historical recorded-unattested |
 | self-approve own request | eve | HTTP 403 | separation of duties | no | Historical recorded-unattested |
@@ -545,11 +549,11 @@ current retained Keep.
 | `iceberg_set_table_properties` dry run | eve | ALLOWED, real metadata returned | - | yes, read only | Historical recorded-unattested |
 | `iceberg_set_table_properties` promoted | eve | ALLOWED, new metadata location reported | - | yes | Historical recorded-unattested |
 | `iceberg_drop_table finance.ledger` | eve | DENIED | `POLICY_DENIED` step 3 | no, table entry still returns 200 | Current Keep: drop |
-| `iceberg_drop_table sales.returns`, no approval | eve | DENIED | `APPROVAL_REQUIRED` step 4 | no | Current Keep: drop |
-| `iceberg_drop_table` dry run | eve | ALLOWED, schema plus receipt | - | yes, read only, table entry still returns 200 | Current Keep: drop |
-| promote with approval but no receipt | eve | DENIED | `VRP_FAILED` step 9 | no | Current Keep: drop |
-| promote with approval and receipt | eve | ALLOWED | - | yes, table entry now returns 404 | Current Keep: drop |
-| replay the same token and receipt | eve | DENIED | `APPROVAL_REQUIRED` step 4, already used | no | Current Keep: drop |
+| `iceberg_drop_table` on `sales.scratch_ownhost` or `sales.scratch_knox`, no approval | eve | DENIED | `APPROVAL_REQUIRED` step 4 | no | Current Keep |
+| `iceberg_drop_table` dry run | eve | ALLOWED, schema plus receipt | - | yes, read only, scratch table still returns 200 | Current Keep |
+| promote with approval but no receipt | eve | DENIED | `VRP_FAILED` step 9 | no | Historical recorded-unattested |
+| promote with approval and receipt | eve | ALLOWED | - | yes, scratch table now returns 404 | Current Keep |
+| replay the same token and receipt | eve | DENIED | replay refused | no | Current Keep |
 | `table = "../../v1/config"` | ana | DENIED | `SCOPE_DENIED` step 2 | no | Historical recorded-unattested |
 | undeclared argument `note` | ana | DENIED | `INVALID_INPUT` step 2 | no | Historical recorded-unattested |
 | injected instruction as a namespace | ana | DENIED | `SCOPE_DENIED` step 2 | no | Historical recorded-unattested |
@@ -562,9 +566,10 @@ Four takeaways, with their evidence status kept explicit:
    and four direct catalog checks. These totals are not attested by the current retained Keep.
 2. **Scopes stop calls before policy.** The current Keep attests the finance scope decisions. The two
    attack examples included in the historical total are recorded-unattested.
-3. **The destructive request needed three separate things:** a preview performed against the real
-   table, a second human, and a receipt. The current Keep attests this drop workflow. Any one missing
-   and the request is refused with a different code.
+3. **The destructive request needed a preview, a second human, and a receipt.** The Keep attests the
+   missing approval, the self-approval refusal, the dry-run receipt, the allowed drop, and the refused
+   replay. The historical transcript also shows a promotion with no receipt refused as `VRP_FAILED`;
+   the Keep does not assert that line.
 4. **An object-level deny cannot be overridden by an approval.** The current Keep attests that
    `never-drop-finance` sits at step 3, ahead of approval.
 

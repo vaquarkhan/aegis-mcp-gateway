@@ -193,7 +193,7 @@ ResourceManager profiles are planned on the
 | | |
 | --- | --- |
 | **Severity** | High |
-| **Status** | Recorded, fixed: every configuration listed below was replaced by a real protocol source or removed. Real-engine runs for the remaining contract-tested profiles are on the [roadmap](ROADMAP.md#engine-coverage-verification) |
+| **Status** | Recorded, fixed: every configuration listed below was replaced by a real protocol source or removed. Real-engine runs for the remaining contract-tested profiles are on the [future roadmap](ROADMAP.md#future-roadmap-remaining-target-verification) |
 | **Found by** | Route audit of the adapter configurations against each engine's documentation and source, in two passes; the second pass, on 2026-09-28, found Hudi, Ozone and Kudu |
 | **Evidence** | The table below |
 

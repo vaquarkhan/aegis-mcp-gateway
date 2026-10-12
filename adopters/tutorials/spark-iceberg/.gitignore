@@ -2,3 +2,5 @@
 work/
 aegis-own-host.local.yaml
 aegis-stdio.local.yaml
+# Apache Derby's log, written to the current directory when the Spark Connect server starts here.
+derby.log

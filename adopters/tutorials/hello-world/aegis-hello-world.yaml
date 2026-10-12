@@ -1,0 +1,74 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Hello World configuration (docs/guide/hello-world.html). One local backend, the stdlib-only
+# example inventory service in adopters/clients, governed by one Aegis own host on
+# http://127.0.0.1:8080/mcp. No Apache engine, no container, no downstream MCP server.
+# Development identities are static tokens read from environment variables. Everything binds to
+# 127.0.0.1. Do not reuse this file in production (use JWT identity and TLS there).
+gateway:
+  name: aegis-hello-world
+
+access:
+  writeGroups: [hello-operators]
+  approverGroups: [hello-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: read, groups: [hello-users, hello-operators], classes: [READ]}
+    - {id: operate, groups: [hello-operators], classes: [DESTRUCTIVE]}
+
+egress:
+  allowHosts: [127.0.0.1]
+  allowCidrs: [127.0.0.0/8]          # the example service is loopback and must be allowed explicitly
+  schemes: [http]
+
+audit:
+  file: work/audit/aegis-hello-world.jsonl
+
+sources:
+  - id: inventory
+    type: http
+    baseUrl: http://127.0.0.1:9109
+    tools:
+      - name: inventory_list_things
+        description: List the things the example inventory service knows about.
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: /things}
+        response: {pointer: /things}
+
+      - name: inventory_delete_thing
+        description: Delete one thing from the inventory. Irreversible.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {id: {type: string, maxLength: 64}}
+          required: [id]
+          additionalProperties: false
+        request: {method: DELETE, path: "/things/{id}"}
+        resources: [{type: "inventory:thing", pointer: /id}]
+
+host:
+  listen: {host: 127.0.0.1, port: 8080}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: ANALYST_TOKEN, actor: ana, groups: [hello-users]}
+        - {tokenEnv: OPERATOR_TOKEN, actor: oscar, groups: [hello-operators]}
+        - {tokenEnv: APPROVER_TOKEN, actor: petra, groups: [hello-approvers]}

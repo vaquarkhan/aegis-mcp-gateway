@@ -198,7 +198,8 @@ Non-default Kafka ports are used on purpose so this never collides with a real l
 
 ### 4.2 Get Kafka and build the gateway
 
-Download an Apache Kafka 3.9+ binary distribution and **verify it**, which is a habit worth keeping.
+Download the Apache Kafka 3.9.1 binary distribution and **verify it**, which is a habit worth keeping.
+The start scripts edit the Kafka 3.9.x `config/kraft/server.properties` text. A 4.x distribution does not match those lines, and the script stops instead of starting a broker with the wrong ports.
 On Linux or macOS:
 
 ```bash
@@ -385,7 +386,14 @@ if (-not (Test-Path '.\work\cdc.txt')) {
 [[ -f work/cdc.txt ]] || printf 'order-cdc-1 widget 9.50\n' > work/cdc.txt
 ```
 
-Then register the connector once the worker is up:
+Then register the connector once the worker is up. In Windows PowerShell, `curl` is `Invoke-WebRequest`, so use `curl.exe` and a file for the body:
+
+```powershell
+@'
+{"name":"orders-cdc-source","config":{"connector.class":"org.apache.kafka.connect.file.FileStreamSourceConnector","tasks.max":"1","file":"work/cdc.txt","topic":"aegis.orders.cdc"}}
+'@ | Set-Content -Encoding ascii body.json
+curl.exe -sS -X POST -H "Content-Type: application/json" --data-binary "@body.json" http://127.0.0.1:18083/connectors
+```
 
 ```bash
 curl -s -X POST -H 'Content-Type: application/json' http://127.0.0.1:18083/connectors --data '{
@@ -502,6 +510,8 @@ than trusted from the response. On Windows, see [Platform notes](#platform-notes
 ```text
 kafka_list_topics        ALLOWED  aegis.orders,aegis.orders.cdc
 ```
+
+On Windows that follow-up is not what you should expect. Deleting a topic can make the broker exit: Kafka fails to rename the partition directory while files are memory-mapped (`AccessDeniedException`), then shuts the log directory down. The listing above is the historical note from a host where the broker stayed up. Run topic deletion on Linux. Details are in [Platform notes](#platform-notes).
 
 ### 5.8 What else governance refuses
 
@@ -639,7 +649,7 @@ them without sending additional delete operations to a running broker.
 
 | Symptom | Cause and fix |
 |---|---|
-| `Set $env:KAFKA_HOME ...` | Point it at an extracted Kafka 3.9+ distribution (4.2). |
+| `Set $env:KAFKA_HOME ...` | Point it at an extracted Kafka 3.9.x distribution (4.2). |
 | `Missing ...aegis-gateway-kafka...jar` | Return to the Aegis repository root and run `mvn -B install -DskipTests`. |
 | Every `kafka_*` call ends in `BACKEND_ERROR` or hangs then times out | The broker is not on 127.0.0.1:19092. Check terminal 1 for `Kafka Server started`. |
 | `Timed out waiting for a node assignment` from `kafka-topics` | Same cause. On Windows also check terminal 1 for a failed log directory after a topic delete (see Platform notes below). |

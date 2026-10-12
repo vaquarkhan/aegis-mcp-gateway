@@ -24,7 +24,7 @@ $KnoxHome = (Resolve-Path $KnoxHome).Path
 $listening = Test-NetConnection -ComputerName 127.0.0.1 -Port 33389 -InformationLevel Quiet -WarningAction SilentlyContinue
 if (-not $listening) {
     Start-Process -FilePath java -ArgumentList @('-jar', 'bin\ldap.jar', 'conf') -WorkingDirectory $KnoxHome -WindowStyle Hidden
-    Write-Host 'Started Knox demo LDAP on ldap://localhost:33389'
+    Write-Host 'Started Knox demo LDAP on ldap://localhost:33389 (it keeps running after Ctrl+C; stop the java process running bin\ldap.jar)'
 }
 $opens = @('java.lang', 'java.lang.invoke', 'java.lang.reflect', 'java.io', 'java.net', 'java.nio', 'java.util',
     'java.util.concurrent', 'java.util.concurrent.atomic', 'sun.nio.ch', 'sun.nio.cs', 'sun.security.action',

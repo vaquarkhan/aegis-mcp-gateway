@@ -19,7 +19,7 @@
 param([string]$KafkaHome = $env:KAFKA_HOME)
 $ErrorActionPreference = 'Stop'
 if (-not $KafkaHome -or -not (Test-Path (Join-Path $KafkaHome 'libs'))) {
-    Write-Error "Set `$env:KAFKA_HOME to an Apache Kafka 3.9+ binary distribution (see the tutorial, step 4.2)"
+    throw "Set `$env:KAFKA_HOME to an Apache Kafka 3.9.x binary distribution in this terminal too (see the tutorial, step 4.2)"
 }
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $work = Join-Path $here 'work'

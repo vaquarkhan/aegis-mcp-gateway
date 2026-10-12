@@ -11,14 +11,16 @@
 
 The selected Cassandra Sidecar surface is HTTP, so the adopter is declarative `http` configuration. Aegis applies policy and approval around the typed keyspace/table target.
 
-## Developer workflow
+## Run it
 
-```powershell
-java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config adopters/configurations/adapters/cassandra/cassandra.yaml
-```
+There is no kept run for this profile. There is no `examples/adopters/cassandra/HOW-TO-RUN.md` and no `adopters/tutorials/cassandra/ide/` folder to copy.
 
-Replace the Sidecar endpoint, credentials, groups and egress rules. Add deny policy for system keyspaces before enabling destructive operations.
+`cassandra.yaml` is the profile the contract test loads. Its address is a placeholder hostname. Starting the gateway with this file does not start the product.
+
+The paths in `cassandra.yaml` are not the Cassandra Sidecar API. Pointing Aegis at a Sidecar and treating a 404 as success would be a fake run.
+
+See [Future roadmap: remaining target verification](../../../../docs/ROADMAP.md#future-roadmap-remaining-target-verification).
 
 ## Evidence
 
-The profile has a route/governance contract test. Run the selected Sidecar/Cassandra version before claiming compatibility.
+`AdapterConfigsTest` loads this profile against a local contract harness. That is not a two-door run against the product.

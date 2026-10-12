@@ -18,7 +18,7 @@
 #   KAFKA_HOME=/path/to/kafka_2.13-3.9.1 ./start-connect.sh
 # Run start-kafka.sh first and leave it running.
 set -euo pipefail
-: "${KAFKA_HOME:?Set KAFKA_HOME to an Apache Kafka 3.9+ binary distribution (see the tutorial, step 4.2)}"
+: "${KAFKA_HOME:?Set KAFKA_HOME to an Apache Kafka 3.9.x binary distribution in this terminal too (see the tutorial, step 4.2)}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 work="$here/work"
 mkdir -p "$work"

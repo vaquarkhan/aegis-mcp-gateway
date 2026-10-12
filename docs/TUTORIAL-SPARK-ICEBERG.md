@@ -56,7 +56,7 @@ Aegis sits between the agent and both engines and decides each MCP tool call bef
 
 | Concern | What Aegis does in this tutorial |
 | --- | --- |
-| Who may see what | `lake-readers` see only `sales`; `lake-engineers` see the whole lake. Discovery is filtered too: a reader's `tools/list` has no write tools |
+| Who may see what | `lake-readers` are limited to `sales` on tools that name a resource (`iceberg_list_tables`, `spark_preview_table`, `spark_describe_table`). `iceberg_list_namespaces`, `spark_list_tables`, and `spark_explain_sql` declare no resource, so a reader can still see namespace and table names outside `sales`. `lake-engineers` see the whole lake. A reader's `tools/list` has no write tools |
 | Which calls change data | `spark_sql` and `iceberg_drop_table` are `DESTRUCTIVE`; everything else is `READ` |
 | Human control | A destructive call needs a dry run (Spark `EXPLAIN` or a catalog read), an independent approver, and a single-use receipt bound to the exact statement |
 | Hard limits | No one drops a `finance` table, whatever was approved |
@@ -71,7 +71,7 @@ decision the agent path needs.
 - JDK 17 or newer and Maven 3.9 or newer.
 - About 1.5 GB of disk for Spark, Iceberg and Knox downloads.
 - Free ports 8080, 8181, 15002 and 4040 (and 8443 and 33389 for the Knox flavor).
-- Optional: Python 3.10+ with `pip install "mcp==2.2.0"` for the SDK client in section 5.
+- Optional: Python 3.10+ with `pip install "mcp==2.2.0"` for the SDK client in section 5. That release depends on `httpx2`, and `agent_client.py` imports `httpx2`.
 
 From the repository root, build Aegis once, then the tutorial's engine classpaths:
 
@@ -249,7 +249,11 @@ your workspace. VS Code prompts for the token once and keeps it in its secret st
 plain HTTP for localhost. Leave `autoApprove` empty, so Kiro also asks you before each tool call.
 
 **Cursor:** copy [`ide/cursor/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/ide/cursor/mcp.json) to
-`.cursor/mcp.json` and replace the token placeholder.
+`.cursor/mcp.json` in the project the editor has open, and replace the token placeholder with Ana's reader token from section 4.
+
+Reload MCP. You are ready to instruct the agent when the gateway log still says it is listening on
+`http://127.0.0.1:8080/mcp` and Cursor or Kiro lists `aegis-lake` with its tools. Then use a prompt from
+section 7 and name `aegis-lake`. The agent calls Aegis. It does not call Spark Connect or the Iceberg catalog.
 
 **Claude Desktop, or any IDE that launches MCP servers as a local process (stdio):** write the stdio
 configuration once, then point the IDE at `java` directly:
@@ -396,23 +400,30 @@ and runs the gateway with Spark Connect's Java 17 options:
 .\knox\start-knox.ps1 -KnoxHome C:\knox\knox-3.0.0
 ```
 
-Trust Knox's certificate before making a request. Export it as PEM, add it to the current user's trusted certificates for the duration of this tutorial, then use a credential prompt so the password is not added to history:
+Trust Knox's certificate for this request only. `export-cert` writes the PEM under the Knox installation, and `mcp.ps1 -CaCert` passes it to `curl.exe` without adding it to the Windows certificate store:
 
 ```powershell
-Set-Location C:\knox\knox-3.0.0
-java -jar bin\knoxcli.jar export-cert --type PEM
+# Stay in the tutorial directory. mcp.ps1 lives here, not under the Knox install.
+$knoxHome = 'C:\knox\knox-3.0.0'
+& java -jar (Join-Path $knoxHome 'bin\knoxcli.jar') export-cert --type PEM
+$pem = Join-Path $knoxHome 'data\security\keystores\gateway-client-trust.pem'
 $knox = 'https://localhost:8443/gateway/aegis-spark-iceberg/aegis-mcp/v1/mcp'
 $credential = Get-Credential
 $basic = '{0}:{1}' -f $credential.UserName, ([System.Net.NetworkCredential]::new('', $credential.Password).Password)
-.\mcp.ps1 -Basic $basic -Url $knox -Name spark_preview_table -Arguments @{table='lake.sales.orders'}
+.\mcp.ps1 -Basic $basic -CaCert $pem -Url $knox -Name spark_preview_table -Arguments @{table='lake.sales.orders'}
 ```
 
+An IDE has no per-request CA option, so trusting Knox there means importing that same PEM into `Cert:\CurrentUser\Root` and removing it when you are done.
+
 ```bash
+# Stay in the tutorial directory. mcp.sh lives here, not under the Knox install.
+knox_home="${AEGIS_KNOX_HOME:-/opt/knox/knox-3.0.0}"
+( cd "$knox_home" && java -jar bin/knoxcli.jar export-cert --type PEM )
 read -r -p 'Knox user: ' KNOX_USER
 read -r -s -p 'Knox password: ' KNOX_PASSWORD; echo
 export MCP_URL='https://localhost:8443/gateway/aegis-spark-iceberg/aegis-mcp/v1/mcp'
-export MCP_CA_FILE='/path/to/gateway-client-trust.pem'
-export AUTH="Basic $(printf '%s:%s' "$KNOX_USER" "$KNOX_PASSWORD" | base64)"
+export MCP_CA_FILE="$knox_home/data/security/keystores/gateway-client-trust.pem"
+export AUTH="Basic $(printf '%s:%s' "$KNOX_USER" "$KNOX_PASSWORD" | base64 | tr -d '\n')"
 ./mcp.sh call spark_preview_table '{"table":"lake.sales.orders"}'
 unset KNOX_PASSWORD AUTH
 ```
@@ -468,9 +479,11 @@ The same scenario runs as an automated two-front-door test against real engines,
 topology are in [`examples/adopters/spark-iceberg/`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/spark-iceberg/README.md).
 
 To clean up, stop the terminals (Ctrl+C) and delete `adopters/tutorials/spark-iceberg/work/` and the two
-`*.local.yaml` files. For the Knox flavor, remove only the exact files installed by this tutorial after
-confirming their paths under the selected Knox directory. The installer refuses to overwrite pre-existing
-Aegis extensions, so it never needs a wildcard cleanup command.
+`*.local.yaml` files. Ctrl+C stops the Knox gateway. The demo LDAP process started by `start-knox.ps1`
+keeps running; stop the `java` process whose command line contains `bin\ldap.jar`. Remove the Knox
+certificate imported above from `Cert:\CurrentUser\Root`. For the Knox flavor, remove only the exact files
+installed by this tutorial after confirming their paths under the selected Knox directory. The installer
+refuses to overwrite pre-existing Aegis extensions, so it never needs a wildcard cleanup command.
 
 ## 12. Troubleshooting and next steps
 

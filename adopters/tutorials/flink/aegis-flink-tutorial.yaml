@@ -218,7 +218,7 @@ sources:
           additionalProperties: false
         # The endpoint is /rescaling, not /rescale. On this cluster Flink answers it with HTTP 503 and
         # "Rescaling is temporarily disabled. See FLINK-12312." The tutorial calls it on purpose, in
-        # part 5.7, to show what an unavailable backend operation looks like once governance has
+        # part 5.6, to show what an unavailable backend operation looks like once governance has
         # already said yes.
         request: {method: PATCH, path: "/jobs/{jobId}/rescaling", query: {parallelism: "{parallelism}"}}
         resources: [{type: "flink:job", pointer: /jobId}]

@@ -90,25 +90,24 @@ check on issued JWTs have shipped; see [FEATURES.md](FEATURES.md) and the [chang
 | Airflow 3.x profile | The `/api/v2` surface of the Airflow 3 api-server | `airflow` profile (Airflow 2.x) |
 | Hudi, Ozone and Kudu | Engine procedures through Spark or Flink, or a versioned REST profile when the product publishes one | Spark Connect, Flink, `http` source |
 
-## Engine coverage verification
+## Future roadmap: remaining target verification
 
-Each profile below already ships its governance configuration and contract tests. The planned work is a
-retained real-engine run through both front doors. Done means a green `<Engine>FrontDoorsTest`, results
-kept under `examples/adopters/<engine>/results/`, a regenerated tutorial, and the catalog row marked
-**passed** ([adopter status](evidence/ADOPTER-REAL-ENGINE-STATUS.md)).
+Hive and Ranger now have retained two-door runs. These four profiles already ship their governance
+configuration and contract tests. The planned work is a retained real-engine run through both front doors.
+Done means a green `<Engine>FrontDoorsTest`, results kept under `examples/adopters/<engine>/results/`,
+a regenerated tutorial, and the catalog row marked **passed**
+([adopter status](evidence/ADOPTER-REAL-ENGINE-STATUS.md)).
 
 | Engine | What the run needs |
 | --- | --- |
-| Hive | HiveServer2 in Docker, the full HS2 client jars on both classpaths, a seeded table (the profile is `type: jdbc`) |
-| Paimon | A Paimon REST catalog and warehouse, the same shape of work as the Iceberg REST run |
-| Cassandra | Cassandra Sidecar with a cluster (the profile is Sidecar HTTP) |
-| Ranger | Ranger Admin with its database and user bootstrap |
-| Impala | An Impala coordinator; SQL can move to the `jdbc` source |
-| Atlas | Atlas with Kafka, Solr and HBase |
+| Atlas | Atlas together with Kafka, Solr, and HBase. The profile calls Atlas v2. |
+| Cassandra | A Cassandra cluster and Sidecar whose routes match the profile. The shipped paths are `/api/v1/cassandra/native/keyspaces` and a table delete; the Sidecar API uses different routes and does not drop a table that way. |
+| Impala | An Impala coordinator that serves the debug UI (`/`, `/metrics`, `/queries`, `/cancel_query`). Apache does not publish a coordinator image that does this without the rest of the cluster. |
+| Paimon | A production Paimon REST catalog. Apache does not ship one. The published API is `/v1/{prefix}/databases`; the profile calls `/v1/databases`. |
 
 ## Next: release-candidate evidence
 
-The validation report records the runs already completed. This pass repeats them on the release candidate and finishes the distribution work around them. Product-stack runs for Hive, Paimon, Cassandra, Ranger, Impala, and Atlas are in the table above. Arrow Flight, Beam JobService, Hudi, Kudu, and Ozone are under [Later: sources and engine operations](#later-sources-and-engine-operations).
+The validation report records the runs already completed. This pass repeats them on the release candidate and finishes the distribution work around them. Atlas, Cassandra, Impala, and Paimon are the only profiles still waiting on a product process; they are on the [future roadmap](#future-roadmap-remaining-target-verification). Arrow Flight, Beam JobService, Hudi, Kudu, and Ozone are under [Later: sources and engine operations](#later-sources-and-engine-operations).
 
 | Item | What it adds |
 | --- | --- |

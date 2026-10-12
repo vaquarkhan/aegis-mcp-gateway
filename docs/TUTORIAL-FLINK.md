@@ -173,7 +173,7 @@ This run used `flink-1.20.1-bin-scala_2.12.tgz`, SHA-512 verified against
 
 ### 4.2 Get Flink and build the gateway
 
-Run the Maven build from the repository root, `consolidate-into-threat-model-review/`, not from the
+Run the Maven build from the repository root (the folder with the top-level `pom.xml`), not from the
 `aegis-gateway` module:
 
 ```bash
@@ -302,7 +302,7 @@ any backend, which is why it is the default; `TOOL` is stronger where the backen
 
 ### 4.5 Start Flink, upload the jars, start the gateway
 
-Three terminals, each starting from the repository root.
+The bash scripts stay in the foreground, so that path is shown as three terminals. On PowerShell, `start-flink.ps1` and `upload-jars.ps1` return, and `start-gateway.ps1` stays in the foreground. One PowerShell terminal is enough when the gateway command runs last and you leave it running, with the step 4.3 variables still set.
 
 ```bash
 # 1

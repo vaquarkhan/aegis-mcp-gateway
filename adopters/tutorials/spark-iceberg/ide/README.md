@@ -33,5 +33,7 @@ Folder overview: [`adopters/tutorials/README.md`](../../README.md).
 | Cursor | `.cursor/mcp.json` | own host |
 | Claude Desktop (stdio) | see the tutorial's stdio section | local process |
 
-Start the tutorial scripts first so Aegis is listening, then copy the JSON and supply the token the
-tutorial prints. Replace placeholders; do not commit real secrets.
+Start the tutorial scripts first so Aegis is listening on `http://127.0.0.1:8080/mcp`, then copy the JSON
+into the project the editor has open and replace the token with the reader token the tutorial prints.
+Reload MCP. You are ready when Cursor or Kiro lists `aegis-lake` and shows its tools. Then name
+`aegis-lake` in the agent chat. Do not commit real secrets.

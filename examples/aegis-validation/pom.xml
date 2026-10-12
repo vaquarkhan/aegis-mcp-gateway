@@ -217,6 +217,21 @@
       <version>${spark.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- HiveServer2's own JDBC client. The standalone jar is one file an operator copies into Knox ext/.
+         Transitive Hive jars are excluded so the shaded client is the only Hive driver on the test classpath. -->
+    <dependency>
+      <groupId>org.apache.hive</groupId>
+      <artifactId>hive-jdbc</artifactId>
+      <version>4.0.1</version>
+      <classifier>standalone</classifier>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 
   <build>
@@ -251,6 +266,7 @@
             <aegis.jdbc.pluginJar>${project.basedir}/../../aegis-source-jdbc/target/aegis-source-jdbc-${project.version}.jar</aegis.jdbc.pluginJar>
             <aegis.jdbc.pluginClasspathFile>${project.basedir}/../../aegis-source-jdbc/target/plugin.classpath</aegis.jdbc.pluginClasspathFile>
             <aegis.calcite.driverJar>${org.apache.calcite.avatica:avatica:jar}</aegis.calcite.driverJar>
+            <aegis.hive.driverJar>${org.apache.hive:hive-jdbc:jar:standalone}</aegis.hive.driverJar>
             <aegis.zookeeper.serverClasspathFile>${project.basedir}/../aegis-validation-zookeeper-server/target/server.classpath</aegis.zookeeper.serverClasspathFile>
             <aegis.zookeeper.pluginJar>${project.basedir}/../../aegis-source-zookeeper/target/aegis-source-zookeeper-${project.version}.jar</aegis.zookeeper.pluginJar>
             <aegis.zookeeper.pluginClasspathFile>${project.basedir}/../../aegis-source-zookeeper/target/plugin.classpath</aegis.zookeeper.pluginClasspathFile>

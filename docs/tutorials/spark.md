@@ -74,23 +74,25 @@ mvn -B -Preal-engines -DskipTests install
 
 ## 3. Run the whole verified scenario
 
-One command starts the real engine, runs every step through both doors, and checks the engine's own state after each governed write. This is how the kept results were produced.
+One command starts the real engine, runs every step through both doors, and checks the engine's own state after each governed write. This is the test that produced the kept results.
 
 ```powershell
 $env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'
-examples/adopters/run-example.ps1 spark -Keep
+examples/adopters/run-example.ps1 spark
 ```
 
 ```bash
 export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0
-examples/adopters/run-example.sh spark --keep
+examples/adopters/run-example.sh spark
 ```
 
 Without `AEGIS_KNOX_HOME` the Knox door is reported as skipped, never as passed.
 
+The runner is a test: it stops the engine and both gateways when it finishes, so nothing is left listening for an IDE. To use an IDE, start the engine and a gateway yourself with sections 4 to 7. Maintainers add `-Keep` (bash: `--keep`) to copy a passing run's results over the retained evidence in `examples/adopters/spark/results/`; those are tracked files, so review the change with `git diff` before committing it.
+
 ## 4. The engine
 
-In the commands below `$REPO` is the repository root, as in the retained HOW-TO-RUN.md.
+In the commands below `$REPO` is the repository root, as in the retained HOW-TO-RUN.md. Set it first. From the repository root, PowerShell: `$REPO = (Get-Location).Path`. Bash: `export REPO="$(pwd)"`.
 
 Apache Spark 4.0.1 runs inside the test JVM as two real services: a standalone `Master` (`Master.startRpcEnvAndEndpoint`, what `sbin/start-master.sh` runs) with its REST submission server on `127.0.0.1:56868` (`spark.master.rest.enabled=true`), and a `local[1]` application whose web UI REST API is on `127.0.0.1:56881`. To use your own, start `sbin/start-master.sh` with `spark.master.rest.enabled=true` and point the YAML at the Master's REST port and a History Server or driver UI.
 
@@ -135,7 +137,7 @@ For an IDE you want a fixed port: in your copy of `own-host.yaml` set `host.list
 
 ## 6. Flavor B: with Knox
 
-The manual commands in this section are POSIX shell commands. On Windows, use the supported `examples/adopters/run-example.ps1 spark -Keep` runner from section 3.
+The manual commands in this section are POSIX shell commands. On Windows, use the section 3 runner (`examples/adopters/run-example.ps1 spark`), which does not leave a gateway listening.
 The files: [`aegis/knox-aegis.yaml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/spark/aegis/knox-aegis.yaml), the same adopter profile with no `host:` section (Knox is the host), and [`aegis/knox-topology.xml`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/spark/aegis/knox-topology.xml), the Knox topology: ShiroProvider against Knox's demo LDAP, Default identity assertion with `group.principal.mapping` (person to adopter groups), `AclsAuthz` on the route, and the `AEGIS_MCP` service.
 
 Steps, in the order the test performed them on a stock Knox 3.0.0 (`$AEGIS_KNOX_HOME`, from `examples/adopters/knox/install-knox.ps1` or `.sh`):
@@ -167,7 +169,8 @@ A request, the same as the test's first one (`spark_list_applications` as `guest
 ```bash
 KNOX_PORT=8443
 java -jar "$AEGIS_KNOX_HOME/bin/knoxcli.jar" export-cert --type PEM
-KNOX_CA_CERT="$PWD/gateway-client-trust.pem"
+# export-cert writes the PEM into the Knox installation, not the current directory.
+KNOX_CA_CERT="$AEGIS_KNOX_HOME/data/security/keystores/gateway-client-trust.pem"
 read -r -p 'Knox demo user: ' KNOX_USER
 # curl prompts for the password because the user value contains no colon.
 curl -sS --cacert "$KNOX_CA_CERT" https://localhost:${KNOX_PORT}/gateway/aegis-spark/aegis-mcp/v1/mcp \
@@ -195,6 +198,10 @@ Ready-made files, in each IDE's documented format, are in [`adopters/tutorials/s
 | Cursor | `ide/cursor/mcp.json` (copy to `.cursor/mcp.json`) | own host |
 
 Own host: `http://127.0.0.1:8080/mcp`. Knox: `https://localhost:8443/gateway/aegis-spark/aegis-mcp/v1/mcp`; trust Knox's certificate first (`java -jar bin/knoxcli.jar export-cert --type PEM`). The token you give the IDE decides who you are to Aegis: use the token of the person whose permissions you want the assistant to have.
+
+Copy into the project the editor has open. Cursor: `adopters/tutorials/spark/ide/cursor/mcp.json` to `.cursor/mcp.json`. Kiro: `adopters/tutorials/spark/ide/kiro/mcp.json` to `.kiro/settings/mcp.json`. Leave the `aegis-spark-knox` entry disabled unless you started the Knox door. Replace `REPLACE_WITH_YOUR_TOKEN` with the same value you exported as `AEGIS_VALIDATION_TOKEN_READER` (the person `guest`). Section 3 stops the gateway; the process from section 5 has to still be running.
+
+Reload MCP. You are ready to instruct the agent when the gateway log still says `Aegis gateway listening on http://127.0.0.1:8080/mcp`, and Cursor or Kiro lists `aegis-spark` with its tools. Then use a prompt from section 8 and name `aegis-spark`. The agent calls Aegis. It does not call the engine URL.
 
 These files were checked by `DocumentationAssetsTest` (they parse and name these endpoints). The MCP transport they use was exercised with the official MCP Python SDK in the [Spark and Iceberg tutorial](../TUTORIAL-SPARK-ICEBERG.md); the IDEs themselves were not driven by a test.
 

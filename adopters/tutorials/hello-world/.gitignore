@@ -1,0 +1,3 @@
+# Hello World runtime state (audit journal, logs, pids) and the port-override config copy. Never commit them.
+work/
+*.local.yaml

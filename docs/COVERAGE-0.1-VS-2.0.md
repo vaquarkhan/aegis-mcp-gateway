@@ -101,7 +101,7 @@ notes in this file.
 | `flume` | 2 | yes | |
 | `hadoop` | 4 | yes | |
 | `hbase` | 4 | yes | |
-| `hive` | 4 | yes | `run_sql_readonly` successor is `jdbc_run_query`; FrontDoors Keep on roadmap (no scaffold in tree) |
+| `hive` | 4 | yes | `jdbc_run_query`; retained under `examples/adopters/hive/` |
 | `hudi` | 4 | typed source / reference | entire surface deliberately absent (no real HTTP API) |
 | `iceberg` | 12 | shared profile | |
 | `ignite` | 4 | yes | |
@@ -113,7 +113,7 @@ notes in this file.
 | `paimon` | 4 | yes | contract config; real-engine Keep still pending |
 | `pinot` | 4 | yes | |
 | `pulsar` | 6 | yes | |
-| `ranger` | 4 | yes | contract config; real-engine Keep still pending |
+| `ranger` | 4 | yes | `examples/adopters/ranger/` |
 | `solr` | 4 | yes | |
 | `spark` | 5 | shared profile | submission/kill backend changed to Spark standalone REST |
 | `storm` | 4 | yes | |
@@ -143,7 +143,7 @@ For every 0.1 tool row, the test assigns exactly one verdict (`kept`, `renamed`,
 | `iceberg/get_table` | `iceberg_load_table` | The Iceberg REST Catalog API calls the operation `loadTable`. |
 | `iceberg/alter_table` | `iceberg_set_table_properties` | The implementation changes table properties, so the name says what it changes. |
 | `kafka/query_schema_registry` | `schema_list_subjects`, `schema_latest_version`, `schema_check_compatibility` | Three endpoint and schema shapes replace one broad tool. |
-| `hive/run_sql_readonly` | `jdbc_run_query` | HiveServer2 is reached through its JDBC driver. The product-stack run is on the [roadmap](ROADMAP.md#engine-coverage-verification). |
+| `hive/run_sql_readonly` | `jdbc_run_query` | HiveServer2 is reached through its JDBC driver. Both front doors are retained under `examples/adopters/hive/`. |
 
 ### Backend changed
 

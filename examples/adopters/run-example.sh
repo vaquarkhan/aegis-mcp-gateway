@@ -31,6 +31,7 @@ case "$adopter" in
   iceberg)       module=aegis-validation;               test=IcebergFrontDoorsTest ;;
   activemq)      module=aegis-validation;               test=ActiveMqFrontDoorsTest ;;
   couchdb)       module=aegis-validation;               test=CouchdbFrontDoorsTest ;;  # needs Docker
+  hive)          module=aegis-validation;               test=HiveFrontDoorsTest ;;     # needs Docker (apache/hive)
   pinot)         module=aegis-validation;               test=PinotFrontDoorsTest ;;    # needs Docker
   ignite)        module=aegis-validation;               test=IgniteFrontDoorsTest ;;
   # needs AEGIS_MCP_PYTHON, AEGIS_NODE, AEGIS_MCP_FILESYSTEM_JS (existing-mcp-server/setup.sh)
@@ -41,6 +42,7 @@ case "$adopter" in
   flume)         module=aegis-validation;               test=FlumeFrontDoorsTest ;;
   bookkeeper)    module=aegis-validation;               test=BookKeeperFrontDoorsTest ;;
   pulsar)        module=aegis-validation;               test=PulsarFrontDoorsTest ;; # needs AEGIS_PULSAR_HOME
+  ranger)        module=aegis-validation;               test=RangerFrontDoorsTest ;;   # needs Docker (apache/ranger)
   spark-connect) module=aegis-validation-spark-connect; test=SparkConnectFrontDoorsTest ;;
   spark-iceberg) module=aegis-validation-spark-connect; test=SparkIcebergFrontDoorsTest ;; # docs/TUTORIAL-SPARK-ICEBERG.md
   *) echo "no runnable example for '$adopter'" >&2; exit 2 ;;

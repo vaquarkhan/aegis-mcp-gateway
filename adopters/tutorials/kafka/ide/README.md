@@ -31,10 +31,8 @@ You still need:
    `8443` (Knox door).
 3. A bearer token (own host) or Knox demo credentials (Knox door) from the tutorial.
 
-Current retained Keep walkthrough: [`docs/tutorials/kafka.md`](../../../../docs/tutorials/kafka.md).
-That run tests connector deletion through the own-host and Knox doors and does not start Schema
-Registry. Longer historical manual walkthrough: [`docs/TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md`](../../../../docs/TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md).
-Folder overview: [`adopters/tutorials/README.md`](../../README.md).
+Full walkthrough: [`docs/tutorials/kafka.md`](../../../../docs/tutorials/kafka.md). Folder overview:
+[`adopters/tutorials/README.md`](../../README.md).
 
 ## Which file to copy
 
@@ -49,14 +47,32 @@ Server name in the files: `aegis-kafka` (Knox variant: `aegis-kafka-knox`).
 
 ## First-time steps
 
-1. Complete parts 4.2 through 4.5 of the longer historical manual walkthrough so Aegis is listening
-   on `http://127.0.0.1:8080/mcp`.
-2. Copy the matching JSON above into your project or user MCP settings path.
-3. Replace `REPLACE_WITH_YOUR_TOKEN` (Cursor / Kiro) with the freshly generated `ANALYST_TOKEN` from
-   part 4.3 of that walkthrough, or give VS Code that value at its password prompt.
-4. Reload MCP / the window, then ask the agent a **read** prompt from the tutorial (for example list
-   or status). A write or delete should require approval when the profile marks the tool `MUTATE` or
-   `DESTRUCTIVE`.
+Do these in order. The agent is not using Aegis until the last step is true.
+
+1. Start the real engine, then start the own-host gateway and leave it listening on `http://127.0.0.1:8080/mcp`.
+   The section 3 runner is a test: it stops what it started, and `-Keep` overwrites the retained evidence.
+2. Copy the file into the project the editor has open:
+   Cursor → `.cursor/mcp.json` from `cursor/mcp.json` in this folder.
+   Kiro → `.kiro/settings/mcp.json` from `kiro/mcp.json` in this folder.
+   Leave `aegis-kafka-knox` disabled unless Knox is the door you started.
+3. Replace `REPLACE_WITH_YOUR_TOKEN` with the same value you exported as `AEGIS_VALIDATION_TOKEN_READER`
+   in the terminal that started Aegis. That token is the person `guest`. The name of the variable is in
+   `examples/adopters/kafka/aegis/own-host.yaml`; the file does not contain the secret.
+   VS Code asks for the token instead of storing it in the JSON.
+4. Reload MCP in Cursor or Kiro.
+
+You are ready to give the agent an instruction when both of these are true:
+
+- the gateway log still says `Aegis gateway listening on http://127.0.0.1:8080/mcp`
+- the editor lists `aegis-kafka` and shows its tools
+
+Then ask a read prompt from the tutorial and name `aegis-kafka`. The agent calls Aegis. It does not call the
+engine URL. A write or delete still needs approval when the profile marks the tool `MUTATE` or
+`DESTRUCTIVE`.
+
+The kept run does not start Schema Registry. Start from `docs/tutorials/kafka.md`. The longer page
+`docs/TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md` is background; its older token name is not the variable in
+`examples/adopters/kafka/aegis/own-host.yaml`.
 
 ## What the fields mean
 

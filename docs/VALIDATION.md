@@ -43,14 +43,15 @@ The local runs in this report and in [adopter status](evidence/ADOPTER-REAL-ENGI
 | Helm, kubeconform, hadolint, actionlint | 4.3.0, 0.8.0, 2.15.1, 1.7.12 | chart, manifest, Dockerfile and workflow checks ([chart README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/charts/aegis/README.md)) |
 | Apache CouchDB | 3.4.2 (official Docker image) | `CouchdbFrontDoorsTest` own host and Knox ([adopter status](evidence/ADOPTER-REAL-ENGINE-STATUS.md)) |
 | Apache Pinot | 1.2.0 (official Docker QuickStart) | `PinotFrontDoorsTest` own host and Knox |
+| Apache Hive | 4.0.1 (official HiveServer2 image) | `HiveFrontDoorsTest` own host and Knox, 2026-10-11 |
+| Apache Ranger | 2.9.0 (official Admin and database images) | `RangerFrontDoorsTest` own host and Knox, 2026-10-11 |
 
 The temporary external PostgreSQL run is described in the [PostgreSQL validation evidence](evidence/POSTGRES-RDS-VALIDATION.md); its engine version was not retained.
 The engine version of each adopter run is in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md).
 Docker was used locally on 2026-10-05 for PostgreSQL 17.6, Vault 1.17.6 dev, and the gateway image smoke
 test ([E2E validation record](evidence/E2E-VALIDATION-2026-10-05.md)). Helm 4.3.0 and kubeconform 0.8.0
 were installed locally for chart checks; no Kubernetes cluster install was performed. No Windows Subsystem
-for Linux distribution was installed, so engines that need a Linux-only service stack without a Windows
-path were not run; each affected adopter README names what it needs.
+for Linux distribution was installed. Docker on this Windows host ran the catalog's container adopters, including Airflow, CouchDB, Doris, Druid, Hadoop, HBase, Hive, NiFi, Pinot, Ranger, Storm, and Superset. Atlas, Cassandra, Impala, and Paimon still have no product process here.
 
 ## Default build (2026-10-03)
 
@@ -132,7 +133,7 @@ The retained materials record the own-host and Knox paths that were exercised. T
 authoritative for whether each run remains current after later code or configuration changes; a release
 candidate still needs its own run.
 
-The other **6** shipped profiles (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) are config/contract
+The other **4** shipped profiles (Atlas, Cassandra, Impala, Paimon) are config/contract
 supported as configuration; the service prerequisite for each is recorded in the same adopter index and on
 [ROADMAP.md](ROADMAP.md).
 
@@ -188,7 +189,7 @@ supplemental source/converter detail.
 | Spark Connect 4.0.1 | `RealSparkConnectServerTest` starts a real Spark Connect server in a separate JVM and exercises reads plus a dry-run, independent approval and real destructive drop | recorded local source behavior; rerun when Spark Connect source, Spark version or config changes |
 | Iceberg 1.10.1 REST catalog | `IcebergFrontDoorsTest`: real `RESTCatalogServer`, own host and Knox, recorded 2026-10-05 | recorded local source behavior; the release-candidate repeat is on the [roadmap](ROADMAP.md#next-release-candidate-evidence) |
 | Kafka 3.9.1 and Connect | `KafkaFrontDoorsTest`: real KRaft broker and Connect worker, own host and Knox, recorded 2026-10-05; every default build also drives the `kafka-admin` source against a real broker | recorded local source behavior; the release-candidate repeat is on the [roadmap](ROADMAP.md#next-release-candidate-evidence) |
-| Atlas, Cassandra, Hive, Impala, Paimon, Ranger | configuration and `AdapterConfigsTest` governance flow | product-stack runs are on the [roadmap](ROADMAP.md#engine-coverage-verification) |
+| Atlas, Cassandra, Impala, Paimon | configuration and `AdapterConfigsTest` governance flow | product-stack runs are on the [future roadmap](ROADMAP.md#future-roadmap-remaining-target-verification) |
 | Arrow, Beam, Hudi, Kudu and Ozone | planned typed sources | [roadmap](ROADMAP.md#later-sources-and-engine-operations) |
 | `aegis-state-postgres` | `PostgresStateStoreIT`: five tests for shared nonce and rate state, persistence, expiration, escaped scans, invalid rate requests, environment-named credentials, and signed-serial high-water rollback | [PostgreSQL validation evidence](evidence/POSTGRES-RDS-VALIDATION.md); the release-candidate repeat is on the [roadmap](ROADMAP.md#next-release-candidate-evidence) |
 | Two gateway processes, one `postgres` namespace | `TwoGatewayProcessesPostgresIT` starts two `Main` JVMs against a real PostgreSQL 17.6 server: an approval requested on A is decided on B, the approved delete runs once on B, the replay on A is refused, and a rate window of 3 is one window across both | recorded local source behavior; see [two-gateway evidence](evidence/POSTGRES-TWO-GATEWAYS.md). Re-run from the exact candidate before a release claim |
@@ -202,8 +203,7 @@ Product-stack runs, typed sources, and the release-candidate repeat are on the [
 
 ## Explicit limits
 
-- The embedded Derby suite proves the JDBC converter contract, not HiveServer2 or Avatica release
-  compatibility. Those targets need their own run.
+- The embedded Derby suite proves the JDBC converter contract. HiveServer2 4.0.1 and Avatica each have their own retained two-door run, under `examples/adopters/hive/` and `examples/adopters/calcite/`.
 - The SQL read-only guard is an indicator. A source credential that cannot write is the enforcement
   control for SQL effects.
 - The audit chain is locally tamper-evident. With `audit.checkpoint` the gateway exports its head to a

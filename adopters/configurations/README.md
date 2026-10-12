@@ -34,6 +34,11 @@ configurations/
 | [template](template/README.md) | [TEMPLATE.yaml](template/TEMPLATE.yaml) | Starting a new project profile | `http` example | replace every placeholder before use |
 | [adapters](adapters/README.md) | catalog of 25 named YAML profiles | Selecting a project-specific reference profile | HTTP, JDBC or typed source | evidence differs per adopter |
 
+If you use Cursor or Kiro, the profile YAML is not what the editor loads. Open that profile's README,
+start the engine and Aegis so the gateway stays listening, then copy `adopters/tutorials/<project>/ide/cursor/mcp.json`
+to `.cursor/mcp.json` or `ide/kiro/mcp.json` to `.kiro/settings/mcp.json`. You can instruct the agent
+after the editor lists the `aegis-<project>` server and its tools.
+
 ## Layout contract
 
 A shared profile directory contains one same-named executable YAML and one README. `TEMPLATE.yaml` is
