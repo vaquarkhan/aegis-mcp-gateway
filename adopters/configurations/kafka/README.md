@@ -8,6 +8,27 @@
 `kafka.yaml` combines three real surfaces: Kafka Connect REST, Schema Registry HTTP and the typed Kafka
 Admin client source.
 
+## Use it from Cursor or Kiro
+
+The jar command further down does not connect an editor. `kafka.yaml` has no listener, and its broker
+address is a hostname. Follow this order. The agent is on Aegis only after the last step.
+
+1. Build, start Kafka and Connect, then start Aegis and leave it listening, as
+   [docs/tutorials/kafka.md](../../../docs/tutorials/kafka.md) sections 2, 4, and 5 describe. Section 3
+   of that tutorial is a test: it stops the gateway and `-Keep` overwrites the retained evidence.
+2. Copy into the project the editor has open:
+   - Cursor: [`adopters/tutorials/kafka/ide/cursor/mcp.json`](../../tutorials/kafka/ide/cursor/mcp.json) → `.cursor/mcp.json`
+   - Kiro: [`adopters/tutorials/kafka/ide/kiro/mcp.json`](../../tutorials/kafka/ide/kiro/mcp.json) → `.kiro/settings/mcp.json`
+3. Use the same secret for `AEGIS_VALIDATION_TOKEN_READER` and for `REPLACE_WITH_YOUR_TOKEN`. That token
+   is the person `guest`. Leave the Knox entry in the Kiro file disabled unless you started Knox.
+4. Reload MCP. You are ready when the gateway log still says `Aegis gateway listening on http://127.0.0.1:8080/mcp`
+   and the editor lists `aegis-kafka` with its tools.
+5. In the agent chat, name `aegis-kafka` and use a prompt from section 8 of the tutorial. The agent calls
+   Aegis. It does not call the broker or the Connect URL.
+
+The kept run does not start Schema Registry. Details of the copy are in
+[`adopters/tutorials/kafka/ide/README.md`](../../tutorials/kafka/ide/README.md).
+
 ## Why this source
 
 Kafka broker administration is not a REST facade, so topic operations use the typed `kafka-admin` source.

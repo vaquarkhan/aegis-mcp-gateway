@@ -89,3 +89,4 @@ caller-credentials.txt
 local-gateway.yaml
 local-tools.yaml
 logs/
+adopters/clients/audit/

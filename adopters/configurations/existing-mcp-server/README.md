@@ -8,6 +8,21 @@
 `existing-mcp-server.yaml` is the reference profile for a project that already has an MCP server. Aegis
 fronts the server without changing its implementation.
 
+## Use it from Cursor or Kiro
+
+The jar command further down does not connect an editor. Start the downstream MCP server, then start
+Aegis and leave it listening, as
+[docs/tutorials/existing-mcp-server.md](../../../docs/tutorials/existing-mcp-server.md) sections 4 and 5
+describe. Section 3 of that tutorial is a test and stops the gateway.
+
+Copy into the project the editor has open. Cursor:
+[`adopters/tutorials/existing-mcp-server/ide/cursor/mcp.json`](../../tutorials/existing-mcp-server/ide/cursor/mcp.json) → `.cursor/mcp.json`.
+Kiro: [`adopters/tutorials/existing-mcp-server/ide/kiro/mcp.json`](../../tutorials/existing-mcp-server/ide/kiro/mcp.json) →
+`.kiro/settings/mcp.json`. Put the same secret in `AEGIS_VALIDATION_TOKEN_READER` and in place of
+`REPLACE_WITH_YOUR_TOKEN` (the person `guest`). Reload MCP. You are ready when the gateway is still
+listening on `http://127.0.0.1:8080/mcp` and the editor lists `aegis-existing-mcp-server` with its tools.
+Then name that server in the agent chat. The agent calls Aegis, not the downstream MCP server.
+
 ## What it demonstrates
 
 - HTTP downstream MCP with automatic 2026-07-28 discovery and 2025 fallback;

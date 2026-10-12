@@ -14,7 +14,8 @@
 # limitations under the License.
 #
 # Creates the tutorial fixture DIRECTLY against the catalog, not through Aegis, so the starting state
-# is not itself a governed action: three namespaces and one table in each.
+# is not itself a governed action: three namespaces (sales, marketing, finance) and four tables
+# (sales.orders, sales.returns, marketing.campaigns, finance.ledger). Safe to run again.
 #   ./seed-catalog.sh          (works in Git Bash on Windows too)
 set -euo pipefail
 base="${AEGIS_ICEBERG_REST_URL:-http://127.0.0.1:18181}"

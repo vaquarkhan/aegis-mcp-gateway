@@ -17,6 +17,28 @@
 
 ## 2.0.0 (unreleased)
 
+- A self-contained Hello World starts the example inventory service and leaves Aegis listening, and the
+  generated tutorials put the source plugin jar on the classpath and read Knox's exported certificate
+  from the Knox installation.
+- Cursor and Kiro setup now says which JSON to copy into the open project, and that the agent is on
+  Aegis only after the gateway is still listening and the editor lists that server's tools.
+- Adopter READMEs now say which file to copy, where it goes, and which command leaves the gateway
+  listening. The catalog YAML hostnames are not a local engine, and `run-example -Keep` remains the
+  test that stops its processes and overwrites retained evidence.
+- Atlas, Cassandra, Impala, and Paimon are the remaining product-stack runs, listed under
+  [Future roadmap: remaining target verification](docs/ROADMAP.md#future-roadmap-remaining-target-verification).
+- Ranger Admin 2.9.0 now has a retained two-door run. `RangerFrontDoorsTest` starts the official
+  Admin and database images, governs the public v2 service and policy reads through the own host and
+  Knox, and deletes a scratch policy only after approval.
+- HiveServer2 4.0.1 now has a retained two-door run. `HiveFrontDoorsTest` starts the official
+  Hive image, governs JDBC reads through the own host and Knox, and refuses a write smuggled into
+  the read-only SQL tool.
+- Getting-started and tutorial fixes for a first run on Windows: the Hello World page starts the
+  inventory service and Aegis, the Kafka start script survives a JVM stderr banner, connector
+  registration has a PowerShell command, and the Spark and Iceberg Knox steps trust the exported
+  certificate without leaving the tutorial directory. Generated project tutorials define `$REPO` and
+  state that `-Keep` overwrites retained evidence and does not leave a gateway listening. The Spark
+  and Iceberg SDK client imports `httpx2`, which is what `mcp` 2.2.0 installs.
 - The Superset front-door test seeds two charts from a local SQLite table when the public
   example-data download is unavailable, so the own-host run does not depend on that host.
 - The validation report now points later runs, typed sources, and distribution follow-up at the roadmap.

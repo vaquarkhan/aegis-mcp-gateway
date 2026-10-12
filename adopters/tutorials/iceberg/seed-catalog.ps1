@@ -13,7 +13,9 @@
 # limitations under the License.
 #
 # Creates the tutorial fixture DIRECTLY against the catalog, not through Aegis, so the starting state
-# is not itself a governed action: three namespaces and one table in each.
+# is not itself a governed action: three namespaces (sales, marketing, finance) and four tables
+# (sales.orders, sales.returns, marketing.campaigns, finance.ledger). Safe to run again: an existing
+# namespace is skipped and an existing table reports the catalog's conflict error.
 $ErrorActionPreference = 'Stop'
 $base = if ($env:AEGIS_ICEBERG_REST_URL) { $env:AEGIS_ICEBERG_REST_URL } else { 'http://127.0.0.1:18181' }
 $schema = '{"type":"struct","schema-id":0,"fields":[{"id":1,"name":"id","required":true,"type":"long"},{"id":2,"name":"item","required":false,"type":"string"},{"id":3,"name":"amount","required":false,"type":"double"}]}'

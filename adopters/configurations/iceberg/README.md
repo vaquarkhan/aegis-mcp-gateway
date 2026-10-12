@@ -8,6 +8,20 @@
 `iceberg.yaml` governs seven Iceberg REST Catalog operations, including namespace/table discovery,
 load, property update and destructive table drop.
 
+## Use it from Cursor or Kiro
+
+The jar command further down does not connect an editor. Start the catalog, then start Aegis and leave
+it listening, as [docs/tutorials/iceberg.md](../../../docs/tutorials/iceberg.md) sections 4 and 5 describe.
+Section 3 of that tutorial is a test and stops the gateway.
+
+Copy into the project the editor has open. Cursor:
+[`adopters/tutorials/iceberg/ide/cursor/mcp.json`](../../tutorials/iceberg/ide/cursor/mcp.json) → `.cursor/mcp.json`.
+Kiro: [`adopters/tutorials/iceberg/ide/kiro/mcp.json`](../../tutorials/iceberg/ide/kiro/mcp.json) →
+`.kiro/settings/mcp.json`. Put the same secret in `AEGIS_VALIDATION_TOKEN_READER` and in place of
+`REPLACE_WITH_YOUR_TOKEN` (the person `guest`). Reload MCP. You are ready when the gateway is still
+listening on `http://127.0.0.1:8080/mcp` and the editor lists `aegis-iceberg` with its tools. Then name
+`aegis-iceberg` in the agent chat. The agent calls Aegis, not the catalog URL.
+
 ## Why this source
 
 Iceberg REST Catalog is a real HTTP protocol, so this profile is declarative `http` configuration.

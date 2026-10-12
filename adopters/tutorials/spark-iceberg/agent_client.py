@@ -16,9 +16,10 @@
     pip install "mcp==2.2.0"
     python agent_client.py --token "$READER_TOKEN" list
     python agent_client.py --token "$READER_TOKEN" call spark_preview_table '{"table": "lake.sales.orders"}'
-    # Knox flavor (HTTP Basic against Knox's demo LDAP; trust Knox's exported certificate):
+    # Knox flavor (HTTP Basic against Knox's demo LDAP; trust the PEM export-cert writes):
     python agent_client.py --url https://localhost:8443/gateway/aegis-spark-iceberg/aegis-mcp/v1/mcp \
-        --basic "$KNOX_USER:$KNOX_PASSWORD" --cafile knox-identity.pem list
+        --basic "$KNOX_USER:$KNOX_PASSWORD" \
+        --cafile "$AEGIS_KNOX_HOME/data/security/keystores/gateway-client-trust.pem" list
 
 A governance decision comes back inside the tool result: `isError` plus the reason text, and the Aegis
 decision under `_meta` (`io.github.vaquarkhan.aegis/decision`), for example an approval request id.
@@ -28,7 +29,7 @@ import asyncio
 import base64
 import json
 
-import httpx
+import httpx2
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
@@ -51,7 +52,7 @@ async def main() -> None:
     else:
         p.error("pass --token (own host) or --basic (Knox)")
 
-    http = httpx.AsyncClient(headers={"Authorization": auth}, verify=a.cafile or True, timeout=60)
+    http = httpx2.AsyncClient(headers={"Authorization": auth}, verify=a.cafile or True, timeout=60)
     async with streamable_http_client(a.url, http_client=http) as (read, write):
         async with ClientSession(read, write) as session:
             info = await session.initialize()

@@ -1,0 +1,42 @@
+# hive through knox, 2026-10-12T04:06:59.097196400Z
+
+--- real HiveServer2 4.0.1 on 127.0.0.1:55560; current database default
+
+=== read by READER | guest (READER) | tools/call jdbc_list_schemas {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"text":"{\"schemas\":[{\"TABLE_SCHEM\":\"default\",\"TABLE_CATALOG\":\"\"}],\"rowCount\":1,\"truncated\":false}","type":"text"}],"structuredContent":{"schemas":[{"TABLE_SCHEM":"default","TABLE_CATALOG":""}],"rowCount":1,"truncated":false},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_abb24e820c67e30156204754","traceId":"8bf45bd72f002862655901c1d8045fb0"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-hive","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call jdbc_list_schemas {} | HTTP 403
+{
+"servlet":"aegis-hive-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-hive/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call jdbc_list_tables {"schema":"default"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"{\"tables\":[{\"TABLE_CAT\":\"\",\"TABLE_SCHEM\":\"default\",\"TABLE_NAME\":\"aegis_orders\",\"TABLE_TYPE\":\"TABLE\",\"REMARKS\":null,\"TYPE_CAT\":null,\"TYPE_SCHEM\":null,\"TYPE_NAME\":null,\"SELF_REFERENCING_COL_NAME\":null,\"REF_GENERATION\":null}],\"rowCount\":1,\"truncated\":false}","type":"text"}],"structuredContent":{"tables":[{"TABLE_CAT":"","TABLE_SCHEM":"default","TABLE_NAME":"aegis_orders","TABLE_TYPE":"TABLE","REMARKS":null,"TYPE_CAT":null,"TYPE_SCHEM":null,"TYPE_NAME":null,"SELF_REFERENCING_COL_NAME":null,"REF_GENERATION":null}],"rowCount":1,"truncated":false},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_2ec36ed8718bfe99c877e3f3","traceId":"75cca8e0bc768a174bfc92c19c3dc376"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-hive","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call jdbc_list_tables {"schema":"default"} | HTTP 403
+{
+"servlet":"aegis-hive-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-hive/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call jdbc_run_query {"sql":"SHOW TABLES"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"text":"{\"rows\":[{\"tab_name\":\"aegis_orders\"}],\"rowCount\":1,\"truncated\":false}","type":"text"}],"structuredContent":{"rows":[{"tab_name":"aegis_orders"}],"rowCount":1,"truncated":false},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_dff31d9bb815a666c698489a","traceId":"61c108bcceef487fde2ae2f8dbaf8689"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-hive","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call jdbc_run_query {"sql":"SHOW TABLES"} | HTTP 403
+{
+"servlet":"aegis-hive-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-hive/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== write smuggled into the read-only SQL tool | sam (OPERATOR) | tools/call jdbc_run_query {"sql":"DROP TABLE aegis_orders"} | HTTP 200 decision=DENIED:INVALID_INPUT:step8
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"text":"Aegis denied this call: INVALID_INPUT (step 8). hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:INVALID_INPUT:step8","requestId":"req_92802b9df23be1b80e3d5ed5","code":"INVALID_INPUT","step":8,"reason":"hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]","traceId":"ad42150da27bee25ee899f4891afc388"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-hive","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== write hidden after a comment | sam (OPERATOR) | tools/call jdbc_run_query {"sql":"/* report */ DROP TABLE aegis_orders"} | HTTP 200 decision=DENIED:INVALID_INPUT:step8
+{"jsonrpc":"2.0","id":8,"result":{"content":[{"text":"Aegis denied this call: INVALID_INPUT (step 8). hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:INVALID_INPUT:step8","requestId":"req_cafa629fa0ac92daa3a40c91","code":"INVALID_INPUT","step":8,"reason":"hook sql-readonly: argument 'sql' is not a read-only statement: it starts with 'DROP', and a read-only statement must start with one of [DESC, DESCRIBE, EXPLAIN, SELECT, SHOW, TABLE, VALUES, WITH]","traceId":"a61c57efa07c0f8352dc6552dc7812c2"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-hive","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}

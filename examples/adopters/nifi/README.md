@@ -13,21 +13,31 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-# Apache NiFi: profile supported, real-engine evidence not yet captured
+# Apache NiFi: both front doors passed
 
-## Canonical reference
+[`aegis/canonical.yaml`](aegis/canonical.yaml) is the shipped profile. [`HOW-TO-RUN.md`](HOW-TO-RUN.md)
+and the files beside it are what `NifiFrontDoorsTest` used. The official NiFi 1.28.1 image answered
+the profile's REST API through the own host and through Knox. Retained results are in [`results/`](results/).
+The IDE tutorial is [docs/tutorials/nifi.md](../../../docs/tutorials/nifi.md).
 
-[`aegis/canonical.yaml`](aegis/canonical.yaml) is an exact reference copy of the
-[canonical adapter profile](../../../adopters/configurations/adapters/nifi/nifi.yaml), not
-configuration captured from a real engine run. Current profile/contract coverage is
-`AdapterConfigsTest` in [`examples/aegis-examples`](../../aegis-examples); real results remain not
-recorded.
+## Run it yourself
 
-Aegis loads and governs [`nifi.yaml`](../../../adopters/configurations/adapters/nifi/nifi.yaml): about/root
-flow/process-group reads and governed process-group state updates. The profile’s deterministic contract test
-covers the required revision/body request shape and approval flow.
+The files in this folder are the kept run. To leave a gateway listening, copy them; do not start the IDE against the engine, and do not use `-Keep` as the start command. `-Keep` re-runs the test, stops the processes, and overwrites these files.
 
-A real two-door run needs a NiFi service with an isolated process group and its current revision, because NiFi
-state updates are optimistic-concurrency operations. This is declarative HTTP, so Knox needs the standard Aegis
-bundle/topology only. Substitute the NiFi URL, TLS/credentials if enabled, egress policy and groups in the
-canonical YAML. NiFi is not installed in the [tested environment](../../../docs/VALIDATION.md#tested-environments), so this profile has no claimed end-to-end evidence.
+1. From the repository root: `mvn -B -Preal-engines -DskipTests install`.
+2. Start the engine with section 1 of [`HOW-TO-RUN.md`](HOW-TO-RUN.md). Use a host port you choose. The port written in that file is the free port from the kept run.
+3. Copy [`aegis/own-host.yaml`](aegis/own-host.yaml) to a file you do not commit. Set `host.listen.port` to `8080` and set the engine address to your port.
+4. Set `AEGIS_SIGNING_KEY` (at least 32 bytes) and `AEGIS_VALIDATION_TOKEN_READER`, `AEGIS_VALIDATION_TOKEN_OPERATOR`, `AEGIS_VALIDATION_TOKEN_APPROVER`, and `AEGIS_VALIDATION_TOKEN_OUTSIDER` (each at least 16 characters). Also set `NIFI_API_USER` and `NIFI_API_PASSWORD`. The YAML names the variables; it does not contain the secrets.
+5. Start Aegis so it stays up. The full command, including the plugin classpath when this profile needs one, is in [`adopters/configurations/adapters/nifi/README.md`](../../../adopters/configurations/adapters/nifi/README.md).
+
+| Copy | To |
+| --- | --- |
+| [`aegis/knox-aegis.yaml`](aegis/knox-aegis.yaml) | `$AEGIS_KNOX_HOME/conf/aegis/nifi.yaml` |
+| [`aegis/knox-topology.xml`](aegis/knox-topology.xml) | `$AEGIS_KNOX_HOME/conf/topologies/aegis-nifi.xml` |
+| `aegis-knox3-extension/target/aegis-knox3-extension-2.0.0-SNAPSHOT-knox-bundle.jar` | `$AEGIS_KNOX_HOME/ext/` |
+| [`../../../adopters/tutorials/nifi/ide/cursor/mcp.json`](../../../adopters/tutorials/nifi/ide/cursor/mcp.json) | `.cursor/mcp.json` |
+| [`../../../adopters/tutorials/nifi/ide/vscode/mcp.json`](../../../adopters/tutorials/nifi/ide/vscode/mcp.json) | `.vscode/mcp.json` |
+| [`../../../adopters/tutorials/nifi/ide/vscode/mcp.knox.json`](../../../adopters/tutorials/nifi/ide/vscode/mcp.knox.json) | `.vscode/mcp.json` when you use Knox |
+| [`../../../adopters/tutorials/nifi/ide/kiro/mcp.json`](../../../adopters/tutorials/nifi/ide/kiro/mcp.json) | `.kiro/settings/mcp.json` |
+
+Replace `${KNOX_HOME}` in the topology. Replace `REPLACE_WITH_YOUR_TOKEN` with the reader token. Reload MCP after the gateway is listening on `http://127.0.0.1:8080/mcp`. You are ready when the editor lists the server from the JSON you copied and shows its tools. Then name that server in the agent chat. The agent calls Aegis, not the engine URL. Install Knox with [`../knox/install-knox.ps1`](../knox/install-knox.ps1) or [`../knox/install-knox.sh`](../knox/install-knox.sh) before the Knox copies.

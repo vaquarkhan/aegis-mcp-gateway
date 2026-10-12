@@ -71,17 +71,18 @@ still decides the MCP action.
 2. Open the tutorial for your engine in [`docs/TUTORIALS.md`](../../docs/TUTORIALS.md).
 3. Start the real engine and Aegis as that tutorial describes (or run
    `examples/adopters/run-example.ps1 <project> -Keep` / `run-example.sh <project> --keep`).
-4. Open `adopters/tutorials/<project>/ide/README.md` and copy the file for your editor.
-5. Replace `REPLACE_WITH_YOUR_TOKEN` (or answer VS Code's prompt) with a token from the tutorial's
-   own-host configuration.
-6. In the IDE agent chat, ask something the tutorial lists under "Prompts to try" (for example list
-   topics, list DAGs). Aegis will allow, deny, or ask for approval according to tool class.
+4. Open `adopters/tutorials/<project>/ide/README.md` and copy the Cursor or Kiro file into the project
+   the editor has open (`.cursor/mcp.json` or `.kiro/settings/mcp.json`).
+5. Replace `REPLACE_WITH_YOUR_TOKEN` with the same value as `AEGIS_VALIDATION_TOKEN_READER`.
+6. Reload MCP. You are ready when the gateway is still listening on `http://127.0.0.1:8080/mcp` and the
+   editor lists `aegis-<project>` with its tools.
+7. In the agent chat, name that server and ask a prompt from the tutorial. The agent calls Aegis.
 
 ## What you should **not** do
 
 - Do not paste production secrets into these JSON files or commit real tokens.
 - Do not point the IDE at the backend engine URL and skip Aegis; that bypasses governance.
-- Do not treat a contract-only adapter (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) as having a
+- Do not treat a contract-only adapter (Atlas, Cassandra, Impala, Paimon) as having a
   tutorial; those profiles have no kept real run and no `ide/` folder here.
 
 ## Index of generated tutorials

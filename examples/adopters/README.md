@@ -28,17 +28,16 @@ real engine through both Aegis front doors:
 
 Every verified folder contains the exact Aegis YAML used by both doors, the actual Knox topology, the
 engine configuration files written by the test, a `HOW-TO-RUN.md` with engine and front-door commands, a
-sample MCP request, and retained result logs. The other **6** folders (Atlas, Cassandra, Hive, Impala,
-Paimon, Ranger) contain `aegis/canonical.yaml`: an exact reference copy of the profile covered by
+sample MCP request, and retained result logs. The other **4** folders (Atlas, Cassandra, Impala,
+Paimon) contain `aegis/canonical.yaml`: an exact reference copy of the profile covered by
 `AdapterConfigsTest`, clearly labeled as not captured from a real-engine run. Tokens, approval receipts
 and credentials are not kept.
 
-At this point: **26 profiles have real two-door evidence** (including Docker-backed Airflow, CouchDB, Doris,
-Druid, Hadoop, HBase, NiFi, Pinot, Storm, and Superset); **6 more** are profile/contract supported and still
+At this point: **28 profiles have real two-door evidence** (including Docker-backed Airflow, CouchDB, Doris,
+Druid, Hadoop, HBase, Hive, NiFi, Pinot, Ranger, Storm, and Superset); **4 more** are profile/contract supported and still
 need a product Keep (see [adopter real-engine status](../../docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md)):
-Hive is already `type: jdbc` (same source family as Calcite); Paimon/Cassandra/Ranger are HTTP like other
-Docker Keeps; Impala SQL can move to JDBC but still needs Impala; Atlas needs its full stack. Spark Connect
-does not substitute for Atlas/Ranger/Cassandra/Paimon or for Arrow Flight / Beam. Release-process items
+Paimon and Cassandra are HTTP like other Docker Keeps; Impala still needs a coordinator; Atlas needs
+its full stack. Spark Connect does not substitute for Atlas, Cassandra, Paimon, or for Arrow Flight / Beam. Release-process items
 are tracked separately in [release assurance](../../docs/evidence/RELEASE-ASSURANCE.md#release-process-items);
 product work is in [docs/ROADMAP.md](../../docs/ROADMAP.md).
 
@@ -63,7 +62,7 @@ Iceberg, Flink), see [break-glass MCP servers](../break-glass-mcp-servers/README
 | [Flink](flink/) | supported | 1.20.1 | passed | passed | real Flink MiniCluster JobManager REST API |
 | [Hadoop HDFS](hadoop/) | supported | 3.2.1 | passed | passed | Docker NameNode and DataNode; WebHDFS governed path; Keep 2026-10-05 |
 | [HBase](hbase/) | supported | REST via `dajobe/hbase` | passed | passed | HBase REST Docker; governed table reads/writes; Keep 2026-10-05 |
-| [Hive](hive/) | supported | not run | not run | not run | **Already `type: jdbc`**. HS2 Docker+beeline proven; FrontDoors Keep is roadmap-only (no incomplete test in tree) |
+| [Hive](hive/) | supported | 4.0.1 | passed | passed | official `apache/hive` HiveServer2; JDBC reads and a refused write; Keep 2026-10-11 |
 | [Iceberg REST catalog](iceberg/) | supported | 1.10.1 | passed | passed | official REST catalog server with a JDBC catalog |
 | [Ignite](ignite/) | supported | 2.18.0 | passed | passed | real Ignite node with REST v1 |
 | [Impala](impala/) | supported | not run | not run | not run | Coordinator HTTP ops today; SQL should use jdbc like Hive when an Impala endpoint exists |
@@ -73,7 +72,7 @@ Iceberg, Flink), see [break-glass MCP servers](../break-glass-mcp-servers/README
 | [Paimon](paimon/) | supported | not run | not run | not run | REST catalog HTTP (Iceberg-like); Keep needs a real Paimon REST catalog process |
 | [Pinot](pinot/) | supported | 1.2.0 | passed | passed | official `apachepinot/pinot` QuickStart Docker image; disposable sample tables; rerun 2026-10-05 |
 | [Pulsar](pulsar/) | supported | 4.0.13 | passed | passed | real broker/bookie with external real ZooKeeper metadata on Windows |
-| [Ranger](ranger/) | supported | not run | not run | not run | Admin HTTP API; Keep needs Ranger Admin + DB |
+| [Ranger](ranger/) | supported | 2.9.0 | passed | passed | official `apache/ranger` Admin and `apache/ranger-db`; public v2 API; Keep 2026-10-11 |
 | [Solr](solr/) | supported | 9.10.1 | passed | passed | real SolrCloud node with embedded ZooKeeper |
 | [Spark](spark/) | supported | 4.0.1 | passed | passed | real application UI REST and standalone Master REST server |
 | [Spark Connect](spark-connect/) | supported | 4.0.1 | passed | passed | real Spark Connect server; source plugin installed into Knox `ext/` |
@@ -115,12 +114,30 @@ not inspect the MCP tool body and it does not replace Aegis governance.
 
 ## Run a verified example
 
+Two different goals use two different commands.
+
+**Leave a gateway listening for an IDE.** Build with `mvn -B -Preal-engines -DskipTests install` from the
+repository root. Start the engine from that folder’s `HOW-TO-RUN.md` section 1, using a host port you
+choose. Copy `aegis/own-host.yaml` to a file you do not commit, set `host.listen.port` to `8080`, and point
+the engine address at the port you published. Set `AEGIS_SIGNING_KEY` and the four
+`AEGIS_VALIDATION_TOKEN_*` variables, plus any credential variable that YAML names. Start
+
+```powershell
+java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config <your copy>
+```
+
+Hive, Calcite, and ZooKeeper need the plugin jars named in their `HOW-TO-RUN.md` on the classpath instead
+of the plain `-jar` command. Then copy the IDE JSON as the folder README says. The same copy destinations
+are written out in [the adopter catalog](../../adopters/configurations/adapters/README.md#run-an-adopter).
+
+**Re-check both doors.** This starts the engine, Aegis, and Knox, asserts the scenario, and then stops
+those processes. `-Keep` overwrites the retained evidence in the folder. It does not leave a gateway for
+an editor.
+
 ```powershell
 # Install Knox once (the installer verifies Apache's SHA-512).
 ./knox/install-knox.ps1 -Destination C:\knox
 $env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'
-
-# For an engine-specific distribution, follow its folder README first, then run:
 ./run-example.ps1 pulsar -Keep
 ```
 
@@ -130,8 +147,7 @@ export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0
 ./run-example.sh pulsar --keep
 ```
 
-`-Keep` copies the current run’s generated YAML, topology, engine files, walkthrough and evidence into that
-folder. `MAVEN_CMD` can point at `mvn.cmd` if Maven is not on `PATH`. For **ZooKeeper** and **A2A**, the
+`MAVEN_CMD` can point at `mvn.cmd` if Maven is not on `PATH`. For **ZooKeeper** and **A2A**, the
 script also runs `mvn -Preal-engines` on the typed source module so Knox receives `target/plugin.classpath`
 as well as the source jar.
 

@@ -36,7 +36,9 @@ policy:
     # The finance namespace is never dropped through an agent, whoever asks and whatever was approved.
     - {id: never-drop-finance, effect: DENY, groups: ["*"], tools: [iceberg_drop_table], resources: ["iceberg:table:finance.*"]}
 
-# Readers see the sales namespace only; engineers see the whole lake.
+# Readers are limited to sales on tools that name a resource. iceberg_list_namespaces,
+# spark_list_tables, and spark_explain_sql declare none, so this scope does not filter them.
+# Engineers see the whole lake.
 scopes:
   - {groups: [lake-readers], resources: ["iceberg:namespace:sales", "iceberg:table:sales.*", "spark:table:lake.sales.*"]}
   - {groups: [lake-engineers], resources: ["iceberg:*", "spark:table:*"]}

@@ -13,21 +13,40 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-# Apache Ranger: profile supported, real-engine evidence not yet captured
+# Apache Ranger: both front doors passed
 
 ## Canonical reference
 
-[`aegis/canonical.yaml`](aegis/canonical.yaml) is an exact reference copy of the
-[canonical adapter profile](../../../adopters/configurations/adapters/ranger/ranger.yaml), not
-configuration captured from a real engine run. Current profile/contract coverage is
-`AdapterConfigsTest` in [`examples/aegis-examples`](../../aegis-examples); real results remain not
-recorded.
+[`aegis/canonical.yaml`](aegis/canonical.yaml) is the shipped profile. The files beside it
+(`own-host.yaml`, `knox-aegis.yaml`, `knox-topology.xml`) and [`HOW-TO-RUN.md`](HOW-TO-RUN.md) are what
+`RangerFrontDoorsTest` used on 2026-10-11.
 
-Aegis loads and governs [`ranger.yaml`](../../../adopters/configurations/adapters/ranger/ranger.yaml) over
-Ranger Admin’s public v2 API: service/policy reads and destructive policy deletion. Its request shapes and
-governance controls are covered by the deterministic config contract test.
+Aegis governs [`ranger.yaml`](../../../adopters/configurations/adapters/ranger/ranger.yaml) through the
+shared HTTP source and Ranger Admin's public v2 API. The official `apache/ranger:2.9.0` image runs Admin
+against the official `apache/ranger-db:2.9.0` database. The test seeds an HDFS service and a scratch
+policy, reads them through the own host and through Knox, and deletes the scratch policy only after
+approval. Admin basic auth uses the image's published sandbox login (`RANGER_USER` / `RANGER_PASSWORD`).
 
-A real two-door run needs Ranger Admin, its database, a service definition and a disposable policy. Ranger is
-a source release requiring a service stack, not a standalone engine here. The source is declarative HTTP; Knox
-needs the Aegis extension/topology only. Replace Admin URL, egress policy, credentials and groups in the
-canonical YAML. No Ranger Admin service is running in the [tested environment](../../../docs/VALIDATION.md#tested-environments); no engine run is recorded.
+Retained results are in [`results/`](results/). The IDE tutorial is [docs/tutorials/ranger.md](../../../docs/tutorials/ranger.md).
+
+## Run it yourself
+
+The files in this folder are the kept run. To leave a gateway listening, copy them; do not start the IDE against the engine, and do not use `-Keep` as the start command. `-Keep` re-runs the test, stops the processes, and overwrites these files.
+
+1. From the repository root: `mvn -B -Preal-engines -DskipTests install`.
+2. Start the engine with section 1 of [`HOW-TO-RUN.md`](HOW-TO-RUN.md). Use a host port you choose. The port written in that file is the free port from the kept run.
+3. Copy [`aegis/own-host.yaml`](aegis/own-host.yaml) to a file you do not commit. Set `host.listen.port` to `8080` and set the engine address to your port.
+4. Set `AEGIS_SIGNING_KEY` (at least 32 bytes) and `AEGIS_VALIDATION_TOKEN_READER`, `AEGIS_VALIDATION_TOKEN_OPERATOR`, `AEGIS_VALIDATION_TOKEN_APPROVER`, and `AEGIS_VALIDATION_TOKEN_OUTSIDER` (each at least 16 characters). Also set `RANGER_USER` and `RANGER_PASSWORD`. The YAML names the variables; it does not contain the secrets.
+5. Start Aegis so it stays up. The full command, including the plugin classpath when this profile needs one, is in [`adopters/configurations/adapters/ranger/README.md`](../../../adopters/configurations/adapters/ranger/README.md).
+
+| Copy | To |
+| --- | --- |
+| [`aegis/knox-aegis.yaml`](aegis/knox-aegis.yaml) | `$AEGIS_KNOX_HOME/conf/aegis/ranger.yaml` |
+| [`aegis/knox-topology.xml`](aegis/knox-topology.xml) | `$AEGIS_KNOX_HOME/conf/topologies/aegis-ranger.xml` |
+| `aegis-knox3-extension/target/aegis-knox3-extension-2.0.0-SNAPSHOT-knox-bundle.jar` | `$AEGIS_KNOX_HOME/ext/` |
+| [`../../../adopters/tutorials/ranger/ide/cursor/mcp.json`](../../../adopters/tutorials/ranger/ide/cursor/mcp.json) | `.cursor/mcp.json` |
+| [`../../../adopters/tutorials/ranger/ide/vscode/mcp.json`](../../../adopters/tutorials/ranger/ide/vscode/mcp.json) | `.vscode/mcp.json` |
+| [`../../../adopters/tutorials/ranger/ide/vscode/mcp.knox.json`](../../../adopters/tutorials/ranger/ide/vscode/mcp.knox.json) | `.vscode/mcp.json` when you use Knox |
+| [`../../../adopters/tutorials/ranger/ide/kiro/mcp.json`](../../../adopters/tutorials/ranger/ide/kiro/mcp.json) | `.kiro/settings/mcp.json` |
+
+Replace `${KNOX_HOME}` in the topology. Replace `REPLACE_WITH_YOUR_TOKEN` with the reader token. Reload MCP after the gateway is listening on `http://127.0.0.1:8080/mcp`. You are ready when the editor lists the server from the JSON you copied and shows its tools. Then name that server in the agent chat. The agent calls Aegis, not the engine URL. Install Knox with [`../knox/install-knox.ps1`](../knox/install-knox.ps1) or [`../knox/install-knox.sh`](../knox/install-knox.sh) before the Knox copies.

@@ -48,6 +48,8 @@ sources:
   - id: ranger
     type: http
     baseUrl: http://ranger-admin:6080
+    # Ranger Admin's public API requires its own login. The password is the operator's, not a token Aegis stores.
+    credentials: {type: basic, usernameEnv: RANGER_USER, passwordEnv: RANGER_PASSWORD}
     tools:
       - name: ranger_list_services
         description: "List Ranger services."

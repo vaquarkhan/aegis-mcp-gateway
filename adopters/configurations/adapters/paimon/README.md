@@ -11,14 +11,16 @@
 
 Paimon's catalog surface is HTTP, so a declarative profile can define the operations while Aegis enforces typed database/table policy and destructive approval controls.
 
-## Developer workflow
+## Run it
 
-```powershell
-java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config adopters/configurations/adapters/paimon/paimon.yaml
-```
+There is no kept run for this profile. There is no `examples/adopters/paimon/HOW-TO-RUN.md` and no `adopters/tutorials/paimon/ide/` folder to copy.
 
-Replace the catalog endpoint, credentials, groups, egress policy and protected table rules.
+`paimon.yaml` is the profile the contract test loads. Its address is a placeholder hostname. Starting the gateway with this file does not start the product.
+
+The published Paimon REST API is not the paths in `paimon.yaml`, and Apache does not ship a production REST catalog server for this profile.
+
+See [Future roadmap: remaining target verification](../../../../docs/ROADMAP.md#future-roadmap-remaining-target-verification).
 
 ## Evidence
 
-The profile has a route/governance contract test. A target Paimon release run is required.
+`AdapterConfigsTest` loads this profile against a local contract harness. That is not a two-door run against the product.

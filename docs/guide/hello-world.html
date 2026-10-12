@@ -104,14 +104,70 @@ layout: null
     <section id="hello">
       <p class="eyebrow">FIRST-GREEN PATH</p>
       <h2>Hello World: build once, govern one project, prompt from your IDE.</h2>
-      <p>Use this when you want your first green path. The Spark and Iceberg walkthrough is the fullest IDE story; the existing-MCP tutorial is the fastest if you already speak MCP.</p>
+      <p>Use this when you want your first green path without starting Kafka, Spark, or Docker. The checked-in example inventory service is Python's standard library. Aegis governs it on <code>http://127.0.0.1:8080/mcp</code>.</p>
 
       <h3>Step 1 - Build Aegis</h3>
       <p>JDK 17+ and Maven 3.9+. From the repository root:</p>
-<pre><code>mvn -B -Preal-engines -DskipTests install</code></pre>
-      <p>That produces <code>aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar</code> (and Spark/Kafka fat jars when those sources are needed).</p>
+<pre><code>mvn -B -DskipTests install</code></pre>
+      <p>That produces <code>aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar</code>. Use <code>mvn -B -Preal-engines -DskipTests install</code> when you later start a typed source such as Kafka or Spark Connect.</p>
 
-      <h3>Step 2 - Start a real backend and Aegis</h3>
+      <h3>Step 2 - Generate development credentials</h3>
+      <p>Three people: <code>ana</code> reads, <code>oscar</code> operates, <code>petra</code> approves. Generate fresh random values in the terminal you will use for every step below. The configuration names the variables and does not contain the secrets.</p>
+<pre><code># PowerShell
+Set-Location .\adopters\tutorials\hello-world
+$env:AEGIS_SIGNING_KEY = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+$env:ANALYST_TOKEN = [guid]::NewGuid().ToString('N')
+$env:OPERATOR_TOKEN = [guid]::NewGuid().ToString('N')
+$env:APPROVER_TOKEN = [guid]::NewGuid().ToString('N')</code></pre>
+
+      <h3>Step 3 - Start the service and Aegis</h3>
+<pre><code>.\start-hello.ps1
+# if port 8080 is already in use: .\start-hello.ps1 -Port 18080
+# Aegis is ready on http://127.0.0.1:8080/mcp (governing the inventory service on 127.0.0.1:9109).</code></pre>
+      <p>The script starts <code>adopters/clients/example_inventory_service.py</code> on <code>127.0.0.1:9109</code> and the gateway in the background, then returns, so the same terminal keeps the variables. On another port, add <code>-Url http://127.0.0.1:18080/mcp</code> to every <code>.\mcp.ps1</code> call in step 4 and change the <code>$admin</code> URL to that same port. Bash: <code>start-hello.sh</code> and <code>stop-hello.sh</code> in the same folder. A missing variable or a busy port stops the script with a message that names it. Do not copy <code>examples/adopters/existing-mcp-server/aegis/own-host.yaml</code> as this starter: it binds a random port and requires a downstream MCP server from the machine that recorded the run.</p>
+
+      <h3>Step 4 - See governance work, from the command line</h3>
+<pre><code># ana sees one tool; oscar sees two
+.\mcp.ps1 -Token $env:ANALYST_TOKEN  -Method tools/list
+.\mcp.ps1 -Token $env:OPERATOR_TOKEN -Method tools/list
+# a read is allowed
+.\mcp.ps1 -Token $env:ANALYST_TOKEN -Name inventory_list_things
+# a reader cannot delete: READONLY_CALLER (step 1)
+.\mcp.ps1 -Token $env:ANALYST_TOKEN -Name inventory_delete_thing -Arguments @{id='t-1'}
+# an operator needs an approval: APPROVAL_REQUIRED (step 4)
+.\mcp.ps1 -Token $env:OPERATOR_TOKEN -Name inventory_delete_thing -Arguments @{id='t-1'}
+
+# preview, approve, run
+$A = 'io.github.vaquarkhan.aegis/'
+$dry = .\mcp.ps1 -Token $env:OPERATOR_TOKEN -Name inventory_delete_thing -Arguments @{id='t-1'} -Meta @{"${A}dryRun"=$true} -PassThru
+$d = $dry.result._meta."${A}decision"
+$admin = 'http://127.0.0.1:8080/aegis/v1/approvals'
+Invoke-RestMethod -Method Post "$admin/$($d.approvalRequestId)/approve" -Headers @{Authorization="Bearer $env:APPROVER_TOKEN"}
+$token = (Invoke-RestMethod "$admin/$($d.approvalRequestId)" -Headers @{Authorization="Bearer $env:OPERATOR_TOKEN"}).token
+.\mcp.ps1 -Token $env:OPERATOR_TOKEN -Name inventory_delete_thing -Arguments @{id='t-1'} -Meta @{"${A}approvalToken"=$token; "${A}dryRunReceipt"=$d.dryRunReceipt}
+# the same approval cannot be used twice
+.\mcp.ps1 -Token $env:OPERATOR_TOKEN -Name inventory_delete_thing -Arguments @{id='t-1'} -Meta @{"${A}approvalToken"=$token; "${A}dryRunReceipt"=$d.dryRunReceipt}</code></pre>
+      <p>Each denied call is refused before the service sees it. <code>curl.exe -s http://127.0.0.1:9109/_received</code> lists the requests that reached the service, and the only <code>DELETE</code> in it is the approved one. If oscar posts the approve call himself, the admin API answers HTTP 403. In bash, <code>./mcp.sh</code> sends the same MCP calls.</p>
+
+      <h3>Step 5 - Point Cursor or Kiro at Aegis</h3>
+      <p>Copy this into the project the editor has open. Cursor: <code>.cursor/mcp.json</code>. Kiro: <code>.kiro/settings/mcp.json</code>. Replace the token with the value of <code>ANALYST_TOKEN</code> (the person <code>ana</code>, who can read).</p>
+<pre><code>{
+  "mcpServers": {
+    "aegis-hello-world": {
+      "url": "http://127.0.0.1:8080/mcp",
+      "headers": { "Authorization": "Bearer REPLACE_WITH_ANALYST_TOKEN" }
+    }
+  }
+}</code></pre>
+      <p>Reload MCP. You are ready to instruct the agent when the editor lists <code>aegis-hello-world</code> and its tools. Ask it to list the inventory. A delete is <code>DESTRUCTIVE</code> and needs <code>petra</code> to approve. The agent calls Aegis, not port 9109.</p>
+
+      <h3>Step 6 - Verify the audit journal and stop</h3>
+<pre><code>.\stop-hello.ps1
+java -jar ..\..\..\aegis-gateway\target\aegis-gateway-2.0.0-SNAPSHOT-all.jar --verify-audit work\audit\aegis-hello-world.jsonl
+# OK records=... head=sha256:...</code></pre>
+      <p><code>stop-hello</code> stops only the two processes <code>start-hello</code> started. <code>work/</code> is gitignored.</p>
+
+      <h3>Later - an Apache engine</h3>
       <p><strong>Recorded existing-MCP scenario</strong> (two downstream MCP servers, both front doors, and assertions):</p>
 <pre><code># PowerShell, from the repository root
 .\examples\adopters\existing-mcp-server\setup.ps1 -Destination C:\aegis-engines
@@ -124,17 +180,18 @@ examples/adopters/existing-mcp-server/setup.sh /opt/aegis-engines
 # Export AEGIS_MCP_PYTHON, AEGIS_NODE, and AEGIS_MCP_FILESYSTEM_JS as printed above.
 export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0     # only needed for the Knox door
 examples/adopters/run-example.sh existing-mcp-server --keep</code></pre>
-      <p>The setup scripts install pinned downstream servers outside the repository and print the three required paths. Set all three variables before running the example; without them the test is skipped, never passed. Omit <code>AEGIS_KNOX_HOME</code> only when you do not run the Knox door.</p>
+      <p>The setup scripts install pinned downstream servers outside the repository and print the three required paths. Set all three variables before running the example; without them the test is skipped, never passed. Omit <code>AEGIS_KNOX_HOME</code> only when you do not run the Knox door. <code>-Keep</code> copies that run over the retained evidence files. The test stops the processes it started, so this command does not leave a gateway for the IDE.</p>
       <p>Or pick your Apache project name (<code>kafka</code>, <code>airflow</code>, <code>spark-connect</code>, …) from the <a href="../TUTORIALS.html">tutorial index</a>. Each tutorial lists the engine command, own-host YAML, and Knox flavor.</p>
-      <p><strong>Manual own-host path</strong> (after the setup above):</p>
-<pre><code># Copy the retained own-host configuration to a working file first.
-cp examples/adopters/existing-mcp-server/aegis/own-host.yaml my-aegis.yaml
-export AEGIS_SIGNING_KEY='replace-with-32-or-more-bytes-of-secret'
-java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
-  --config my-aegis.yaml</code></pre>
-      <p>Do not use <code>adopters/configurations/existing-mcp-server/existing-mcp-server.yaml</code> directly as an own-host quick start. It is a shared deployment template without a <code>host</code> section and uses non-local backend settings. In your working copy of the retained <code>own-host.yaml</code>, replace run-specific stdio paths or source URLs, loopback egress settings, identity token environment names or digests, audit path, and signing key as needed. Start the configured downstream MCP server before Aegis. Unknown keys fail closed at startup.</p>
+      <p><strong>Leave a gateway listening on port 8080</strong> (Spark and Iceberg own host). Generate the four values. The configuration names the variables and does not contain the secrets. Spark Connect and the Iceberg catalog from that tutorial must already be up, because this gateway calls them.</p>
+<pre><code># PowerShell, from the repository root
+$env:AEGIS_SIGNING_KEY = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+$env:READER_TOKEN = [guid]::NewGuid().ToString('N')
+$env:ENGINEER_TOKEN = [guid]::NewGuid().ToString('N')
+$env:APPROVER_TOKEN = [guid]::NewGuid().ToString('N')
+.\adopters\tutorials\spark-iceberg\start-gateway.ps1</code></pre>
+      <p>Bash uses the same four variables and <code>adopters/tutorials/spark-iceberg/start-gateway.sh</code>. The script listens on <code>http://127.0.0.1:8080/mcp</code>. Do not copy <code>examples/adopters/existing-mcp-server/aegis/own-host.yaml</code> as a starter: it binds a random port, requires <code>ENGINE_MCP_TOKEN</code> plus the validation token variables, and its downstream URL and stdio command are paths from the machine that recorded the run. Do not start from <code>adopters/configurations/existing-mcp-server/existing-mcp-server.yaml</code> either: that file has no <code>host</code> section.</p>
 
-      <h3>Step 3 - Point the IDE at Aegis (not at the engine)</h3>
+      <h3>IDE files for an Apache project</h3>
       <p>Ready-made files live under <code>adopters/tutorials/&lt;project&gt;/ide/</code>. Example for Cursor (own host):</p>
 <pre><code>{
   "mcpServers": {
@@ -157,7 +214,7 @@ java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
       </table></div>
       <p>Replace the placeholder with the value supplied to the selected own-host identity token environment variable, or answer the IDE prompt where supported. The generated files name inputs or placeholders; they do not contain usable token values. Until Aegis is listening on that URL, the IDE shows an empty or failing MCP server; start the gateway first.</p>
 
-      <h3>Step 4 - Send one prompt</h3>
+      <h3>Prompt an Apache project</h3>
       <p>Use a prompt the tutorial lists under “Prompts to try” (for example list jobs, list topics, list DAGs). Expect one of:</p>
       <ul>
         <li><strong>ALLOWED</strong> for a <code>READ</code> your group may call</li>
@@ -214,7 +271,7 @@ java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
         <li>Wire groups: readers, operators, approvers. Separate people who request from people who approve.</li>
         <li>Run the matching tutorial Keep (or contract test) before you call the path “verified” for a release.</li>
       </ol>
-      <p class="callout">Twenty-six profiles already have retained own-host and Knox Keep runs with IDE tutorials. Six more (Atlas, Cassandra, Hive, Impala, Paimon, Ranger) are contract-supported until a full product stack Keep lands - see <a href="../evidence/ADOPTER-REAL-ENGINE-STATUS.html">adopter status</a>.</p>
+      <p class="callout">Twenty-eight profiles already have retained own-host and Knox Keep runs with IDE tutorials. Four more (Atlas, Cassandra, Impala, Paimon) are contract-supported until a full product stack Keep lands. What each still needs is on the <a href="../ROADMAP.html#future-roadmap-remaining-target-verification">future roadmap</a>.</p>
       <p>Deep adoption narrative (MCP vs HTTP vs typed source): <a href="../ADOPTION-GUIDE.html">Adoption guide</a>. Security reviewers: <a href="security.html">security and threat-model guide</a>.</p>
     </section>
 

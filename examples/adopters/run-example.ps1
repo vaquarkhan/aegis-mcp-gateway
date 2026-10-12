@@ -46,6 +46,7 @@ $examples = @{
     'doris'         = @('aegis-validation', 'DorisFrontDoorsTest')      # needs Docker (apache/doris)
     'druid'         = @('aegis-validation', 'DruidFrontDoorsTest')      # needs Docker (apache/druid nano-quickstart)
     'hbase'         = @('aegis-validation', 'HbaseFrontDoorsTest')      # needs Docker (dajobe/hbase)
+    'hive'          = @('aegis-validation', 'HiveFrontDoorsTest')       # needs Docker (apache/hive HiveServer2)
     'ignite'        = @('aegis-validation', 'IgniteFrontDoorsTest')
     # needs AEGIS_MCP_PYTHON, AEGIS_NODE, AEGIS_MCP_FILESYSTEM_JS (existing-mcp-server/setup.ps1)
     'existing-mcp-server' = @('aegis-validation', 'ExistingMcpServerFrontDoorsTest')
@@ -55,6 +56,7 @@ $examples = @{
     'flume'         = @('aegis-validation', 'FlumeFrontDoorsTest')
     'bookkeeper'    = @('aegis-validation', 'BookKeeperFrontDoorsTest')
     'pulsar'        = @('aegis-validation', 'PulsarFrontDoorsTest')   # needs AEGIS_PULSAR_HOME (pulsar/install-pulsar.ps1)
+    'ranger'        = @('aegis-validation', 'RangerFrontDoorsTest')     # needs Docker (apache/ranger and apache/ranger-db)
     'spark-connect' = @('aegis-validation-spark-connect', 'SparkConnectFrontDoorsTest')
     'spark-iceberg' = @('aegis-validation-spark-connect', 'SparkIcebergFrontDoorsTest')   # docs/TUTORIAL-SPARK-ICEBERG.md
 }

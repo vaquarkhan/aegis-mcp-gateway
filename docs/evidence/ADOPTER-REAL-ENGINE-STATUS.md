@@ -10,12 +10,12 @@ Companion to [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis
 
 ## What adopter coverage means here
 
-Every shipped profile has a governance configuration. A two-door run is a retained own-host and Knox exercise against a real product process. Product-stack runs still ahead are on the [roadmap](../ROADMAP.md#engine-coverage-verification).
+Every shipped profile has a governance configuration. A two-door run is a retained own-host and Knox exercise against a real product process. Product-stack runs still ahead are on the [future roadmap](../ROADMAP.md#future-roadmap-remaining-target-verification).
 
 ## Retained two-door runs
 
-The inventory records **26** profiles with own-host and Knox runs: the adopter rows marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md), including
-the `spark-iceberg` scenario. Those 26 profiles have IDE tutorials. **A2A** also has a two-door run below. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
+The inventory records **28** profiles with own-host and Knox runs: the adopter rows marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md), including
+the `spark-iceberg` scenario. Those 28 profiles have IDE tutorials. **A2A** also has a two-door run below. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
 
 | Adopter | Engine | Evidence |
 | --- | --- | --- |
@@ -33,11 +33,13 @@ the `spark-iceberg` scenario. Those 26 profiles have IDE tutorials. **A2A** also
 | Flume | 1.11.0 | `examples/adopters/flume/results/` |
 | **Hadoop HDFS** | 3.2.1 Docker | `examples/adopters/hadoop/results/` |
 | **HBase** | REST via `dajobe/hbase` | `examples/adopters/hbase/results/` |
+| **Hive** | 4.0.1 HiveServer2 Docker | `examples/adopters/hive/results/` |
 | Iceberg REST | 1.10.1 | `examples/adopters/iceberg/results/` |
 | Ignite | 2.18.0 | `examples/adopters/ignite/results/` |
 | Kafka + Connect | 3.9.1 | `examples/adopters/kafka/results/` |
 | **NiFi** | 1.28.1 Docker | `examples/adopters/nifi/results/` |
 | Pulsar | 4.0.13 | `examples/adopters/pulsar/results/` |
+| **Ranger** | 2.9.0 Admin and database Docker | `examples/adopters/ranger/results/` |
 | Solr | 9.10.1 | `examples/adopters/solr/results/` |
 | Spark | 4.0.1 | `examples/adopters/spark/results/` |
 | Spark Connect | 4.0.1 (gRPC plugin) | `examples/adopters/spark-connect/results/` |
@@ -49,16 +51,14 @@ the `spark-iceberg` scenario. Those 26 profiles have IDE tutorials. **A2A** also
 
 ## Remaining engineering (not ASF process)
 
-These six ship as configuration. The next step for each is a full product-stack run. JDBC and Spark Connect apply where the product speaks that protocol.
+These four ship as configuration. The next step for each is a full product-stack run. JDBC and Spark Connect apply where the product speaks that protocol.
 
 | Adopter | Surface in this release | Fits JDBC or Spark Connect? | Next product-stack step |
 | --- | --- | --- | --- |
-| **Hive** | `type: jdbc` + `HiveDriver` | **Yes: same JDBC source as Calcite/Derby.** | Full Keep needs HiveServer2 client jars, seed data, retained results, and a tutorial. Tracked on [ROADMAP.md](../ROADMAP.md) |
-| **Impala** | Coordinator **HTTP** debug UI tools today; SQL would be JDBC like Hive | **SQL yes (jdbc rewrite); cancel/status stay HTTP.** Spark Connect does not speak Impala | Full Impala (or JDBC endpoint) stack: **future roadmap** |
-| **Paimon** | Declarative **HTTP** REST catalog (same pattern as Iceberg REST) | **Not JDBC/gRPC.** | Paimon REST catalog + warehouse Keep: **future roadmap** |
-| **Cassandra** | Declarative **HTTP** Cassandra Sidecar | **Not JDBC** (profile is Sidecar REST, not CQL). CQL would be a different jdbc profile | Sidecar + cluster Docker Keep: **future roadmap** |
-| **Ranger** | Declarative **HTTP** Admin API | **Not JDBC/gRPC** | Ranger Admin + DB Docker Keep: **future roadmap** |
-| **Atlas** | Declarative **HTTP** Atlas v2 | **Not JDBC/gRPC** | Atlas + Kafka + Solr + HBase: **future roadmap** |
+| **Impala** | Coordinator **HTTP** debug UI tools today; SQL would be JDBC like Hive | **SQL yes (jdbc rewrite); cancel/status stay HTTP.** Spark Connect does not speak Impala | [Future roadmap](../ROADMAP.md#future-roadmap-remaining-target-verification): an Impala coordinator |
+| **Paimon** | Declarative **HTTP** REST catalog (same pattern as Iceberg REST) | **Not JDBC/gRPC.** | [Future roadmap](../ROADMAP.md#future-roadmap-remaining-target-verification): a production REST catalog whose API matches the profile |
+| **Cassandra** | Declarative **HTTP** Cassandra Sidecar | **Not JDBC** (profile is Sidecar REST, not CQL). CQL would be a different jdbc profile | [Future roadmap](../ROADMAP.md#future-roadmap-remaining-target-verification): Sidecar routes that match the profile |
+| **Atlas** | Declarative **HTTP** Atlas v2 | **Not JDBC/gRPC** | [Future roadmap](../ROADMAP.md#future-roadmap-remaining-target-verification): Atlas with Kafka, Solr, and HBase |
 
 ### Spark Connect covers Spark
 

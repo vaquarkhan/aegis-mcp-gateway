@@ -37,8 +37,8 @@ results; the Spark and Iceberg tutorial's run is kept there as `spark-iceberg`.
 
 ## One tutorial per verified project, from your IDE, with and without Knox
 
-These twenty-five are built by `tools/build-project-tutorials.py` from each project's retained run. All
-twenty-five, plus Spark with Iceberg, have historical own-host and Knox Keep records, and
+These twenty-seven are built by `tools/build-project-tutorials.py` from each project's retained run. All
+twenty-seven, plus Spark with Iceberg, have historical own-host and Knox Keep records, and
 every kept audit journal verifies. Each tutorial has the engine command line, both flavors step by step,
 VS Code, Kiro and Cursor files in `adopters/tutorials/<project>/ide/`, prompts mapped to tools with what
 Aegis answered, and the full request table of that run. `python tools/build-project-tutorials.py --check`
@@ -62,12 +62,14 @@ OWASP MCP handling, S1 to S31) before walking a tutorial.
 | Apache Flume 1.11.0 | [tutorials/flume.md](tutorials/flume.md) |
 | Apache Hadoop HDFS 3.2.1 | [tutorials/hadoop.md](tutorials/hadoop.md) |
 | Apache HBase (REST) | [tutorials/hbase.md](tutorials/hbase.md) |
+| Apache Hive 4.0.1 | [tutorials/hive.md](tutorials/hive.md) |
 | Apache Iceberg 1.10.1 REST catalog | [tutorials/iceberg.md](tutorials/iceberg.md) |
 | Apache Ignite 2.18.0 | [tutorials/ignite.md](tutorials/ignite.md) |
 | Apache Kafka 3.9.1 and Kafka Connect | [tutorials/kafka.md](tutorials/kafka.md) |
 | Apache NiFi 1.28.1 | [tutorials/nifi.md](tutorials/nifi.md) |
 | Apache Pinot 1.2.0 | [tutorials/pinot.md](tutorials/pinot.md) |
 | Apache Pulsar 4.0.13 | [tutorials/pulsar.md](tutorials/pulsar.md) |
+| Apache Ranger 2.9.0 | [tutorials/ranger.md](tutorials/ranger.md) |
 | Apache Solr 9.10.1 | [tutorials/solr.md](tutorials/solr.md) |
 | Apache Spark 4.0.1 | [tutorials/spark.md](tutorials/spark.md) |
 | Apache Spark Connect 4.0.1 | [tutorials/spark-connect.md](tutorials/spark-connect.md) |
@@ -81,7 +83,7 @@ IDEs themselves were not driven by a test.
 
 ## Projects without a tutorial
 
-Atlas, Cassandra, Hive, Impala, Paimon and Ranger have a configuration profile that passes the contract
+Atlas, Cassandra, Impala and Paimon have a configuration profile that passes the contract
 test, which proves route rendering and governance order, not that the product answers. None has a real
 run on record, so none has a tutorial. The status and blocker of each are in
 [examples/adopters/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) and

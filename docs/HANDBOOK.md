@@ -19,7 +19,7 @@ Aegis Gateway 2.0 is a configuration-driven governance boundary for Model Contex
 
 This handbook explains the product from problem through deployment and operation. Evidence has two positive stages: a configuration/contract profile demonstrates that Aegis parses and governs a declared integration shape; a retained run against the named target version establishes target-version verification.
 
-> **Build governed MCP actions with evidence.** The [validation report](VALIDATION.md) records deterministic regression evidence and retained target evidence. The [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) identifies 26 profiles with retained own-host and Knox-host target evidence and 6 configuration/contract profiles that still need a full product stack (Atlas, Cassandra, Hive, Impala, Paimon, Ranger).
+> **Build governed MCP actions with evidence.** The [validation report](VALIDATION.md) records deterministic regression evidence and retained target evidence. The [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) identifies 28 profiles with retained own-host and Knox-host target evidence and 4 configuration/contract profiles that still need a full product stack (Atlas, Cassandra, Impala, Paimon).
 
 ## Contents
 
@@ -188,9 +188,9 @@ A project does not modify its code. An operator selects the backend boundary tha
 
 ### Retained adopter state
 
-The repository includes **26 profiles exercised through both front doors**: ActiveMQ Classic, Airflow, BookKeeper, Apache Burr (incubating), Calcite/Avatica, CouchDB, Doris, Druid, an existing MCP server, Flink, Flume, Hadoop HDFS, HBase, Iceberg REST catalog, Ignite, Kafka and Kafka Connect, NiFi, Pinot, Pulsar, Solr, Spark, Spark Connect, Storm, Superset, and ZooKeeper (plus the Spark+Iceberg tutorial scenario). Each run used own-host Aegis and a stock Apache Knox 3.0.0 process, with run materials in its adopter folder and an IDE-ready tutorial under [tutorials/](tutorials/).
+The repository includes **28 profiles exercised through both front doors**: ActiveMQ Classic, Airflow, BookKeeper, Apache Burr (incubating), Calcite/Avatica, CouchDB, Doris, Druid, an existing MCP server, Flink, Flume, Hadoop HDFS, HBase, Hive, Iceberg REST catalog, Ignite, Kafka and Kafka Connect, NiFi, Pinot, Pulsar, Ranger, Solr, Spark, Spark Connect, Storm, Superset, and ZooKeeper (plus the Spark+Iceberg tutorial scenario). Each run used own-host Aegis and a stock Apache Knox 3.0.0 process, with run materials in its adopter folder and an IDE-ready tutorial under [tutorials/](tutorials/).
 
-Six more profiles ship as configuration for their product-stack run: Atlas, Cassandra, Hive, Impala, Paimon, and Ranger. Each folder has the canonical YAML and the prerequisite for that stack.
+Four more profiles ship as configuration for their product-stack run: Atlas, Cassandra, Impala, and Paimon. Each folder has the canonical YAML. The product each one still needs is on the [future roadmap](ROADMAP.md#future-roadmap-remaining-target-verification).
 
 The catalog has 25 deployable adapter configurations and 116 tools. The comparison surface is 165 tools, including Kafka Admin reads and Apache Burr (incubating). Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources for a later release. See [Validation](VALIDATION.md), the [coverage contract](COVERAGE-0.1-VS-2.0.md), and the [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md).
 

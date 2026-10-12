@@ -47,14 +47,28 @@ Server name in the files: `aegis-couchdb` (Knox variant: `aegis-couchdb-knox`).
 
 ## First-time steps
 
-1. Finish the "Run the whole verified scenario" (or Flavor A / Flavor B) section of the tutorial so
-   Aegis is listening.
-2. Copy the matching JSON above into your project or user MCP settings path.
-3. Replace `REPLACE_WITH_YOUR_TOKEN` (Cursor / Kiro) with a token from
-   `examples/adopters/couchdb/aegis/own-host.yaml`, or answer VS Code's password prompt.
-4. Reload MCP / the window, then ask the agent a **read** prompt from the tutorial (for example list
-   or status). A write or delete should require approval when the profile marks the tool `MUTATE` or
-   `DESTRUCTIVE`.
+Do these in order. The agent is not using Aegis until the last step is true.
+
+1. Start the real engine, then start the own-host gateway and leave it listening on `http://127.0.0.1:8080/mcp`.
+   The section 3 runner is a test: it stops what it started, and `-Keep` overwrites the retained evidence.
+2. Copy the file into the project the editor has open:
+   Cursor → `.cursor/mcp.json` from `cursor/mcp.json` in this folder.
+   Kiro → `.kiro/settings/mcp.json` from `kiro/mcp.json` in this folder.
+   Leave `aegis-couchdb-knox` disabled unless Knox is the door you started.
+3. Replace `REPLACE_WITH_YOUR_TOKEN` with the same value you exported as `AEGIS_VALIDATION_TOKEN_READER`
+   in the terminal that started Aegis. That token is the person `guest`. The name of the variable is in
+   `examples/adopters/couchdb/aegis/own-host.yaml`; the file does not contain the secret.
+   VS Code asks for the token instead of storing it in the JSON.
+4. Reload MCP in Cursor or Kiro.
+
+You are ready to give the agent an instruction when both of these are true:
+
+- the gateway log still says `Aegis gateway listening on http://127.0.0.1:8080/mcp`
+- the editor lists `aegis-couchdb` and shows its tools
+
+Then ask a read prompt from the tutorial and name `aegis-couchdb`. The agent calls Aegis. It does not call the
+engine URL. A write or delete still needs approval when the profile marks the tool `MUTATE` or
+`DESTRUCTIVE`.
 
 ## What the fields mean
 

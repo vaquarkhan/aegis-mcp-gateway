@@ -63,6 +63,17 @@ HEADER_MD = """<!--
 -->
 """
 
+
+def pages_url(path, kind=None):
+    """Link a path outside docs/. Pages publishes only /docs, so these go to the GitHub branch Pages is building."""
+    path = path.strip("/")
+    if kind is None:
+        leaf = path.rsplit("/", 1)[-1]
+        kind = "blob" if "." in leaf else "tree"
+    return ("https://github.com/vaquarkhan/aegis-mcp-gateway/" + kind
+            + "/{{ site.github.source.branch }}/" + path)
+
+
 # Display names and the hand-written deep-dive tutorial, where one exists. Everything else is derived.
 PROJECTS = {
     "activemq": ("Apache ActiveMQ", None),
@@ -78,12 +89,14 @@ PROJECTS = {
     "flume": ("Apache Flume", None),
     "hadoop": ("Apache Hadoop HDFS", None),
     "hbase": ("Apache HBase", None),
+    "hive": ("Apache Hive", None),
     "iceberg": ("Apache Iceberg REST catalog", "../TUTORIAL-ICEBERG.md"),
     "ignite": ("Apache Ignite", None),
     "kafka": ("Apache Kafka and Kafka Connect", "../TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md"),
     "nifi": ("Apache NiFi", None),
     "pinot": ("Apache Pinot", None),
     "pulsar": ("Apache Pulsar", None),
+    "ranger": ("Apache Ranger", None),
     "solr": ("Apache Solr", None),
     "spark": ("Apache Spark", "../TUTORIAL-SPARK-AND-SPARK-CONNECT.md"),
     "spark-connect": ("Apache Spark Connect", "../TUTORIAL-SPARK-AND-SPARK-CONNECT.md"),
@@ -100,9 +113,19 @@ POWERSHELL_ONLY_RUNNER = {"airflow", "doris", "druid", "hadoop", "hbase", "nifi"
 # jar lists retained in HOW-TO-RUN.md.
 PLUGIN_CLASSPATH_FILES = {
     "calcite": "aegis-source-jdbc/target/plugin.classpath",
+    "hive": "aegis-source-jdbc/target/plugin.classpath",
     "kafka": "examples/aegis-examples/target/plugin.classpath",
     "spark-connect": "examples/aegis-spark-connect/target/plugin.classpath",
     "zookeeper": "aegis-source-zookeeper/target/plugin.classpath",
+}
+# plugin.classpath lists runtime dependencies and excludes Aegis modules, so the source jar that
+# holds the ToolSourceFactory has to be added beside it.
+PLUGIN_JARS = {
+    "calcite": "aegis-source-jdbc/target/aegis-source-jdbc-2.0.0-SNAPSHOT.jar",
+    "hive": "aegis-source-jdbc/target/aegis-source-jdbc-2.0.0-SNAPSHOT.jar",
+    "kafka": "examples/aegis-examples/target/aegis-examples-2.0.0-SNAPSHOT.jar",
+    "spark-connect": "examples/aegis-spark-connect/target/aegis-spark-connect-2.0.0-SNAPSHOT.jar",
+    "zookeeper": "aegis-source-zookeeper/target/aegis-source-zookeeper-2.0.0-SNAPSHOT.jar",
 }
 
 VERBS = {"read", "write", "list", "get", "put", "delete", "create", "describe", "drop", "stop", "start", "cancel",
@@ -196,7 +219,7 @@ def backend_descriptions(project, base, cfg, tools):
         hit = declared.get(name[len(prefix):])
         if hit:
             t["description"] = (f"{hit[0]} (declared by the backend in "
-                                f"[`{hit[1]}`](../../examples/adopters/{project}/{hit[1]}))")
+                                f"[`{hit[1]}`]({pages_url(f'examples/adopters/{project}/{hit[1]}')}))")
 
 
 SHELL_FENCES_WITH_SEMICOLON = {"powershell", "pwsh", "ps1", "cmd", "bat"}
@@ -267,6 +290,23 @@ def normalize_bash_block(body, project):
     """Turn retained Bash placeholders into runnable variables and secure Knox curl input."""
     body = body.replace("http://127.0.0.1:<port>", "http://127.0.0.1:${AEGIS_PORT}")
     body = body.replace("https://localhost:<gateway.port>", "https://localhost:${KNOX_PORT}")
+    plugin_step = ("# 1b. the source plugin: copy each jar marked ADD in results/knox-ext-plugins.log "
+                   "to ext/aegis-plugin-<jar>")
+    if plugin_step in body and project in PLUGIN_JARS:
+        # results/knox-ext-plugins.log is not retained. Apply the harness rule: the module jar plus
+        # its runtime dependencies, except an artifact Knox already ships in lib/ or dep/ and logging jars.
+        jars = f'"$REPO/{PLUGIN_JARS[project]}"'
+        if project == "hive":
+            jars += ' "$HOME/.m2/repository/org/apache/hive/hive-jdbc/4.0.1/hive-jdbc-4.0.1-standalone.jar"'
+        body = body.replace(plugin_step, "\n".join([
+            "# 1b. the source plugin: the module jar plus its runtime dependencies, except jars whose",
+            "#     artifact Knox already ships in lib/ or dep/ and logging jars (the test harness's rule)",
+            f'for jar in {jars} $(tr \':\' \' \' < "$REPO/{PLUGIN_CLASSPATH_FILES[project]}"); do',
+            '  name="$(basename "$jar")"; a="$(printf \'%s\' "${name%.jar}" | sed -E \'s/-[0-9].*$//\')"',
+            '  case "$a" in log4j*|slf4j*|logback*|*-to-slf4j|*-over-slf4j) continue ;; esac',
+            '  if ls lib dep | sed -E \'s/\\.jar$//; s/-[0-9].*$//\' | grep -qxF "$a"; then continue; fi',
+            '  cp "$jar" "ext/aegis-plugin-$name"',
+            "done"]))
     body = body.replace("ext/aegis-plugin-<jar>", "ext/aegis-plugin-JAR_NAME")
     body = re.sub(r"java -jar bin/knoxcli\.jar create-master --master <[^>]+>",
                   "java -jar bin/knoxcli.jar create-master", body)
@@ -274,9 +314,16 @@ def normalize_bash_block(body, project):
     body = re.sub(r"curl -s?k\s+", 'curl -sS --cacert "$KNOX_CA_CERT" ', body)
     body = body.replace("-u <knox-demo-user>:<knox-demo-password>", '--user "$KNOX_USER"')
     if "<plugin jars>" in body:
-        cp_file = PLUGIN_CLASSPATH_FILES[project]
         body = body.replace("<plugin jars>", "${AEGIS_PLUGIN_CLASSPATH}")
-        body = f'AEGIS_PLUGIN_CLASSPATH="$(cat "$REPO/{cp_file}")"\n' + body
+        jar = PLUGIN_JARS[project]
+        cp_file = PLUGIN_CLASSPATH_FILES[project]
+        if project == "hive":
+            # Source jar, JDBC runtime classpath, and HiveServer2's standalone driver.
+            cp = (f'AEGIS_PLUGIN_CLASSPATH="$REPO/{jar}:$(cat "$REPO/{cp_file}")'
+                  ':$HOME/.m2/repository/org/apache/hive/hive-jdbc/4.0.1/hive-jdbc-4.0.1-standalone.jar"')
+        else:
+            cp = f'AEGIS_PLUGIN_CLASSPATH="$REPO/{jar}:$(cat "$REPO/{cp_file}")"'
+        body = cp + "\n" + body
 
     prefix = []
     if "${AEGIS_PORT}" in body:
@@ -286,7 +333,8 @@ def normalize_bash_block(body, project):
     if "$KNOX_CA_CERT" in body:
         prefix.extend([
             'java -jar "$AEGIS_KNOX_HOME/bin/knoxcli.jar" export-cert --type PEM',
-            'KNOX_CA_CERT="$PWD/gateway-client-trust.pem"',
+            '# export-cert writes the PEM into the Knox installation, not the current directory.',
+            'KNOX_CA_CERT="$AEGIS_KNOX_HOME/data/security/keystores/gateway-client-trust.pem"',
         ])
     if "$KNOX_USER" in body:
         prefix.extend([
@@ -385,13 +433,13 @@ def tutorial(project, title, deep):
         if m:
             called.setdefault(m.group(1), []).append(r)
     g = groups(cfg)
-    rel_how = f"../../examples/adopters/{project}/HOW-TO-RUN.md"
+    rel_how = pages_url(f"examples/adopters/{project}/HOW-TO-RUN.md")
 
     out = [HEADER_MD]
     out.append(f"# Tutorial: {title} with Aegis, from your IDE, with and without Knox\n")
     out.append(f"Built by `tools/build-project-tutorials.py` using retained evidence from the real run of `{test}` "
                f"on {date} ({counts[0]} tests, 0 failures, 0 skipped: the own-host door and the Knox 3.0.0 "
-               f"door). The retained files in [`examples/adopters/{project}/`](../../examples/adopters/{project}/) "
+               f"door). The retained files in [`examples/adopters/{project}/`]({pages_url(f'examples/adopters/{project}')}) "
                f"provide the scenario's tools, people, outcomes, test count, and date. The generator synthesizes "
                f"the shared build, runner, endpoint, IDE, audit, and cleanup commands; choose ports, paths, and "
                f"keys for your environment.")
@@ -404,8 +452,8 @@ def tutorial(project, title, deep):
                            "Prompts to try", "What the run showed", "Audit and clean up"], 1):
         out.append(f"{i}. {h}")
     out.append("\n## 1. What Aegis governs here\n")
-    governance = (f"The gateway exposes these tools (from [`aegis/own-host.yaml`](../../examples/adopters/"
-                  f"{project}/aegis/own-host.yaml)). Aegis decides each call before the backend sees it. ")
+    governance = (f"The gateway exposes these tools (from [`aegis/own-host.yaml`]({pages_url(f'examples/adopters/{project}/aegis/own-host.yaml')})). "
+                  "Aegis decides each call before the backend sees it. ")
     class_rules = []
     if "READ" in recorded_classes:
         class_rules.append("`READ` runs for callers allowed by policy")
@@ -444,40 +492,47 @@ def tutorial(project, title, deep):
     envs = sorted(set(re.findall(env_pattern, readme + how)) - {"AEGIS_KNOX_HOME"})
     if envs:
         out.append("- This engine also needs: " + ", ".join(f"`{e}`" for e in envs)
-                   + f" (see [the example README](../../examples/adopters/{project}/README.md)).")
+                   + f" (see [the example README]({pages_url(f'examples/adopters/{project}/README.md')})).")
     out.append("\n```bash\n# from the repository root\nmvn -B -Preal-engines -DskipTests install\n```")
 
     out.append("\n## 3. Run the whole verified scenario\n")
     out.append("One command starts the real engine, runs every step through both doors, and checks the engine's "
-               "own state after each governed write. This is how the kept results were produced.\n")
-    out.append(f"```powershell\n$env:AEGIS_KNOX_HOME = 'C:\\knox\\knox-3.0.0'\nexamples/adopters/run-example.ps1 {project} -Keep\n```\n")
+               "own state after each governed write. This is the test that produced the kept results.\n")
+    out.append(f"```powershell\n$env:AEGIS_KNOX_HOME = 'C:\\knox\\knox-3.0.0'\nexamples/adopters/run-example.ps1 {project}\n```\n")
     if project not in POWERSHELL_ONLY_RUNNER:
-        out.append(f"```bash\nexport AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0\nexamples/adopters/run-example.sh {project} --keep\n```\n")
+        out.append(f"```bash\nexport AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0\nexamples/adopters/run-example.sh {project}\n```\n")
     else:
         out.append("This scenario has no `run-example.sh` case. Use the supported PowerShell runner above.")
     out.append("Without `AEGIS_KNOX_HOME` the Knox door is reported as skipped, never as passed.")
+    out.append("\nThe runner is a test: it stops the engine and both gateways when it finishes, so nothing is left "
+               "listening for an IDE. To use an IDE, start the engine and a gateway yourself with sections 4 to 7. "
+               "Maintainers add `-Keep` (bash: `--keep`) to copy a passing run's results over the retained "
+               f"evidence in `examples/adopters/{project}/results/`; those are tracked files, so review the change "
+               "with `git diff` before committing it.")
 
     out.append("\n## 4. The engine\n")
-    out.append("In the commands below `$REPO` is the repository root, as in the retained HOW-TO-RUN.md.\n")
+    out.append("In the commands below `$REPO` is the repository root, as in the retained HOW-TO-RUN.md. "
+               "Set it first. From the repository root, PowerShell: `$REPO = (Get-Location).Path`. "
+               "Bash: `export REPO=\"$(pwd)\"`.\n")
     if project == "hbase":
         out.append("The retained run used the mutable image tag `dajobe/hbase:latest`, with no version or digest "
                    "recorded. The command below deliberately requires `HBASE_IMAGE` to be an immutable "
                    "`dajobe/hbase@sha256:...` digest selected and recorded by the operator.\n")
-    engine_body = engine.replace("](engine/", f"](../../examples/adopters/{project}/engine/")
+    engine_body = engine.replace("](engine/", f"]({pages_url(f'examples/adopters/{project}/engine', 'blob')}/")
     out.append(portable_commands(engine_body, project).strip())
 
     out.append("\n## 5. Flavor A: without Knox\n")
     own_body = strip_plugin_jar_list(own, rel_how)
-    own_body = own_body.replace("](aegis/", f"](../../examples/adopters/{project}/aegis/")
+    own_body = own_body.replace("](aegis/", f"]({pages_url(f'examples/adopters/{project}/aegis', 'blob')}/")
     own_body = portable_commands(own_body, project)
     out.append(own_body.split("What the test sent through this door")[0].strip())
     out.append(f"\nFor an IDE you want a fixed port: in your copy of `own-host.yaml` set `host.listen.port: {OWN_HOST_PORT}`, "
                "and point the engine address at your engine. Nothing else changes.")
 
     out.append("\n## 6. Flavor B: with Knox\n")
-    out.append("The manual commands in this section are POSIX shell commands. On Windows, use the supported "
-               f"`examples/adopters/run-example.ps1 {project} -Keep` runner from section 3.")
-    knox_body = knox.replace("](aegis/", f"](../../examples/adopters/{project}/aegis/")
+    out.append("The manual commands in this section are POSIX shell commands. On Windows, use the section 3 "
+               f"runner (`examples/adopters/run-example.ps1 {project}`), which does not leave a gateway listening.")
+    knox_body = knox.replace("](aegis/", f"]({pages_url(f'examples/adopters/{project}/aegis', 'blob')}/")
     knox_body = portable_commands(knox_body, project)
     out.append(knox_body.split("What the test sent through this door")[0].strip())
     out.append("\nThe curl example exports Knox's certificate and supplies it with `--cacert`; do not replace this "
@@ -488,7 +543,7 @@ def tutorial(project, title, deep):
 
     out.append("\n## 7. Connect your IDE\n")
     out.append(f"Ready-made files, in each IDE's documented format, are in "
-               f"[`adopters/tutorials/{project}/ide/`](../../adopters/tutorials/{project}/ide/):\n")
+               f"[`adopters/tutorials/{project}/ide/`]({pages_url(f'adopters/tutorials/{project}/ide')}):\n")
     out.append("| IDE | File | Door |")
     out.append("| --- | --- | --- |")
     out.append(f"| VS Code | `ide/vscode/mcp.json` (copy to `.vscode/mcp.json`) | own host, bearer token prompted |")
@@ -499,6 +554,16 @@ def tutorial(project, title, deep):
                "trust Knox's certificate first (`java -jar bin/knoxcli.jar export-cert --type PEM`). "
                "The token you give the IDE decides who you are to Aegis: use the token of the person whose "
                "permissions you want the assistant to have.")
+    out.append(f"\nCopy into the project the editor has open. Cursor: "
+               f"`adopters/tutorials/{project}/ide/cursor/mcp.json` to `.cursor/mcp.json`. Kiro: "
+               f"`adopters/tutorials/{project}/ide/kiro/mcp.json` to `.kiro/settings/mcp.json`. Leave the "
+               f"`aegis-{project}-knox` entry disabled unless you started the Knox door. Replace "
+               f"`REPLACE_WITH_YOUR_TOKEN` with the same value you exported as `AEGIS_VALIDATION_TOKEN_READER` "
+               f"(the person `guest`). Section 3 stops the gateway; the process from section 5 has to still be running.")
+    out.append(f"\nReload MCP. You are ready to instruct the agent when the gateway log still says "
+               f"`Aegis gateway listening on http://127.0.0.1:{OWN_HOST_PORT}/mcp`, and Cursor or Kiro lists "
+               f"`aegis-{project}` with its tools. Then use a prompt from section 8 and name `aegis-{project}`. "
+               "The agent calls Aegis. It does not call the engine URL.")
     out.append("\nThese files were checked by `DocumentationAssetsTest` (they parse and name these endpoints). The "
                "MCP transport they use was exercised with the official MCP Python SDK in the "
                "[Spark and Iceberg tutorial](../TUTORIAL-SPARK-ICEBERG.md); the IDEs themselves were not driven "
@@ -541,8 +606,8 @@ def tutorial(project, title, deep):
         for r in rows:
             out.append(f"| {r['n']} | {r['step']} | `{r['caller']}` | `{r['request']}` | {r['result']} |")
         out.append("")
-    out.append(f"Full requests and responses: [own host](../../examples/adopters/{project}/results/own-host-transcript.log), "
-               f"[Knox](../../examples/adopters/{project}/results/knox-transcript.log).")
+    out.append(f"Full requests and responses: [own host]({pages_url(f'examples/adopters/{project}/results/own-host-transcript.log')}), "
+               f"[Knox]({pages_url(f'examples/adopters/{project}/results/knox-transcript.log')}).")
 
     out.append("\n## 10. Audit and clean up\n")
     out.append("Every decision, approval and result is in the hash-chained journal. Check a kept one:\n")
@@ -559,7 +624,7 @@ def tutorial(project, title, deep):
         out.append("```bash\ndocker rm -f " + " ".join(containers) + "\n```")
     out.append("Remove temporary configuration copies, exported certificates, logs, and audit journals only after "
                "retaining any evidence your review or incident process requires.")
-    out.append(f"\nLimits of this run are listed in [the example README](../../examples/adopters/{project}/README.md).")
+    out.append(f"\nLimits of this run are listed in [the example README]({pages_url(f'examples/adopters/{project}/README.md')}).")
     text = label_test_secrets(unix_classpaths("\n".join(out)))
     return text.rstrip() + "\n", {"topology": topology, "knox_path": knox_path, "server": server,
                                              "test": test, "date": date, "counts": counts}
@@ -571,6 +636,13 @@ def ide_readme(project, title, meta):
     own_url = f"http://127.0.0.1:{OWN_HOST_PORT}/mcp"
     knox_url = f"https://localhost:{KNOX_PORT}{meta['knox_path']}"
     walk = f"../../../../docs/tutorials/{project}.md"
+    kafka_note = ""
+    if project == "kafka":
+        kafka_note = """
+
+The kept run does not start Schema Registry. Start from `docs/tutorials/kafka.md`. The longer page
+`docs/TUTORIAL-KAFKA-AND-KAFKA-CONNECT.md` is background; its older token name is not the variable in
+`examples/adopters/kafka/aegis/own-host.yaml`."""
     return HEADER_MD + f"""# IDE setup for the {title} tutorial
 
 ## What this folder is (new-user version)
@@ -605,14 +677,28 @@ Server name in the files: `{name}` (Knox variant: `{name}-knox`).
 
 ## First-time steps
 
-1. Finish the "Run the whole verified scenario" (or Flavor A / Flavor B) section of the tutorial so
-   Aegis is listening.
-2. Copy the matching JSON above into your project or user MCP settings path.
-3. Replace `REPLACE_WITH_YOUR_TOKEN` (Cursor / Kiro) with a token from
-   `examples/adopters/{project}/aegis/own-host.yaml`, or answer VS Code's password prompt.
-4. Reload MCP / the window, then ask the agent a **read** prompt from the tutorial (for example list
-   or status). A write or delete should require approval when the profile marks the tool `MUTATE` or
-   `DESTRUCTIVE`.
+Do these in order. The agent is not using Aegis until the last step is true.
+
+1. Start the real engine, then start the own-host gateway and leave it listening on `{own_url}`.
+   The section 3 runner is a test: it stops what it started, and `-Keep` overwrites the retained evidence.
+2. Copy the file into the project the editor has open:
+   Cursor → `.cursor/mcp.json` from `cursor/mcp.json` in this folder.
+   Kiro → `.kiro/settings/mcp.json` from `kiro/mcp.json` in this folder.
+   Leave `{name}-knox` disabled unless Knox is the door you started.
+3. Replace `REPLACE_WITH_YOUR_TOKEN` with the same value you exported as `AEGIS_VALIDATION_TOKEN_READER`
+   in the terminal that started Aegis. That token is the person `guest`. The name of the variable is in
+   `examples/adopters/{project}/aegis/own-host.yaml`; the file does not contain the secret.
+   VS Code asks for the token instead of storing it in the JSON.
+4. Reload MCP in Cursor or Kiro.
+
+You are ready to give the agent an instruction when both of these are true:
+
+- the gateway log still says `Aegis gateway listening on {own_url}`
+- the editor lists `{name}` and shows its tools
+
+Then ask a read prompt from the tutorial and name `{name}`. The agent calls Aegis. It does not call the
+engine URL. A write or delete still needs approval when the profile marks the tool `MUTATE` or
+`DESTRUCTIVE`.{kafka_note}
 
 ## What the fields mean
 
@@ -667,16 +753,16 @@ def index(built, skipped):
     for project, meta in sorted(built.items()):
         title = PROJECTS[project][0]
         out.append(f"| {title} | [{project}.md]({project}.md) | `{meta['test']}`, {meta['date']} | "
-                   f"{meta['counts'][0]} run, 0 failed, 0 skipped | [`adopters/tutorials/{project}/ide/`](../../adopters/tutorials/{project}/ide/) |")
+                   f"{meta['counts'][0]} run, 0 failed, 0 skipped | [`adopters/tutorials/{project}/ide/`]({pages_url(f'adopters/tutorials/{project}/ide')}) |")
     out.append("\nApache Spark with Apache Iceberg has its own end-to-end tutorial with seed data, scripts, IDE files "
                "and Knox: [TUTORIAL-SPARK-ICEBERG.md](../TUTORIAL-SPARK-ICEBERG.md).")
     if skipped:
         out.append("\nNot built, and why:\n")
         out += [f"- {s}" for s in skipped]
-    out.append("\nProjects with a configuration but no real run on record (Atlas, Cassandra, Hive, Impala, Paimon, "
-               "Ranger) have no tutorial here: their profiles pass the contract test only, which proves route "
+    out.append("\nProjects with a configuration but no real run on record (Atlas, Cassandra, Impala, Paimon) "
+               "have no tutorial here: their profiles pass the contract test only, which proves route "
                "rendering and governance order, not that the product answers. Their status and blockers are in "
-               "[examples/adopters/README.md](../../examples/adopters/README.md).")
+               f"[examples/adopters/README.md]({pages_url('examples/adopters/README.md')}).")
     return "\n".join(out) + "\n"
 
 
@@ -690,6 +776,11 @@ def main():
             continue
         built[project] = meta
         writes[DOCS / f"{project}.md"] = text
+        ide_dir = IDE_ROOT / project / "ide"
+        writes[ide_dir / "README.md"] = ide_readme(project, title, meta)
+        if not ide_dir.is_dir():
+            for rel, body in ide_files(project, meta).items():
+                writes[ide_dir / rel] = json.dumps(body, indent=2) + "\n"
     writes[DOCS / "README.md"] = index(built, skipped)
     changed = [p for p, t in writes.items() if not p.is_file() or p.read_text(encoding="utf-8") != t]
     if check:

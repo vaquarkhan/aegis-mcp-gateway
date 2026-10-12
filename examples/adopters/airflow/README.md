@@ -13,46 +13,31 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-# Apache Airflow: profile supported, real-engine evidence not yet captured
+# Apache Airflow: both front doors passed
 
-## Canonical reference
+[`aegis/canonical.yaml`](aegis/canonical.yaml) is the shipped profile. [`HOW-TO-RUN.md`](HOW-TO-RUN.md)
+and the files beside it are what `AirflowFrontDoorsTest` used. The official Airflow 2.9.3 image answered
+the profile's REST API through the own host and through Knox. Retained results are in [`results/`](results/).
+The IDE tutorial is [docs/tutorials/airflow.md](../../../docs/tutorials/airflow.md).
 
-[`aegis/canonical.yaml`](aegis/canonical.yaml) is an exact reference copy of the
-[canonical adapter profile](../../../adopters/configurations/adapters/airflow/airflow.yaml), not
-configuration captured from a real engine run. Current profile/contract coverage is
-`AdapterConfigsTest` in [`examples/aegis-examples`](../../aegis-examples); real results remain not
-recorded.
+## Run it yourself
 
-Aegis loads and governs [`airflow.yaml`](../../../adopters/configurations/adapters/airflow/airflow.yaml).
-`AdapterConfigsTest` exercises every declared request shape and its governance lifecycle against a local
-contract endpoint. That is **not** a real Airflow claim: this folder deliberately has no `results/`, captured
-Aegis YAML, or `HOW-TO-RUN.md` because no Airflow service was started here.
+The files in this folder are the kept run. To leave a gateway listening, copy them; do not start the IDE against the engine, and do not use `-Keep` as the start command. `-Keep` re-runs the test, stops the processes, and overwrites these files.
 
-## What the profile governs
+1. From the repository root: `mvn -B -Preal-engines -DskipTests install`.
+2. Start the engine with section 1 of [`HOW-TO-RUN.md`](HOW-TO-RUN.md). Use a host port you choose. The port written in that file is the free port from the kept run.
+3. Copy [`aegis/own-host.yaml`](aegis/own-host.yaml) to a file you do not commit. Set `host.listen.port` to `8080` and set the engine address to your port.
+4. Set `AEGIS_SIGNING_KEY` (at least 32 bytes) and `AEGIS_VALIDATION_TOKEN_READER`, `AEGIS_VALIDATION_TOKEN_OPERATOR`, `AEGIS_VALIDATION_TOKEN_APPROVER`, and `AEGIS_VALIDATION_TOKEN_OUTSIDER` (each at least 16 characters). Also set `AIRFLOW_API_USER` and `AIRFLOW_API_PASSWORD`. The YAML names the variables; it does not contain the secrets.
+5. Start Aegis so it stays up. The full command, including the plugin classpath when this profile needs one, is in [`adopters/configurations/adapters/airflow/README.md`](../../../adopters/configurations/adapters/airflow/README.md).
 
-The declarative HTTP source targets Airflow’s stable REST API: health, DAG listing and detail, DAG run
-creation, and DAG deletion. The profile classifies writes and destructive calls, so Aegis policy, approval,
-dry-run and audit controls apply before a request reaches Airflow.
+| Copy | To |
+| --- | --- |
+| [`aegis/knox-aegis.yaml`](aegis/knox-aegis.yaml) | `$AEGIS_KNOX_HOME/conf/aegis/airflow.yaml` |
+| [`aegis/knox-topology.xml`](aegis/knox-topology.xml) | `$AEGIS_KNOX_HOME/conf/topologies/aegis-airflow.xml` |
+| `aegis-knox3-extension/target/aegis-knox3-extension-2.0.0-SNAPSHOT-knox-bundle.jar` | `$AEGIS_KNOX_HOME/ext/` |
+| [`../../../adopters/tutorials/airflow/ide/cursor/mcp.json`](../../../adopters/tutorials/airflow/ide/cursor/mcp.json) | `.cursor/mcp.json` |
+| [`../../../adopters/tutorials/airflow/ide/vscode/mcp.json`](../../../adopters/tutorials/airflow/ide/vscode/mcp.json) | `.vscode/mcp.json` |
+| [`../../../adopters/tutorials/airflow/ide/vscode/mcp.knox.json`](../../../adopters/tutorials/airflow/ide/vscode/mcp.knox.json) | `.vscode/mcp.json` when you use Knox |
+| [`../../../adopters/tutorials/airflow/ide/kiro/mcp.json`](../../../adopters/tutorials/airflow/ide/kiro/mcp.json) | `.kiro/settings/mcp.json` |
 
-## What a real two-door run needs
-
-A real run requires an Airflow webserver plus scheduler and an initialized metadata database, with a DAG the
-test can trigger and delete safely. Then the test must run the same YAML two ways: own-host Aegis and a real
-Knox 3.0.0 route. Because this is a declarative `http` source, Knox needs only the Aegis Knox bundle in
-`ext/`; no source plugin jar is required. The canonical YAML is the configuration to start from; substitute
-the webserver address, egress allowlist, credentials and production groups.
-
-The [tested environment](../../../docs/VALIDATION.md#tested-environments) has neither Docker nor an installed WSL distribution, so it cannot stand up the required
-Linux-oriented Airflow/database service stack without fabricating an endpoint. Airflow's own prerequisites
-page states that it runs on POSIX-compliant systems and, on Windows, through WSL2 or Linux containers
-([Airflow prerequisites](https://airflow.apache.org/docs/apache-airflow/stable/installation/prerequisites.html)).
-No engine run is recorded.
-
-## API version: Airflow 2.x only, as written
-
-The profile's routes are the Airflow 2 stable REST API under `/api/v1` (base URL
-`http://airflow-webserver:8080/api/v1`). Airflow 3 replaced `/api/v1` with the FastAPI-based `/api/v2`
-and moved the webserver role to `airflow api-server`
-([Upgrading to Airflow 3](https://airflow.apache.org/docs/apache-airflow/stable/installation/upgrading_to_airflow3.html)).
-Against Airflow 3 this profile needs new routes, request bodies and authentication, and its own real run,
-before it can be used.
+Replace `${KNOX_HOME}` in the topology. Replace `REPLACE_WITH_YOUR_TOKEN` with the reader token. Reload MCP after the gateway is listening on `http://127.0.0.1:8080/mcp`. You are ready when the editor lists the server from the JSON you copied and shows its tools. Then name that server in the agent chat. The agent calls Aegis, not the engine URL. Install Knox with [`../knox/install-knox.ps1`](../knox/install-knox.ps1) or [`../knox/install-knox.sh`](../knox/install-knox.sh) before the Knox copies.

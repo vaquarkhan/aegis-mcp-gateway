@@ -75,7 +75,10 @@ web:
 io:
   tmp:
     dirs: $u/tmp
-"@ | Set-Content -Encoding utf8 $conf
+"@ | ForEach-Object {
+        # UTF-8 without a byte-order mark: Set-Content -Encoding utf8 in Windows PowerShell 5.1 writes one.
+        [IO.File]::WriteAllText($conf, $_, (New-Object Text.UTF8Encoding($false)))
+    }
     Write-Host "Wrote $conf (REST on 127.0.0.1:18081, 4 slots, checkpoints every 10s)"
 }
 

@@ -11,14 +11,16 @@
 
 The selected coordinator surface is HTTP, so the profile is declarative. Query identifiers become Aegis resources before a cancellation action is considered.
 
-## Developer workflow
+## Run it
 
-```powershell
-java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config adopters/configurations/adapters/impala/impala.yaml
-```
+There is no kept run for this profile. There is no `examples/adopters/impala/HOW-TO-RUN.md` and no `adopters/tutorials/impala/ide/` folder to copy.
 
-Replace the coordinator endpoint, authentication, groups and egress policy. Review cancellation classification and protected-query policy for the deployment.
+`impala.yaml` is the profile the contract test loads. Its address is a placeholder hostname. Starting the gateway with this file does not start the product.
+
+The profile calls an Impala coordinator debug UI. This tree has no coordinator process that was started.
+
+See [Future roadmap: remaining target verification](../../../../docs/ROADMAP.md#future-roadmap-remaining-target-verification).
 
 ## Evidence
 
-The profile has a route/governance contract test. A target Impala release run is required.
+`AdapterConfigsTest` loads this profile against a local contract harness. That is not a two-door run against the product.
