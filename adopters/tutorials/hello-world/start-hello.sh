@@ -54,13 +54,22 @@ printf '%s\n%s\n' "$svc" "$gw" > "$work/pids.txt"
 for _ in $(seq 1 60); do
   sleep 0.5
   kill -0 "$gw" 2>/dev/null || break
-  if curl -fsS -o /dev/null "http://127.0.0.1:$port/readyz" 2>/dev/null; then
+  if curl -fsS -o /dev/null "http://127.0.0.1:$port/readyz" 2>/dev/null \
+      && kill -0 "$svc" 2>/dev/null \
+      && curl -fsS -o /dev/null "http://127.0.0.1:9109/things" 2>/dev/null; then
     echo "Aegis is ready on http://127.0.0.1:$port/mcp (governing the inventory service on 127.0.0.1:9109)."
     echo 'Stop both with ./stop-hello.sh'
     exit 0
   fi
+  kill -0 "$svc" 2>/dev/null || break
 done
-echo 'The gateway did not become ready. Last lines of work/gateway.log:' >&2
-tail -n 15 "$work/gateway.log" >&2 || true
+if ! kill -0 "$gw" 2>/dev/null || ! curl -fsS -o /dev/null "http://127.0.0.1:$port/readyz" 2>/dev/null; then
+  echo 'The gateway did not become ready. Last lines of work/gateway.log:' >&2
+  tail -n 15 "$work/gateway.log" >&2 || true
+fi
+if ! kill -0 "$svc" 2>/dev/null || ! curl -fsS -o /dev/null "http://127.0.0.1:9109/things" 2>/dev/null; then
+  echo 'The inventory service is not answering on http://127.0.0.1:9109/things. Last lines of work/inventory.log:' >&2
+  tail -n 15 "$work/inventory.log" >&2 || true
+fi
 "$here/stop-hello.sh"
 exit 1

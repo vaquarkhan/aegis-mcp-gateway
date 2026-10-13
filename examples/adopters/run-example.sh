@@ -57,22 +57,43 @@ case "$adopter" in
   zookeeper) mvn -B -q -f "$root/pom.xml" -Preal-engines -pl aegis-source-zookeeper -am -DskipTests package ;;
   a2a)       mvn -B -q -f "$root/pom.xml" -Preal-engines -pl aegis-source-a2a -am -DskipTests package ;;
 esac
-set +e
 # Build the profile-specific artifacts through the lifecycle that creates plugin.classpath files. Then clean
 # only the selected validation module, preserving dependency artifacts needed by the test lifecycle.
+# These commands stay under set -e: a preparation failure must not continue into the test.
 mvn -B -q -f "$root/examples/pom.xml" -Preal-engines -DskipTests install
 mvn -B -q -f "$root/examples/pom.xml" -Preal-engines -pl "$module" clean
 set +e
 mvn -B -f "$root/examples/pom.xml" -Preal-engines -pl "$module" -am test "-Dtest=$test" -Dsurefire.failIfNoSpecifiedTests=false
 status=$?
 set -e
-if [ "$keep" = "--keep" ] && [ $status -eq 0 ]; then
+if [ "$keep" = "--keep" ]; then
+  if [ "$status" -ne 0 ]; then
+    echo "refusing to keep $adopter: Maven exited $status" >&2
+    exit "$status"
+  fi
   from="$root/examples/aegis-validation/target/adopter-results/$adopter"
+  report="$root/examples/$module/target/surefire-reports/io.github.vaquarkhan.aegis.validation.$test.txt"
+  line="$(grep -o 'Tests run: [0-9]*, Failures: [0-9]*, Errors: [0-9]*, Skipped: [0-9]*' "$report" 2>/dev/null | head -n 1 || true)"
+  runs="$(printf '%s' "$line" | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')"
+  fails="$(printf '%s' "$line" | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')"
+  errors="$(printf '%s' "$line" | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')"
+  skipped="$(printf '%s' "$line" | sed -n 's/.*Skipped: \([0-9]*\).*/\1/p')"
+  if [ -z "$runs" ] || [ "$fails" != 0 ] || [ "$errors" != 0 ] || [ "$skipped" != 0 ] || [ "$runs" -lt 2 ]; then
+    echo "refusing to keep $adopter: tests=${runs:-missing} failures=${fails:-missing} errors=${errors:-missing} skipped=${skipped:-missing}. Retained files were not changed." >&2
+    exit 1
+  fi
+  for rel in own-host-transcript.log knox-transcript.log own-host-audit.jsonl knox-audit.jsonl \
+      aegis/own-host.yaml aegis/knox-aegis.yaml aegis/knox-topology.xml HOW-TO-RUN.md; do
+    if [ ! -s "$from/$rel" ]; then
+      echo "refusing to keep $adopter: missing or empty $rel. Retained files were not changed." >&2
+      exit 1
+    fi
+  done
   to="$here/$adopter/results"
   mkdir -p "$to"
   cp "$from"/*-transcript.log "$from"/*-audit.jsonl "$to"/
   if [ -f "$from/knox-logs/knox-ext-plugins.log" ]; then cp "$from/knox-logs/knox-ext-plugins.log" "$to"/; fi
-  cp "$root/examples/$module/target/surefire-reports/io.github.vaquarkhan.aegis.validation.$test.txt" "$to/test-report.txt"
+  cp "$report" "$to/test-report.txt"
   # What the run used, recorded by the harness: Aegis YAML per front door, Knox topology, HOW-TO-RUN.md.
   if [ -d "$from/aegis" ]; then mkdir -p "$here/$adopter/aegis" && cp "$from"/aegis/* "$here/$adopter/aegis/"; fi
   if [ -d "$from/engine" ]; then mkdir -p "$here/$adopter/engine" && cp "$from"/engine/* "$here/$adopter/engine/"; fi

@@ -26,14 +26,15 @@ real engine through both Aegis front doors:
   demo LDAP, `Default` identity assertion group mapping, and `AclsAuthz` on the route. Knox authenticates
   and admits the request; Aegis parses and governs the MCP request body.
 
-Every verified folder contains the exact Aegis YAML used by both doors, the actual Knox topology, the
-engine configuration files written by the test, a `HOW-TO-RUN.md` with engine and front-door commands, a
-sample MCP request, and retained result logs. The other **4** folders (Atlas, Cassandra, Impala,
+Every retained run folder contains the exact Aegis YAML used by both doors, the actual Knox topology, a
+`HOW-TO-RUN.md` with engine and front-door commands, a sample MCP request, and retained result logs.
+`engine/` is present only where the test wrote configuration files: ActiveMQ, BookKeeper, Flume, Ignite,
+Kafka, Pulsar, and ZooKeeper. The other **4** folders (Atlas, Cassandra, Impala,
 Paimon) contain `aegis/canonical.yaml`: an exact reference copy of the profile covered by
 `AdapterConfigsTest`, clearly labeled as not captured from a real-engine run. Tokens, approval receipts
 and credentials are not kept.
 
-At this point: **28 profiles have real two-door evidence** (including Docker-backed Airflow, CouchDB, Doris,
+At this point: **28 retained runs** (27 adopter profiles plus the Spark and Iceberg tutorial scenario) have real two-door evidence (including Docker-backed Airflow, CouchDB, Doris,
 Druid, Hadoop, HBase, Hive, NiFi, Pinot, Ranger, Storm, and Superset); **4 more** are profile/contract supported and still
 need a product Keep (see [adopter real-engine status](../../docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md)):
 Paimon and Cassandra are HTTP like other Docker Keeps; Impala still needs a coordinator; Atlas needs
@@ -103,7 +104,7 @@ Start with a verified folder’s `README.md`, then open these files in this orde
    step/result table.
 2. `aegis/own-host.yaml`: exact own-host Aegis configuration used.
 3. `aegis/knox-aegis.yaml` and `aegis/knox-topology.xml`: exact configuration and topology used inside Knox.
-4. `engine/`: the real engine configuration file(s) written by the test.
+4. `engine/`, when that folder exists: the engine configuration files the test wrote. Docker and in-process engines do not leave this folder.
 5. `results/`: transcript, audit journals, optional Knox `ext/` plugin installation log, and Surefire result.
 
 The root [README](../../README.md) and the security/conformance documents explain the security model. The

@@ -18,9 +18,11 @@ Inputs, per project, all under examples/adopters/<project>/ and written by the t
 (examples/adopters/run-example.ps1 <project> -Keep):
   HOW-TO-RUN.md                 engine command lines, start-up steps and every request with its result
   aegis/own-host.yaml           the Aegis configuration the own-host door loaded
+  aegis/knox-aegis.yaml         the Aegis configuration the Knox door loaded
   aegis/knox-topology.xml       the Knox topology the Knox door used
   results/test-report.txt       the Surefire summary of that run
   results/own-host-transcript.log, results/knox-transcript.log
+  results/own-host-audit.jsonl, results/knox-audit.jsonl
 
 Outputs:
   docs/tutorials/<project>.md
@@ -389,9 +391,19 @@ def tutorial(project, title, deep):
     base = EXAMPLES / project
     how_path, cfg_path = base / "HOW-TO-RUN.md", base / "aegis" / "own-host.yaml"
     report_path = base / "results" / "test-report.txt"
-    for p in (how_path, cfg_path, report_path, base / "aegis" / "knox-topology.xml"):
-        if not p.is_file():
-            return None, f"{project}: missing {p.relative_to(ROOT)}"
+    required = (
+        how_path, cfg_path, report_path,
+        base / "aegis" / "knox-topology.xml", base / "aegis" / "knox-aegis.yaml",
+        base / "results" / "own-host-transcript.log", base / "results" / "knox-transcript.log",
+        base / "results" / "own-host-audit.jsonl", base / "results" / "knox-audit.jsonl",
+    )
+    for p in required:
+        if not p.is_file() or p.stat().st_size == 0:
+            try:
+                shown = p.relative_to(ROOT)
+            except ValueError:
+                shown = p
+            return None, f"{project}: missing or empty {shown}"
     how = how_path.read_text(encoding="utf-8")
     counts = report_counts(report_path.read_text(encoding="utf-8", errors="replace"))
     if counts is None or counts[1] or counts[2] or counts[3] or counts[0] < 2:

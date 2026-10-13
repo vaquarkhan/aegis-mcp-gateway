@@ -20,7 +20,7 @@ This example runs the shipped profile
 against a real Apache Pulsar 4.0.13 broker and bookie, through Aegis's own server and inside a stock Apache
 Knox 3.0.0 gateway. Only the broker address and the egress network are substituted.
 
-Status: **verified on this tree**, both front doors. The kept logs are in [results/](results/).
+Status: **retained historical run**, both front doors. The kept logs are in [results/](results/).
 
 ## Files in this folder
 

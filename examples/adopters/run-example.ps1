@@ -100,15 +100,34 @@ if ($LASTEXITCODE -ne 0) { throw 'validation-module clean failed' }
 & $mvn -B -f "$root\examples\pom.xml" -Preal-engines -pl $module -am test "-Dtest=$test" "-Dsurefire.failIfNoSpecifiedTests=false"
 $status = $LASTEXITCODE
 
-if ($Keep -and $status -eq 0) {
+if ($Keep) {
+    if ($status -ne 0) { throw "refusing to keep ${Adopter}: Maven exited $status" }
     $from = Join-Path $root "examples\aegis-validation\target\adopter-results\$Adopter"
+    $report = Join-Path $root "examples\$($module -replace '/', '\')\target\surefire-reports\io.github.vaquarkhan.aegis.validation.$test.txt"
+    if (-not (Test-Path $report)) { throw "refusing to keep ${Adopter}: missing Surefire report $report" }
+    $summary = Select-String -Path $report -Pattern 'Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)' |
+        Select-Object -First 1
+    if (-not $summary) { throw "refusing to keep ${Adopter}: Surefire report has no summary" }
+    $run, $fail, $err, $skip = [int]$summary.Matches[0].Groups[1].Value, [int]$summary.Matches[0].Groups[2].Value, [int]$summary.Matches[0].Groups[3].Value, [int]$summary.Matches[0].Groups[4].Value
+    if ($fail -ne 0 -or $err -ne 0 -or $skip -ne 0 -or $run -lt 2) {
+        throw "refusing to keep ${Adopter}: tests=$run failures=$fail errors=$err skipped=$skip. Retained files were not changed."
+    }
+    $required = @(
+        'own-host-transcript.log', 'knox-transcript.log', 'own-host-audit.jsonl', 'knox-audit.jsonl',
+        'aegis\own-host.yaml', 'aegis\knox-aegis.yaml', 'aegis\knox-topology.xml', 'HOW-TO-RUN.md'
+    )
+    foreach ($rel in $required) {
+        $path = Join-Path $from $rel
+        if (-not (Test-Path $path) -or (Get-Item $path).Length -eq 0) {
+            throw "refusing to keep ${Adopter}: missing or empty $rel. Retained files were not changed."
+        }
+    }
     $to = Join-Path $PSScriptRoot "$Adopter\results"
     New-Item -ItemType Directory -Force $to | Out-Null
     Get-ChildItem $from -File | Where-Object { $_.Name -match '-(transcript\.log|audit\.jsonl)$' } |
         Copy-Item -Destination $to -Force
     $plugins = Join-Path $from 'knox-logs\knox-ext-plugins.log'
     if (Test-Path $plugins) { Copy-Item $plugins (Join-Path $to 'knox-ext-plugins.log') -Force }
-    $report = Join-Path $root "examples\$($module -replace '/', '\')\target\surefire-reports\io.github.vaquarkhan.aegis.validation.$test.txt"
     Copy-Item $report (Join-Path $to 'test-report.txt') -Force
     # What the run used, recorded by the harness: the Aegis YAML per front door, the Knox topology, and
     # HOW-TO-RUN.md (engine command lines, start-up steps, the requests sent). Kept beside results/.

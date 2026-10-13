@@ -25,8 +25,11 @@
 - Tutorial wording now matches the scripts and the retained Iceberg Keep. The Spark and Iceberg IDE
   README uses the reader token you set, the Keep attests one reader scope denial, the local tutorial
   index links to the repository folder, and the Kafka and Spark clients are 59 and 38 lines.
-- A2A stays an opt-in two-door test. It is not counted in the 28 retained profiles, because this tree
+- A2A stays an opt-in two-door test. It is not counted in the 28 retained runs, because this tree
   has no saved A2A results and the test is skipped without `AEGIS_A2A_PYTHON`.
+- `-Keep` copies a run only when both doors passed with no skipped tests and the new transcripts, audits,
+  and configurations are all present. Hello World does not report ready while the inventory service is down.
+  The catalog wording is 28 retained runs: 27 profiles plus the Spark and Iceberg tutorial scenario.
 - The Spark and Iceberg retained run is dated 2026-10-04 (US Central). The HBase front-door test pins
   the only published `dajobe/hbase` digest.
 - Cursor and Kiro setup now says which JSON to copy into the open project, and that the agent is on

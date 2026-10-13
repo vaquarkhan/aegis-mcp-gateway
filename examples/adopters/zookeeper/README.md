@@ -20,7 +20,7 @@ This example runs the shipped profile
 against a real Apache ZooKeeper 3.9.3 server, through Aegis's own server and inside a stock Apache Knox
 3.0.0 gateway. Only the server addresses and the egress network are substituted.
 
-Status: **verified on this tree**, both front doors. The kept logs are in [results/](results/).
+Status: **retained historical run**, both front doors. The kept logs are in [results/](results/).
 
 ## Files in this folder
 

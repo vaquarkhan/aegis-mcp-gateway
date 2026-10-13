@@ -21,7 +21,7 @@ against a real Apache Flink 1.20.1 cluster, twice: once behind Aegis's own serve
 stock Apache Knox 3.0.0 gateway. Nothing in the YAML changes between the two runs except the JobManager
 address and the egress network. The own-host run appends a `host:` section; the Knox run uses a topology.
 
-Status: **verified on this tree**, both front doors. The kept logs are in [results/](results/).
+Status: **retained historical run**, both front doors. The kept logs are in [results/](results/).
 
 ## Files in this folder
 
