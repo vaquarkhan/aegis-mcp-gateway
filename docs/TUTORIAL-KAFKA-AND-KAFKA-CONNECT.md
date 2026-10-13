@@ -207,8 +207,15 @@ Apache publishes the `.sha512` file in GPG `--print-md` form (`kafka_2.13-3.9.1.
 curl -sSLO https://archive.apache.org/dist/kafka/3.9.1/kafka_2.13-3.9.1.tgz
 curl -sSLO https://archive.apache.org/dist/kafka/3.9.1/kafka_2.13-3.9.1.tgz.sha512
 expected="$(sed 's/^[^:]*://' kafka_2.13-3.9.1.tgz.sha512 | tr -d ' \r\n' | tr 'A-F' 'a-f')"
-actual="$(sha512sum kafka_2.13-3.9.1.tgz | cut -d' ' -f1)"   # macOS: shasum -a 512 kafka_2.13-3.9.1.tgz | cut -d' ' -f1
-[[ "$expected" == "$actual" ]] || { echo "SHA-512 mismatch" >&2; exit 1; }
+if command -v sha512sum >/dev/null 2>&1; then
+  actual="$(sha512sum kafka_2.13-3.9.1.tgz | cut -d' ' -f1)"
+elif command -v shasum >/dev/null 2>&1; then
+  actual="$(shasum -a 512 kafka_2.13-3.9.1.tgz | cut -d' ' -f1)"
+else
+  echo "Need sha512sum or shasum to verify the archive" >&2
+  exit 1
+fi
+[[ "$expected" == "$actual" && ${#actual} -eq 128 ]] || { echo "SHA-512 mismatch" >&2; exit 1; }
 tar -xzf kafka_2.13-3.9.1.tgz
 export KAFKA_HOME="$PWD/kafka_2.13-3.9.1"
 ```

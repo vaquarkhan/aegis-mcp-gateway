@@ -63,14 +63,26 @@ Set-Content -Path (Join-Path $work 'pids.txt') -Value @($svc.Id, $gw.Id) -Encodi
 $ready = $false
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Milliseconds 500
-    if ($gw.HasExited) { break }
+    if ($gw.HasExited -or $svc.HasExited) { break }
     try {
         if ((Invoke-WebRequest "http://127.0.0.1:$Port/readyz" -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200) { $ready = $true; break }
     } catch { }
 }
-if (-not $ready) {
-    Write-Host 'The gateway did not become ready. Last lines of work\gateway.err.log:'
-    Get-Content (Join-Path $work 'gateway.err.log') -Tail 15 -ErrorAction SilentlyContinue
+$inventoryUp = $false
+if (-not $svc.HasExited) {
+    try {
+        if ((Invoke-WebRequest 'http://127.0.0.1:9109/things' -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200) { $inventoryUp = $true }
+    } catch { }
+}
+if (-not $ready -or -not $inventoryUp) {
+    if (-not $ready) {
+        Write-Host 'The gateway did not become ready. Last lines of work\gateway.err.log:'
+        Get-Content (Join-Path $work 'gateway.err.log') -Tail 15 -ErrorAction SilentlyContinue
+    }
+    if (-not $inventoryUp) {
+        Write-Host 'The inventory service is not answering on http://127.0.0.1:9109/things. Last lines of work\inventory.err.log:'
+        Get-Content (Join-Path $work 'inventory.err.log') -Tail 15 -ErrorAction SilentlyContinue
+    }
     & (Join-Path $here 'stop-hello.ps1')
     throw 'Hello World did not start; see the log lines above.'
 }

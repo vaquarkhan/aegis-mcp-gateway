@@ -20,7 +20,7 @@ This example runs the shipped profile
 two real Apache Spark 4.0.1 services, through Aegis's own server and inside a stock Apache Knox 3.0.0
 gateway. The profile is plain REST (`type: http`), so no plugin is needed in either front door.
 
-Status: **verified on this tree**, both front doors. The kept logs are in [results/](results/).
+Status: **retained historical run**, both front doors. The kept logs are in [results/](results/).
 
 ## Files in this folder
 

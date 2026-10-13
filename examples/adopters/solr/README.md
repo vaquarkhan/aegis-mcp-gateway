@@ -20,7 +20,7 @@ This example runs the shipped profile
 against a real Apache Solr 9.10.1 node in SolrCloud mode, through Aegis's own server and inside a stock
 Apache Knox 3.0.0 gateway. Only the node address and the egress network are substituted.
 
-Status: **verified on this tree** with Solr 9.10.1, both front doors. The kept logs are in [results/](results/).
+Status: **retained historical run** with Solr 9.10.1, both front doors. The kept logs are in [results/](results/).
 Solr 10.0.0 needs Java 21 and was not run; the validation runs used JDK 17 (see
 [Tested environments](../../../docs/VALIDATION.md#tested-environments)).
 

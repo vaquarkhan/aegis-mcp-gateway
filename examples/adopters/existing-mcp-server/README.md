@@ -20,7 +20,7 @@ This example runs the shipped profile
 in front of two MCP servers Aegis shares no code with, through Aegis's own server and inside a stock
 Apache Knox 3.0.0 gateway. Only the server URL, the stdio command and the egress network are substituted.
 
-Status: **verified on this tree**: both front doors with the profile's `era: AUTO`, plus a third run with
+Status: **retained historical run**: both front doors with the profile's `era: AUTO`, plus a third run with
 `era: LEGACY` for the 2025 handshake. The kept logs are in [results/](results/).
 
 ## Files in this folder

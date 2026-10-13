@@ -21,7 +21,7 @@ against real Apache Calcite 1.42.0 behind the Apache Calcite Avatica 1.28.0 stan
 Aegis's own server and inside a stock Apache Knox 3.0.0 gateway. Only the Avatica address and the egress
 network are substituted.
 
-Status: **verified on this tree**, both front doors. The kept logs are in [results/](results/).
+Status: **retained historical run**, both front doors. The kept logs are in [results/](results/).
 
 ## Files in this folder
 

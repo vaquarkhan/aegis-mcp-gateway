@@ -21,7 +21,7 @@ against a real Apache CouchDB 3.4.2 node (official `couchdb` Docker image), thro
 inside a stock Apache Knox 3.0.0 gateway. Only the CouchDB address, egress CIDR and admin basic-auth
 environment are substituted.
 
-Status: **verified on this tree when Docker is available**, both front doors. Kept logs land in
+Status: **retained historical run**, both front doors. Kept logs land in
 [results/](results/) after `./run-example.ps1 couchdb -Keep`.
 
 ## Files in this folder

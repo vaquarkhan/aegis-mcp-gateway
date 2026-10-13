@@ -120,11 +120,15 @@ Docker-backed Airflow, CouchDB, Doris, Druid, Hadoop, HBase, NiFi, Pinot, Storm,
 the `spark-iceberg` scenario). Each passed Keep was run through both own-host Aegis and the then-built
 `knox-bundle` jar in a stock Knox 3.0.0 process. Retained folders were refreshed from those runs; the
 per-project tutorials in [TUTORIALS.md](TUTORIALS.md) are built from them.
+That 26 is the catalog on 2026-10-05. The current catalog is **28 retained runs**: 27 adopter profiles
+plus the Spark and Iceberg tutorial scenario. Atlas, Cassandra, Impala, and Paimon are the 4
+configuration-only profiles. Hive and Ranger were added on 2026-10-11.
 Each retained folder contains:
 
 - `aegis/own-host.yaml`, `aegis/knox-aegis.yaml` and `aegis/knox-topology.xml`: the exact redacted
   configuration each front door used;
-- `engine/`: the engine configuration files the test wrote;
+- `engine/`, for ActiveMQ, BookKeeper, Flume, Ignite, Kafka, Pulsar, and ZooKeeper: the engine
+  configuration files the test wrote. The other retained runs do not have this folder;
 - `HOW-TO-RUN.md`: process startup commands, own-host and Knox setup, a sample MCP request and the
   step/result table;
 - `results/`: transcripts, audit journals, Surefire result and, where needed, the Knox plugin report.
@@ -176,8 +180,9 @@ not hand-written protocol fixtures.
 ## Evidence by target
 
 The detailed target-status source is
-[`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md): it distinguishes 26 real two-door runs
-from 6 configuration profiles whose product-stack run is next. The table below is
+[`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md): it distinguishes 28 retained runs
+(27 adopter profiles plus the Spark and Iceberg tutorial scenario) from 4 configuration-only profiles
+(Atlas, Cassandra, Impala, Paimon). The table below is
 supplemental source/converter detail.
 
 | Target | Recorded evidence | Qualification |
