@@ -14,8 +14,8 @@
 # limitations under the License.
 #
 # Hello World: starts the example inventory service (Python standard library only) on 127.0.0.1:9109
-# and the Aegis gateway on http://127.0.0.1:8080/mcp, both in the background, waits until the gateway
-# is ready, then returns so you can keep using the same shell. Stop both with ./stop-hello.sh.
+# and the Aegis gateway on http://127.0.0.1:8080/mcp, both in the background, waits until both answer,
+# then returns so you can keep using the same shell. Stop both with ./stop-hello.sh.
 #   ./start-hello.sh          # gateway on port 8080
 #   ./start-hello.sh 18080    # if 8080 is already in use on this machine
 # Needs AEGIS_SIGNING_KEY, ANALYST_TOKEN, OPERATOR_TOKEN and APPROVER_TOKEN (see the guide, step 2).
@@ -51,24 +51,27 @@ svc=$!
 (cd "$here" && exec java -jar "$jar" --config "$config") > "$work/gateway.log" 2>&1 &
 gw=$!
 printf '%s\n%s\n' "$svc" "$gw" > "$work/pids.txt"
-for _ in $(seq 1 60); do
+for ((i = 0; i < 60; i++)); do
   sleep 0.5
   kill -0 "$gw" 2>/dev/null || break
-  if curl -fsS -o /dev/null "http://127.0.0.1:$port/readyz" 2>/dev/null \
-      && kill -0 "$svc" 2>/dev/null \
-      && curl -fsS -o /dev/null "http://127.0.0.1:9109/things" 2>/dev/null; then
+  kill -0 "$svc" 2>/dev/null || break
+  # Both probes must succeed in this iteration. /_received does not add a tutorial request.
+  gateway_ready=0
+  inventory_ready=0
+  if curl -fsS -o /dev/null "http://127.0.0.1:$port/readyz" 2>/dev/null; then gateway_ready=1; fi
+  if curl -fsS -o /dev/null "http://127.0.0.1:9109/_received" 2>/dev/null; then inventory_ready=1; fi
+  if [[ $gateway_ready -eq 1 && $inventory_ready -eq 1 ]]; then
     echo "Aegis is ready on http://127.0.0.1:$port/mcp (governing the inventory service on 127.0.0.1:9109)."
     echo 'Stop both with ./stop-hello.sh'
     exit 0
   fi
-  kill -0 "$svc" 2>/dev/null || break
 done
 if ! kill -0 "$gw" 2>/dev/null || ! curl -fsS -o /dev/null "http://127.0.0.1:$port/readyz" 2>/dev/null; then
   echo 'The gateway did not become ready. Last lines of work/gateway.log:' >&2
   tail -n 15 "$work/gateway.log" >&2 || true
 fi
-if ! kill -0 "$svc" 2>/dev/null || ! curl -fsS -o /dev/null "http://127.0.0.1:9109/things" 2>/dev/null; then
-  echo 'The inventory service is not answering on http://127.0.0.1:9109/things. Last lines of work/inventory.log:' >&2
+if ! kill -0 "$svc" 2>/dev/null || ! curl -fsS -o /dev/null "http://127.0.0.1:9109/_received" 2>/dev/null; then
+  echo 'The inventory service is not answering on http://127.0.0.1:9109/_received. Last lines of work/inventory.log:' >&2
   tail -n 15 "$work/inventory.log" >&2 || true
 fi
 "$here/stop-hello.sh"

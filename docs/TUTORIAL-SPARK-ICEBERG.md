@@ -247,6 +247,19 @@ your workspace. VS Code prompts for the token once and keeps it in its secret st
 `.kiro/settings/mcp.json` and replace the token placeholder. Kiro's
 [MCP configuration](https://kiro.dev/docs/mcp/configuration/) accepts a remote `url` with `headers`, and
 plain HTTP for localhost. Leave `autoApprove` empty, so Kiro also asks you before each tool call.
+Before enabling `aegis-lake-knox`, replace `REPLACE_WITH_BASE64_OF_KNOX_DEMO_CREDENTIALS` with the
+Base64 encoding of the UTF-8 bytes of the exact `username:password` value from the local Knox demo LDAP.
+The JSON already contains the `Basic ` scheme, so paste only the encoded value. Do not commit the result.
+
+```powershell
+$basic = [Convert]::ToBase64String(
+    [Text.Encoding]::UTF8.GetBytes("$KNOX_USER`:$KNOX_PASSWORD")
+)
+```
+
+```bash
+basic="$(printf '%s:%s' "$KNOX_USER" "$KNOX_PASSWORD" | base64 | tr -d '\r\n')"
+```
 
 **Cursor:** copy [`ide/cursor/mcp.json`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/adopters/tutorials/spark-iceberg/ide/cursor/mcp.json) to
 `.cursor/mcp.json` in the project the editor has open, and replace the token placeholder with Ana's reader token from section 4.

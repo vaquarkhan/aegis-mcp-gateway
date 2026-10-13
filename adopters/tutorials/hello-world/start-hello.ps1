@@ -14,7 +14,7 @@
 #
 # Hello World: starts the example inventory service (Python standard library only) on
 # 127.0.0.1:9109 and the Aegis gateway on http://127.0.0.1:8080/mcp, both in the background, waits
-# until the gateway is ready, then returns so you can keep using the same terminal (and the same
+# until both the gateway and the inventory service answer, then returns so you can keep using the same terminal (and the same
 # token variables). Stop both with .\stop-hello.ps1.
 #   .\start-hello.ps1              # gateway on port 8080
 #   .\start-hello.ps1 -Port 18080  # if 8080 is already in use on this machine
@@ -60,27 +60,29 @@ $gw = Start-Process -FilePath $java.Source -ArgumentList '-jar', "`"$jar`"", '--
     -RedirectStandardOutput (Join-Path $work 'gateway.log') -RedirectStandardError (Join-Path $work 'gateway.err.log')
 Set-Content -Path (Join-Path $work 'pids.txt') -Value @($svc.Id, $gw.Id) -Encoding ascii
 
-$ready = $false
+$gatewayReady = $false
+$inventoryReady = $false
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Milliseconds 500
     if ($gw.HasExited -or $svc.HasExited) { break }
+    # Both probes must succeed in this iteration. /_received does not add a tutorial request.
+    $gatewayReady = $false
+    $inventoryReady = $false
     try {
-        if ((Invoke-WebRequest "http://127.0.0.1:$Port/readyz" -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200) { $ready = $true; break }
+        if ((Invoke-WebRequest "http://127.0.0.1:$Port/readyz" -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200) { $gatewayReady = $true }
     } catch { }
-}
-$inventoryUp = $false
-if (-not $svc.HasExited) {
     try {
-        if ((Invoke-WebRequest 'http://127.0.0.1:9109/things' -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200) { $inventoryUp = $true }
+        if ((Invoke-WebRequest 'http://127.0.0.1:9109/_received' -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200) { $inventoryReady = $true }
     } catch { }
+    if ($gatewayReady -and $inventoryReady) { break }
 }
-if (-not $ready -or -not $inventoryUp) {
-    if (-not $ready) {
+if (-not $gatewayReady -or -not $inventoryReady) {
+    if (-not $gatewayReady) {
         Write-Host 'The gateway did not become ready. Last lines of work\gateway.err.log:'
         Get-Content (Join-Path $work 'gateway.err.log') -Tail 15 -ErrorAction SilentlyContinue
     }
-    if (-not $inventoryUp) {
-        Write-Host 'The inventory service is not answering on http://127.0.0.1:9109/things. Last lines of work\inventory.err.log:'
+    if (-not $inventoryReady) {
+        Write-Host 'The inventory service is not answering on http://127.0.0.1:9109/_received. Last lines of work\inventory.err.log:'
         Get-Content (Join-Path $work 'inventory.err.log') -Tail 15 -ErrorAction SilentlyContinue
     }
     & (Join-Path $here 'stop-hello.ps1')
