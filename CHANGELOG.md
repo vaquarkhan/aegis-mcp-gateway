@@ -17,6 +17,9 @@
 
 ## 2.0.0 (unreleased)
 
+- Hello World reports ready only after both the gateway and the inventory service answer, and the Bash
+  launcher no longer needs `seq`. Generated Knox tutorials stop the demo LDAP process their shell started,
+  and Kiro setup explains how to Base64-encode the local Knox demo credentials.
 - A self-contained Hello World starts the example inventory service and leaves Aegis listening, and the
   generated tutorials put the source plugin jar on the classpath and read Knox's exported certificate
   from the Knox installation.

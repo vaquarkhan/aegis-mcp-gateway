@@ -36,5 +36,20 @@ Folder overview: [`adopters/tutorials/README.md`](../../README.md).
 Start the tutorial scripts first so Aegis is listening on `http://127.0.0.1:8080/mcp`, then copy the JSON
 into the project the editor has open and replace the token with the `READER_TOKEN` value you set in
 section 4 of the tutorial. The tutorial stores that value in the environment and does not print it.
+
+Before enabling the Kiro Knox entry, replace `REPLACE_WITH_BASE64_OF_KNOX_DEMO_CREDENTIALS` with the
+Base64 encoding of the UTF-8 bytes of the exact `username:password` value from the local Knox demo LDAP.
+The JSON already contains the `Basic ` scheme, so paste only the encoded value. Do not commit the result.
+
+```powershell
+$basic = [Convert]::ToBase64String(
+    [Text.Encoding]::UTF8.GetBytes("$KNOX_USER`:$KNOX_PASSWORD")
+)
+```
+
+```bash
+basic="$(printf '%s:%s' "$KNOX_USER" "$KNOX_PASSWORD" | base64 | tr -d '\r\n')"
+```
+
 Reload MCP. You are ready when Cursor or Kiro lists `aegis-lake` and shows its tools. Then name
 `aegis-lake` in the agent chat. Do not commit real secrets.

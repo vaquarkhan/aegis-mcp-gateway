@@ -59,7 +59,25 @@ Do these in order. The agent is not using Aegis until the last step is true.
    in the terminal that started Aegis. That token is the person `guest`. The name of the variable is in
    `examples/adopters/hbase/aegis/own-host.yaml`; the file does not contain the secret.
    VS Code asks for the token instead of storing it in the JSON.
-4. Reload MCP in Cursor or Kiro.
+4. Before enabling the Kiro Knox entry, replace `REPLACE_WITH_BASE64_OF_KNOX_DEMO_CREDENTIALS` with the
+   Base64 encoding of the UTF-8 bytes of the exact `username:password` value from the local Knox demo LDAP.
+   The JSON already contains the `Basic ` scheme, so paste only the encoded value. Do not commit the result.
+
+   PowerShell:
+
+   ```powershell
+   $basic = [Convert]::ToBase64String(
+       [Text.Encoding]::UTF8.GetBytes("$KNOX_USER`:$KNOX_PASSWORD")
+   )
+   ```
+
+   Bash:
+
+   ```bash
+   basic="$(printf '%s:%s' "$KNOX_USER" "$KNOX_PASSWORD" | base64 | tr -d '\r\n')"
+   ```
+
+5. Reload MCP in Cursor or Kiro.
 
 You are ready to give the agent an instruction when both of these are true:
 

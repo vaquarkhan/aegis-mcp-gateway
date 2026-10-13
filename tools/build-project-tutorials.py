@@ -345,7 +345,24 @@ def normalize_bash_block(body, project):
         ])
     if prefix:
         body = "\n".join(prefix) + "\n" + body
-    return body
+    # The retained HOW-TO-RUN starts demo LDAP in the background and never records its PID.
+    # Own only that process. The following gateway command stays in the foreground, including a
+    # Spark Connect command that is not a plain `java -jar bin/gateway.jar`.
+    lines = body.split("\n")
+    owned = []
+    for line in lines:
+        owned.append(line)
+        if line == "java -jar bin/ldap.jar conf &":
+            owned.extend([
+                "ldap_pid=$!",
+                "cleanup_ldap() {",
+                '  kill "$ldap_pid" 2>/dev/null || true',
+                '  wait "$ldap_pid" 2>/dev/null || true',
+                "}",
+                "# The shell stays in the foreground for Knox; when Knox exits, stop only this LDAP process.",
+                "trap cleanup_ldap EXIT",
+            ])
+    return "\n".join(owned)
 
 
 def portable_commands(text, project):
@@ -573,6 +590,17 @@ def tutorial(project, title, deep):
                f"`aegis-{project}-knox` entry disabled unless you started the Knox door. Replace "
                f"`REPLACE_WITH_YOUR_TOKEN` with the same value you exported as `AEGIS_VALIDATION_TOKEN_READER` "
                f"(the person `guest`). Section 3 stops the gateway; the process from section 5 has to still be running.")
+    out.append("\nBefore enabling the Kiro Knox entry, replace `REPLACE_WITH_BASE64_OF_KNOX_DEMO_CREDENTIALS` "
+               "with the Base64 encoding of the UTF-8 bytes of the exact `username:password` value from the "
+               "local Knox demo LDAP. The JSON already contains the `Basic ` scheme, so paste only the encoded "
+               "value. Do not commit the result.\n")
+    out.append("```powershell\n"
+               "$basic = [Convert]::ToBase64String(\n"
+               "    [Text.Encoding]::UTF8.GetBytes(\"$KNOX_USER`:$KNOX_PASSWORD\")\n"
+               ")\n```\n")
+    out.append("```bash\n"
+               "basic=\"$(printf '%s:%s' \"$KNOX_USER\" \"$KNOX_PASSWORD\" | base64 | tr -d '\\r\\n')\"\n"
+               "```")
     out.append(f"\nReload MCP. You are ready to instruct the agent when the gateway log still says "
                f"`Aegis gateway listening on http://127.0.0.1:{OWN_HOST_PORT}/mcp`, and Cursor or Kiro lists "
                f"`aegis-{project}` with its tools. Then use a prompt from section 8 and name `aegis-{project}`. "
@@ -629,8 +657,9 @@ def tutorial(project, title, deep):
     out.append("In your own deployment, add `audit.checkpoint` so the head is exported to storage the journal writer "
                "cannot rewrite. Verify it with `--verify-audit` plus your journal and checkpoint file paths.")
     out.append("\nWhen you ran the full scenario, the test teardown stopped the processes and containers it started. "
-               "For a manual run, stop the foreground Aegis, Knox, and engine processes with Ctrl+C in their "
-               "terminals, then stop any background process you started from section 4.")
+               "For a manual run, stop the foreground Aegis or Knox process with Ctrl+C in its terminal. "
+               "The section 6 EXIT trap stops the demo LDAP process that shell started. "
+               "Stop any background engine process you started in section 4 yourself.")
     containers = docker_names(engine)
     if containers:
         out.append("Remove only this tutorial's retained Docker containers after you no longer need their data:\n")
@@ -702,7 +731,25 @@ Do these in order. The agent is not using Aegis until the last step is true.
    in the terminal that started Aegis. That token is the person `guest`. The name of the variable is in
    `examples/adopters/{project}/aegis/own-host.yaml`; the file does not contain the secret.
    VS Code asks for the token instead of storing it in the JSON.
-4. Reload MCP in Cursor or Kiro.
+4. Before enabling the Kiro Knox entry, replace `REPLACE_WITH_BASE64_OF_KNOX_DEMO_CREDENTIALS` with the
+   Base64 encoding of the UTF-8 bytes of the exact `username:password` value from the local Knox demo LDAP.
+   The JSON already contains the `Basic ` scheme, so paste only the encoded value. Do not commit the result.
+
+   PowerShell:
+
+   ```powershell
+   $basic = [Convert]::ToBase64String(
+       [Text.Encoding]::UTF8.GetBytes("$KNOX_USER`:$KNOX_PASSWORD")
+   )
+   ```
+
+   Bash:
+
+   ```bash
+   basic="$(printf '%s:%s' "$KNOX_USER" "$KNOX_PASSWORD" | base64 | tr -d '\\r\\n')"
+   ```
+
+5. Reload MCP in Cursor or Kiro.
 
 You are ready to give the agent an instruction when both of these are true:
 
@@ -791,9 +838,8 @@ def main():
         writes[DOCS / f"{project}.md"] = text
         ide_dir = IDE_ROOT / project / "ide"
         writes[ide_dir / "README.md"] = ide_readme(project, title, meta)
-        if not ide_dir.is_dir():
-            for rel, body in ide_files(project, meta).items():
-                writes[ide_dir / rel] = json.dumps(body, indent=2) + "\n"
+        for rel, body in ide_files(project, meta).items():
+            writes[ide_dir / rel] = json.dumps(body, indent=2) + "\n"
     writes[DOCS / "README.md"] = index(built, skipped)
     changed = [p for p, t in writes.items() if not p.is_file() or p.read_text(encoding="utf-8") != t]
     if check:

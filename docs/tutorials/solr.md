@@ -185,6 +185,13 @@ mkdir -p conf/aegis && cp $REPO/examples/adopters/solr/aegis/knox-aegis.yaml con
 cp $REPO/examples/adopters/solr/aegis/knox-topology.xml conf/topologies/aegis-solr.xml   # then replace ${KNOX_HOME} in it
 # 5. Knox's demo LDAP (port 33389) and the gateway
 java -jar bin/ldap.jar conf &
+ldap_pid=$!
+cleanup_ldap() {
+  kill "$ldap_pid" 2>/dev/null || true
+  wait "$ldap_pid" 2>/dev/null || true
+}
+# The shell stays in the foreground for Knox; when Knox exits, stop only this LDAP process.
+trap cleanup_ldap EXIT
 java -jar bin/gateway.jar
 ```
 
@@ -230,6 +237,18 @@ Ready-made files, in each IDE's documented format, are in [`adopters/tutorials/s
 Own host: `http://127.0.0.1:8080/mcp`. Knox: `https://localhost:8443/gateway/aegis-solr/aegis-mcp/v1/mcp`; trust Knox's certificate first (`java -jar bin/knoxcli.jar export-cert --type PEM`). The token you give the IDE decides who you are to Aegis: use the token of the person whose permissions you want the assistant to have.
 
 Copy into the project the editor has open. Cursor: `adopters/tutorials/solr/ide/cursor/mcp.json` to `.cursor/mcp.json`. Kiro: `adopters/tutorials/solr/ide/kiro/mcp.json` to `.kiro/settings/mcp.json`. Leave the `aegis-solr-knox` entry disabled unless you started the Knox door. Replace `REPLACE_WITH_YOUR_TOKEN` with the same value you exported as `AEGIS_VALIDATION_TOKEN_READER` (the person `guest`). Section 3 stops the gateway; the process from section 5 has to still be running.
+
+Before enabling the Kiro Knox entry, replace `REPLACE_WITH_BASE64_OF_KNOX_DEMO_CREDENTIALS` with the Base64 encoding of the UTF-8 bytes of the exact `username:password` value from the local Knox demo LDAP. The JSON already contains the `Basic ` scheme, so paste only the encoded value. Do not commit the result.
+
+```powershell
+$basic = [Convert]::ToBase64String(
+    [Text.Encoding]::UTF8.GetBytes("$KNOX_USER`:$KNOX_PASSWORD")
+)
+```
+
+```bash
+basic="$(printf '%s:%s' "$KNOX_USER" "$KNOX_PASSWORD" | base64 | tr -d '\r\n')"
+```
 
 Reload MCP. You are ready to instruct the agent when the gateway log still says `Aegis gateway listening on http://127.0.0.1:8080/mcp`, and Cursor or Kiro lists `aegis-solr` with its tools. Then use a prompt from section 8 and name `aegis-solr`. The agent calls Aegis. It does not call the engine URL.
 
@@ -301,7 +320,7 @@ java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
 
 In your own deployment, add `audit.checkpoint` so the head is exported to storage the journal writer cannot rewrite. Verify it with `--verify-audit` plus your journal and checkpoint file paths.
 
-When you ran the full scenario, the test teardown stopped the processes and containers it started. For a manual run, stop the foreground Aegis, Knox, and engine processes with Ctrl+C in their terminals, then stop any background process you started from section 4.
+When you ran the full scenario, the test teardown stopped the processes and containers it started. For a manual run, stop the foreground Aegis or Knox process with Ctrl+C in its terminal. The section 6 EXIT trap stops the demo LDAP process that shell started. Stop any background engine process you started in section 4 yourself.
 Remove temporary configuration copies, exported certificates, logs, and audit journals only after retaining any evidence your review or incident process requires.
 
 Limits of this run are listed in [the example README](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/solr/README.md).
