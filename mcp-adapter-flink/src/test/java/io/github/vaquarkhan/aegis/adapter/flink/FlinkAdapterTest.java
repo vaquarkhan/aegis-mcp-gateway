@@ -2,6 +2,7 @@ package io.github.vaquarkhan.aegis.adapter.flink;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -10,6 +11,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.github.vaquarkhan.aegis.adapter.flink.client.SqlReadonlyGuard;
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
 import io.github.vaquarkhan.aegis.core.spi.CallContext;
+import io.github.vaquarkhan.aegis.core.spi.PromptDef;
 import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
 import io.github.vaquarkhan.aegis.core.spi.ToolClass;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
@@ -260,5 +262,19 @@ class FlinkAdapterTest {
                 .build();
         assertEquals("http://from-yaml:8081", FlinkConfigKeys.restUrl(cfg));
         assertEquals(Set.of("/opt/jars", "/srv/jars"), FlinkConfigKeys.jarUploadAllowDirs(cfg));
+    }
+
+    @Test
+    void prompts_returnsNonEmptyValidPromptList() {
+        FlinkEngineAdapter adapter = new FlinkEngineAdapter();
+        List<PromptDef> prompts = adapter.prompts();
+
+        assertNotNull(prompts, "Prompts list should not be null");
+        assertFalse(prompts.isEmpty(), "Flink adapter should provide at least one prompt");
+
+        PromptDef prompt = prompts.get(0);
+        assertEquals("flink-job-diagnostics", prompt.getId());
+        assertNotNull(prompt.getDescription());
+        assertFalse(prompt.getTemplate().isBlank(), "Prompt template must not be empty or blank");
     }
 }

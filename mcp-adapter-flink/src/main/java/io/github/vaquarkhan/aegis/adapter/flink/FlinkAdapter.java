@@ -3,12 +3,10 @@ package io.github.vaquarkhan.aegis.adapter.flink;
 import io.github.vaquarkhan.aegis.adapter.flink.client.SqlReadonlyGuard;
 import io.github.vaquarkhan.aegis.core.config.GatewayConfig;
 import io.github.vaquarkhan.aegis.core.observability.Metrics;
-import io.github.vaquarkhan.aegis.core.spi.CredentialResolver;
-import io.github.vaquarkhan.aegis.core.spi.EngineAdapter;
-import io.github.vaquarkhan.aegis.core.spi.PassThroughCredentialResolver;
-import io.github.vaquarkhan.aegis.core.spi.ReadOnlyGuard;
+import io.github.vaquarkhan.aegis.core.spi.*;
 import io.github.vaquarkhan.aegis.core.spi.ResourceDef;
 import io.github.vaquarkhan.aegis.core.spi.ToolDef;
+import io.github.vaquarkhan.aegis.core.spi.PromptDef;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -80,5 +78,25 @@ public final class FlinkAdapter implements EngineAdapter {
             factory = new FlinkToolFactory(cfg, sqlGuard, metrics);
         }
         return factory;
+    }
+    @Override
+    public boolean healthCheck(GatewayConfig cfg) {
+        return factory(cfg).isHealthy();
+    }
+
+    @Override
+    public Set<String> capabilities(GatewayConfig cfg) {
+        return Set.of("REST_API", "SQL_GATEWAY", "JAR_UPLOAD", "SAVEPOINTS");
+    }
+
+    @Override
+    public List<PromptDef> prompts(GatewayConfig cfg) {
+        return List.of(
+                new PromptDef(
+                        "flink-job-diagnostics",
+                        "Prompt template for inspecting Apache Flink job status and backpressure metrics",
+                        "Analyze the health of Flink job '{{jobId}}'. Check checkpoint completion rates, task manager liveness, and backpressure metrics across subtasks."
+                )
+        );
     }
 }
