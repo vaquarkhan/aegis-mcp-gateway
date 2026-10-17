@@ -110,7 +110,10 @@ public final class Inputs {
      * directories. An empty allow list rejects everything, which keeps artifact upload fail-closed
      * until an operator opts in.
      */
-    public static Path requireJarPath(String path, Set<String> allowDirs) {
+    public static Path requireJarPath(String path, Set<String> allowDirs, String envVarName) {
+        if (allowDirs == null || allowDirs.isEmpty()) {
+            throw new InvalidInput("jar upload directories not configured (" + envVarName + ")");
+        }
         if (path == null || path.isBlank()) {
             throw new InvalidInput("jar path required");
         }
