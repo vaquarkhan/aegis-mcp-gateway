@@ -88,8 +88,10 @@ class RangerFrontDoorsTest {
                 "-e", "POSTGRES_PASSWORD=" + PASSWORD,
                 "-e", "RANGER_DB_USER=rangeradmin",
                 "-e", "RANGER_DB_PASSWORD=" + PASSWORD), log.resolve("admin.log"));
-        admin.awaitReady(() -> api("GET", "/service/public/v2/api/service", null).statusCode() == 200,
-                Duration.ofMinutes(8), "Ranger Admin");
+        // A fresh client each probe: the JDK client can reuse a connection Ranger closed while
+        // Admin was still starting, and then every later probe fails with an empty HTTP response.
+        // First boot installs the schema and can take longer than the local Windows run.
+        admin.awaitReady(RangerFrontDoorsTest::adminReady, Duration.ofMinutes(15), "Ranger Admin");
         HttpResponse<String> created = api("POST", "/service/public/v2/api/service", """
                 {"name":"%s","type":"hdfs","isEnabled":true,"configs":{"username":"hdfs","password":"hdfs","fs.default.name":"hdfs://localhost:9000","hadoop.security.authentication":"simple","hadoop.security.authorization":"false"}}
                 """.formatted(SERVICE));
@@ -140,6 +142,27 @@ class RangerFrontDoorsTest {
                                 SERVICE + " still exists");
                         d.note("Ranger Admin no longer has policy " + policyId + " and still has service " + SERVICE);
                     });
+        }
+    }
+
+    private static boolean adminReady() {
+        try {
+            HttpClient probe = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .build();
+            String token = Base64.getEncoder().encodeToString((USER + ":" + PASSWORD).getBytes(StandardCharsets.UTF_8));
+            HttpRequest request = HttpRequest.newBuilder(URI.create(
+                            "http://127.0.0.1:" + port + "/service/public/v2/api/service"))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", "Basic " + token)
+                    .header("Accept", "application/json")
+                    .header("Connection", "close")
+                    .GET()
+                    .build();
+            return probe.send(request, HttpResponse.BodyHandlers.ofString()).statusCode() == 200;
+        } catch (Exception e) {
+            return false;
         }
     }
 
