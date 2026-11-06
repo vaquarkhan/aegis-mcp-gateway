@@ -161,12 +161,19 @@ class StormFrontDoorsTest {
         Path cache = Path.of("target", "storm-cache", "storm-starter-2.6.2.jar").toAbsolutePath();
         if (!java.nio.file.Files.isRegularFile(cache) || java.nio.file.Files.size(cache) < 1_000_000) {
             java.nio.file.Files.createDirectories(cache.getParent());
-            Process dl = new ProcessBuilder("curl.exe", "-fsSL", "-o", cache.toString(),
-                    "https://repo1.maven.org/maven2/org/apache/storm/storm-starter/2.6.2/storm-starter-2.6.2.jar")
-                    .redirectErrorStream(true).start();
-            String dlOut = new String(dl.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            if (!dl.waitFor(10, java.util.concurrent.TimeUnit.MINUTES) || dl.exitValue() != 0) {
-                throw new IllegalStateException("could not download storm-starter jar: " + dlOut);
+            java.nio.file.Files.deleteIfExists(cache);
+            HttpClient client = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .connectTimeout(Duration.ofSeconds(30))
+                    .build();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(
+                            "https://repo1.maven.org/maven2/org/apache/storm/storm-starter/2.6.2/storm-starter-2.6.2.jar"))
+                    .timeout(Duration.ofMinutes(5))
+                    .GET()
+                    .build();
+            HttpResponse<Path> saved = client.send(request, HttpResponse.BodyHandlers.ofFile(cache));
+            if (saved.statusCode() != 200 || java.nio.file.Files.size(cache) < 1_000_000) {
+                throw new IllegalStateException("could not download storm-starter jar: HTTP " + saved.statusCode());
             }
         }
         Process cp = new ProcessBuilder("docker", "cp", cache.toString(),

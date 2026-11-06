@@ -86,7 +86,7 @@ class SupersetFrontDoorsTest {
                         "-v", pythonpath + ":/app/pythonpath",
                         "-e", "PYTHONPATH=/app/pythonpath",
                         "-e", "SUPERSET_SECRET_KEY=aegis-superset-validation-secret-key-32b",
-                        "-e", "SUPERSET_LOAD_EXAMPLES=yes"),
+                        "-e", "SUPERSET_LOAD_EXAMPLES=no"),
                 log);
         superset.awaitReady(() -> {
             HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(URI.create(base() + "/health"))
@@ -152,43 +152,35 @@ class SupersetFrontDoorsTest {
         execIn("superset fab create-admin --username " + ADMIN + " --firstname Aegis --lastname Admin "
                 + "--email aegis@example.com --password " + PASS);
         execIn("superset init");
-        try {
-            execIn("superset load-examples --force");
-        } catch (Exception ignored) {
-            // examples optional if image already seeded; charts can be created via API
-        }
     }
 
     private static void seedCharts() throws Exception {
-        // Example charts are optional: load-examples downloads public datasets and fails closed when
-        // that host is unavailable. A local sqlite table does not need that download.
-        List<String> ids = verifiedDistinctCharts(chartIds(listCharts()));
-        if (ids.size() < 2) {
-            createLocalCharts();
-            ids = verifiedDistinctCharts(chartIds(listCharts()));
-        }
-        assertTrue(ids.size() >= 2, "need two distinct charts; got " + ids);
+        // Example charts are not used. Their ids can appear in the list and then fail GET while
+        // the image is still loading them. These two charts are created here and deleted by the test.
+        List<String> ids = createLocalCharts();
+        assertTrue(ids.size() == 2 && !ids.get(0).equals(ids.get(1)), "need two distinct charts; got " + ids);
         ownHostVictim = ids.get(0);
         knoxVictim = ids.get(1);
-        assertTrue(chartExists(ownHostVictim) && chartExists(knoxVictim)
-                        && !ownHostVictim.equals(knoxVictim),
+        assertTrue(chartExists(ownHostVictim) && chartExists(knoxVictim),
                 "victims must be two distinct existing charts: " + ownHostVictim + "," + knoxVictim);
     }
 
     /** Two disposable charts on a sqlite table created inside the container. */
-    private static void createLocalCharts() throws Exception {
+    private static List<String> createLocalCharts() throws Exception {
         execIn("python /app/pythonpath/seed_scratch.py");
         String databaseId = postId("/api/v1/database/",
                 "{\"database_name\":\"aegis_scratch\","
                         + "\"sqlalchemy_uri\":\"sqlite:////app/superset_home/aegis_scratch.db\"}");
         String datasetId = postId("/api/v1/dataset/",
                 "{\"database\":" + databaseId + ",\"table_name\":\"scratch\",\"schema\":\"main\"}");
+        List<String> ids = new java.util.ArrayList<>();
         for (int i = 0; i < 2; i++) {
-            postId("/api/v1/chart/",
+            ids.add(postId("/api/v1/chart/",
                     "{\"slice_name\":\"aegis_scratch_" + i + "\",\"viz_type\":\"table\","
                             + "\"datasource_id\":" + datasetId
-                            + ",\"datasource_type\":\"table\",\"params\":\"{}\"}");
+                            + ",\"datasource_type\":\"table\",\"params\":\"{}\"}"));
         }
+        return ids;
     }
 
     private static String postId(String path, String body) throws Exception {
@@ -227,33 +219,6 @@ class SupersetFrontDoorsTest {
         HttpResponse<String> r = HTTP.send(authed(HttpRequest.newBuilder(URI.create(base() + "/api/v1/chart/?q=(page_size:100)"))
                 .timeout(Duration.ofSeconds(20)).GET()).build(), HttpResponse.BodyHandlers.ofString());
         return r.body();
-    }
-
-    private static List<String> chartIds(String body) {
-        // Superset list payloads nest many "id" fields (owners, tags, dashboards). Only result[].id
-        // are chart ids.
-        Object result = Json.parseObject(body).get("result");
-        List<String> ids = new java.util.ArrayList<>();
-        if (!(result instanceof List<?> rows)) {
-            return ids;
-        }
-        for (Object row : rows) {
-            if (row instanceof Map<?, ?> m && m.get("id") != null) {
-                ids.add(String.valueOf(m.get("id")));
-            }
-        }
-        return ids;
-    }
-
-    /** Keep chart ids that GET /api/v1/chart/{id} confirms, in stable order, without duplicates. */
-    private static List<String> verifiedDistinctCharts(List<String> candidates) throws Exception {
-        List<String> out = new java.util.ArrayList<>();
-        for (String id : candidates) {
-            if (!out.contains(id) && chartExists(id)) {
-                out.add(id);
-            }
-        }
-        return out;
     }
 
     private static String base() {
