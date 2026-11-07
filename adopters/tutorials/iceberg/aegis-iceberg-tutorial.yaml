@@ -1,0 +1,163 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Tutorial configuration (docs/TUTORIAL-ICEBERG.md). One real Apache Iceberg REST catalog reached by
+# Aegis at 127.0.0.1:18181 and governed as a single http source. This client address does not prove
+# that RESTCatalogServer binds only to loopback; isolate the fixture or block non-loopback access with
+# the host firewall. This file is the shipped adopters/configurations/iceberg/iceberg.yaml with three
+# changes: the local address, a local audit path, and a host section with development tokens. Do not
+# reuse it in production (use JWT and TLS).
+#
+# The point of this tutorial is the control that the other engines do not show: `scopes`. An analyst
+# is confined to two namespaces at the resource level, before policy is even consulted. Because
+# `iceberg_list_namespaces` is unscoped, the analyst can still learn that finance exists, but cannot
+# list its tables, load them, or act on them.
+gateway:
+  name: aegis-iceberg-tutorial
+
+access:
+  writeGroups: [data-engineers]
+  approverGroups: [data-stewards]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: browse, groups: [analysts, data-engineers], classes: [READ]}
+    - {id: engineer-writes, groups: [data-engineers], classes: [MUTATE, DESTRUCTIVE]}
+    # Nobody drops a finance table through this gateway, approval or not. Deny overrides allow, and
+    # the rule matches the OBJECT rather than the caller.
+    - {id: never-drop-finance, effect: DENY, groups: ["*"], tools: [iceberg_drop_table], resources: ["iceberg:table:finance.*"]}
+
+# Resource scopes: an analyst may only touch sales and marketing AT ALL. This is narrower than policy,
+# and it is checked at step 2, so a scoped-out namespace is refused before any rule runs.
+scopes:
+  - {groups: [analysts], resources: ["iceberg:namespace:sales", "iceberg:namespace:marketing", "iceberg:table:sales.*", "iceberg:table:marketing.*"]}
+  - {groups: [data-engineers], resources: ["iceberg:*"]}
+
+egress:
+  allowHosts: [127.0.0.1]
+  allowCidrs: [127.0.0.0/8]
+  schemes: [http]
+
+audit:
+  file: work/audit/aegis-iceberg-tutorial.jsonl
+
+sources:
+  - id: iceberg
+    type: http
+    baseUrl: http://127.0.0.1:18181
+    # The gateway holds its own catalog credential. The agent never sees it, and it is resolved only
+    # after a call has been allowed.
+    credentials: {type: bearer, tokenEnv: ICEBERG_CATALOG_TOKEN}
+    tools:
+      - name: iceberg_list_namespaces
+        description: List top-level namespaces in the catalog.
+        class: READ
+        request: {method: GET, path: /v1/namespaces}
+        response: {pointer: /namespaces}
+
+      - name: iceberg_list_tables
+        description: List tables in a namespace.
+        class: READ
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}}
+          required: [namespace]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/namespaces/{namespace}/tables"}
+        response: {pointer: /identifiers}
+        resources: [{type: "iceberg:namespace", pointer: /namespace}]
+
+      - name: iceberg_load_table
+        description: Load table metadata (schema, snapshots, location).
+        class: READ
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [namespace, table]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/namespaces/{namespace}/tables/{table}"}
+        response: {pointer: /metadata/schemas}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+
+      - name: iceberg_get_table_metadata
+        description: "Full table metadata: format version, current snapshot, partition specs, properties."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [namespace, table]
+          additionalProperties: false
+        request: {method: GET, path: "/v1/namespaces/{namespace}/tables/{table}"}
+        response: {pointer: /metadata}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+
+      - name: iceberg_create_namespace
+        description: Create a namespace.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}}
+          required: [namespace]
+          additionalProperties: false
+        request:
+          method: POST
+          path: /v1/namespaces
+          body: {"namespace": ["{namespace}"], "properties": {}}
+        resources: [{type: "iceberg:namespace", pointer: /namespace}]
+
+      - name: iceberg_set_table_properties
+        description: Set table properties, for example retention or write settings.
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties:
+            namespace: {type: string, maxLength: 256}
+            table: {type: string, maxLength: 256}
+            properties: {type: object}
+          required: [namespace, table, properties]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/v1/namespaces/{namespace}/tables/{table}"
+          body: {"requirements": [], "updates": [{"action": "set-properties", "updates": "{properties}"}]}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+        dryRun: {mode: TOOL, previewTool: iceberg_get_table_metadata}
+
+      - name: iceberg_drop_table
+        description: Request a table drop with purgeRequested=true.
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {namespace: {type: string, maxLength: 256}, table: {type: string, maxLength: 256}}
+          required: [namespace, table]
+          additionalProperties: false
+        request: {method: DELETE, path: "/v1/namespaces/{namespace}/tables/{table}", query: {purgeRequested: "true"}}
+        resources: [{type: "iceberg:table", pointers: [/namespace, /table]}]
+        # The preview loads the exact table targeted by the drop request. Backend purge behavior
+        # depends on the catalog and FileIO; this in-memory fixture does not attest data-file deletion.
+        dryRun: {mode: TOOL, previewTool: iceberg_load_table}
+
+host:
+  listen: {host: 127.0.0.1, port: 8080}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: ANALYST_TOKEN, actor: ana, groups: [analysts]}
+        - {tokenEnv: ENGINEER_TOKEN, actor: eve, groups: [data-engineers]}
+        - {tokenEnv: STEWARD_TOKEN, actor: sten, groups: [data-stewards]}
+  stdio: {actor: ana, groups: [analysts]}

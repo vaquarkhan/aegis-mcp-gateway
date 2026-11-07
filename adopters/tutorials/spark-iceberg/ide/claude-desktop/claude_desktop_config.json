@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "aegis-lake": {
+      "command": "java",
+      "args": [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.util=ALL-UNNAMED",
+        "-jar",
+        "REPO/examples/aegis-gateway-spark/target/aegis-gateway-spark-2.0.0-SNAPSHOT-all.jar",
+        "--config",
+        "REPO/adopters/tutorials/spark-iceberg/aegis-stdio.local.yaml",
+        "--stdio"
+      ],
+      "env": {
+        "AEGIS_SIGNING_KEY": "REPLACE_WITH_THE_SAME_VALUE_AS_THE_TUTORIAL",
+        "READER_TOKEN": "REPLACE_WITH_THE_SAME_VALUE_AS_THE_TUTORIAL",
+        "ENGINEER_TOKEN": "REPLACE_WITH_THE_SAME_VALUE_AS_THE_TUTORIAL",
+        "APPROVER_TOKEN": "REPLACE_WITH_THE_SAME_VALUE_AS_THE_TUTORIAL"
+      }
+    }
+  }
+}

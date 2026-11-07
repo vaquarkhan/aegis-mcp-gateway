@@ -1,0 +1,55 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Values used by the chart checks (helm lint, helm template, kubeconform) and by the local start test,
+# which starts the gateway with the rendered aegis.yaml. Not a production configuration.
+envFrom:
+  - secretRef: {name: aegis-secrets}       # AEGIS_SIGNING_KEY, CATALOG_TOKEN
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - podSelector: {matchLabels: {app.kubernetes.io/name: mcp-client}}
+  egressTo:
+    - ipBlock: {cidr: 10.0.0.0/8}
+podDisruptionBudget:
+  enabled: true
+config:
+  gateway: {name: aegis-chart}
+  access: {writeGroups: [engineers], approverGroups: [approvers]}
+  approval: {keyEnv: AEGIS_SIGNING_KEY}
+  policy:
+    rules:
+      - {id: read, groups: [analysts, engineers], classes: [READ]}
+  egress:
+    allowCidrs: [10.0.0.0/8]
+  audit:
+    file: /var/lib/aegis/audit/aegis.jsonl
+  sources:
+    - id: catalog
+      type: http
+      baseUrl: http://catalog.data.svc:8181
+      credentials: {type: bearer, tokenEnv: CATALOG_TOKEN}
+      tools:
+        - name: list_namespaces
+          description: List catalog namespaces.
+          class: READ
+          request: {method: GET, path: /v1/namespaces}
+  host:
+    listen: {host: 0.0.0.0, port: 8080}
+    identity:
+      type: jwt
+      jwt:
+        issuer: https://idp.example.com/realms/acme
+        audience: aegis-gateway
+        jwksUri: https://idp.example.com/realms/acme/protocol/openid-connect/certs

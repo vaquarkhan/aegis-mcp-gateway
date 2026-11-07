@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1060" viewBox="0 0 1700 1060" role="img" aria-labelledby="title description">
+  <title id="title">Apache Knox and Aegis composable deployment layers</title>
+  <desc id="description">Apache Knox provides topology perimeter, identity, and route admission. The Aegis Knox service adapter maps the established caller context to shared Aegis MCP semantic governance, which evaluates the action before backend execution.</desc>
+  <defs>
+    <linearGradient id="head" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#08233b"/><stop offset="1" stop-color="#12657d"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#0a2a40" flood-opacity=".16"/></filter>
+    <marker id="blueArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 1 L11 6 L0 11 Z" fill="#227996"/></marker>
+    <marker id="greenArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 1 L11 6 L0 11 Z" fill="#16806e"/></marker>
+    <style>
+      text { font-family: &quot;Segoe UI&quot;, Arial, sans-serif; }
+      .title { font-size: 37px; font-weight: 750; fill: #fff; }
+      .sub { font-size: 16px; fill: #c9e8f1; }
+      .over { font-size: 12px; font-weight: 800; letter-spacing: 1.4px; fill: #34748b; }
+      .label { font-size: 17px; font-weight: 750; fill: #123148; }
+      .body { font-size: 13.5px; fill: #3b5a6b; }
+      .small { font-size: 12px; font-weight: 650; fill: #4e6d7d; }
+      .white { font-size: 13px; font-weight: 700; fill: #fff; }
+      .flow { fill: none; stroke: #227996; stroke-width: 3; marker-end: url(#blueArrow); }
+      .govern { fill: none; stroke: #16806e; stroke-width: 3; marker-end: url(#greenArrow); }
+    </style>
+  </defs>
+  <rect width="1700" height="1060" fill="#f4f9fc"/>
+  <rect x="26" y="24" width="1648" height="112" rx="24" fill="url(#head)"/>
+  <text x="64" y="73" class="title">Apache Knox + Aegis: composable control layers</text>
+  <text x="64" y="104" class="sub">Knox establishes topology perimeter context. Aegis evaluates the MCP action after route admission.</text>
+
+  <text x="50" y="180" class="over">KNOX-HOSTED REQUEST FLOW</text>
+  <g filter="url(#shadow)">
+    <rect x="50" y="206" width="240" height="165" rx="18" fill="#fff" stroke="#94bece"/>
+    <text x="78" y="252" class="label">MCP client</text><text x="78" y="280" class="body">Requests the configured</text><text x="78" y="303" class="body">Knox topology route.</text>
+    <rect x="330" y="206" width="310" height="165" rx="18" fill="#fff" stroke="#7356a5" stroke-width="2"/>
+    <text x="358" y="252" class="label">Apache Knox topology</text><text x="358" y="280" class="body">Listener, TLS, provider chain,</text><text x="358" y="303" class="body">authentication, identity, route admission.</text><text x="358" y="337" class="small">Produces the established Subject context.</text>
+    <rect x="680" y="206" width="270" height="165" rx="18" fill="#fff" stroke="#16806e" stroke-width="2"/>
+    <text x="708" y="252" class="label">Aegis Knox service adapter</text><text x="708" y="280" class="body">Contributes the AEGIS_MCP route</text><text x="708" y="303" class="body">and maps Subject to CallerIdentity.</text><text x="708" y="337" class="small">Uses documented Knox service APIs.</text>
+    <rect x="990" y="206" width="300" height="165" rx="18" fill="#fff" stroke="#16806e" stroke-width="2"/>
+    <text x="1018" y="252" class="label">Shared Aegis MCP handling</text><text x="1018" y="280" class="body">Validates MCP protocol and builds</text><text x="1018" y="303" class="body">the canonical governed action.</text><text x="1018" y="337" class="small">The same handler serves either host choice.</text>
+    <rect x="1330" y="206" width="296" height="165" rx="18" fill="#fff" stroke="#16806e" stroke-width="2"/>
+    <text x="1358" y="252" class="label">Aegis action governance</text><text x="1358" y="280" class="body">Policy, approval, receipt, catalog,</text><text x="1358" y="303" class="body">egress, evidence, and execution controls.</text><text x="1358" y="337" class="small">Allows source access only after decision commit.</text>
+  </g>
+  <path d="M290 289 H330" class="flow"/><path d="M640 289 H680" class="flow"/><path d="M950 289 H990" class="govern"/><path d="M1290 289 H1330" class="govern"/>
+
+  <text x="50" y="445" class="over">COMPLEMENTARY RESPONSIBILITIES</text>
+  <g filter="url(#shadow)">
+    <rect x="50" y="472" width="760" height="290" rx="22" fill="#fcfaff" stroke="#b6a8d2" stroke-width="2"/>
+    <rect x="50" y="472" width="760" height="53" rx="22" fill="#5d4291"/><text x="78" y="507" class="white">Apache Knox perimeter and topology layer</text>
+    <text x="78" y="558" class="label">Topology services</text><text x="78" y="583" class="body">Deployment, listener, TLS, provider order, and service-route lifecycle.</text>
+    <text x="78" y="630" class="label">Caller context</text><text x="78" y="655" class="body">Authentication, identity assertion, groups, route admission, and perimeter audit context.</text>
+    <text x="78" y="702" class="label">Deployment choice</text><text x="78" y="727" class="body">Organizations can add Aegis to an existing Knox topology when that operational model fits.</text>
+    <rect x="78" y="735" width="704" height="18" rx="9" fill="#f1ecfa"/><text x="430" y="749" class="small" text-anchor="middle">PRIMARY CONTEXT: TOPOLOGY HTTP REQUEST AND ESTABLISHED SUBJECT</text>
+
+    <rect x="850" y="472" width="800" height="290" rx="22" fill="#f9fefd" stroke="#8cbfc8" stroke-width="2"/>
+    <rect x="850" y="472" width="800" height="53" rx="22" fill="#0f6976"/><text x="878" y="507" class="white">Aegis MCP semantic-governance layer</text>
+    <text x="878" y="558" class="label">MCP action context</text><text x="878" y="583" class="body">Tool or content operation, schema, typed resources, arguments, and definition digest.</text>
+    <text x="878" y="630" class="label">Action controls</text><text x="878" y="655" class="body">Default-deny policy, approvals, receipts, catalog integrity, egress, bounds, and screening.</text>
+    <text x="878" y="702" class="label">Decision evidence</text><text x="878" y="727" class="body">Intent-first journal, action binding, outcome evidence, and source execution after governance allows it.</text>
+    <rect x="878" y="735" width="744" height="18" rx="9" fill="#e8f6f3"/><text x="1250" y="749" class="small" text-anchor="middle">PRIMARY CONTEXT: CALLER + MCP ACTION + RESOURCE + DECISION EVIDENCE</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="50" y="810" width="500" height="154" rx="20" fill="#fff" stroke="#a6c8d3"/>
+    <text x="78" y="850" class="label">Perimeter and decision evidence</text><text x="78" y="879" class="body">Knox access context and Aegis action evidence are</text><text x="78" y="902" class="body">complementary records for the deployment's audit policy.</text>
+    <rect x="590" y="810" width="500" height="154" rx="20" fill="#fff" stroke="#75b9a9"/>
+    <text x="618" y="850" class="label">Aegis state and journal</text><text x="618" y="879" class="body">Approvals, receipts, catalog pins, rate windows,</text><text x="618" y="902" class="body">and hash-chained decision evidence.</text>
+    <rect x="1130" y="810" width="520" height="154" rx="20" fill="#fff" stroke="#a6c8d3"/>
+    <text x="1158" y="850" class="label">Configured backend source</text><text x="1158" y="879" class="body">MCP server, declared REST tool, client-protocol converter,</text><text x="1158" y="902" class="body">or typed plugin, validated for the chosen target deployment.</text>
+  </g>
+  <text x="50" y="1024" class="small">Architecture scope: Apache Knox provides an optional host integration; Aegis provides MCP semantic governance after route admission.</text>
+</svg>

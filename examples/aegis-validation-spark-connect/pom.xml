@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>aegis-validation-spark-connect</artifactId>
+  <name>Aegis 2.0 validation: Spark Connect through both front doors (opt-in)</name>
+  <description>The Spark Connect adopter example. Its own module because the Spark Connect JVM client carries
+    classes (for example org.apache.spark.SparkConf) that clash with classic Spark core, which aegis-validation
+    uses for the Spark driver example. Reuses the two-front-door harness from the aegis-validation test-jar.
+    Only built with -Preal-engines.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation</artifactId>
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-config</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-gateway</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-spark-connect</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Build order only: the Windows local file system jar used by the Spark + Iceberg example on Windows. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-windows-localfs</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- Build order only: the Iceberg REST catalog server classpath file must exist (Spark + Iceberg example). -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-iceberg-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- Build order only: the Spark Connect server classpath file must exist. -->
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-validation-spark-connect-server</artifactId>
+      <version>${project.version}</version>
+      <type>pom</type>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <!-- The Spark Connect client uses Arrow, which needs these opens on Java 17 (Spark's documented options). -->
+          <argLine>@{argLine} --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+            --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED</argLine>
+          <systemPropertyVariables>
+            <aegis.results.dir>${project.basedir}/../aegis-validation/target/adopter-results</aegis.results.dir>
+            <aegis.knox.bundle>${project.basedir}/../../aegis-knox3-extension/target/aegis-knox3-extension-${project.version}-knox-bundle.jar</aegis.knox.bundle>
+            <aegis.sparkConnect.serverClasspathFile>${project.basedir}/../aegis-validation-spark-connect-server/target/server.classpath</aegis.sparkConnect.serverClasspathFile>
+            <aegis.sparkConnect.pluginJar>${project.basedir}/../aegis-spark-connect/target/aegis-spark-connect-${project.version}.jar</aegis.sparkConnect.pluginJar>
+            <aegis.sparkConnect.pluginClasspathFile>${project.basedir}/../aegis-spark-connect/target/plugin.classpath</aegis.sparkConnect.pluginClasspathFile>
+            <aegis.iceberg.serverClasspathFile>${project.basedir}/../aegis-validation-iceberg-server/target/server.classpath</aegis.iceberg.serverClasspathFile>
+            <aegis.windowsLocalFs.jar>${project.basedir}/../aegis-windows-localfs/target/aegis-windows-localfs-${project.version}.jar</aegis.windowsLocalFs.jar>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

@@ -1,0 +1,120 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Apache Hive: governed MCP tools over HiveServer2 through its own JDBC driver.
+#
+# WHY THIS IS A jdbc SOURCE AND NOT AN http ONE
+# This file used to declare an http source against hiveserver2:10002 with POST /sql and
+# DELETE /queries/{queryId}. Neither endpoint exists. Port 10002 is HiveServer2's **web UI**, which
+# serves HTML for humans; Hive has no REST control API at all. The endpoints were invented, the test
+# test harness was written from the same assumption, and the suite passed. That defect and the audit that found
+# it are recorded in docs/DEFECT-LOG.md.
+#
+# Hive's real programmable surface is SQL over HiveServer2, reached with the Hive JDBC driver. So the
+# honest adapter is a jdbc source, and it is structurally safer: every metadata read below is a typed
+# call on java.sql.DatabaseMetaData that the compiler checks, rather than a URL path somebody typed.
+#
+# WHAT YOU MUST PROVIDE
+#   1. hive-jdbc on the gateway's classpath. Aegis ships no JDBC drivers, deliberately: the driver
+#      version is yours to choose and we do not redistribute anybody else's.
+#   2. A HiveServer2 account for the gateway. Make it READ-ONLY unless you intend writes.
+#      This is the control that matters. The read-only SQL check below is an indicator, not a
+#      guarantee: SELECT my_udf() passes a keyword check and a UDF can write.
+#
+# WHAT IS NOT HERE, AND WHY
+#   kill_query   Aegis 0.1 offered it as DELETE /queries/{id}, which does not exist. Hive can cancel a
+#                running statement through the JDBC Statement handle of the session that started it,
+#                which is not something a separate gateway call can reach. Recorded in
+#                docs/COVERAGE-0.1-VS-2.0.md rather than faked.
+#   list_sessions / web UI reads
+#                The web UI serves HTML, not JSON. A tool that returns a scraped page to a model is a
+#                prompt-injection vector wearing a monitoring hat.
+
+gateway:
+  name: aegis-hive
+
+access:
+  writeGroups: [hive-operators]
+  approverGroups: [hive-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [hive-users, hive-operators], classes: [READ]}
+    - {id: operate, groups: [hive-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+# Free-text SQL cannot be classified by reading the configuration, so the guard is bound explicitly.
+# jdbc_run_query also applies the same classifier inside its own executor, so a deployment that forgets
+# this section is still refused rather than silently ungoverned.
+hooks:
+  - type: sql-readonly
+    operations: [TOOL_CALL]
+    mode: ENFORCE
+    methods: [jdbc_run_query]
+    settings:
+      arguments: [sql]
+      maxChars: 8192
+
+rateLimits:
+  perCallerPerMinute: 60             # a SQL endpoint is heavier than a status read
+  budgetPerHour: 500
+
+egress:
+  # A JDBC driver opens its own socket, so step 5 has nothing to inspect: the target is the url below,
+  # which is configuration rather than an argument, so an agent cannot redirect it. The allow list is
+  # kept for any http source added to this file later.
+  allowCidrs: [127.0.0.0/8]
+
+audit:
+  file: audit/aegis-hive.jsonl
+
+sources:
+  - id: hive
+    type: jdbc
+    settings:
+      url: jdbc:hive2://127.0.0.1:55560/default
+      driverClass: org.apache.hive.jdbc.HiveDriver
+      userEnv: HIVE_USER
+      passwordEnv: HIVE_PASSWORD
+      maxRows: 200                   # hard cap; a wide table cannot fill the model's context
+      maxCellChars: 4096
+      loginTimeoutSeconds: 15
+      allowWrites: false             # true would also offer jdbc_execute_statement
+    tools:
+      jdbc_server_info: {class: READ}
+      jdbc_list_catalogs: {class: READ}
+      jdbc_list_schemas: {class: READ}
+      jdbc_list_tables:
+        class: READ
+        # The schema is the governed object, so a scope or policy rule can confine a caller to their
+        # own databases without naming every table.
+        resources: [{type: "hive:schema", pointer: /schema, required: false}]
+      jdbc_describe_table:
+        class: READ
+        resources: [{type: "hive:table", pointer: /table}]
+      jdbc_run_query: {class: READ}
+
+# Appended for the own-host front door: loopback listener, static tokens per persona.
+host:
+  listen: {host: 127.0.0.1, port: 0}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_READER, actor: guest, groups: [hive-users]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OPERATOR, actor: sam, groups: [hive-operators]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_APPROVER, actor: tom, groups: [hive-approvers]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OUTSIDER, actor: admin, groups: []}

@@ -1,0 +1,97 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Hadoop HDFS: governed MCP tools over the Apache Hadoop HDFS HTTP API, configuration only.
+# WebHDFS REST API: GET /webhdfs/v1/<path>?op=LISTSTATUS|GETFILESTATUS,
+# PUT ?op=MKDIRS, DELETE ?op=DELETE.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-hadoop (taxonomy: storage).
+# HDFS identifies a file by a path, so these tools use the path-typed placeholder {path/}:
+# depth is allowed and every segment is validated, so /user/hive/warehouse is accepted
+# while /user/../etc is refused. Recursive delete is deliberately not offered.
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-hadoop
+
+access:
+  writeGroups: [hadoop-operators]
+  approverGroups: [hadoop-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [hadoop-users, hadoop-operators], classes: [READ]}
+    - {id: operate, groups: [hadoop-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-hadoop.jsonl
+
+sources:
+  - id: hadoop
+    type: http
+    baseUrl: http://127.0.0.1:54924
+    tools:
+      - name: hadoop_list_status
+        description: "List the entries of one directory."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {path: {type: string, maxLength: 1024}}
+          required: [path]
+          additionalProperties: false
+        request: {method: GET, path: "/webhdfs/v1/{path/}", query: {op: "LISTSTATUS", "user.name": "root"}}
+        resources: [{type: "hadoop:path", pointer: /path}]
+
+      - name: hadoop_get_file_status
+        description: "Status of one file or directory."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {path: {type: string, maxLength: 1024}}
+          required: [path]
+          additionalProperties: false
+        request: {method: GET, path: "/webhdfs/v1/{path/}", query: {op: "GETFILESTATUS", "user.name": "root"}}
+        resources: [{type: "hadoop:path", pointer: /path}]
+
+      - name: hadoop_mkdirs
+        description: "Create a directory and any missing parents."
+        class: MUTATE
+        inputSchema:
+          type: object
+          properties: {path: {type: string, maxLength: 1024}}
+          required: [path]
+          additionalProperties: false
+        request: {method: PUT, path: "/webhdfs/v1/{path/}", query: {op: "MKDIRS", "user.name": "root"}}
+        resources: [{type: "hadoop:path", pointer: /path}]
+
+      - name: hadoop_delete_path
+        description: "Delete one file or empty directory."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {path: {type: string, maxLength: 1024}}
+          required: [path]
+          additionalProperties: false
+        request: {method: DELETE, path: "/webhdfs/v1/{path/}", query: {op: "DELETE", recursive: "false", "user.name": "root"}}
+        resources: [{type: "hadoop:path", pointer: /path}]
+        dryRun: {mode: TOOL, previewTool: hadoop_get_file_status}   # validate against the exact target first

@@ -1,0 +1,97 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1360" height="1070" viewBox="0 0 1360 1070" role="img" aria-labelledby="ft-spark fd-spark">
+<title id="ft-spark">One Spark request through Apache Knox and Aegis, step by step</title>
+<desc id="fd-spark">Part A: a read. The IDE sends spark_list_applications to Knox with the user login; Knox authenticates, adds groups and checks the route ACL, then hands the call to Aegis inside Knox; Aegis checks the signed tool, policy and scope, logs, calls Spark, and returns a bounded answer. Part B: a risky change, spark_kill_submission: Aegis answers approval required, a different person approves, the caller repeats the call with the approval token and dry-run receipt, Aegis makes the change once and logs it.</desc>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3c4043"/></marker></defs>
+<rect width="1360" height="1070" fill="#ffffff"/>
+<text x="30" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="bold" fill="#202124" text-anchor="start">One Spark request through Apache Knox and Aegis, step by step</text>
+<text x="30" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#5f6368" text-anchor="start">Knox answers: who are you, and may you reach MCP? Aegis answers: which tool, on what, with whose approval? Both write a log.</text>
+<rect x="40" y="84" width="220" height="56" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+<text x="150" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#1565c0" text-anchor="middle">IDE + AI assistant</text>
+<text x="150" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#3c4043" text-anchor="middle">developer laptop</text>
+<line x1="150" y1="140" x2="150" y2="978" stroke="#bdc1c6" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="320" y="84" width="220" height="56" rx="10" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="2"/>
+<text x="430" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#6a1b9a" text-anchor="middle">Apache Knox</text>
+<text x="430" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#3c4043" text-anchor="middle">login, groups, route ACL</text>
+<line x1="430" y1="140" x2="430" y2="978" stroke="#bdc1c6" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="600" y="84" width="220" height="56" rx="10" fill="#fafafa" stroke="#3c4043" stroke-width="2"/>
+<text x="710" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#3c4043" text-anchor="middle">Aegis (inside Knox)</text>
+<text x="710" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#3c4043" text-anchor="middle">aegis.yaml, signed catalog</text>
+<line x1="710" y1="140" x2="710" y2="978" stroke="#bdc1c6" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="875" y="84" width="220" height="56" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+<text x="985" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#1565c0" text-anchor="middle">Approver</text>
+<text x="985" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#3c4043" text-anchor="middle">a different person</text>
+<line x1="985" y1="140" x2="985" y2="978" stroke="#bdc1c6" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="1125" y="84" width="220" height="56" rx="10" fill="#f1f3f4" stroke="#5f6368" stroke-width="2"/>
+<text x="1235" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#5f6368" text-anchor="middle">Spark</text>
+<text x="1235" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#3c4043" text-anchor="middle">unchanged</text>
+<line x1="1235" y1="140" x2="1235" y2="978" stroke="#bdc1c6" stroke-width="1.5" stroke-dasharray="6 5"/>
+<rect x="20" y="158" width="1320" height="28" rx="6" fill="#f8f9fa"/>
+<text x="32" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">A. A read: "Which Spark applications are running?"  -&gt;  spark_list_applications</text>
+<line x1="150" y1="212" x2="424" y2="212" stroke="#3c4043" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="94" y="191" width="392" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="290.0" y="205" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#3c4043" text-anchor="middle">tools/call spark_list_applications + your login (HTTPS)</text>
+<circle cx="128" cy="212" r="11" fill="#3c4043"/><text x="128" y="216.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+<rect x="444" y="242" width="250" height="73" rx="7" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="1.5"/>
+<text x="456" y="261" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#6a1b9a" text-anchor="start">Knox: who are you?</text>
+<text x="456" y="278" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">LDAP / AD, KnoxSSO or JWT; then</text>
+<text x="456" y="295" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">identity-assertion adds your groups</text>
+<circle cx="430" cy="260" r="11" fill="#6a1b9a"/><text x="430" y="264.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+<rect x="444" y="329" width="250" height="73" rx="7" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="1.5"/>
+<text x="456" y="348" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#6a1b9a" text-anchor="start">Knox: may you reach MCP at all?</text>
+<text x="456" y="365" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">AclsAuthz on AEGIS_MCP;</text>
+<text x="456" y="382" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">no -&gt; 403, Aegis never runs</text>
+<circle cx="430" cy="347" r="11" fill="#6a1b9a"/><text x="430" y="351.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+<line x1="430" y1="432" x2="704" y2="432" stroke="#6a1b9a" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="443" y="411" width="254" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="570.0" y="425" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#6a1b9a" text-anchor="middle">the call, with your user and groups</text>
+<circle cx="408" cy="432" r="11" fill="#6a1b9a"/><text x="408" y="436.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+<rect x="724" y="462" width="250" height="73" rx="7" fill="#ffffff" stroke="#3c4043" stroke-width="1.5"/>
+<text x="736" y="481" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#3c4043" text-anchor="start">Aegis: may you call THIS tool?</text>
+<text x="736" y="498" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">signed and unchanged? policy allows</text>
+<text x="736" y="515" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#202124" text-anchor="start">your group (spark-users)? scope? log</text>
+<circle cx="710" cy="480" r="11" fill="#3c4043"/><text x="710" y="484.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+<line x1="710" y1="565" x2="1229" y2="565" stroke="#3c4043" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="832" y="544" width="281" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="972.5" y="558" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#3c4043" text-anchor="middle">GET /api/v1/applications?status=running</text>
+<circle cx="688" cy="565" r="11" fill="#3c4043"/><text x="688" y="569.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+<line x1="1235" y1="611" x2="716" y2="611" stroke="#3c4043" stroke-width="2.2" marker-end="url(#ah)" stroke-dasharray="7 5"/>
+<rect x="946" y="590" width="53" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="972.5" y="604" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#3c4043" text-anchor="middle">result</text>
+<circle cx="1257" cy="611" r="11" fill="#3c4043"/><text x="1257" y="615.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+<line x1="710" y1="657" x2="156" y2="657" stroke="#2e7d32" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="272" y="636" width="316" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="430.0" y="650" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#2e7d32" text-anchor="middle">bounded, redacted answer (back through Knox)</text>
+<circle cx="732" cy="657" r="11" fill="#2e7d32"/><text x="732" y="661.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+<rect x="20" y="683" width="1320" height="28" rx="6" fill="#f8f9fa"/>
+<text x="32" y="703" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#202124" text-anchor="start">B. A risky change: "Kill driver &lt;driver&gt;."  -&gt;  spark_kill_submission</text>
+<line x1="150" y1="737" x2="704" y2="737" stroke="#3c4043" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="214" y="716" width="433" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="430.0" y="730" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#3c4043" text-anchor="middle">tools/call spark_kill_submission (operator; through Knox 1-4)</text>
+<circle cx="128" cy="737" r="11" fill="#3c4043"/><text x="128" y="741.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">9</text>
+<line x1="710" y1="783" x2="156" y2="783" stroke="#c62828" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="231" y="762" width="398" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="430.0" y="776" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#c62828" text-anchor="middle">APPROVAL_REQUIRED; a dry run returns a preview + receipt</text>
+<circle cx="732" cy="783" r="11" fill="#c62828"/><text x="732" y="787.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">10</text>
+<line x1="985" y1="829" x2="716" y2="829" stroke="#1565c0" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="724" y="808" width="247" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="847.5" y="822" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#1565c0" text-anchor="middle">approve the request (through Knox)</text>
+<circle cx="1007" cy="829" r="11" fill="#1565c0"/><text x="1007" y="833.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">11</text>
+<line x1="150" y1="875" x2="704" y2="875" stroke="#3c4043" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="258" y="854" width="343" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="430.0" y="868" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#3c4043" text-anchor="middle">the same call + approval token + dry-run receipt</text>
+<circle cx="128" cy="875" r="11" fill="#3c4043"/><text x="128" y="879.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">12</text>
+<line x1="710" y1="921" x2="1229" y2="921" stroke="#c62828" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="822" y="900" width="302" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="972.5" y="914" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#c62828" text-anchor="middle">POST /v1/submissions/kill/&lt;driver&gt;  (once)</text>
+<circle cx="688" cy="921" r="11" fill="#c62828"/><text x="688" y="925.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">13</text>
+<line x1="710" y1="967" x2="156" y2="967" stroke="#2e7d32" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="255" y="946" width="350" height="19" rx="4" fill="#ffffff" opacity="0.92"/><text x="430.0" y="960" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#2e7d32" text-anchor="middle">done, and logged; the same token again is refused</text>
+<circle cx="732" cy="967" r="11" fill="#2e7d32"/><text x="732" y="971.5" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">14</text>
+<text x="30" y="1019" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#3c4043" text-anchor="start">Logs: Knox gateway-audit.log records steps 1-4 (who reached the route). The Aegis audit log records every decision, approval and result, tied to the real user.</text>
+<text x="30" y="1039" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#3c4043" text-anchor="start">The requester can never approve their own request, and a reader (spark-users) only ever gets READONLY_CALLER for step 9.</text>
+</svg>

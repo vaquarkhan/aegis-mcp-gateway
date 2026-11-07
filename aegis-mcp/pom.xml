@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.vaquarkhan.aegis</groupId>
+    <artifactId>aegis-gateway-2-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>aegis-mcp</artifactId>
+  <name>Aegis 2.0 MCP protocol</name>
+  <description>Dual-era MCP: stateful 2025 revisions (initialize + Mcp-Session-Id) and stateless 2026-07-28
+    (per-request _meta, server/discover, header validation). Server handler, admin API, and downstream
+    HTTP/stdio clients to proxy existing MCP servers. Pure JDK.</description>
+  <properties>
+    <!-- Coverage floor = measured default-build coverage minus about 2 points (docs/VALIDATION.md). -->
+    <coverage.line.minimum>0.83</coverage.line.minimum>
+    <coverage.branch.minimum>0.64</coverage.branch.minimum>
+  </properties>
+
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.vaquarkhan.aegis</groupId>
+      <artifactId>aegis-engine</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <environmentVariables>
+            <!-- Present in the gateway JVM; the stdio client must NOT pass it to child MCP servers. -->
+            <AEGIS_TEST_SECRET>must-not-leak</AEGIS_TEST_SECRET>
+          </environmentVariables>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- Publishes handler-independent test MCP servers for reuse by aegis-examples tests. -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.1</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

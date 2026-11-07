@@ -1,0 +1,177 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Frozen inventory of the Apache-Aegis 0.1 adapter surface, one row per tool.
+# Extracted from the 0.1 tree's mcp-adapter-*/src/main/resources/adapters/<engine>/tools.yaml files,
+# which are the files the 0.1 ToolCatalog loaded at runtime. This file is DATA, not documentation:
+# Coverage01VsTwoTest reads it and fails if any row is not accounted for in 2.0.
+# Do not edit to make a test pass. If a 0.1 tool is genuinely gone, record it in the test's
+# DELIBERATELY_ABSENT table with a reason, or in RENAMED with its 2.0 name.
+# columns: engine <TAB> tool <TAB> class <TAB> description
+activemq	get_broker	READ	Read ActiveMQ broker Jolokia MBean
+activemq	list_queues	READ	List ActiveMQ queues via Jolokia search
+activemq	purge_queue	DESTRUCTIVE	Purge an ActiveMQ queue
+airflow	get_health	READ	Airflow health
+airflow	list_dags	READ	List DAGs
+airflow	get_dag	READ	Get a DAG
+airflow	trigger_dag	MUTATE	Trigger a DAG run
+airflow	delete_dag	DESTRUCTIVE	Delete a DAG
+arrow	list_flights	READ	List Arrow Flight datasets via HTTP facade
+arrow	get_flight	READ	Get Flight info
+arrow	do_action	MUTATE	Invoke a Flight action
+atlas	list_typedefs	READ	List Atlas typedefs
+atlas	search_entities	READ	Basic Atlas entity search
+atlas	get_entity	READ	Get Atlas entity by guid
+atlas	delete_entity	DESTRUCTIVE	Delete Atlas entity
+beam	list_jobs	READ	List Beam Job API jobs
+beam	get_job	READ	Get a Beam job
+beam	get_job_metrics	READ	Get Beam job metrics
+beam	cancel_job	DESTRUCTIVE	Cancel a Beam job
+bookkeeper	bookie_info	READ	BookKeeper bookie info
+bookkeeper	list_bookies	READ	List BookKeeper bookies
+bookkeeper	list_ledgers	READ	List ledgers
+bookkeeper	delete_ledger	DESTRUCTIVE	Delete a ledger
+calcite	get_status	READ	Calcite HTTP status
+calcite	explain_sql	READ	Explain a SQL plan via HTTP facade
+calcite	run_sql_readonly	READ	Run read-only SQL via Calcite HTTP facade
+cassandra	list_keyspaces	READ	List keyspaces via Cassandra Sidecar
+cassandra	list_tables	READ	List tables in a keyspace
+cassandra	get_ring	READ	Cassandra ring health via Sidecar
+cassandra	drop_table	DESTRUCTIVE	Drop a Cassandra table via Sidecar SQL facade
+couchdb	list_dbs	READ	List CouchDB databases
+couchdb	get_db	READ	Get CouchDB database info
+couchdb	create_db	MUTATE	Create a CouchDB database
+couchdb	delete_db	DESTRUCTIVE	Delete a CouchDB database
+doris	cluster_overview	READ	Doris FE HTTP overview
+doris	list_backends	READ	Show Doris backends
+doris	run_sql_readonly	READ	Doris SQL HTTP facade
+druid	list_datasources	READ	List Druid datasources
+druid	get_datasource	READ	Get Druid datasource metadata
+druid	run_sql_readonly	READ	Run Druid SQL (read facade)
+druid	disable_datasource	DESTRUCTIVE	Disable a Druid datasource
+flink	list_jobs	READ	List Flink jobs
+flink	get_job	READ	Get Flink job details
+flink	get_job_status	READ	Get Flink job status
+flink	get_job_exceptions	READ	Get Flink job exceptions
+flink	get_job_metrics	READ	Get Flink job metrics
+flink	list_checkpoints	READ	List Flink job checkpoints
+flink	list_jars	READ	List uploaded jars
+flink	run_sql_readonly	READ	Execute read-only SQL via Flink SQL Gateway
+flink	get_cluster_info	READ	Cluster overview (slots, TaskManagers, jobs)
+flink	list_taskmanagers	READ	List TaskManagers and resources
+flink	get_job_config	READ	Get Flink job configuration
+flink	get_flink_config	READ	JobManager cluster configuration
+flink	trigger_savepoint	MUTATE	Trigger a savepoint
+flink	rescale_job	MUTATE	Rescale a Flink job
+flink	upload_jar	MUTATE	Upload a jar (path must be under allow-listed directories)
+flink	run_jar	DESTRUCTIVE	Run an uploaded jar
+flink	stop_job	DESTRUCTIVE	Stop a job with savepoint
+flink	cancel_job	DESTRUCTIVE	Cancel a Flink job
+flink	run_sql_ddl_dml	DESTRUCTIVE	Execute DDL or DML SQL via Flink SQL Gateway
+flume	get_metrics	READ	Read Flume metrics JSON
+flume	get_health	READ	Flume agent health probe
+hadoop	list_status	READ	WebHDFS LISTSTATUS
+hadoop	get_file_status	READ	WebHDFS GETFILESTATUS
+hadoop	mkdirs	MUTATE	WebHDFS MKDIRS
+hadoop	delete_path	DESTRUCTIVE	WebHDFS DELETE
+hbase	cluster_version	READ	HBase REST cluster version
+hbase	list_tables	READ	List HBase tables
+hbase	get_table_schema	READ	Get HBase table schema
+hbase	delete_table	DESTRUCTIVE	Delete an HBase table
+hive	get_webui	READ	HiveServer2 Web UI root
+hive	list_sessions	READ	List HiveServer2 sessions (HS2 HTTP)
+hive	run_sql_readonly	READ	Submit read-only SQL via HTTP SQL facade
+hive	kill_query	DESTRUCTIVE	Kill a Hive query
+hudi	list_tables	READ	List Hudi tables via REST catalog facade
+hudi	get_table	READ	Get Hudi table metadata
+hudi	run_clustering	MUTATE	Trigger Hudi clustering
+hudi	run_compaction	DESTRUCTIVE	Trigger Hudi compaction
+iceberg	list_namespaces	READ	List Iceberg namespaces
+iceberg	list_tables	READ	List tables in a namespace
+iceberg	get_table	READ	Get Iceberg table metadata
+iceberg	get_table_metadata	READ	Get Iceberg table metadata (alias of get_table)
+iceberg	create_namespace	MUTATE	Create an Iceberg namespace
+iceberg	alter_table	MUTATE	Alter Iceberg table properties
+iceberg	drop_table	DESTRUCTIVE	Drop an Iceberg table (VRP-gated)
+iceberg	expire_snapshots	DESTRUCTIVE	Expire Iceberg snapshots (VRP-gated)
+iceberg	remove_orphan_files	DESTRUCTIVE	Remove orphan files (VRP-gated)
+iceberg	rewrite_data_files	DESTRUCTIVE	Rewrite data files (VRP-gated)
+iceberg	commit_transaction	DESTRUCTIVE	Commit an Iceberg transaction (VRP-gated, see LLD section 14)
+iceberg	dry_run_maintenance	READ	Read-only dry-run companion for destructive maintenance
+ignite	get_version	READ	Ignite REST version
+ignite	list_caches	READ	List Ignite caches
+ignite	cache_size	READ	Ignite cache size
+ignite	destroy_cache	DESTRUCTIVE	Destroy an Ignite cache
+impala	get_metrics	READ	Impala /metrics
+impala	list_queries	READ	Impala queries page JSON facade
+impala	cancel_query	DESTRUCTIVE	Cancel an Impala query
+kafka	list_topics	READ	List Kafka topics
+kafka	describe_topic	READ	Describe a Kafka topic
+kafka	query_schema_registry	READ	Query Schema Registry for a subject
+kafka	inspect_dlq	READ	Inspect dead-letter queue topic samples
+kafka	create_topic	MUTATE	Create a Kafka topic
+kafka	alter_config	MUTATE	Alter topic or broker config
+kafka	reset_offsets	DESTRUCTIVE	Reset consumer group offsets
+kafka	delete_records	DESTRUCTIVE	Delete records before an offset
+kudu	list_tables	READ	List Kudu tables via REST facade
+kudu	get_table	READ	Get Kudu table
+kudu	delete_table	DESTRUCTIVE	Delete a Kudu table
+nifi	get_about	READ	NiFi about / version
+nifi	list_process_groups	READ	List root process groups
+nifi	get_process_group	READ	Get a process group
+nifi	start_process_group	MUTATE	Start a process group
+nifi	stop_process_group	DESTRUCTIVE	Stop a process group
+ozone	get_service	READ	Ozone OM HTTP root
+ozone	list_volumes	READ	List Ozone volumes via HTTP facade
+ozone	list_buckets	READ	List Ozone buckets
+ozone	delete_bucket	DESTRUCTIVE	Delete an Ozone bucket
+paimon	list_databases	READ	List Paimon databases
+paimon	list_tables	READ	List Paimon tables
+paimon	get_table	READ	Get Paimon table
+paimon	drop_table	DESTRUCTIVE	Drop a Paimon table
+pinot	list_tables	READ	List Pinot tables
+pinot	get_table	READ	Get Pinot table config
+pinot	list_tenants	READ	List Pinot tenants
+pinot	delete_table	DESTRUCTIVE	Delete a Pinot table
+pulsar	list_clusters	READ	List Pulsar clusters
+pulsar	list_tenants	READ	List Pulsar tenants
+pulsar	list_topics	READ	List topics in a namespace
+pulsar	get_topic_stats	READ	Get Pulsar topic stats
+pulsar	create_topic	MUTATE	Create a Pulsar topic
+pulsar	delete_topic	DESTRUCTIVE	Delete a Pulsar topic
+ranger	list_services	READ	List Ranger services
+ranger	list_policies	READ	List Ranger policies for a service
+ranger	get_policy	READ	Get a Ranger policy
+ranger	delete_policy	DESTRUCTIVE	Delete a Ranger policy
+solr	system_info	READ	Solr system info
+solr	list_collections	READ	List Solr collections
+solr	query	READ	Query a Solr collection
+solr	delete_collection	DESTRUCTIVE	Delete a Solr collection
+spark	list_applications	READ	List Spark History applications
+spark	get_application	READ	Get Spark application details from History Server
+spark	run_sql_readonly	READ	Guarded read-only SQL via Spark Connect or Thrift
+spark	submit_batch	DESTRUCTIVE	Submit a Livy batch job
+spark	kill_application	DESTRUCTIVE	Kill a Livy or YARN application
+storm	cluster_summary	READ	Storm cluster summary
+storm	list_topologies	READ	List Storm topologies
+storm	get_topology	READ	Get Storm topology details
+storm	kill_topology	DESTRUCTIVE	Kill a Storm topology
+superset	list_databases	READ	List Superset databases
+superset	list_datasets	READ	List Superset datasets
+superset	list_charts	READ	List Superset charts
+superset	delete_chart	DESTRUCTIVE	Delete a Superset chart
+zookeeper	ruok	READ	ZooKeeper ruok admin command
+zookeeper	stat	READ	ZooKeeper stat
+zookeeper	list_children	READ	List znode children via REST facade
+zookeeper	delete_znode	DESTRUCTIVE	Delete a znode

@@ -1,0 +1,51 @@
+# ignite through knox, 2026-10-04T23:49:05.830717600Z
+
+--- real Ignite 2.18.0 node, REST on 127.0.0.1:61822; caches orders and scratch_knox
+
+=== read by READER | guest (READER) | tools/call ignite_get_version {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"text":"{\"successStatus\":0,\"sessionToken\":null,\"error\":null,\"securitySubjectId\":null,\"response\":\"2.18.0\"}","type":"text"}],"structuredContent":{"successStatus":0,"sessionToken":null,"error":null,"securitySubjectId":null,"response":"2.18.0"},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_852d72e72bdf072eb81d8f9a","traceId":"12003daa2c0890fccbbdd32ef7f0e171"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-ignite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call ignite_get_version {} | HTTP 403
+{
+"servlet":"aegis-ignite-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-ignite/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call ignite_list_caches {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"{\"successStatus\":0,\"sessionToken\":null,\"error\":null,\"securitySubjectId\":null,\"response\":[{\"nodeId\":\"856e2c39-a8c4-4b94-8559-6dde9f2d9287\",\"consistentId\":\"127.0.0.1:61823\",\"tcpHostNames\":[],\"tcpPort\":11211,\"metrics\":null,\"caches\":[{\"name\":\"scratch_knox\",\"mode\":\"PARTITIONED\",\"sqlSchema\":null},{\"name\":\"orders\",\"mode\":\"PARTITIONED\",\"sqlSchema\":null}],\"order\":1,\"attributes\":null,\"tcpAddresses\":[\"127.0.0.1\"]}]}","type":"text"}],"structuredContent":{"successStatus":0,"sessionToken":null,"error":null,"securitySubjectId":null,"response":[{"nodeId":"856e2c39-a8c4-4b94-8559-6dde9f2d9287","consistentId":"127.0.0.1:61823","tcpHostNames":[],"tcpPort":11211,"metrics":null,"caches":[{"name":"scratch_knox","mode":"PARTITIONED","sqlSchema":null},{"name":"orders","mode":"PARTITIONED","sqlSchema":null}],"order":1,"attributes":null,"tcpAddresses":["127.0.0.1"]}]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_def11b92dee3cda5a462b855","traceId":"d61751282e1bf0f27d3887ffd4085507"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-ignite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call ignite_list_caches {} | HTTP 403
+{
+"servlet":"aegis-ignite-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-ignite/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== destructive by READER | guest (READER) | tools/call ignite_destroy_cache {"cache":"scratch_knox"} | HTTP 200 decision=DENIED:READONLY_CALLER:step1
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"text":"Aegis denied this call: READONLY_CALLER (step 1). caller is not in a group allowed to call DESTRUCTIVE tools","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:READONLY_CALLER:step1","requestId":"req_6f8b070ce7f987062121f759","code":"READONLY_CALLER","step":1,"reason":"caller is not in a group allowed to call DESTRUCTIVE tools","traceId":"d42bd1ef9bb5367e51b5e66db55f42de"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-ignite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== destructive without approval | sam (OPERATOR) | tools/call ignite_destroy_cache {"cache":"scratch_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":6,"result":{"content":[{"text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). this DESTRUCTIVE call needs a per-call approval Approval request apr_7257b59e49de571bb582ff0f4b89dda9 is pending; retry with the approval token once approved.","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_466322ff8a84077027e94a60","code":"APPROVAL_REQUIRED","step":4,"reason":"this DESTRUCTIVE call needs a per-call approval","argsDigest":"sha256:08a105723e88e61a2873d7d4c7e975329e708074539e4fd4c9c48e6b893f50ed","approvalRequestId":"apr_7257b59e49de571bb582ff0f4b89dda9","traceId":"3ddc2a4b977621c2274b3991d916e626"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-ignite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== dry run | sam (OPERATOR) | tools/call ignite_destroy_cache {"cache":"scratch_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"text":"{\"successStatus\":0,\"affinityNodeId\":null,\"sessionToken\":null,\"error\":null,\"securitySubjectId\":null,\"response\":1}","type":"text"}],"structuredContent":{"successStatus":0,"affinityNodeId":null,"sessionToken":null,"error":null,"securitySubjectId":null,"response":1},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_63f22427cd99f931dbd6f6f7","dryRunReceipt":"<redacted>","dryRunReceiptExpiresAt":"2026-10-05T00:04:32.385000100Z","approvalRequestId":"apr_7257b59e49de571bb582ff0f4b89dda9","argsDigest":"sha256:08a105723e88e61a2873d7d4c7e975329e708074539e4fd4c9c48e6b893f50ed","traceId":"72ce2003500384f861aa198b0a0c63cb"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-ignite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== requester approves own request | sam (OPERATOR) | POST approvals/apr_7257b59e49de571bb582ff0f4b89dda9/approve | HTTP 403
+{"error":"caller is not in an approver group"}
+
+=== independent approval | tom (APPROVER) | POST approvals/apr_7257b59e49de571bb582ff0f4b89dda9/approve | HTTP 200
+{"id":"apr_7257b59e49de571bb582ff0f4b89dda9","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-ignite","actorChain":[],"tool":"ignite_destroy_cache","toolClass":"DESTRUCTIVE","source":"ignite","resources":["ignite:cache:scratch_knox"],"argsDigest":"sha256:08a105723e88e61a2873d7d4c7e975329e708074539e4fd4c9c48e6b893f50ed","binding":"sha256:53a2601742d99ea8cf18ac4ade05f7f38e5c81ba85598c9c0719e031e25dfd77","evidence":{"arguments":{"cache":"scratch_knox"},"preview":{"content":[{"text":"{\"successStatus\":0,\"affinityNodeId\":null,\"sessionToken\":null,\"error\":null,\"securitySubjectId\":null,\"response\":1}","type":"text"}],"structuredContent":{"successStatus":0,"affinityNodeId":null,"sessionToken":null,"error":null,"securitySubjectId":null,"response":1},"isError":false}},"createdAt":"2026-10-04T23:49:32.217573600Z","expiresAt":"2026-10-05T00:19:32.217573600Z","decidedBy":"tom","decidedAt":"2026-10-04T23:49:32.747723300Z","tokenExpiresAt":"2026-10-04T23:59:32.747723300Z"}
+
+=== requester collects the token | sam (OPERATOR) | GET approvals/apr_7257b59e49de571bb582ff0f4b89dda9 | HTTP 200
+{"id":"apr_7257b59e49de571bb582ff0f4b89dda9","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-ignite","actorChain":[],"tool":"ignite_destroy_cache","toolClass":"DESTRUCTIVE","source":"ignite","resources":["ignite:cache:scratch_knox"],"argsDigest":"sha256:08a105723e88e61a2873d7d4c7e975329e708074539e4fd4c9c48e6b893f50ed","binding":"sha256:53a2601742d99ea8cf18ac4ade05f7f38e5c81ba85598c9c0719e031e25dfd77","evidence":{"arguments":{"cache":"scratch_knox"},"preview":{"content":[{"text":"{\"successStatus\":0,\"affinityNodeId\":null,\"sessionToken\":null,\"error\":null,\"securitySubjectId\":null,\"response\":1}","type":"text"}],"structuredContent":{"successStatus":0,"affinityNodeId":null,"sessionToken":null,"error":null,"securitySubjectId":null,"response":1},"isError":false}},"createdAt":"2026-10-04T23:49:32.217573600Z","expiresAt":"2026-10-05T00:19:32.217573600Z","decidedBy":"tom","decidedAt":"2026-10-04T23:49:32.747723300Z","token":"<redacted>","tokenExpiresAt":"2026-10-04T23:59:32.747723300Z"}
+
+=== execute with approval and receipt | sam (OPERATOR) | tools/call ignite_destroy_cache {"cache":"scratch_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":8,"result":{"content":[{"text":"{\"successStatus\":0,\"sessionToken\":null,\"error\":null,\"securitySubjectId\":null,\"response\":null}","type":"text"}],"structuredContent":{"successStatus":0,"sessionToken":null,"error":null,"securitySubjectId":null,"response":null},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_2a601474e9a8c7f7c052b901","traceId":"f958c7acbe14a7409d2539f37063fed0"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-ignite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+--- the node no longer has cache scratch_knox and still has orders
+
+=== replay of the same approval | sam (OPERATOR) | tools/call ignite_destroy_cache {"cache":"scratch_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":9,"result":{"content":[{"text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). approval token has already been used","type":"text"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_dd4412f6f516384b5cd656b0","code":"APPROVAL_REQUIRED","step":4,"reason":"approval token has already been used","traceId":"a84cf419568efa3ba39fca1b3660d3db"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-ignite","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}

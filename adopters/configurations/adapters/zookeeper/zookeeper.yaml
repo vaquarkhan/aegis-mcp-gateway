@@ -1,0 +1,129 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Apache ZooKeeper: governed MCP tools over two different surfaces, because ZooKeeper has two.
+#
+# 1. SERVER COMMANDS ARE HTTP. The AdminServer is an embedded Jetty that exposes ZooKeeper's four-letter
+#    words as JSON under /commands/<name>, on admin.serverPort (default 8080). So those tools are a
+#    plain declarative http source. The command names below are ZooKeeper's own: the test
+#    ZooKeeperAdminCommandsTest resolves every /commands/<name> path in this file through
+#    org.apache.zookeeper.server.admin.Commands, ZooKeeper's own registry, so a name that is not a real
+#    command fails the build rather than shipping.
+#
+# 2. THE DATA TREE IS NOT HTTP. Reading and writing znodes goes over ZooKeeper's client protocol on the
+#    client port (default 2181). The paths /znodes/v1/<path> belong to zookeeper-contrib-rest, a separate
+#    contrib artifact on port 9998 that a normal ensemble does not run. So the data-tree tools use the
+#    zookeeper source (aegis-source-zookeeper), which calls ZooKeeper's own Java client. Every operation
+#    is a typed method the compiler checks, and paths are validated by ZooKeeper's PathUtils, so this
+#    file cannot disagree with the server about what a legal path is.
+#
+# WHAT YOU MUST PROVIDE
+#   1. admin.enableServer=true (the default) if you want the /commands tools. If your ensemble runs with
+#      the AdminServer off, delete the zookeeper-admin source; the data-tree tools do not need it.
+#   2. ZooKeeper ACLs for the gateway's credentials. That is the control that matters: this file governs
+#      which tool may be called by whom, and the ensemble still enforces who may touch which znode.
+#
+# A WRITE CARRIES THE VERSION IT EXPECTS
+#   zookeeper_set_data and zookeeper_delete_node both require `version`, which ZooKeeper checks
+#   optimistically. An agent therefore has to read the node before it can change it, and a node that
+#   moved underneath it gets BADVERSION instead of a silent overwrite.
+
+gateway:
+  name: aegis-zookeeper
+
+access:
+  writeGroups: [zookeeper-operators]
+  approverGroups: [zookeeper-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [zookeeper-users, zookeeper-operators], classes: [READ]}
+    - {id: operate, groups: [zookeeper-operators], classes: [MUTATE, DESTRUCTIVE]}
+    # /zookeeper is reserved for the ensemble's own state (quotas, config, the session tree). No
+    # approval can override this: policy is evaluated before approval is ever requested.
+    - id: never-write-reserved-znodes
+      effect: DENY
+      groups: ["*"]
+      tools: [zookeeper_create_node, zookeeper_set_data, zookeeper_delete_node]
+      resources: ["zookeeper:znode:/zookeeper*"]
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  # Applies to the AdminServer source only. The ZooKeeper client opens its own socket, so step 5 has
+  # nothing to inspect there: its target is the connectString below, which is configuration rather than
+  # an argument, so an agent cannot redirect it.
+  allowCidrs: [10.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-zookeeper.jsonl
+
+sources:
+  # ---------------------------------------------------------------- server commands (real HTTP API)
+  - id: zookeeper-admin
+    type: http
+    baseUrl: http://zookeeper:8080
+    tools:
+      - name: zookeeper_ruok
+        description: "Liveness check of this ZooKeeper server."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/commands/ruok"}
+
+      - name: zookeeper_stat
+        description: "Server statistics and connection counts."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/commands/stats"}
+
+  # ---------------------------------------------------------------- data tree (client protocol)
+  - id: zookeeper
+    type: zookeeper
+    settings:
+      connectString: zookeeper:2181
+      sessionTimeoutMs: 15000
+      connectTimeoutMs: 10000
+      auth: {digestEnv: AEGIS_ZOOKEEPER_DIGEST} # required for owner-only created znodes
+      maxDataBytes: 65536            # a znode holds at most 1 MiB; this caps what reaches the model
+      maxChildren: 500               # a wide parent cannot fill the model's context
+    tools:
+      zookeeper_list_children:
+        class: READ
+        resources: [{type: "zookeeper:znode", pointer: /path}]
+      zookeeper_stat_node:
+        class: READ
+        resources: [{type: "zookeeper:znode", pointer: /path}]
+      zookeeper_get_node:
+        # Node data is where applications park connection strings and tokens, so a read is a disclosure.
+        # Restricted to operators rather than offered to every ZooKeeper user.
+        class: READ
+        allowedGroups: [zookeeper-operators]
+        resources: [{type: "zookeeper:znode", pointer: /path}]
+      zookeeper_create_node:
+        class: MUTATE
+        resources: [{type: "zookeeper:znode", pointer: /path}]
+      zookeeper_set_data:
+        class: MUTATE
+        resources: [{type: "zookeeper:znode", pointer: /path}]
+      zookeeper_delete_node:
+        class: DESTRUCTIVE
+        resources: [{type: "zookeeper:znode", pointer: /path}]
+        # Validate against the exact target before the write is promoted: the preview reads the node
+        # that is about to be removed, so an approver sees what it is rather than just its path.
+        dryRun: {mode: TOOL, previewTool: zookeeper_stat_node}

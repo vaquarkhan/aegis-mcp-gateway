@@ -1,0 +1,51 @@
+# activemq through knox, 2026-10-04T23:44:41.587321400Z
+
+--- stock ActiveMQ Classic 6.3.2, Jolokia on http://127.0.0.1:55978/api/jolokia; queues orders and scratch_knox
+
+=== read by READER | guest (READER) | tools/call activemq_get_broker {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"TotalMessageCount\":0,\"Uptime\":\"1 minute\",\"MemoryPercentUsage\":0,\"TotalConsumerCount\":0,\"StorePercentUsage\":0,\"BrokerVersion\":\"6.3.2\",\"BrokerName\":\"localhost\",\"TotalProducerCount\":0}"}],"structuredContent":{"TotalMessageCount":0,"Uptime":"1 minute","MemoryPercentUsage":0,"TotalConsumerCount":0,"StorePercentUsage":0,"BrokerVersion":"6.3.2","BrokerName":"localhost","TotalProducerCount":0},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_ec5b88cf0609851ec04d99af","traceId":"4f2fcee9e3c9868215d962be5a5acef4"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-activemq","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call activemq_get_broker {} | HTTP 403
+{
+"servlet":"aegis-activemq-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-activemq/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call activemq_list_queues {} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"[\"org.apache.activemq:type=Broker,brokerName=localhost,destinationType=Queue,destinationName=scratch_knox\",\"org.apache.activemq:type=Broker,brokerName=localhost,destinationType=Queue,destinationName=orders\"]"}],"structuredContent":{"value":["org.apache.activemq:type=Broker,brokerName=localhost,destinationType=Queue,destinationName=scratch_knox","org.apache.activemq:type=Broker,brokerName=localhost,destinationType=Queue,destinationName=orders"]},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_b877a31b9f9ff62ca28c2877","traceId":"1a943b04a6bcfb2a98db24b14d373c15"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-activemq","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call activemq_list_queues {} | HTTP 403
+{
+"servlet":"aegis-activemq-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-activemq/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== destructive by READER | guest (READER) | tools/call activemq_remove_queue {"queue":"scratch_knox"} | HTTP 200 decision=DENIED:READONLY_CALLER:step1
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"type":"text","text":"Aegis denied this call: READONLY_CALLER (step 1). caller is not in a group allowed to call DESTRUCTIVE tools"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:READONLY_CALLER:step1","requestId":"req_523f513b45c6c65efe19d1f1","code":"READONLY_CALLER","step":1,"reason":"caller is not in a group allowed to call DESTRUCTIVE tools","traceId":"419baf414d90e822b38c596a427141f2"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-activemq","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== destructive without approval | sam (OPERATOR) | tools/call activemq_remove_queue {"queue":"scratch_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":6,"result":{"content":[{"type":"text","text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). this DESTRUCTIVE call needs a per-call approval Approval request apr_69c34cb59efca6a588705201ce01ea13 is pending; retry with the approval token once approved."}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_e01d12edf4a8c08dff546474","code":"APPROVAL_REQUIRED","step":4,"reason":"this DESTRUCTIVE call needs a per-call approval","approvalRequestId":"apr_69c34cb59efca6a588705201ce01ea13","argsDigest":"sha256:6693b177caebd40db356b3bee71ff1fa9355edfe3d62af21d7cd6e947125f7da","traceId":"c59f8ff30e6ef7fcfbbf8b177ac932a5"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-activemq","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== dry run | sam (OPERATOR) | tools/call activemq_remove_queue {"queue":"scratch_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"type":"text","text":"Dry run: this exact DESTRUCTIVE call passed every Aegis governance check. Nothing was sent to the backend."}],"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_4a429d76a14631bc0af1b965","dryRunReceiptExpiresAt":"2026-10-04T23:59:47.789907900Z","approvalRequestId":"apr_69c34cb59efca6a588705201ce01ea13","argsDigest":"sha256:6693b177caebd40db356b3bee71ff1fa9355edfe3d62af21d7cd6e947125f7da","traceId":"c8f037654ed311242de11987291a8a02","dryRunReceipt":"<redacted>"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-activemq","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+=== requester approves own request | sam (OPERATOR) | POST approvals/apr_69c34cb59efca6a588705201ce01ea13/approve | HTTP 403
+{"error":"caller is not in an approver group"}
+
+=== independent approval | tom (APPROVER) | POST approvals/apr_69c34cb59efca6a588705201ce01ea13/approve | HTTP 200
+{"id":"apr_69c34cb59efca6a588705201ce01ea13","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-activemq","actorChain":[],"tool":"activemq_remove_queue","toolClass":"DESTRUCTIVE","source":"activemq","resources":["activemq:queue:scratch_knox"],"argsDigest":"sha256:6693b177caebd40db356b3bee71ff1fa9355edfe3d62af21d7cd6e947125f7da","binding":"sha256:61afeaa7c0c897db0344406ca07596a4bd2b4a0499e691dd615d349f3e4dded3","evidence":{"arguments":{"queue":"scratch_knox"},"preview":{"content":[{"type":"text","text":"Dry run: this exact DESTRUCTIVE call passed every Aegis governance check. Nothing was sent to the backend."}],"isError":false}},"createdAt":"2026-10-04T23:44:47.739784100Z","expiresAt":"2026-10-05T00:14:47.739784100Z","decidedBy":"tom","decidedAt":"2026-10-04T23:44:47.861754500Z","tokenExpiresAt":"2026-10-04T23:54:47.861754500Z"}
+
+=== requester collects the token | sam (OPERATOR) | GET approvals/apr_69c34cb59efca6a588705201ce01ea13 | HTTP 200
+{"id":"apr_69c34cb59efca6a588705201ce01ea13","status":"APPROVED","actor":"sam","effectiveSubject":"sam","issuer":"knox:aegis-activemq","actorChain":[],"tool":"activemq_remove_queue","toolClass":"DESTRUCTIVE","source":"activemq","resources":["activemq:queue:scratch_knox"],"argsDigest":"sha256:6693b177caebd40db356b3bee71ff1fa9355edfe3d62af21d7cd6e947125f7da","binding":"sha256:61afeaa7c0c897db0344406ca07596a4bd2b4a0499e691dd615d349f3e4dded3","evidence":{"arguments":{"queue":"scratch_knox"},"preview":{"content":[{"type":"text","text":"Dry run: this exact DESTRUCTIVE call passed every Aegis governance check. Nothing was sent to the backend."}],"isError":false}},"createdAt":"2026-10-04T23:44:47.739784100Z","expiresAt":"2026-10-05T00:14:47.739784100Z","decidedBy":"tom","decidedAt":"2026-10-04T23:44:47.861754500Z","token":"<redacted>","tokenExpiresAt":"2026-10-04T23:54:47.861754500Z"}
+
+=== execute with approval and receipt | sam (OPERATOR) | tools/call activemq_remove_queue {"queue":"scratch_knox"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":8,"result":{"content":[{"type":"text","text":"{\"request\":{\"mbean\":\"org.apache.activemq:type=Broker,brokerName=localhost\",\"arguments\":[\"scratch_knox\"],\"type\":\"exec\",\"operation\":\"removeQueue(java.lang.String)\"},\"value\":null,\"status\":200,\"timestamp\":1791157487}"}],"structuredContent":{"request":{"mbean":"org.apache.activemq:type=Broker,brokerName=localhost","arguments":["scratch_knox"],"type":"exec","operation":"removeQueue(java.lang.String)"},"value":null,"status":200,"timestamp":1791157487},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_b6df997e987a2a6fdc270649","traceId":"8d2b89b6e21e5db1d0d75e92a529b440"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-activemq","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}
+
+--- the broker no longer has queue scratch_knox and still has orders
+
+=== replay of the same approval | sam (OPERATOR) | tools/call activemq_remove_queue {"queue":"scratch_knox"} | HTTP 200 decision=DENIED:APPROVAL_REQUIRED:step4
+{"jsonrpc":"2.0","id":9,"result":{"content":[{"type":"text","text":"Aegis denied this call: APPROVAL_REQUIRED (step 4). approval token has already been used"}],"isError":true,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"DENIED:APPROVAL_REQUIRED:step4","requestId":"req_6f198ce23e1872312f209dee","code":"APPROVAL_REQUIRED","step":4,"reason":"approval token has already been used","traceId":"35103b332bd4c44947503215c761dbb8"},"io.modelcontextprotocol/serverInfo":{"name":"aegis-activemq","version":"2.0.0-SNAPSHOT"}},"resultType":"complete"}}

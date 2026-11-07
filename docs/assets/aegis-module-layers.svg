@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-labelledby="title desc">
+  <title id="title">Aegis Gateway 2.0 module layers</title>
+  <desc id="desc">Six rows of Maven modules. Each module depends only on modules in rows below it. The engine is at the bottom with no Aegis dependencies; the MCP protocol, OTLP exporter and configuration modules sit above it; extension modules for identity, guardrails, sources and state sit above configuration; the own host and the optional Knox 3.0 extension are at the top.</desc>
+  <defs>
+    <marker id="up" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#516773"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="780" fill="#f5f8f8"/>
+  <text x="40" y="44" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#09243a">Aegis Gateway 2.0 modules</text>
+  <text x="40" y="72" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#516773">Each module depends only on modules in the rows below it. Arrows point from a row to the rows it uses.</text>
+
+  <!-- Row 6: hosts -->
+  <text x="40" y="118" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#007c78">HOSTS</text>
+  <rect x="200" y="96" width="420" height="64" rx="10" fill="#09243a"/>
+  <text x="410" y="124" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#ffffff">aegis-gateway</text>
+  <text x="410" y="146" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#c7e3e4">own HTTP(S) and stdio host, bundles Derby and PostgreSQL state</text>
+  <rect x="660" y="96" width="500" height="64" rx="10" fill="#0b4055"/>
+  <text x="910" y="124" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#ffffff">aegis-knox3-extension</text>
+  <text x="910" y="146" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#c7e3e4">optional Apache Knox 3.0.0 service (Knox in provided scope)</text>
+
+  <line x1="680" y1="170" x2="680" y2="200" stroke="#516773" stroke-width="2" marker-end="url(#up)"/>
+
+  <!-- Row 5: extensions -->
+  <text x="40" y="232" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#007c78">EXTENSIONS</text>
+  <rect x="200" y="206" width="150" height="70" rx="10" fill="#ffffff" stroke="#007c78" stroke-width="2"/>
+  <text x="275" y="236" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#09243a">aegis-mcp-security</text>
+  <text x="275" y="258" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#516773">JWT, static tokens, CORS</text>
+  <rect x="360" y="206" width="150" height="70" rx="10" fill="#ffffff" stroke="#007c78" stroke-width="2"/>
+  <text x="435" y="236" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#09243a">aegis-mcp-guardrails</text>
+  <text x="435" y="258" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#516773">project hook</text>
+  <rect x="520" y="206" width="140" height="70" rx="10" fill="#ffffff" stroke="#007c78" stroke-width="2"/>
+  <text x="590" y="236" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#09243a">aegis-source-jdbc</text>
+  <text x="590" y="258" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#516773">type: jdbc</text>
+  <rect x="670" y="206" width="180" height="70" rx="10" fill="#ffffff" stroke="#007c78" stroke-width="2"/>
+  <text x="760" y="236" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#09243a">aegis-source-zookeeper</text>
+  <text x="760" y="258" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#516773">type: zookeeper</text>
+  <rect x="860" y="206" width="140" height="70" rx="10" fill="#ffffff" stroke="#007c78" stroke-width="2"/>
+  <text x="930" y="236" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#09243a">aegis-state-derby</text>
+  <text x="930" y="258" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#516773">state: derby-local</text>
+  <rect x="1010" y="206" width="150" height="70" rx="10" fill="#ffffff" stroke="#007c78" stroke-width="2"/>
+  <text x="1085" y="236" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#09243a">aegis-state-postgres</text>
+  <text x="1085" y="258" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#516773">state: postgres</text>
+
+  <line x1="680" y1="286" x2="680" y2="316" stroke="#516773" stroke-width="2" marker-end="url(#up)"/>
+
+  <!-- Row 4: configuration -->
+  <text x="40" y="350" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#007c78">CONFIGURATION</text>
+  <rect x="200" y="322" width="960" height="64" rx="10" fill="#e7f4f2" stroke="#007c78" stroke-width="2"/>
+  <text x="680" y="350" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#09243a">aegis-config</text>
+  <text x="680" y="372" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">strict YAML/JSON loader, http and mcp sources, remote and sql-readonly hooks, OPA, plugin SPIs</text>
+
+  <line x1="680" y1="396" x2="680" y2="426" stroke="#516773" stroke-width="2" marker-end="url(#up)"/>
+
+  <!-- Row 3: observability -->
+  <text x="40" y="460" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#007c78">OBSERVABILITY</text>
+  <rect x="200" y="432" width="960" height="56" rx="10" fill="#ffffff" stroke="#9fb7bd" stroke-width="2"/>
+  <text x="680" y="458" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#09243a">aegis-observability-otlp</text>
+  <text x="680" y="478" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">bounded OTLP/HTTP JSON span export, one span per decision, no identity or arguments</text>
+
+  <line x1="680" y1="498" x2="680" y2="528" stroke="#516773" stroke-width="2" marker-end="url(#up)"/>
+
+  <!-- Row 2: protocol -->
+  <text x="40" y="562" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#007c78">PROTOCOL</text>
+  <rect x="200" y="534" width="960" height="64" rx="10" fill="#ffffff" stroke="#9fb7bd" stroke-width="2"/>
+  <text x="680" y="562" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#09243a">aegis-mcp</text>
+  <text x="680" y="584" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">MCP 2026-07-28 and 2025 revisions, admin API, downstream HTTP and stdio MCP clients, bounded HTTP</text>
+
+  <line x1="680" y1="608" x2="680" y2="638" stroke="#516773" stroke-width="2" marker-end="url(#up)"/>
+
+  <!-- Row 1: engine -->
+  <text x="40" y="672" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#007c78">CORE</text>
+  <rect x="200" y="644" width="960" height="76" rx="10" fill="#007c78"/>
+  <text x="680" y="674" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#ffffff">aegis-engine</text>
+  <text x="680" y="698" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#e8ffff">fixed governance chain, catalog pinning, approvals, dry-run receipts, hash-chained audit, SPIs; JDK only</text>
+
+  <text x="40" y="758" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#516773">Examples modules (Kafka Admin, Spark Connect, runnable bundles, real-engine validation) sit above the hosts and are outside the release core.</text>
+</svg>

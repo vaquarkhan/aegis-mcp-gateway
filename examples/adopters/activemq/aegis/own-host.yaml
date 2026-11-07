@@ -1,0 +1,135 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache ActiveMQ Classic 6.x: governed MCP tools over the Jolokia JMX bridge on the web console
+# (/api/jolokia). Checked against a running apache-activemq-6.3.2 with its shipped conf/:
+#   - conf/jolokia-access.xml allows POST only, so every tool is a POST of a Jolokia JSON request;
+#     GET and path-style requests are refused by the broker.
+#   - Jolokia refuses a request without an Origin header (CSRF check), so the profile sends one.
+#   - /api/jolokia needs HTTP basic auth (conf/users.properties); the gateway holds that credential.
+#
+# 0.1 -> 2.0 mapping:
+#   get_broker  -> activemq_get_broker
+#   list_queues -> activemq_list_queues
+#   purge_queue -> not kept; activemq_remove_queue is the governed destructive operation instead.
+# Why: purge is an operation on the queue's own MBean, whose name contains the queue name. A Jolokia
+# POST carries the MBean name inside the JSON body, and Aegis fills body fields only with whole argument
+# values (it never splices an argument into a string), so the queue name cannot be put into that MBean
+# name safely. removeQueue is an operation on the Broker MBean that takes the queue name as a separate
+# argument, so it binds to the typed activemq:queue resource without string building. It deletes the
+# queue and its messages, not just the messages.
+#
+# Operator step on the broker (the shipped jolokia-access.xml refuses every exec): add
+# <command>exec</command> to <commands>, and remove <operation>removeQueue</operation> from the deny
+# entry for org.apache.activemq:type=Broker,brokerName=*. Keep everything else denied. With Aegis in
+# front, only the gateway should hold the Jolokia credential.
+#
+# Limitation: Jolokia reports its own refusals (403, 404 InstanceNotFound) inside an HTTP 200 body as
+# {"status":403,"error":...}. The http source treats HTTP 200 as success, so such a refusal is returned to
+# the caller as the tool result, not as a tool error. See docs/ROADMAP.md.
+#
+# The brokerName is fixed operator configuration, not a caller argument. Before production, replace the
+# base URL, Origin, cluster CIDRs, groups, brokerName and audit location.
+
+gateway:
+  name: aegis-activemq
+
+access:
+  writeGroups: [activemq-operators]
+  approverGroups: [activemq-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [activemq-users, activemq-operators], classes: [READ]}
+    - {id: operate, groups: [activemq-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-activemq.jsonl
+
+sources:
+  - id: activemq
+    type: http
+    baseUrl: http://127.0.0.1:55978
+    credentials: {type: basic, usernameEnv: ACTIVEMQ_JOLOKIA_USER, passwordEnv: ACTIVEMQ_JOLOKIA_PASSWORD}
+    tools:
+      - name: activemq_get_broker
+        description: "Broker status from the Jolokia JMX bridge."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request:
+          method: POST
+          path: /api/jolokia
+          headers: {Origin: "http://127.0.0.1:55978"}
+          body:
+            type: read
+            mbean: "org.apache.activemq:type=Broker,brokerName=localhost"
+            attribute: [BrokerName, BrokerVersion, Uptime, TotalMessageCount, TotalConsumerCount,
+                        TotalProducerCount, MemoryPercentUsage, StorePercentUsage]
+        response:
+          pointer: /value
+          status: {pointer: /status, equals: 200}
+
+      - name: activemq_list_queues
+        description: "Search the broker for queue MBeans."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request:
+          method: POST
+          path: /api/jolokia
+          headers: {Origin: "http://127.0.0.1:55978"}
+          body: {type: search, mbean: "org.apache.activemq:type=Broker,brokerName=*,destinationType=Queue,destinationName=*"}
+        response:
+          pointer: /value
+          status: {pointer: /status, equals: 200}
+
+      - name: activemq_remove_queue
+        description: "Delete one queue and every message in it. Messages cannot be recovered."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {queue: {type: string, maxLength: 256}}
+          required: [queue]
+          additionalProperties: false
+        request:
+          method: POST
+          path: /api/jolokia
+          headers: {Origin: "http://127.0.0.1:55978"}
+          body:
+            type: exec
+            mbean: "org.apache.activemq:type=Broker,brokerName=localhost"
+            operation: "removeQueue(java.lang.String)"
+            arguments: ["{queue}"]
+        resources: [{type: "activemq:queue", pointer: /queue}]
+        response: {status: {pointer: /status, equals: 200}}
+
+# Appended for the own-host front door: loopback listener, static tokens per persona.
+host:
+  listen: {host: 127.0.0.1, port: 0}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_READER, actor: guest, groups: [activemq-users]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OPERATOR, actor: sam, groups: [activemq-operators]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_APPROVER, actor: tom, groups: [activemq-approvers]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OUTSIDER, actor: admin, groups: []}

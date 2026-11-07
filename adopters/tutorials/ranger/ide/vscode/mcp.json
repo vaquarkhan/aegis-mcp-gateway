@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "aegis-token",
+      "password": true,
+      "description": "Aegis bearer token of the person you act as (ranger tutorial)"
+    }
+  ],
+  "servers": {
+    "aegis-ranger": {
+      "type": "http",
+      "url": "http://127.0.0.1:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:aegis-token}"
+      }
+    }
+  }
+}

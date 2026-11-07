@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "aegis-activemq": {
+      "url": "http://127.0.0.1:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer REPLACE_WITH_YOUR_TOKEN"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "aegis-activemq-knox": {
+      "url": "https://localhost:8443/gateway/aegis-activemq/aegis-mcp/v1/mcp",
+      "headers": {
+        "Authorization": "Basic REPLACE_WITH_BASE64_OF_KNOX_DEMO_CREDENTIALS"
+      },
+      "disabled": true,
+      "autoApprove": []
+    }
+  }
+}

@@ -1,0 +1,115 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache Druid: governed MCP tools over the Apache Druid HTTP API, configuration only.
+# Druid coordinator and SQL APIs: GET /druid/coordinator/v1/datasources,
+# GET and DELETE /druid/coordinator/v1/datasources/{name}, POST /druid/v2/sql.
+# Replaces the Aegis 0.1 Java adapter mcp-adapter-druid (taxonomy: olap).
+# Dry run defaults to GATEWAY (governance preflight only); tools that can validate against the
+# exact target use dryRun mode TOOL with that read as the preview.
+
+gateway:
+  name: aegis-druid
+
+access:
+  writeGroups: [druid-operators]
+  approverGroups: [druid-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+# This engine's HTTP API executes whatever statement it is given, so the tools below that
+# forward a statement are only honestly classified READ because of the sql-readonly hook.
+# If you remove the hook, reclassify those tools as MUTATE so every query needs an approval.
+# The hook is a keyword and shape guard, not a SQL parser: the control that actually enforces
+# read-only is a read-only credential on this source. See docs/CONFIGURATION.md.
+hooks:
+  - type: sql-readonly
+    # Bound to the statement-carrying tools only. The hook denies a call that carries none
+    # of its arguments, so binding it to every tool would refuse the rest of this source.
+    methods: [druid_run_sql_readonly]
+    settings: {arguments: [sql]}
+
+policy:
+  rules:
+    - {id: read, groups: [druid-users, druid-operators], classes: [READ]}
+    - {id: operate, groups: [druid-operators], classes: [MUTATE, DESTRUCTIVE]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-druid.jsonl
+
+sources:
+  - id: druid
+    type: http
+    baseUrl: http://127.0.0.1:58695
+    tools:
+      - name: druid_list_datasources
+        description: "List datasources."
+        class: READ
+        inputSchema: {type: object, properties: {}, additionalProperties: false}
+        request: {method: GET, path: "/druid/coordinator/v1/datasources"}
+
+      - name: druid_get_datasource
+        description: "Details of one datasource."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {datasource: {type: string, maxLength: 256}}
+          required: [datasource]
+          additionalProperties: false
+        request: {method: GET, path: "/druid/coordinator/v1/datasources/{datasource}"}
+        resources: [{type: "druid:datasource", pointer: /datasource}]
+
+      - name: druid_run_sql_readonly
+        description: "Run a read-only Druid SQL query."
+        class: READ
+        inputSchema:
+          type: object
+          properties: {sql: {type: string, maxLength: 4000}}
+          required: [sql]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/druid/v2/sql"
+          body: {"query": "{sql}"}
+
+      - name: druid_disable_datasource
+        description: "Disable a datasource, hiding all its segments from queries."
+        class: DESTRUCTIVE
+        inputSchema:
+          type: object
+          properties: {datasource: {type: string, maxLength: 256}}
+          required: [datasource]
+          additionalProperties: false
+        request: {method: DELETE, path: "/druid/coordinator/v1/datasources/{datasource}"}
+        resources: [{type: "druid:datasource", pointer: /datasource}]
+        dryRun: {mode: TOOL, previewTool: druid_get_datasource}   # validate against the exact target first
+
+# Appended for the own-host front door: loopback listener, static tokens per persona.
+host:
+  listen: {host: 127.0.0.1, port: 0}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_READER, actor: guest, groups: [druid-users]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OPERATOR, actor: sam, groups: [druid-operators]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_APPROVER, actor: tom, groups: [druid-approvers]}
+        - {tokenEnv: AEGIS_VALIDATION_TOKEN_OUTSIDER, actor: admin, groups: []}

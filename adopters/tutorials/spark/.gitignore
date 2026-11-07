@@ -1,0 +1,2 @@
+# Tutorial runtime state (audit journal, Spark warehouse). Never commit it.
+work/

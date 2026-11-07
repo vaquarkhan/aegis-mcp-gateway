@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "aegis-existing-mcp-server": {
+      "url": "http://127.0.0.1:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer REPLACE_WITH_YOUR_TOKEN"
+      }
+    }
+  }
+}
