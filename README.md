@@ -62,6 +62,8 @@ JDK 17+ and Maven 3.9+ are required. The default build runs without external ser
 mvn -B clean install
 ```
 
+For a first smoke test on this branch, use the [Hello World guide](docs/guide/hello-world.html): it opens Streamable HTTP on **8080**. A `StdioBoot` log or port **8090** is Aegis **0.1** (tag `v0.1.0`). `--stdio` is only for desktop MCP pipes; it does not bind an HTTP port.
+
 The validation report records deterministic governance evidence, retained target-version verification evidence, and clearly scoped contract profiles. Use the [adopter catalog](examples/adopters/README.md) to select the profile and evidence level appropriate for your deployment.
 
 ## Evidence rule

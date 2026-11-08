@@ -90,3 +90,7 @@ local-gateway.yaml
 local-tools.yaml
 logs/
 adopters/clients/audit/
+
+# Python bytecode from local tutorial/generator runs
+**/__pycache__/
+*.py[cod]

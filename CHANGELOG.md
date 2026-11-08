@@ -17,6 +17,8 @@
 
 ## 2.0.0 (unreleased)
 
+- Reviewer smoke-test docs state that Hello World is HTTP on 8080; `StdioBoot` / port 8090 is Aegis 0.1
+  (tag `v0.1.0` / branch `release/0.1`). `__pycache__` is gitignored.
 - Hello World reports ready only after both the gateway and the inventory service answer, and the Bash
   launcher no longer needs `seq`. Generated Knox tutorials stop the demo LDAP process their shell started,
   and Kiro setup explains how to Base64-encode the local Knox demo credentials.

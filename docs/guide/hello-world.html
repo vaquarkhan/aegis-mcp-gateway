@@ -105,6 +105,7 @@ layout: null
       <p class="eyebrow">FIRST-GREEN PATH</p>
       <h2>Hello World: build once, govern one project, prompt from your IDE.</h2>
       <p>Use this when you want your first green path without starting Kafka, Spark, or Docker. The checked-in example inventory service is Python's standard library. Aegis governs it on <code>http://127.0.0.1:8080/mcp</code>.</p>
+      <p class="callout">This path is <strong>Streamable HTTP on port 8080</strong> (or the <code>-Port</code> you pass). A log line from <code>StdioBoot</code> or a server on <strong>8090</strong> is Aegis <strong>0.1</strong>, not this branch. Do not start the jar with <code>--stdio</code> or through an IDE/<code>npx</code> stdio launcher if you want <code>curl http://127.0.0.1:8080/readyz</code>. For desktop MCP clients that only speak stdio, use the IDE JSON in step 5 against this same HTTP URL, or run the jar with <code>--stdio</code> only when you intend a pipe, not a port.</p>
 
       <h3>Step 1 - Build Aegis</h3>
       <p>JDK 17+ and Maven 3.9+. From the repository root:</p>
