@@ -49,6 +49,11 @@ the Git history of the 0.1 line, or the 0.1.0 release. They must not be restored
 this line or used to claim 2.0 support; the canonical 2.0 integration path is the named profile or
 shared typed-source module in this repository.
 
+The last 0.1 tip of `main` is preserved as annotated tag `v0.1.0` and branch `release/0.1`
+(commit `91c482e`). Browse that tree at
+[v0.1.0](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/v0.1.0). After a normal merge of 2.0
+into `main`, compare with `git diff v0.1.0...main`.
+
 ## Repository layout changes from 0.1 to 2.0
 
 | Change | Result |

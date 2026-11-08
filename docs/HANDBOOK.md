@@ -347,6 +347,8 @@ mvn -B clean install
 $env:AEGIS_SIGNING_KEY = '<operator-provisioned-secret>'
 $env:ORDERS_MCP_TOKEN = '<operator-provisioned-service-token>'
 java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config aegis.yaml
+# Without --stdio this is Streamable HTTP (host.listen; Hello World uses 8080).
+# A StdioBoot log or port 8090 is Aegis 0.1 only (tag v0.1.0), not this line.
 ```
 
 The values above are placeholders; provision secrets through the operating system, a secret manager integration, or deployment tooling rather than committing them. Configure `host` for TLS and identity, `server` for MCP limits/origins/instructions, and route groups/scopes if the own-host listener needs an outer admission boundary. [Adoption guide](ADOPTION-GUIDE.md) provides an own-host TLS/JWT example; [Configuration](CONFIGURATION.md) is authoritative for every accepted key.
