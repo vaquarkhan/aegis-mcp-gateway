@@ -74,6 +74,7 @@ Iceberg, Flink), see [break-glass MCP servers](../break-glass-mcp-servers/README
 | [Pinot](pinot/) | supported | 1.2.0 | passed | passed | official `apachepinot/pinot` QuickStart Docker image; disposable sample tables; rerun 2026-10-05 |
 | [Pulsar](pulsar/) | supported | 4.0.13 | passed | passed | real broker/bookie with external real ZooKeeper metadata on Windows |
 | [Ranger](ranger/) | supported | 2.9.0 | passed | passed | official `apache/ranger` Admin and `apache/ranger-db`; public v2 API; Keep 2026-10-11 |
+| [SkyWalking](skywalking/) | supported | 9.7.0 | passed | passed | official `apache/skywalking-oap-server:9.7.0` Docker with H2; GraphQL reads; Keep 2026-11-09 |
 | [Solr](solr/) | supported | 9.10.1 | passed | passed | real SolrCloud node with embedded ZooKeeper |
 | [Spark](spark/) | supported | 4.0.1 | passed | passed | real application UI REST and standalone Master REST server |
 | [Spark Connect](spark-connect/) | supported | 4.0.1 | passed | passed | real Spark Connect server; source plugin installed into Knox `ext/` |

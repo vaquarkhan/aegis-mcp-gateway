@@ -57,6 +57,7 @@ $examples = @{
     'bookkeeper'    = @('aegis-validation', 'BookKeeperFrontDoorsTest')
     'pulsar'        = @('aegis-validation', 'PulsarFrontDoorsTest')   # needs AEGIS_PULSAR_HOME (pulsar/install-pulsar.ps1)
     'ranger'        = @('aegis-validation', 'RangerFrontDoorsTest')     # needs Docker (apache/ranger and apache/ranger-db)
+    'skywalking'    = @('aegis-validation', 'SkyWalkingFrontDoorsTest') # needs Docker (apache/skywalking-oap-server)
     'spark-connect' = @('aegis-validation-spark-connect', 'SparkConnectFrontDoorsTest')
     'spark-iceberg' = @('aegis-validation-spark-connect', 'SparkIcebergFrontDoorsTest')   # docs/TUTORIAL-SPARK-ICEBERG.md
 }
