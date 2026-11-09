@@ -36,8 +36,8 @@ import org.junit.jupiter.api.Test;
  */
 class DocumentationClaimsTest {
 
-    private static final int ADAPTER_CONFIGS = 25;
-    private static final int ADAPTER_TOOLS = 116;
+    private static final int ADAPTER_CONFIGS = 27;
+    private static final int ADAPTER_TOOLS = 123;
 
     private static String document(String relative) throws Exception {
         Path file = Path.of("..", "..", relative).normalize();
@@ -60,9 +60,9 @@ class DocumentationClaimsTest {
                 "docs/COVERAGE-0.1-VS-2.0.md",
                 "adopters/configurations/adapters/README.md")) {
             String text = document(relative);
-            assertTrue(text.contains("25 deployable adapter configurations") || text.contains("25 configurations"),
+            assertTrue(text.contains("27 deployable adapter configurations") || text.contains("27 configurations"),
                     relative + ": must state the current deployable adapter-config count");
-            assertTrue(text.contains("116 tools"), relative + ": must state the current adapter-tool count");
+            assertTrue(text.contains("123 tools"), relative + ": must state the current adapter-tool count");
             assertFalse(text.contains("29 config-driven adapters"), relative + ": stale adapter count");
             assertFalse(text.contains("29 engines"), relative + ": stale adapter count");
         }

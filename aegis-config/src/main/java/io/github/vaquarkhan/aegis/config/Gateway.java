@@ -41,6 +41,9 @@ public final class Gateway implements AutoCloseable {
     private final AutoCloseable stateResource;
     private final AtomicBoolean closed = new AtomicBoolean();
     private final java.util.function.Function<String, String> secrets;
+    private final io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations;
+    private final boolean completeControl;
+    private final boolean durableState;
 
     /**
      * The secret lookup selected by {@code secrets.source}; a host parses its own section with it so a
@@ -53,6 +56,17 @@ public final class Gateway implements AutoCloseable {
     Gateway(GovernanceEngine engine, McpServerHandler mcp, AdminApi admin, Map<String, Object> hostSections,
             ScheduledExecutorService refresher, DecisionMetrics metrics, OtlpSpanExporter tracer, AutoCloseable stateResource,
             java.util.function.Function<String, String> secrets) {
+        this(engine, mcp, admin, hostSections, refresher, metrics, tracer, stateResource, secrets, null, false, false);
+    }
+
+    Gateway(GovernanceEngine engine, McpServerHandler mcp, AdminApi admin, Map<String, Object> hostSections,
+            ScheduledExecutorService refresher, DecisionMetrics metrics, OtlpSpanExporter tracer, AutoCloseable stateResource,
+            java.util.function.Function<String, String> secrets,
+            io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations, boolean completeControl,
+            boolean durableState) {
+        this.revocations = revocations;
+        this.durableState = durableState;
+        this.completeControl = completeControl;
         this.secrets = secrets;
         this.metrics = metrics;
         this.tracer = tracer;
@@ -62,6 +76,28 @@ public final class Gateway implements AutoCloseable {
         this.hostSections = Map.copyOf(hostSections);
         this.refresher = refresher;
         this.stateResource = stateResource;
+    }
+
+    /**
+     * Bearer token revocation list kept in this gateway's governance state store (shared by every
+     * replica that shares the store). The host binds it into its JWT verifier.
+     */
+    public io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations() {
+        return revocations;
+    }
+
+    /**
+     * True when governance state (approvals, nonces, revocations) is in a durable or host-provided store,
+     * false for the built-in single-replica in-memory store. Hosts refuse revocation-dependent settings
+     * when this is false (a restart would make a revoked token valid again).
+     */
+    public boolean durableState() {
+        return durableState;
+    }
+
+    /** True when {@code completeControl.enabled} was set; hosts apply their stricter perimeter rules. */
+    public boolean completeControl() {
+        return completeControl;
     }
 
     public GovernanceEngine engine() {

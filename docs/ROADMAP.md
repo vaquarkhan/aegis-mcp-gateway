@@ -28,9 +28,8 @@ licensing review, signing and publishing) is tracked in
 | Shared catalog pins on PostgreSQL | Every replica accepts exactly the same tool and prompt definitions, including definitions learned at first sight | `state.type: postgres` ([PostgreSQL state](POSTGRES-STATE.md)) |
 | Egress for Kafka broker metadata, JDBC and ZooKeeper sources | Validate Kafka listener addresses advertised after the permitted bootstrap connection, and the JDBC URL host and ZooKeeper connect string, against the egress boundary before their clients use them | `egress`, Kafka client integration, `ToolSource.configuredEndpoints` |
 
-The server-catalog trust anchor, rollback protection for signed files, the offline policy test, egress
-for the Kafka Admin bootstrap endpoints and Spark Connect source, the step-up challenge for tool scopes and the subject
-check on issued JWTs have shipped; see [FEATURES.md](FEATURES.md) and the [changelog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/CHANGELOG.md).
+Shipped capabilities are not repeated here; they live in [FEATURES.md](FEATURES.md) and the
+[changelog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/CHANGELOG.md).
 
 ## Next: evidence, identity and operations
 
@@ -47,6 +46,8 @@ check on issued JWTs have shipped; see [FEATURES.md](FEATURES.md) and the [chang
 | Kafka Admin client security | SASL and SSL client properties with secrets referenced by name (`clientPropertiesEnv`) | `kafka-admin` source |
 | Verifiable dry-run receipts | Signed or Merkle receipts in addition to HMAC receipts | dry-run receipts |
 | Load and soak benchmarks | Published latency and throughput figures for the governance chain | own host, PostgreSQL state |
+| Cost budgets and denial-of-wallet | Per-session and per-day currency caps for paid backend tools, a projected-cost gate that blocks an expensive chain before it runs, and spend-threshold actions (warn, or require an approver) | rate limits and budgets |
+| Reference guardrail hooks | More AFTER-phase reference services in `adopters/hooks`: content moderation, citation validation, and per-caller cost attribution in the decision record. The MCP-Bastion injection and PII delegate hook has shipped | remote-hook SPI |
 | Containment guide for stdio servers and plugins | A deployment profile for child processes and plugins: dedicated OS user, container limits, network policy | stdio and plugin sources |
 | Published container image and cluster install | A registry image and a Helm install validated in a Kubernetes cluster | `Dockerfile`, `charts/aegis` |
 
@@ -92,7 +93,7 @@ check on issued JWTs have shipped; see [FEATURES.md](FEATURES.md) and the [chang
 
 ## Future roadmap: remaining target verification
 
-Hive and Ranger now have retained two-door runs. These four profiles already ship their governance
+Hive and Ranger now have retained two-door runs. These six profiles already ship their governance
 configuration and contract tests. The planned work is a retained real-engine run through both front doors.
 Done means a green `<Engine>FrontDoorsTest`, results kept under `examples/adopters/<engine>/results/`,
 a regenerated tutorial, and the catalog row marked **passed**
@@ -104,6 +105,8 @@ a regenerated tutorial, and the catalog row marked **passed**
 | Cassandra | A Cassandra cluster and Sidecar whose routes match the profile. The shipped paths are `/api/v1/cassandra/native/keyspaces` and a table delete; the Sidecar API uses different routes and does not drop a table that way. |
 | Impala | An Impala coordinator that serves the debug UI (`/`, `/metrics`, `/queries`, `/cancel_query`). Apache does not publish a coordinator image that does this without the rest of the cluster. |
 | Paimon | A production Paimon REST catalog. Apache does not ship one. The published API is `/v1/{prefix}/databases`; the profile calls `/v1/databases`. |
+| AsterixDB | A running AsterixDB cluster on its API port (default 19002). The profile calls `/admin/version`, `/admin/cluster`, `/query/service` and `/admin/shutdown`. |
+| SkyWalking | A SkyWalking OAP server with the GraphQL endpoint on port 12800. The profile posts `getAllServices`, `getServiceInstances` and `queryBasicTraces` to `/graphql`. |
 
 ## Next: release-candidate evidence
 
@@ -131,6 +134,10 @@ section 13.
 | Run-time admin route that changes the catalog or contains a server | Changes go through signed files read at startup, so no network caller can widen, bypass or replace them |
 | OAuth authorization server, client registration or consent screen | The identity provider issues tokens; Aegis verifies them |
 | Federation and virtual servers | Every extra exposure path is another path the policy has to cover |
+| Multi-gateway control plane and cross-vendor policy scanning | Fleet management across other vendors' gateways is platform scope; each Aegis governs the sources on its own path |
+| Automatic API-to-MCP bridge | Auto-importing existing APIs as MCP tools bypasses the reviewed, typed-template path; Aegis requires an explicit typed source per tool |
+| Response or semantic caching | A cache can bypass budgets and approvals and serve one caller's result to another; Aegis 2.0 removed caching for this reason |
+| Hosted or managed service | Aegis ships as a jar and a container image you run; a managed multi-tenant service is a separate offering, not the gateway |
 | Shared circuit breakers | Each replica protects its own view of a backend |
 | Data loss prevention product | AFTER-phase hooks and the reference PII and secrets guards are the extension point for a DLP service |
 | Built-in prompt-injection model | Typed resources, policy and independent approval carry the control; a classifier can run as a hook |

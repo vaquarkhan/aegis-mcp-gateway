@@ -15,7 +15,7 @@
 -->
 # Aegis 2.0 adopter catalog
 
-This directory contains **25 deployable adapter configurations and 116 tools**. Each configuration now has
+This directory contains **27 deployable adapter configurations and 123 tools**. Each configuration now has
 one named directory, one executable YAML profile and one developer README:
 
 ```text
@@ -115,8 +115,9 @@ inside the topology, set `gateway.port` to `8443` and `gateway.host` to `127.0.0
 "Plugin jars this run used" in `HOW-TO-RUN.md` into `$AEGIS_KNOX_HOME/ext/`. The kept
 `results/knox-ext-plugins.log` marks which of those jars the test added.
 
-Atlas, Cassandra, Impala, and Paimon have a profile in this catalog and no kept run, so they have no
-`HOW-TO-RUN.md` and no `ide/` folder. Do not invent a server for them. Their READMEs say why.
+Atlas, AsterixDB, Cassandra, Impala, Paimon, and SkyWalking have a profile in this catalog and no kept
+run, so they have no `HOW-TO-RUN.md` and no `ide/` folder. Do not invent a server for them. Their
+READMEs say why.
 
 ## Inventory and developer entry points
 
@@ -124,6 +125,7 @@ Atlas, Cassandra, Impala, and Paimon have a profile in this catalog and no kept 
 | --- | --- | --- | --- | ---: | --- |
 | [ActiveMQ](activemq/README.md) | [`activemq.yaml`](activemq/activemq.yaml) | ActiveMQ Jolokia | http | 3 | both doors passed; `examples/adopters/activemq/` |
 | [Airflow](airflow/README.md) | [`airflow.yaml`](airflow/airflow.yaml) | Airflow stable REST API | http | 5 | both doors passed against Airflow 2.9.3 |
+| [AsterixDB](asterixdb/README.md) | [`asterixdb.yaml`](asterixdb/asterixdb.yaml) | AsterixDB HTTP API | http | 4 | contract route test; no AsterixDB process in this tree |
 | [Atlas](atlas/README.md) | [`atlas.yaml`](atlas/atlas.yaml) | Atlas v2 API | http | 4 | contract route test; no Atlas process in this tree |
 | [BookKeeper](bookkeeper/README.md) | [`bookkeeper.yaml`](bookkeeper/bookkeeper.yaml) | BookKeeper HTTP API | http | 4 | both doors passed; `examples/adopters/bookkeeper/` |
 | [Burr](burr/README.md) | [`burr.yaml`](burr/burr.yaml) | Apache Burr (incubating) tracking API | http | 10 | both doors passed against Burr 0.42.0 |
@@ -143,6 +145,7 @@ Atlas, Cassandra, Impala, and Paimon have a profile in this catalog and no kept 
 | [Pinot](pinot/README.md) | [`pinot.yaml`](pinot/pinot.yaml) | Pinot controller | http | 4 | both doors passed against Pinot 1.2.0 |
 | [Pulsar](pulsar/README.md) | [`pulsar.yaml`](pulsar/pulsar.yaml) | Pulsar admin API | http | 6 | both doors passed; `examples/adopters/pulsar/` |
 | [Ranger](ranger/README.md) | [`ranger.yaml`](ranger/ranger.yaml) | Ranger Admin public v2 | http | 4 | both doors passed against Ranger Admin 2.9.0 |
+| [SkyWalking](skywalking/README.md) | [`skywalking.yaml`](skywalking/skywalking.yaml) | SkyWalking OAP GraphQL | http | 3 | contract route test; no SkyWalking OAP in this tree |
 | [Solr](solr/README.md) | [`solr.yaml`](solr/solr.yaml) | Solr APIs | http | 4 | both doors passed; `examples/adopters/solr/` |
 | [Storm](storm/README.md) | [`storm.yaml`](storm/storm.yaml) | Storm UI API | http | 4 | both doors passed against Storm 2.6.2 |
 | [Superset](superset/README.md) | [`superset.yaml`](superset/superset.yaml) | Superset API | http | 4 | both doors passed against Superset 4.0.2 |
@@ -150,7 +153,7 @@ Atlas, Cassandra, Impala, and Paimon have a profile in this catalog and no kept 
 
 ## What the tests prove
 
-`AdapterConfigsTest` loads all **25 deployable adopter profiles and 116 tools**. It verifies the
+`AdapterConfigsTest` loads all **27 deployable adopter profiles and 123 tools**. It verifies the
 configuration surface, access classes, approval flow, dry-run flow, resource extraction, policy denials
 and audit-chain integrity. HTTP profiles run through a contract route harness. That proves Aegis renders
 and governs the configured operation; it does not establish that a target product release implements

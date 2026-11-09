@@ -1,0 +1,131 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Aegis Gateway tutorials: deep-dive walkthroughs and one IDE-ready tutorial per verified Apache project, each from a retained real run.">
+  <title>Aegis Gateway tutorials</title>
+  <link rel="stylesheet" href="handbook.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Tutorials navigation">
+    <a class="brand" href="../index.html">Aegis <span>Gateway 2.0</span></a>
+    <nav>
+      <a href="#start">Start here</a>
+      <a href="#deep">Deep-dive walkthroughs</a>
+      <a href="#projects">One per verified project</a>
+      <a href="#pending">Projects without a tutorial</a>
+      <a href="#references">Reference map</a>
+      <a href="hello-world.html">Hello World</a>
+      <a href="handbook.html">User handbook</a>
+      <a href="security.html">Security guide</a>
+      <a href="threat-modeling.html">Threat modeling</a>
+      <a href="modules.html">Module reference</a>
+    </nav>
+    <p class="sidebar-note">Each tutorial is copied from a retained run through both front doors, own host and Knox. The outputs are what Aegis actually answered, not illustrations.</p>
+  </aside>
+  <main>
+    <header id="start" class="hero">
+      <p class="eyebrow">TUTORIALS</p>
+      <h1>Run real Apache software, with an agent governed by Aegis.</h1>
+      <p class="lead">Every tutorial puts Aegis between an IDE agent and one piece of real Apache software on a single machine. Start with the Hello World guide for the shape of the setup, then pick a deep-dive walkthrough or the project you already operate. New reviewers should read the security guide first.</p>
+      <div class="actions">
+        <a class="button primary" href="hello-world.html">Start Hello World</a>
+        <a class="button" href="../TUTORIALS.html">Rendered tutorial index</a>
+        <a class="button" href="security.html">Security guide</a>
+      </div>
+    </header>
+
+    <section id="deep">
+      <p class="eyebrow">DEEP DIVES</p>
+      <h2>Complete walkthroughs, step by step.</h2>
+      <p>These carry the full developer path: a tiny dataset or workload, an IDE agent, a governed change, and the same run through both front doors where noted.</p>
+      <div class="cards">
+        <article><h3><a href="../TUTORIAL-SPARK-ICEBERG.html">Spark and Iceberg from your IDE</a></h3><p>Spark 4.0.1 over Spark Connect with Iceberg 1.10.1 tables on a REST catalog. Own host and Knox 3.0.0, with VS Code, Kiro, Cursor, Claude Desktop and the MCP Python SDK. The complete developer path.</p></article>
+        <article><h3><a href="../TUTORIAL-SPARK-AND-SPARK-CONNECT.html">Spark and Spark Connect</a></h3><p>Spark 4.0.1 monitoring REST API and Spark Connect through a scripted client. Run Spark jobs and SQL through an agent.</p></article>
+        <article><h3><a href="../TUTORIAL-ICEBERG.html">Iceberg REST catalog</a></h3><p>The Iceberg 1.10.1 RESTCatalogServer with resource scopes, approvals and destructive-operation receipts over namespaces, properties and drops.</p></article>
+        <article><h3><a href="../TUTORIAL-KAFKA-AND-KAFKA-CONNECT.html">Kafka and Kafka Connect</a></h3><p>A Kafka 3.9.1 KRaft broker and a Connect worker. Govern topic administration and the connector lifecycle.</p></article>
+        <article><h3><a href="../TUTORIAL-FLINK.html">Apache Flink</a></h3><p>Flink 1.20.1 jobs, jars, savepoints, stopping and cancellation, each as a governed action.</p></article>
+        <article><h3><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/examples/break-glass-mcp-servers/README.md">Break-glass MCP servers</a></h3><p>Spark, Kafka, Iceberg and Flink as one independent server each, with a signed server catalog and incident containment end to end. Repository walkthrough.</p></article>
+      </div>
+      <p class="callout">Evidence boundary: tutorials describe retained historical runs. Read the <a href="../VALIDATION.html">validation report</a> and <a href="../evidence/CLAIMS-MATRIX.html">claims matrix</a> before treating any integration as release-candidate evidence.</p>
+    </section>
+
+    <section id="projects" class="band">
+      <p class="eyebrow">ONE PER PROJECT</p>
+      <h2>An IDE-ready tutorial for each verified project.</h2>
+      <p>These are built by <code>tools/build-project-tutorials.py</code> from each project's retained run. All have historical own-host and Knox records, and every kept audit journal verifies. Each tutorial gives the engine command line, both front doors step by step, VS Code, Kiro and Cursor files, prompts mapped to tools with what Aegis answered, and the full request table of that run.</p>
+      <div class="table-wrap">
+        <table class="ref-table">
+          <thead><tr><th>Project</th><th>Version exercised</th><th>Tutorial</th></tr></thead>
+          <tbody>
+            <tr><td>Apache ActiveMQ</td><td>6.3.2 (Jolokia)</td><td><a href="../tutorials/activemq.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Airflow</td><td>2.9.3</td><td><a href="../tutorials/airflow.html">Open tutorial</a></td></tr>
+            <tr><td>Apache BookKeeper</td><td>4.18.1</td><td><a href="../tutorials/bookkeeper.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Burr (incubating)</td><td>0.42.0</td><td><a href="../tutorials/burr.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Calcite over Avatica</td><td>1.42.0 / 1.28.0</td><td><a href="../tutorials/calcite.html">Open tutorial</a></td></tr>
+            <tr><td>Apache CouchDB</td><td>3.4.2</td><td><a href="../tutorials/couchdb.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Doris</td><td>4.1.3</td><td><a href="../tutorials/doris.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Druid</td><td>28.0.1</td><td><a href="../tutorials/druid.html">Open tutorial</a></td></tr>
+            <tr><td>Existing MCP server</td><td>Python SDK and filesystem server</td><td><a href="../tutorials/existing-mcp-server.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Flink</td><td>1.20.1</td><td><a href="../tutorials/flink.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Flume</td><td>1.11.0</td><td><a href="../tutorials/flume.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Hadoop HDFS</td><td>3.2.1</td><td><a href="../tutorials/hadoop.html">Open tutorial</a></td></tr>
+            <tr><td>Apache HBase</td><td>REST</td><td><a href="../tutorials/hbase.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Hive</td><td>4.0.1</td><td><a href="../tutorials/hive.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Iceberg REST catalog</td><td>1.10.1</td><td><a href="../tutorials/iceberg.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Ignite</td><td>2.18.0</td><td><a href="../tutorials/ignite.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Kafka and Kafka Connect</td><td>3.9.1</td><td><a href="../tutorials/kafka.html">Open tutorial</a></td></tr>
+            <tr><td>Apache NiFi</td><td>1.28.1</td><td><a href="../tutorials/nifi.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Pinot</td><td>1.2.0</td><td><a href="../tutorials/pinot.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Pulsar</td><td>4.0.13</td><td><a href="../tutorials/pulsar.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Ranger</td><td>2.9.0</td><td><a href="../tutorials/ranger.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Solr</td><td>9.10.1</td><td><a href="../tutorials/solr.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Spark</td><td>4.0.1</td><td><a href="../tutorials/spark.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Spark Connect</td><td>4.0.1</td><td><a href="../tutorials/spark-connect.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Storm</td><td>2.6.2</td><td><a href="../tutorials/storm.html">Open tutorial</a></td></tr>
+            <tr><td>Apache Superset</td><td>4.0.2</td><td><a href="../tutorials/superset.html">Open tutorial</a></td></tr>
+            <tr><td>Apache ZooKeeper</td><td>3.9.3</td><td><a href="../tutorials/zookeeper.html">Open tutorial</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The IDE settings files are checked by <code>DocumentationAssetsTest</code>. The transport was exercised with the official MCP Python SDK in the Spark and Iceberg tutorial; the IDEs themselves were not driven by a test.</p>
+    </section>
+
+    <section id="pending">
+      <p class="eyebrow">NOT YET</p>
+      <h2>Projects with a profile but no run on record.</h2>
+      <p>Atlas, Cassandra, Impala and Paimon each have a configuration profile that passes the contract test, which proves route rendering and governance order, not that the product answers. None has a real run on record, so none has a tutorial yet.</p>
+      <p>The status and blocker of each are in the <a href="../evidence/ADOPTER-REAL-ENGINE-STATUS.html">adopter real-engine status</a> and the repository <a href="https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/examples/adopters/README.md">adopter catalog</a>.</p>
+    </section>
+
+    <section id="references" class="band">
+      <p class="eyebrow">REFERENCE MAP</p>
+      <h2>Continue in the guides.</h2>
+      <div class="reference-table">
+        <a href="hello-world.html"><strong>Hello World</strong><span>First governed call</span></a>
+        <a href="handbook.html"><strong>User handbook</strong><span>Deploy and operate</span></a>
+        <a href="developer.html"><strong>Developer guide</strong><span>Extend Aegis safely</span></a>
+        <a href="modules.html"><strong>Module reference</strong><span>What each module enforces</span></a>
+        <a href="security.html"><strong>Security guide</strong><span>Zones, STRIDE, S1 to S31</span></a>
+        <a href="threat-modeling.html"><strong>Threat modeling</strong><span>Honest coverage and gaps</span></a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

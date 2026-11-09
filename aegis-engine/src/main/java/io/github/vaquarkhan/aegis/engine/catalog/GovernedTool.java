@@ -40,6 +40,13 @@ import java.util.Set;
  * @param actionScopes  exact verified OAuth grants required by trusted operator configuration
  * @param executor      capability that performs the call
  * @param timeoutMillis backend budget for one call
+ * @param operatorSchema operator-written input schema that the arguments must ALSO satisfy, or null.
+ *                      The upstream schema is what the server published and what the pin covers; this
+ *                      one is what the operator is willing to forward. A server that publishes
+ *                      {@code additionalProperties: true} (or no schema at all) can be tightened here
+ *                      without trusting the server to do it.
+ * @param executionContract trusted description of how arguments become effects
+ * @param outputPolicy      trusted rule for what backend output may reach the model
  */
 public record GovernedTool(
         String exposedName,
@@ -51,7 +58,26 @@ public record GovernedTool(
         Set<String> allowedGroups,
         Set<String> actionScopes,
         ToolExecutor executor,
-        long timeoutMillis) {
+        long timeoutMillis,
+        Map<String, Object> operatorSchema,
+        ExecutionContract executionContract,
+        OutputPolicy outputPolicy) {
+
+    /** Compatibility constructor for governed tools written before execution/output policy. */
+    public GovernedTool(String exposedName, String sourceId, ToolDescriptor descriptor, ToolClass toolClass,
+            List<ResourceRule> resources, DryRunSpec dryRun, Set<String> allowedGroups, Set<String> actionScopes,
+            ToolExecutor executor, long timeoutMillis, Map<String, Object> operatorSchema) {
+        this(exposedName, sourceId, descriptor, toolClass, resources, dryRun, allowedGroups, actionScopes, executor,
+                timeoutMillis, operatorSchema, ExecutionContract.UNKNOWN, OutputPolicy.PASS_THROUGH);
+    }
+
+    /** Compatibility constructor for governed tools without an operator schema. */
+    public GovernedTool(String exposedName, String sourceId, ToolDescriptor descriptor, ToolClass toolClass,
+            List<ResourceRule> resources, DryRunSpec dryRun, Set<String> allowedGroups, Set<String> actionScopes,
+            ToolExecutor executor, long timeoutMillis) {
+        this(exposedName, sourceId, descriptor, toolClass, resources, dryRun, allowedGroups, actionScopes, executor,
+                timeoutMillis, null);
+    }
 
     public GovernedTool {
         if (exposedName == null || exposedName.isBlank()) {
@@ -68,6 +94,58 @@ public record GovernedTool(
         allowedGroups = allowedGroups == null ? Set.of() : Set.copyOf(allowedGroups);
         actionScopes = actionScopes == null ? Set.of() : Set.copyOf(actionScopes);
         timeoutMillis = timeoutMillis <= 0 ? 30_000 : timeoutMillis;
+        operatorSchema = operatorSchema == null ? null : Map.copyOf(operatorSchema);
+        executionContract = executionContract == null ? ExecutionContract.UNKNOWN : executionContract;
+        outputPolicy = outputPolicy == null ? OutputPolicy.PASS_THROUGH : outputPolicy;
+    }
+
+    /** Digest of trusted operator policy that must invalidate approvals when it changes. */
+    public String policyDigest() {
+        Map<String, Object> policy = new LinkedHashMap<>();
+        if (operatorSchema != null) {
+            policy.put("inputSchema", operatorSchema);
+        }
+        if (!executionContract.equals(ExecutionContract.UNKNOWN)) {
+            policy.put("executionContract", executionContract.toMap());
+        }
+        if (!outputPolicy.equals(OutputPolicy.PASS_THROUGH)) {
+            policy.put("outputPolicy", outputPolicy.toMap());
+        }
+        return policy.isEmpty() ? null : io.github.vaquarkhan.aegis.engine.model.Digests.canonicalSha256(policy);
+    }
+
+    /** Definition digest used by approval/receipt binding, including trusted operator policy when present. */
+    public String bindingDigest(String upstreamDefinitionDigest) {
+        String policy = policyDigest();
+        return policy == null ? upstreamDefinitionDigest
+                : io.github.vaquarkhan.aegis.engine.model.Digests.canonicalSha256(
+                        Map.of("upstreamDefinition", upstreamDefinitionDigest, "operatorPolicy", policy));
+    }
+
+    /**
+     * The schema a client is told about and that the call must satisfy: the operator's when one is
+     * configured (it is the narrower contract), else the upstream definition's.
+     */
+    public Map<String, Object> effectiveInputSchema() {
+        return operatorSchema != null ? operatorSchema : descriptor.inputSchema();
+    }
+
+    /**
+     * An operator schema that forbids every property the upstream schema does not declare, whatever the
+     * upstream says about {@code additionalProperties}. The upstream's own property definitions are kept
+     * so a tightened schema still validates the declared arguments the same way.
+     */
+    public static Map<String, Object> strictProperties(Map<String, Object> upstreamSchema, Map<String, Object> operatorSchema) {
+        Map<String, Object> base = operatorSchema != null ? operatorSchema : upstreamSchema;
+        Map<String, Object> out = new LinkedHashMap<>(base == null ? Map.of() : base);
+        out.putIfAbsent("type", "object");
+        Map<String, Object> props = JsonValues.object(out, "properties");
+        if (props == null) {
+            Map<String, Object> upstreamProps = JsonValues.object(upstreamSchema, "properties");
+            out.put("properties", upstreamProps == null ? Map.of() : upstreamProps);
+        }
+        out.put("additionalProperties", false);
+        return out;
     }
 
     /** Compatibility constructor for governed tools without action-scope requirements. */
@@ -82,10 +160,18 @@ public record GovernedTool(
         return descriptor.name();
     }
 
-    /** Property names declared by the upstream input schema. */
+    /** Property names declared by the upstream input schema or the operator schema. */
     public Set<String> declaredProperties() {
         Map<String, Object> props = JsonValues.object(descriptor.inputSchema(), "properties");
-        return props == null ? Set.of() : props.keySet();
+        Map<String, Object> ops = operatorSchema == null ? null : JsonValues.object(operatorSchema, "properties");
+        if (ops == null) {
+            return props == null ? Set.of() : props.keySet();
+        }
+        Set<String> all = new java.util.LinkedHashSet<>(ops.keySet());
+        if (props != null) {
+            all.addAll(props.keySet());
+        }
+        return all;
     }
 
     /**
@@ -104,12 +190,18 @@ public record GovernedTool(
         ann.put("readOnlyHint", toolClass == ToolClass.READ);
         ann.put("destructiveHint", toolClass == ToolClass.DESTRUCTIVE);
         m.put("annotations", ann);
+        if (operatorSchema != null) {
+            // Clients are told the contract the gateway will enforce, not the looser one upstream published.
+            m.put("inputSchema", operatorSchema);
+        }
         if (advertiseControlArguments && toolClass.isWrite()) {
-            m.put("inputSchema", withControlProperties(descriptor.inputSchema()));
+            m.put("inputSchema", withControlProperties(effectiveInputSchema()));
         }
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put(ControlTokens.META_PREFIX + "toolClass", toolClass.name());
         meta.put(ControlTokens.META_PREFIX + "source", sourceId);
+        meta.put(ControlTokens.META_PREFIX + "executionKind", executionContract.kind().name());
+        meta.put(ControlTokens.META_PREFIX + "outputMode", outputPolicy.mode().name());
         m.put("_meta", meta);
         return m;
     }

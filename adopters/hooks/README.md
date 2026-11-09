@@ -5,15 +5,18 @@
 -->
 # Reference guardrail hooks
 
-Three small services that speak the Aegis remote-hook contract (`type: remote` in `hooks:`). Each is a
-single Python file on the standard library only, so you can read all of it before you trust it, and
-copy it as the starting point for your own control in any language.
+Four small services that speak the Aegis remote-hook contract (`type: remote` in `hooks:`). The first
+three are a single Python file on the standard library only, so you can read all of it before you trust
+it, and copy it as the starting point for your own control in any language. The fourth,
+[`bastion_guard.py`](bastion_guard.py), shows the delegate pattern: it calls MCP-Bastion's analyzers out
+of process for the two model-based checks, and needs that separate package installed (see below).
 
 | Service | Phase | Data it needs | Refuses |
 | --- | --- | --- | --- |
 | [`pii_guard.py`](pii_guard.py) | before and after | `includeArguments`, `includeResult` | payment card numbers (issuer prefix and Luhn), IBANs (mod 97), US Social Security numbers |
 | [`secrets_guard.py`](secrets_guard.py) | before | `includeArguments` | AWS access key ids, GitHub and Slack tokens, Google API keys, PEM private keys, JSON Web Tokens |
 | [`change_window.py`](change_window.py) | before | nothing beyond the default request | `MUTATE` and `DESTRUCTIVE` calls outside the configured days and hours, or inside a freeze; reads and dry runs pass |
+| [`bastion_guard.py`](bastion_guard.py) | before and after | `includeArguments`, `includeResult` | prompt-injection text (MCP-Bastion PromptGuard) and personal data (MCP-Bastion Presidio); needs `mcp-bastion-python` installed |
 
 [`hookserver.py`](hookserver.py) is the shared listener: bearer check, body limit, the `aegis: 2.0`
 check, and the reply shape. A reason names where a value was found, never the value, because the
@@ -44,6 +47,10 @@ hooks:
   - type: remote
     mode: ENFORCE
     settings: {name: change-window, url: "http://127.0.0.1:18303/", tokenEnv: AEGIS_HOOK_TOKEN, phases: [BEFORE]}
+  - type: remote
+    mode: ENFORCE
+    settings: {name: bastion-guard, url: "http://127.0.0.1:18304/", tokenEnv: AEGIS_HOOK_TOKEN,
+               phases: [BEFORE, AFTER], includeArguments: true, includeResult: true}
 ```
 
 Start each service with the same token in `AEGIS_HOOK_TOKEN`:
@@ -52,7 +59,27 @@ Start each service with the same token in `AEGIS_HOOK_TOKEN`:
 python pii_guard.py --port 18301
 python secrets_guard.py --port 18302
 python change_window.py --port 18303 --days Mon,Tue,Wed,Thu,Fri --start 09:00 --end 17:00 --freeze 2026-12-20:2027-01-04
+python bastion_guard.py --port 18304            # requires: pip install mcp-bastion-python[ml]
 ```
+
+## Delegating to MCP-Bastion (`bastion_guard.py`)
+
+MCP-Bastion is strong at two model-based checks that Aegis deliberately does not reimplement in Java:
+prompt-injection classification (PromptGuard) and named-entity PII detection (Presidio). Rather than
+rebuild them, `bastion_guard.py` runs them in a Python sidecar and Aegis consults it as a normal remote
+hook. This keeps the two projects loosely coupled: Aegis stays Apache-2.0 and a single jar; the sidecar
+is optional and installed by the operator.
+
+- MCP-Bastion has its own license (Source Available, not Apache-2.0). This hook imports it only at
+  runtime in a separate process, so nothing of it is bundled into the Aegis distribution. Install it
+  yourself: `pip install mcp-bastion-python` (PromptGuard heuristics) or `[ml]` (adds Presidio PII).
+- Keep stateful controls in Aegis, not the sidecar: approval and separation of duties, the hash-chained
+  audit written before execution, catalog pinning and the signed catalog, scope, and rate and cost
+  budgets. Splitting that state across a sidecar would weaken it.
+- Use `bastion_guard` on the AFTER phase for PII and the BEFORE phase for injection; the hot allow and
+  deny path stays native. Aegis already fails closed when a hook times out or is unreachable.
+- For static, pre-deploy tool-catalog scanning, call MCP-Bastion's CLI (`mcp-bastion scan tools.json`)
+  from CI or at catalog-admission time. That is a subprocess check, not a per-call one.
 
 ## Tests
 

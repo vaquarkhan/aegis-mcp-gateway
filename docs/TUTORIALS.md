@@ -83,8 +83,21 @@ IDEs themselves were not driven by a test.
 
 ## Projects without a tutorial
 
-Atlas, Cassandra, Impala and Paimon have a configuration profile that passes the contract
-test, which proves route rendering and governance order, not that the product answers. None has a real
-run on record, so none has a tutorial. The status and blocker of each are in
+Atlas, AsterixDB, Cassandra, Impala, Paimon and SkyWalking have a configuration profile that passes the
+contract test, which proves route rendering and governance order, not that the product answers. None has
+a real run on record, so none has a tutorial.
+
+Each one has a shareable configuration walkthrough in its adapter README (the tools it governs, the
+source choice, and how it would run against a real engine), clearly marked as contract-tested
+configuration with no kept run:
+
+| Project | Configuration walkthrough |
+| --- | --- |
+| Apache Atlas | [adapters/atlas/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/atlas/README.md) |
+| Apache AsterixDB | [adapters/asterixdb/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/asterixdb/README.md) |
+| Apache Cassandra | [adapters/cassandra/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/cassandra/README.md) |
+| Apache Impala | [adapters/impala/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/impala/README.md) |
+| Apache Paimon | [adapters/paimon/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/paimon/README.md) |
+| Apache SkyWalking | [adapters/skywalking/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/skywalking/README.md) | The status and blocker of each are in
 [examples/adopters/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) and
 [evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.md).

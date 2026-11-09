@@ -91,6 +91,20 @@ local-tools.yaml
 logs/
 adopters/clients/audit/
 
-# Python bytecode from local tutorial/generator runs
+# Python bytecode
 **/__pycache__/
 *.py[cod]
+
+# Threat-model e2e runtime artifacts (kept RESULTS.md / results.json are evidence)
+threat-model/e2e/aegis.resolved.yaml
+threat-model/e2e/gateway.log
+threat-model/e2e/gateway.err
+threat-model/e2e/vulnerable.log
+threat-model/e2e/vulnerable.err
+threat-model/e2e/driver.log
+threat-model/e2e/pins.json
+threat-model/e2e/hits.json
+threat-model/e2e/audit.jsonl
+threat-model/deck/_contact.png
+threat-model/deck/_cc.png
+threat-model/deck/_arch.png

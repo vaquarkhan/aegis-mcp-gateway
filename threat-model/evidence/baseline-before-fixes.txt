@@ -1,0 +1,4 @@
+﻿THREATMODEL|GAP-03|review finding (InjectionScreen windowing)|injection phrase straddling screen window with format-char padding|GAP|overlap is 1024 raw chars but normalisation strips format chars after slicing; outcome=ALLOWED
+THREATMODEL|GAP-01|review finding (approval binding completeness)|MRTR inputResponses/requestState outside approval digest|GAP|approval+receipt verify only backend args; inputResponses forwarded unverified (screened for injection/URLs only)
+[ERROR] io.github.vaquarkhan.aegis.engine.ThreatModelCveEngineTest.gap02_inMemoryStateStoreSweepResetsHourBudgetWhenFull -- Time elapsed: 0.044 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: GAP: hourly budget window was swept using the 60s window of an unrelated key ==> expected: <true> but was: <false>

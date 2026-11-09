@@ -23,6 +23,8 @@ import io.github.vaquarkhan.aegis.engine.model.ToolResult;
 import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
+import io.github.vaquarkhan.aegis.mcp.http.PinnedHttp;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -53,11 +55,32 @@ public final class HttpToolExecutor implements ToolExecutor {
     private static final Set<String> METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE");
     private static final Set<String> RESTRICTED = Set.of("host", "content-length", "connection", "upgrade", "expect");
 
+    private static final OutboundHttp NO_TRANSPORT = (r, m, d) -> {
+        throw new IOException("no outbound transport configured");
+    };
+
     private final URI baseUrl;
     private final HttpToolSpec spec;
-    private final HttpClient http;
+    private final OutboundHttp http;
 
+    /** JDK transport (resolves the host at connect time); kept for embedders and tests. */
     public HttpToolExecutor(URI baseUrl, HttpToolSpec spec, HttpClient http) {
+        this(baseUrl, spec, http == null ? NO_TRANSPORT : OutboundHttp.jdk(http), true);
+    }
+
+    /**
+     * Executor over an explicit transport. The gateway passes a
+     * {@link io.github.vaquarkhan.aegis.mcp.http.PinnedHttp}, so the backend call connects only to an
+     * address the egress control approved in the same step (no DNS rebinding window).
+     */
+    public static HttpToolExecutor over(URI baseUrl, HttpToolSpec spec, OutboundHttp transport) {
+        if (transport == null) {
+            throw new IllegalArgumentException("an outbound transport is required");
+        }
+        return new HttpToolExecutor(baseUrl, spec, transport, true);
+    }
+
+    private HttpToolExecutor(URI baseUrl, HttpToolSpec spec, OutboundHttp http, boolean checked) {
         if (!METHODS.contains(spec.method())) {
             throw new IllegalArgumentException("unsupported HTTP method " + spec.method());
         }
@@ -68,7 +91,7 @@ public final class HttpToolExecutor implements ToolExecutor {
         }
         this.baseUrl = baseUrl;
         this.spec = spec;
-        this.http = http;
+        this.http = checked ? http : NO_TRANSPORT;
     }
 
     /** Placeholder names used in the path template (config validation requires them in inputSchema.required). */
@@ -146,10 +169,13 @@ public final class HttpToolExecutor implements ToolExecutor {
         BoundedHttp.Result resp;
         byte[] data;
         try {
-            resp = BoundedHttp.send(http, b.build(), spec.maxResponseBytes(), ctx.timeoutMillis());
+            resp = http.send(b.build(), spec.maxResponseBytes(), ctx.timeoutMillis());
             data = resp.body();
         } catch (HttpTimeoutException e) {
             throw new ExecutionException("backend timed out", true, e);
+        } catch (PinnedHttp.EgressDeniedException e) {
+            // The name re-resolved to a denied address: nothing was sent. Not an availability failure.
+            throw new ExecutionException(safeMessage(e), false, false, e);
         } catch (IOException e) {
             throw new ExecutionException("backend call failed: " + e.getClass().getSimpleName() + " " + safeMessage(e), false, e);
         } catch (InterruptedException e) {

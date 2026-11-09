@@ -52,6 +52,35 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- if and .Values.networkPolicy.enabled (empty .Values.networkPolicy.ingressFrom) -}}
 {{- fail "networkPolicy.ingressFrom must list at least one allowed peer when networkPolicy.enabled is true" -}}
 {{- end -}}
+{{- $complete := false -}}
+{{- if and (not .Values.existingConfigMap) (not (empty .Values.config)) -}}
+{{- $cc := default dict .Values.config.completeControl -}}
+{{- $complete = default false $cc.enabled -}}
+{{- end -}}
+{{- if $complete -}}
+{{- if not (regexMatch "^sha256:[0-9a-f]{64}$" (toString .Values.image.digest)) -}}
+{{- fail "complete control requires image.digest as sha256:<64 lower-case hex>; tags are not immutable admission evidence" -}}
+{{- end -}}
+{{- if not .Values.networkPolicy.enabled -}}
+{{- fail "complete control requires networkPolicy.enabled: true" -}}
+{{- end -}}
+{{- if empty .Values.runtimeClassName -}}
+{{- fail "complete control requires runtimeClassName for a sandbox runtime such as gvisor" -}}
+{{- end -}}
+{{- if not .Values.podSecurityContext.runAsNonRoot -}}
+{{- fail "complete control requires podSecurityContext.runAsNonRoot: true" -}}
+{{- end -}}
+{{- if not .Values.securityContext.readOnlyRootFilesystem -}}
+{{- fail "complete control requires securityContext.readOnlyRootFilesystem: true" -}}
+{{- end -}}
+{{- if .Values.securityContext.allowPrivilegeEscalation -}}
+{{- fail "complete control requires securityContext.allowPrivilegeEscalation: false" -}}
+{{- end -}}
+{{- $seccomp := default dict .Values.podSecurityContext.seccompProfile -}}
+{{- if or (empty $seccomp.type) (eq (toString $seccomp.type) "Unconfined") -}}
+{{- fail "complete control requires a non-Unconfined podSecurityContext.seccompProfile" -}}
+{{- end -}}
+{{- end -}}
 {{- if not .Values.existingConfigMap -}}
 {{- if empty .Values.config -}}
 {{- fail "config is required: the Aegis configuration (or set existingConfigMap)" -}}

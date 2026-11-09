@@ -46,7 +46,8 @@ config:
           class: READ
           request: {method: GET, path: /v1/namespaces}
   host:
-    listen: {host: 0.0.0.0, port: 8080}
+    # TLS is terminated by the cluster ingress in this CI profile; the pod-local hop is plaintext on purpose.
+    listen: {host: 0.0.0.0, port: 8080, allowPlaintext: true}
     identity:
       type: jwt
       jwt:

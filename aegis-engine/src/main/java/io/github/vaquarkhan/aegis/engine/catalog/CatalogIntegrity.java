@@ -94,7 +94,7 @@ public final class CatalogIntegrity {
             pinned = learned.get(toolName);
         }
         if (pinned != null) {
-            return pinned.equals(digest) ? Verdict.MATCH : Verdict.MISMATCH;
+            return io.github.vaquarkhan.aegis.engine.model.Digests.constantTimeEquals(pinned, digest) ? Verdict.MATCH : Verdict.MISMATCH;
         }
         if (mode == Mode.REQUIRE_PINS || !firstSightAllowed) {
             return Verdict.UNPINNED;
@@ -129,10 +129,28 @@ public final class CatalogIntegrity {
         }
         Path tmp = pinFile.resolveSibling(pinFile.getFileName() + ".tmp");
         Files.write(tmp, Json.write(learned).getBytes(StandardCharsets.UTF_8));
-        try {
-            Files.move(tmp, pinFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        } catch (AtomicMoveNotSupportedException e) {
-            Files.move(tmp, pinFile, StandardCopyOption.REPLACE_EXISTING);
+        // On Windows a replace-move fails with AccessDeniedException while another process (an indexer or
+        // a virus scanner) briefly holds the previous file open. Retry a few times before giving up; the
+        // pin file is written once per newly learned definition, so the window is hit at startup.
+        IOException last = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                try {
+                    Files.move(tmp, pinFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                } catch (AtomicMoveNotSupportedException e) {
+                    Files.move(tmp, pinFile, StandardCopyOption.REPLACE_EXISTING);
+                }
+                return;
+            } catch (java.nio.file.AccessDeniedException e) {
+                last = e;
+                try {
+                    Thread.sleep(20L * (attempt + 1));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
         }
+        throw last;
     }
 }

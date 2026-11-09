@@ -94,6 +94,12 @@ jobs:
           helm lint charts/aegis --strict -f charts/aegis/ci/test-values.yaml
           helm template aegis charts/aegis -f charts/aegis/ci/test-values.yaml --namespace mcp > rendered.yaml
           kubeconform -strict -summary -kubernetes-version 1.33.0 rendered.yaml
+          # Complete-control profile: digest-pinned image, NetworkPolicy, runtimeClassName, non-root, read-only root,
+          # no privilege escalation, seccomp. The chart's _helpers.tpl fails the render when any of these is missing.
+          helm template aegis charts/aegis -f charts/aegis/ci/complete-control-values.yaml --namespace mcp > rendered-cc.yaml
+          kubeconform -strict -summary -kubernetes-version 1.33.0 rendered-cc.yaml
+          grep -q 'runtimeClassName' rendered-cc.yaml || { echo "complete-control render lost runtimeClassName"; exit 1; }
+          grep -q 'kind: NetworkPolicy' rendered-cc.yaml || { echo "complete-control render lost NetworkPolicy"; exit 1; }
           if helm template x charts/aegis -f charts/aegis/ci/test-values.yaml -f charts/aegis/ci/deny-empty-ingress.yaml >/dev/null 2>&1; then
             echo "NetworkPolicy without allowed ingress peers must not render"; exit 1
           fi

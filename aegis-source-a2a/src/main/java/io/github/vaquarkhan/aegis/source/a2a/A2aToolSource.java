@@ -69,10 +69,23 @@ final class A2aToolSource implements ToolSource {
     private final int maxTextChars;
     private final int maxResponseBytes;
     private final long cardTimeoutMillis;
-    private final HttpClient http;
+    private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
 
     A2aToolSource(String id, URI cardUrl, URI pinnedEndpoint, String toolName, int maxTextChars,
                   int maxResponseBytes, long cardTimeoutMillis) {
+        this(id, cardUrl, pinnedEndpoint, toolName, maxTextChars, maxResponseBytes, cardTimeoutMillis,
+                io.github.vaquarkhan.aegis.mcp.http.OutboundHttp.jdk(HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofMillis(Math.min(cardTimeoutMillis, 5_000)))
+                        .followRedirects(HttpClient.Redirect.NEVER).build()));
+    }
+
+    /**
+     * @param transport the factory passes the gateway's pinned transport, so the card fetch and every
+     *                  agent call connect only to addresses the egress control approved in the same
+     *                  step (the A2A DNS rebinding class, for example CVE-2026-77822 in another gateway)
+     */
+    A2aToolSource(String id, URI cardUrl, URI pinnedEndpoint, String toolName, int maxTextChars,
+                  int maxResponseBytes, long cardTimeoutMillis, io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
         this.id = id;
         this.cardUrl = cardUrl;
         this.pinnedEndpoint = pinnedEndpoint;
@@ -80,8 +93,7 @@ final class A2aToolSource implements ToolSource {
         this.maxTextChars = maxTextChars;
         this.maxResponseBytes = maxResponseBytes;
         this.cardTimeoutMillis = cardTimeoutMillis;
-        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofMillis(Math.min(cardTimeoutMillis, 5_000)))
-                .followRedirects(HttpClient.Redirect.NEVER).build();
+        this.http = transport;
     }
 
     @Override
@@ -120,7 +132,7 @@ final class A2aToolSource implements ToolSource {
                 .header("Accept", "application/json").GET().build();
         BoundedHttp.Result r;
         try {
-            r = BoundedHttp.send(http, req, MAX_CARD_BYTES, cardTimeoutMillis);
+            r = http.send(req, MAX_CARD_BYTES, cardTimeoutMillis);
         } catch (HttpTimeoutException e) {
             throw new IOException("agent card at " + cardUrl + " did not arrive within " + cardTimeoutMillis + "ms", e);
         }
@@ -305,7 +317,7 @@ final class A2aToolSource implements ToolSource {
             b.POST(HttpRequest.BodyPublishers.ofString(Json.write(rpc), StandardCharsets.UTF_8));
             BoundedHttp.Result r;
             try {
-                r = BoundedHttp.send(http, b.build(), maxResponseBytes, ctx.timeoutMillis());
+                r = http.send(b.build(), maxResponseBytes, ctx.timeoutMillis());
             } catch (HttpTimeoutException e) {
                 throw new ExecutionException("agent timed out", true, e);
             } catch (IOException e) {

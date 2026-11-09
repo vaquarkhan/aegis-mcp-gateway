@@ -137,7 +137,7 @@ The retained materials record the own-host and Knox paths that were exercised. T
 authoritative for whether each run remains current after later code or configuration changes; a release
 candidate still needs its own run.
 
-The other **4** shipped profiles (Atlas, Cassandra, Impala, Paimon) are config/contract
+The other **6** shipped profiles (Atlas, Cassandra, Impala, Paimon, AsterixDB, SkyWalking) are config/contract
 supported as configuration; the service prerequisite for each is recorded in the same adopter index and on
 [ROADMAP.md](ROADMAP.md).
 
@@ -149,8 +149,8 @@ executable:
 | Claim | Current value | How it is checked |
 | --- | ---: | --- |
 | Shared reference configurations | **7 executable reference profiles** plus a separate teaching template | one executable YAML and developer README in each `adopters/configurations/<profile>/` directory; `DocumentationClaimsTest` rejects flat root YAML and missing catalog links |
-| Adapter configurations | **25 deployable adapter configurations** | one executable YAML in each `adopters/configurations/adapters/<adopter>/` directory |
-| Adapter tools | **116 tools** | summed from the same parsed YAML |
+| Adapter configurations | **27 deployable adapter configurations** | one executable YAML in each `adopters/configurations/adapters/<adopter>/` directory |
+| Adapter tools | **123 tools** | summed from the same parsed YAML |
 | 0.1 frozen inventory | 156 tools, 33 engines | checked against the shipped 2.0 configuration |
 | Implemented 0.1 successor surface | 152 tools | exact frozen verdict accounting |
 | New Kafka Admin capabilities | 2 tools | real AdminClient cluster and configuration reads |
@@ -158,7 +158,7 @@ executable:
 | Planned later | 5 engines | Arrow, Beam, Hudi, Kudu, and Ozone are typed sources for a later release |
 | Less-guarded implemented 0.1 tools | 0 | class-order assertion |
 
-The 25 deployable adapter configurations and 116 tools are governed in the current default build. Their external
+The 27 deployable adapter configurations and 123 tools are governed in the current default build. Their external
 compatibility state is below and in the claims matrix.
 
 ## Test boundaries: real software versus deterministic fixtures
@@ -168,7 +168,7 @@ No production configuration selects a test-double backend. Non-production fixtur
 | Fixture | Scope | What it proves | What it cannot prove |
 | --- | --- | --- | --- |
 | `TestMcpServer`, `TestStdioMcpServer` | test sources, published only in the Maven test jar | protocol negotiation, sessions, pagination, SSE, bounds, content governance and failure handling independent of the production handler | interoperability with every external MCP implementation |
-| `RestRouteContractHarness` | `examples/aegis-examples/src/test` | configured method/path/body rendering and governance order for the 25 shipped configurations | that a target product/version serves the route; a real-target run remains required |
+| `RestRouteContractHarness` | `examples/aegis-examples/src/test` | configured method/path/body rendering and governance order for the 27 shipped configurations | that a target product/version serves the route; a real-target run remains required |
 | local HTTP endpoints in OPA, JWKS, hook and OTLP tests | module test sources | exact request/response, timeout and fail-closed behavior | compatibility with a named external product unless a separate real-target row says so |
 
 Two in-memory classes are production code but are not backend simulations. `InMemoryStateStore` is the real,

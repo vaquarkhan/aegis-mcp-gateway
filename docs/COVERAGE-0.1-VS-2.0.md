@@ -52,12 +52,14 @@ in [evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.
 | --- | ---: | ---: | --- |
 | Engine surfaces in the frozen inventory | 33 | 28 in this release, 5 planned later | frozen inventory and verdict test |
 | Implemented tools inherited from or replacing a 0.1 capability | 156 | **152** | exact `Coverage01VsTwoTest` verdict accounting |
-| Non-Burr tools in the comparison surface | not applicable | **155** | `EXPECTED_COMPARABLE_TOOLS` (152 successors + 2 Kafka Admin reads + 1 Superset chart preview) |
+| 0.1-successor comparison surface (excludes 2.0-only engines) | not applicable | **155** | `EXPECTED_COMPARABLE_TOOLS` (152 successors + 2 Kafka Admin reads + 1 Superset chart preview) |
 | New 2.0 Kafka Admin tools | 0 | 2 | cluster and topic-configuration reads through the real AdminClient |
 | New Burr tools | 0 | 10 | Apache Burr (incubating) is a 2.0 addition, not a 0.1 successor |
-| Configuration files participating in the comparison | 33 Java adapter modules | 25 deployable adapter configurations plus shared reference configs | parsed from YAML |
-| Shipped tools participating in the comparison | 156 | **165** | `EXPECTED_SHIPPED_TOOLS` (155 non-Burr + 10 Burr) |
-| Adapter configurations | n/a | **25 deployable adapter configurations and 116 tools** | exact `AdapterConfigsTest` assertion |
+| New AsterixDB tools | 0 | 4 | Apache AsterixDB is a 2.0 addition, not a 0.1 successor |
+| New SkyWalking tools | 0 | 3 | Apache SkyWalking is a 2.0 addition, not a 0.1 successor |
+| Configuration files participating in the comparison | 33 Java adapter modules | 27 deployable adapter configurations plus shared reference configs | parsed from YAML |
+| Shipped tools participating in the comparison | 156 | **172** | `EXPECTED_SHIPPED_TOOLS` (155 0.1-successor + 10 Burr + 4 AsterixDB + 3 SkyWalking) |
+| Adapter configurations | n/a | **27 deployable adapter configurations and 123 tools** | exact `AdapterConfigsTest` assertion |
 | Implemented tools that became less guarded | n/a | **0** | class-order assertion |
 
 How the 2.0 totals fit together:
@@ -66,18 +68,20 @@ How the 2.0 totals fit together:
 152  successors of 0.1 capabilities (kept / renamed / backend-changed)
 +  2  new Kafka Admin read tools
 +  1  Superset chart read (dry-run preview for chart delete)
-= 155  comparable (non-Burr) tools
+= 155  0.1-successor comparable tools
 + 10  Burr (2.0-only)
-= 165  shipped comparison tools
++  4  AsterixDB (2.0-only)
++  3  SkyWalking (2.0-only)
+= 172  shipped comparison tools
 ```
 
-Aegis 2.0 ships 152 successors of the 0.1 tool inventory, plus Kafka Admin reads, a Superset chart preview, and Apache Burr (incubating). Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources and are not part of this release.
+Aegis 2.0 ships 152 successors of the 0.1 tool inventory, plus Kafka Admin reads, a Superset chart preview, Apache Burr (incubating), Apache AsterixDB, and Apache SkyWalking. Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources and are not part of this release.
 
 ## Side-by-side: 0.1 engine surface versus Aegis 2.0
 
 The frozen 0.1 inventory is
 [`aegis-0.1-tool-inventory.tsv`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/aegis-examples/src/test/resources/aegis-0.1-tool-inventory.tsv)
-(one row per tool, 33 engines, 156 tools). Aegis 2.0 ships **25 deployable adapter configurations**
+(one row per tool, 33 engines, 156 tools). Aegis 2.0 ships **27 deployable adapter configurations**
 under `adopters/configurations/adapters/<engine>/`, plus shared reference profiles (Flink, Iceberg, Kafka,
 Spark) and typed sources (JDBC, ZooKeeper, Kafka Admin, Spark Connect, A2A, and others). The table below
 is a per-engine view of the same contract `Coverage01VsTwoTest` enforces; regenerate the skeleton with
@@ -181,8 +185,8 @@ The detailed source-by-source entry is [ROADMAP.md](ROADMAP.md).
 ## What this comparison proves, and what it does not
 
 It proves 0.1 capability accounting and guard-strength preservation. It does not prove every upstream
-endpoint exists in every deployed version. `AdapterConfigsTest` exercises the **25 deployable adapter
-configurations and 116 tools** through Aegis governance; many HTTP adapters currently use a contract
+endpoint exists in every deployed version. `AdapterConfigsTest` exercises the **27 deployable adapter
+configurations and 123 tools** through Aegis governance; many HTTP adapters currently use a contract
 route harness. Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources and are not in this release. The authoritative state,
 including real, embedded-real, historical, contract and pending evidence, is
 [VALIDATION.md](VALIDATION.md) and [evidence/CLAIMS-MATRIX.md](evidence/CLAIMS-MATRIX.md).

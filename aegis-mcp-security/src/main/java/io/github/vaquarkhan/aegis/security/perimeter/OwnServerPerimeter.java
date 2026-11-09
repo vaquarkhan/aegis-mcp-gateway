@@ -93,6 +93,10 @@ public final class OwnServerPerimeter {
             case ADMIN -> settings.adminGroups();
             case METRICS -> settings.metricsGroups();
         };
+        // ADMIN with empty adminGroups is reachable by any authenticated caller ON PURPOSE: a requester
+        // collects their own approval token through GET /approvals/{id}. Authorisation per route lives in
+        // AdminApi and ApprovalService (pending/decide need an approver group, get needs requester or
+        // approver, catalog and prompts need an approver group, audit needs a verifier group).
         return groups.isEmpty() || caller.inAnyGroup(groups) ? Admission.allowed(caller) : Admission.forbidden();
     }
 

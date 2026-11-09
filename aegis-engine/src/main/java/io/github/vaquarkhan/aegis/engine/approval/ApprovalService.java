@@ -81,6 +81,9 @@ public final class ApprovalService {
 
     private static final System.Logger LOG = System.getLogger(ApprovalService.class.getName());
 
+    /** Longest an approval token may stay valid after the decision. */
+    public static final Duration MAX_TOKEN_TTL = Duration.ofMinutes(15);
+
     private final SignedTokens tokens;
     private final StateStore store;
     private final Set<String> approverGroups;
@@ -109,6 +112,13 @@ public final class ApprovalService {
         this.store = store;
         this.approverGroups = approverGroups == null ? Set.of() : Set.copyOf(approverGroups);
         this.requestTtl = requestTtl;
+        if (tokenTtl == null || tokenTtl.isZero() || tokenTtl.isNegative() || tokenTtl.compareTo(MAX_TOKEN_TTL) > 0) {
+            // The approver's group membership is checked when they decide, not when the token is spent. The
+            // token's lifetime is therefore the window in which a since-removed approver's decision still
+            // counts, so it is capped.
+            throw new IllegalArgumentException("approval token TTL must be between 1 second and "
+                    + MAX_TOKEN_TTL.toMinutes() + " minutes (an approval is spent promptly or re-requested)");
+        }
         this.tokenTtl = tokenTtl;
         this.clock = clock;
         this.journal = journal;

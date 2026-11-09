@@ -89,11 +89,31 @@ final class ClientSupport {
         return s.length() > 300 ? s.substring(0, 300) + "..." : s;
     }
 
-    /** True when an MCP Tool object has the fields the gateway needs. */
+    /** Longest upstream tool name the gateway will bind (MCP 2025-11-25 recommends 1..128). */
+    static final int MAX_TOOL_NAME_CHARS = 128;
+
+    /**
+     * True when an MCP Tool object has the fields the gateway needs. The name is model-visible and
+     * reused in admin paths, headers and audit records, so a downstream server does not get to choose
+     * control characters, path separators or an unbounded length for it; such tools are dropped.
+     */
     static boolean validTool(Object o) {
         Map<String, Object> m = JsonValues.asObject(o);
-        return m != null && m.get("name") instanceof String n && !n.isBlank()
+        return m != null && m.get("name") instanceof String n && safeToolName(n)
                 && (m.get("inputSchema") == null || m.get("inputSchema") instanceof Map);
+    }
+
+    static boolean safeToolName(String n) {
+        if (n.isBlank() || n.length() > MAX_TOOL_NAME_CHARS || !n.equals(n.strip())) {
+            return false;
+        }
+        for (int i = 0; i < n.length(); i++) {
+            char c = n.charAt(i);
+            if (c < 0x20 || c == 0x7f || c == '/' || c == '\\' || Character.getType(c) == Character.FORMAT) {
+                return false;
+            }
+        }
+        return true;
     }
 
     static List<Object> list(Map<String, Object> m, String key) {

@@ -19,6 +19,7 @@ import io.github.vaquarkhan.aegis.engine.approval.ApprovalService;
 import io.github.vaquarkhan.aegis.engine.approval.VrpService;
 import io.github.vaquarkhan.aegis.engine.catalog.DryRunSpec;
 import io.github.vaquarkhan.aegis.engine.catalog.GovernedTool;
+import io.github.vaquarkhan.aegis.engine.catalog.OutputPolicy;
 import io.github.vaquarkhan.aegis.engine.catalog.ResourceRule;
 import io.github.vaquarkhan.aegis.engine.catalog.ToolCatalog;
 import io.github.vaquarkhan.aegis.engine.control.CircuitBreakers;
@@ -26,6 +27,7 @@ import io.github.vaquarkhan.aegis.engine.control.ControlMode;
 import io.github.vaquarkhan.aegis.engine.control.EgressGuard;
 import io.github.vaquarkhan.aegis.engine.control.HookRunner;
 import io.github.vaquarkhan.aegis.engine.control.OutputGuard;
+import io.github.vaquarkhan.aegis.engine.control.ResultHandleStore;
 import io.github.vaquarkhan.aegis.engine.control.SchemaValidator;
 import io.github.vaquarkhan.aegis.engine.control.ScopeRule;
 import io.github.vaquarkhan.aegis.engine.model.Action;
@@ -122,6 +124,18 @@ public final class GovernanceEngine implements AutoCloseable {
 
     public ToolCatalog catalog() {
         return catalog;
+    }
+
+    private volatile ResultHandleStore resultHandles;
+
+    /** Enables take-once retention of redacted HANDLE_ONLY results (completeControl.handleRetentionSeconds). */
+    public void enableResultHandles(ResultHandleStore store) {
+        this.resultHandles = store;
+    }
+
+    /** Retained HANDLE_ONLY results, or null when retention is off. */
+    public ResultHandleStore resultHandles() {
+        return resultHandles;
     }
 
     public ApprovalService approvals() {
@@ -259,6 +273,15 @@ public final class GovernanceEngine implements AutoCloseable {
         if (schemaError != null) {
             return Decision.deny(DenyCodes.INVALID_INPUT, DenyCodes.STEP_SCOPE, "arguments do not match the tool schema: " + schemaError);
         }
+        if (tool.operatorSchema() != null) {
+            // The upstream schema is the server's claim; the operator schema is what this gateway will
+            // forward. Both must hold, so a server that publishes an open schema cannot widen the contract.
+            String operatorError = SchemaValidator.validate(tool.operatorSchema(), args);
+            if (operatorError != null) {
+                return Decision.deny(DenyCodes.INVALID_INPUT, DenyCodes.STEP_SCOPE,
+                        "arguments do not match the operator schema: " + operatorError);
+            }
+        }
         if (tokens.dryRun() && tool.toolClass() == ToolClass.READ) {
             return Decision.deny(DenyCodes.INVALID_INPUT, DenyCodes.STEP_SCOPE, "dry run applies to write tools only");
         }
@@ -270,10 +293,13 @@ public final class GovernanceEngine implements AutoCloseable {
             }
             resources.addAll(ex.resources());
         }
+        // The digest an approval or dry-run receipt is bound to must cover EVERYTHING the backend will
+        // receive. On an MRTR retry that includes the client's elicitation answers and the opaque
+        // requestState, so an approver sees them and a token cannot be reused with different answers.
         Action action = new Action(tool.exposedName(), tool.toolClass(), tool.sourceId(), resources,
-                Digests.canonicalSha256(args), List.copyOf(tool.actionScopes()));
+                Digests.canonicalSha256(digestInput(args, call.roundTrip())), List.copyOf(tool.actionScopes()));
         t.action = action;
-        t.binding = action.binding(settings.gatewayName(), entry.get().digest());
+        t.binding = action.binding(settings.gatewayName(), tool.bindingDigest(entry.get().digest()));
         t.backendArgs = args;
         if (!caller.scopes().containsAll(action.requiredActionScopes())) {
             List<String> missingScopes = action.requiredActionScopes().stream()
@@ -393,7 +419,7 @@ public final class GovernanceEngine implements AutoCloseable {
                 }
                 Map<String, Object> req;
                 try {
-                    req = approvals.request(caller, action, t.binding, approverEvidence(args, null));
+                    req = approvals.request(caller, action, t.binding, approverEvidence(args, call.roundTrip(), null));
                 } catch (ApprovalService.ApprovalException e) {
                     return deny(t, Decision.deny(DenyCodes.APPROVAL_REQUIRED, DenyCodes.STEP_APPROVAL, e.getMessage()));
                 }
@@ -498,6 +524,29 @@ public final class GovernanceEngine implements AutoCloseable {
             return fail(t, DenyCodes.BACKEND_ERROR, "backend call failed (" + e.getClass().getSimpleName() + ")", true);
         }
         result = hooks.afterTool(hookCtx, result, t.hookAudit);
+        OutputPolicy.Release released = tool.outputPolicy().release(result, t.requestId);
+        t.governance.put("executionKind", tool.executionContract().kind().name());
+        t.governance.put("outputMode", tool.outputPolicy().mode().name());
+        if (!released.allowed()) {
+            t.governance.put("outputWithheld", true);
+            if (released.handle() != null) {
+                t.governance.put("outputHandle", released.handle());
+            }
+            return fail(t, DenyCodes.POLICY_DENIED, released.error(), true);
+        }
+        if (released.withheld()) {
+            t.governance.put("outputWithheld", true);
+            t.governance.put("outputHandle", released.handle());
+            ResultHandleStore handles = resultHandles;
+            if (handles != null && tool.outputPolicy().mode() == OutputPolicy.Mode.HANDLE_ONLY && !tokens.dryRun()) {
+                // Retain the REDACTED original for take-once release outside the model's context.
+                OutputGuard.Guarded original = settings.outputGuard().apply(result);
+                boolean kept = !original.binaryRefused() && handles.put(released.handle(), tool.exposedName(),
+                        t.requestId, t.caller, original.result().body());
+                t.governance.put("outputHandleRetained", kept);
+            }
+        }
+        result = released.result();
         OutputGuard.Guarded guarded = settings.outputGuard().apply(result);
         if (guarded.binaryRefused()) {
             // Binary parts are opaque to redaction and screening, so they reach the model only when the
@@ -508,6 +557,16 @@ public final class GovernanceEngine implements AutoCloseable {
         }
         t.redactions = guarded.redactions();
         t.truncated = guarded.truncated();
+        if (guarded.injectionMatch() != null) {
+            // A result is model-controlled text like an argument or a description; a hostile backend can
+            // plant "ignore previous instructions" in it. The backend already ran, so this withholds the
+            // result and records the call rather than pretending it did not happen.
+            t.governance.put("resultScreeningMatch", guarded.injectionMatch());
+            if (settings.outputGuard().resultScreenMode() == ControlMode.ENFORCE) {
+                return fail(t, DenyCodes.PROMPT_INJECTION,
+                        "the backend result matches an injection pattern and was withheld (screening.results)", true);
+            }
+        }
         t.resultDigest = Digests.canonicalSha256(guarded.result().body());
         t.isError = guarded.result().isError();
         if (tokens.dryRun()) {
@@ -528,7 +587,7 @@ public final class GovernanceEngine implements AutoCloseable {
             if (settings.approvalRequiredFor().contains(t.tool.toolClass()) && approvals.configured()) {
                 try {
                     Map<String, Object> req = approvals.request(t.caller, t.action, t.binding,
-                            approverEvidence(t.backendArgs, preview));
+                            approverEvidence(t.backendArgs, t.call.roundTrip(), preview));
                     t.governance.put("approvalRequestId", req.get("id"));
                 } catch (ApprovalService.ApprovalException e) {
                     t.governance.put("approvalRequestError", e.getMessage());
@@ -599,13 +658,37 @@ public final class GovernanceEngine implements AutoCloseable {
     static final int MAX_EVIDENCE_BYTES = 8 * 1024;
 
     /**
-     * What a human approver is shown: the backend arguments and, after a dry run, the preview result,
-     * both passed through the output redaction patterns and bounded. Without this an approver would be
-     * deciding on a digest.
+     * The value {@code argsDigest} is computed over. For a plain call it is the backend arguments, so
+     * digests of existing approvals, receipts and audit records are unchanged. For an MRTR retry it is
+     * an envelope that also carries {@code inputResponses} and {@code requestState}, because the backend
+     * receives those too and an approval must not bind less than what executes.
      */
-    private Map<String, Object> approverEvidence(Map<String, Object> args, ToolResult preview) {
+    static Object digestInput(Map<String, Object> args, io.github.vaquarkhan.aegis.engine.model.RoundTrip rt) {
+        if (rt == null || !rt.isRetry()) {
+            return args;
+        }
+        Map<String, Object> envelope = new LinkedHashMap<>();
+        envelope.put("arguments", args);
+        envelope.put("inputResponses", rt.inputResponses());
+        envelope.put("requestState", rt.requestState() == null ? "" : rt.requestState());
+        return envelope;
+    }
+
+    /**
+     * What a human approver is shown: the backend arguments (plus any MRTR answers that will reach the
+     * backend) and, after a dry run, the preview result, both passed through the output redaction
+     * patterns and bounded. Without this an approver would be deciding on a digest.
+     */
+    private Map<String, Object> approverEvidence(Map<String, Object> args, io.github.vaquarkhan.aegis.engine.model.RoundTrip rt,
+                                                 ToolResult preview) {
         Map<String, Object> ev = new LinkedHashMap<>();
         ev.put("arguments", boundedEvidence(settings.outputGuard().redactAll(args == null ? Map.of() : args).value()));
+        if (rt != null && rt.isRetry()) {
+            ev.put("inputResponses", boundedEvidence(settings.outputGuard().redactAll(rt.inputResponses()).value()));
+            if (rt.requestState() != null) {
+                ev.put("requestStateDigest", Digests.canonicalSha256(rt.requestState()));
+            }
+        }
         if (preview != null) {
             ev.put("preview", boundedEvidence(settings.outputGuard().redactAll(preview.body()).value()));
         }
@@ -684,13 +767,27 @@ public final class GovernanceEngine implements AutoCloseable {
         if (screening != null) {
             r.put("screeningMatch", screening);
         }
+        Object resultScreening = t.governance.get("resultScreeningMatch");
+        if (resultScreening != null) {
+            r.put("resultScreeningMatch", resultScreening);
+        }
         if (!t.hookAudit.isEmpty()) {
             // What an AUDIT-mode hook would have done. The call was allowed; this is the dry-run trail
             // an operator reads before switching that hook to ENFORCE.
             r.put("hookAudit", List.copyOf(t.hookAudit));
         }
         if (settings.auditArguments() && t.call.arguments() != null) {
-            r.put("arguments", t.call.arguments());
+            // Journal what the backend would see, never the raw request: 0.1-style control carriers
+            // (approvalToken, dryRunReceipt) are single-use secrets until consumed, and argument values
+            // can hold credentials, so both are stripped or redacted like every other output path.
+            Map<String, Object> journaled;
+            if (t.backendArgs != null) {
+                journaled = t.backendArgs;
+            } else {
+                journaled = new LinkedHashMap<>(t.call.arguments());
+                journaled.keySet().removeAll(ControlTokens.LEGACY_ARGS);
+            }
+            r.put("arguments", settings.outputGuard().redactAll(journaled).value());
         }
         r.put("durationMs", clock.millis() - t.startMillis);
         return r;

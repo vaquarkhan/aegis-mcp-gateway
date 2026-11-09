@@ -41,7 +41,9 @@ import io.github.vaquarkhan.aegis.engine.catalog.SignedServerCatalog;
 import io.github.vaquarkhan.aegis.engine.catalog.SignedSerial;
 import io.github.vaquarkhan.aegis.engine.catalog.BreakGlassContainment;
 import io.github.vaquarkhan.aegis.engine.catalog.DryRunSpec;
+import io.github.vaquarkhan.aegis.engine.catalog.ExecutionContract;
 import io.github.vaquarkhan.aegis.engine.catalog.GovernedTool;
+import io.github.vaquarkhan.aegis.engine.catalog.OutputPolicy;
 import io.github.vaquarkhan.aegis.engine.catalog.ResourceRule;
 import io.github.vaquarkhan.aegis.engine.catalog.ToolCatalog;
 import io.github.vaquarkhan.aegis.engine.content.ContentGovernor;
@@ -50,11 +52,13 @@ import io.github.vaquarkhan.aegis.engine.spi.ContentSource;
 import io.github.vaquarkhan.aegis.engine.control.CircuitBreakers;
 import io.github.vaquarkhan.aegis.engine.control.ControlMode;
 import io.github.vaquarkhan.aegis.engine.control.EgressGuard;
+import io.github.vaquarkhan.aegis.engine.control.TokenRevocations;
 import io.github.vaquarkhan.aegis.engine.control.HookBinding;
 import io.github.vaquarkhan.aegis.engine.control.InjectionScreen;
 import io.github.vaquarkhan.aegis.engine.control.OutputGuard;
 import io.github.vaquarkhan.aegis.engine.control.RateLimiter;
 import io.github.vaquarkhan.aegis.engine.control.RulePolicy;
+import io.github.vaquarkhan.aegis.engine.control.SchemaValidator;
 import io.github.vaquarkhan.aegis.engine.control.ScopeRule;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.observe.DecisionMetrics;
@@ -75,6 +79,7 @@ import io.github.vaquarkhan.aegis.mcp.client.HttpMcpClient;
 import io.github.vaquarkhan.aegis.mcp.client.McpClient;
 import io.github.vaquarkhan.aegis.mcp.client.McpContentSource;
 import io.github.vaquarkhan.aegis.mcp.client.McpProxyToolSource;
+import io.github.vaquarkhan.aegis.mcp.client.ProcessLauncher;
 import io.github.vaquarkhan.aegis.mcp.client.StdioMcpClient;
 import io.github.vaquarkhan.aegis.mcp.server.McpServerHandler;
 import io.github.vaquarkhan.aegis.mcp.server.ServerOptions;
@@ -111,6 +116,7 @@ public final class GatewayFactory {
 
     private static final System.Logger LOG = System.getLogger(GatewayFactory.class.getName());
     private static final Pattern ID = Pattern.compile("[a-z0-9][a-z0-9_-]{0,63}");
+    private static final Pattern SHA256 = Pattern.compile("sha256:[0-9a-f]{64}");
     /** RFC 6749 section 3.3 scope-token: NQCHAR is %x21 / %x23-5B / %x5D-7E, the same rule as route scopes. */
     private static final Pattern ACTION_SCOPE = Pattern.compile("[\\x21\\x23-\\x5B\\x5D-\\x7E]+");
     /** Built-in hook type: an out-of-process control reached over HTTP, no Java required. */
@@ -141,7 +147,33 @@ public final class GatewayFactory {
 
         // Secrets first: every later name lookup (keyEnv, tokenEnv, passwordEnv, ...) goes through the
         // one selected provider, including the host's own settings via Gateway.secrets().
-        final BuildContext ctx = secrets(root.child("secrets"), raw, callerContext);
+        // A fresh egress binding per build: transports built below (sources, token exchange) connect
+        // only after this build's egress control is bound, and only to addresses it approved.
+        // Complete control is read first: every plugin lookup below (secret, hook, state, audit sink)
+        // is limited to provider JARs hash-verified from completeControl.artifacts (role plugin).
+        ConfigNode completeControlNode = root.child("completeControl");
+        boolean completeControl = completeControlNode.bool("enabled", false);
+        requirePluginDigest(completeControlNode, callerContext);
+        requirePluginDigest(completeControlNode, callerContext);
+        requirePluginDigest(completeControlNode, callerContext);
+        List<ArtifactAdmission.Verified> pluginArtifacts = ArtifactAdmission.verify(completeControlNode,
+                callerContext.baseDir());
+        // HANDLE_ONLY results retained (redacted, take-once) for release outside the model; 0 = not retained.
+        long handleRetention = completeControlNode.integer("handleRetentionSeconds", 0);
+        if (handleRetention < 0 || handleRetention > 86_400) {
+            throw completeControlNode.error("handleRetentionSeconds", "must be between 0 (off) and 86400");
+        }
+        final BuildContext ctx = secrets(root.child("secrets"), raw, callerContext, pluginArtifacts, completeControl)
+                .withFreshEgressBinding();
+
+        // Read here (before root.finish validates unknown keys); the key is used when the store is built.
+        javax.crypto.SecretKey handleEncryptionKey = null;
+        if (handleRetention > 0 && completeControlNode.has("handleEncryptionKeyEnv")) {
+            byte[] handleKeyBytes = decodeAes256(requireEnv(ctx,
+                    completeControlNode.requiredString("handleEncryptionKeyEnv"),
+                    "config.completeControl.handleEncryptionKeyEnv"), completeControlNode);
+            handleEncryptionKey = new javax.crypto.spec.SecretKeySpec(handleKeyBytes, "AES");
+        }
 
         ConfigNode gw = root.child("gateway");
         String gatewayName = gw.string("name", "aegis");
@@ -151,6 +183,15 @@ public final class GatewayFactory {
         Set<String> destructiveGroups = access.stringSet("destructiveGroups");
         Set<String> approverGroups = access.stringSet("approverGroups");
         Set<String> auditVerifierGroups = access.stringSet("auditVerifierGroups");
+        // Token revocation (POST adminPath/revocations/...): off unless revoker groups are named.
+        Set<String> revokerGroups = access.stringSet("revokerGroups");
+        // Who may release a retained HANDLE_ONLY result (POST adminPath/results/{handle}/release).
+        Set<String> resultReleaseGroups = access.stringSet("resultReleaseGroups");
+        long revocationRetention = access.integer("revocationRetentionSeconds", 86_400);
+        if (revocationRetention < 60 || revocationRetention > TokenRevocations.MAX_RETENTION.toSeconds()) {
+            throw access.error("revocationRetentionSeconds", "must be between 60 and " + TokenRevocations.MAX_RETENTION.toSeconds()
+                    + " (at least the identity provider's longest access token lifetime)");
+        }
 
         ConfigNode approval = root.child("approval");
         byte[] signingKey = signingKey(approval, ctx);
@@ -162,6 +203,10 @@ public final class GatewayFactory {
         }
         long requestTtl = approval.integer("requestTtlSeconds", 1800);
         long tokenTtl = approval.integer("tokenTtlSeconds", 600);
+        if (tokenTtl < 1 || tokenTtl > ApprovalService.MAX_TOKEN_TTL.toSeconds()) {
+            throw approval.error("tokenTtlSeconds", "must be between 1 and " + ApprovalService.MAX_TOKEN_TTL.toSeconds()
+                    + "; an approver's group membership is only checked when they decide, so a token must be spent promptly");
+        }
         boolean advertiseControls = approval.bool("advertiseControlArguments", true);
 
         ConfigNode vrpNode = root.child("vrp");
@@ -178,6 +223,18 @@ public final class GatewayFactory {
         // cannot remove the requirement or swap the key. It is read from the caller's own lookup (the
         // process environment), not from the secrets source the configuration selects.
         Path requiredReviewKey = requiredCatalogKey(callerContext);
+        // Deployment admission key: the admission verifier signs each remote source's attestation. Host
+        // anchored like the review key (environment or JVM property, never the configuration file).
+        java.security.PublicKey attestationKey = requiredAttestationKey(callerContext);
+        if (completeControl && requiredReviewKey == null) {
+            throw new ConfigException("config.completeControl.enabled requires host-side " + REQUIRED_CATALOG_KEY
+                    + " (or the equivalent JVM property); configuration must not be able to remove or replace its trust anchor");
+        }
+        if (completeControl && attestationKey == null) {
+            throw new ConfigException("config.completeControl.enabled requires host-side " + REQUIRED_ATTESTATION_KEY
+                    + " (the deployment admission verifier's public key), so a remote source's attestation is verified,"
+                    + " not only shape-checked");
+        }
         if (requiredReviewKey != null && !root.has("serverCatalog")) {
             throw new ConfigException("config.serverCatalog is required: " + REQUIRED_CATALOG_KEY
                     + " names a review key, so this gateway starts only with a server catalog signed by that key");
@@ -268,7 +325,7 @@ public final class GatewayFactory {
                             + " catalog (this block is " + digest + ")");
                 }
             }
-            SourceBuild sb = source(s, ctx);
+            SourceBuild sb = source(s, ctx, completeControl, attestationKey);
             if (record != null) {
                 sb.signedNames = record.pins().keySet();
             } else if (!ids.add(sb.id)) {
@@ -294,7 +351,34 @@ public final class GatewayFactory {
                 schemes.add(u.getScheme().toLowerCase(Locale.ROOT));
             }
         }
+        // O-8 A: optional forward proxy. Every pinned transport tunnels through it with HTTP CONNECT; the
+        // proxy host itself must be on the allow list, and the target is still checked by the egress control.
+        io.github.vaquarkhan.aegis.mcp.http.PinnedHttp.Proxy egressProxy = null;
+        if (egress.has("proxy")) {
+            ConfigNode px = egress.child("proxy");
+            String proxyHost = px.requiredString("host");
+            long proxyPort = px.integer("port", 3128);
+            if (proxyPort < 1 || proxyPort > 65_535) {
+                throw px.error("port", "must be between 1 and 65535");
+            }
+            allowHosts.add(proxyHost);
+            // Optional authenticated proxy (P-5). The value comes from the secrets source: either a full
+            // Proxy-Authorization header value (credentialEnv) or a username/password pair encoded as Basic.
+            String credential = null;
+            if (px.has("credentialEnv")) {
+                credential = requireEnv(ctx, px.requiredString("credentialEnv"), px.path() + ".credentialEnv");
+            } else if (px.has("usernameEnv") || px.has("passwordEnv")) {
+                String user = requireEnv(ctx, px.requiredString("usernameEnv"), px.path() + ".usernameEnv");
+                String pass = requireEnv(ctx, px.requiredString("passwordEnv"), px.path() + ".passwordEnv");
+                credential = "Basic " + java.util.Base64.getEncoder().encodeToString(
+                        (user + ":" + pass).getBytes(StandardCharsets.UTF_8));
+            }
+            egressProxy = new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp.Proxy(proxyHost, (int) proxyPort, credential);
+        }
         EgressGuard egressGuard = new EgressGuard(allowHosts, egress.strings("allowCidrs"), schemes, ctx.resolver());
+        // Every gateway-built outbound transport (MCP and HTTP sources, token exchange, providers that
+        // use BuildContext.outbound) pins its connection to the answers this guard checked.
+        ctx.egressBinding().bind(egressGuard, egressProxy);
         boolean checkArgumentUrls = egress.bool("checkArgumentUrls", true);
         // A token endpoint receives every caller's access token, so it must be an allowed destination.
         for (SourceBuild sb : sources) {
@@ -333,8 +417,9 @@ public final class GatewayFactory {
             if (why != null) {
                 throw opa.error("url", "is not allowed by config.egress: " + why);
             }
-            pdps.add(new OpaPolicy(opaUrl, Duration.ofMillis(opa.integer("timeoutMs", 2000)),
-                    opa.bool("includeArguments", false), h));
+            Duration opaTimeout = Duration.ofMillis(opa.integer("timeoutMs", 2000));
+            pdps.add(new OpaPolicy(opaUrl, opaTimeout, opa.bool("includeArguments", false), h,
+                    new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp(egressGuard::pin, opaTimeout, null, egressProxy)));
         }
         if (pdps.isEmpty()) {
             throw new ConfigException("config.policy needs at least one rule or an opa endpoint (default is deny-all)");
@@ -348,8 +433,19 @@ public final class GatewayFactory {
 
         ConfigNode rl = root.child("rateLimits");
         ConfigNode costs = rl.child("costs");
+        // Team quotas: one shared per-minute budget per IdP group (all members together), in the shared state store.
+        ConfigNode groupRates = rl.child("perGroupPerMinute");
+        Map<String, Long> perGroup = new LinkedHashMap<>();
+        for (String g : new ArrayList<>(groupRates.values().keySet())) {
+            long n = groupRates.integer(g, 0);
+            if (n < 1) {
+                throw groupRates.error(g, "must be a positive per-minute limit");
+            }
+            perGroup.put(g, n);
+        }
         RateLimiter rate = new RateLimiter(rl.integer("perCallerPerMinute", 0), rl.integer("perCallerPerToolPerMinute", 0),
-                rl.integer("budgetPerHour", 0), costs.integer("READ", 1), costs.integer("MUTATE", 5), costs.integer("DESTRUCTIVE", 20));
+                rl.integer("budgetPerHour", 0), costs.integer("READ", 1), costs.integer("MUTATE", 5), costs.integer("DESTRUCTIVE", 20),
+                perGroup);
 
         ConfigNode br = root.child("breaker");
         CircuitBreakers breakers = new CircuitBreakers((int) br.integer("failureThreshold", 5),
@@ -362,16 +458,35 @@ public final class GatewayFactory {
         InjectionScreen defScreen = new InjectionScreen(controlMode(scr, "toolDefinitions"), phrases, true);
         // Resources and prompts enter the model's context directly: screened like tool definitions.
         InjectionScreen contentScreen = new InjectionScreen(controlMode(scr, "content"), phrases, true);
+        // Tool RESULTS enter the model's context too. Default AUDIT: a match is journaled and the result
+        // passes, because withholding a legitimate result after the backend already acted is the costlier
+        // mistake; operators switch to ENFORCE once the journal shows no false positives.
+        ControlMode resultsMode;
+        try {
+            // ENFORCE by default everywhere (O-2 B): a backend result carrying an injection phrase is
+            // withheld. Operators who want to observe first set AUDIT explicitly. Complete control refuses OFF.
+            resultsMode = ControlMode.parse(scr.string("results", "ENFORCE"));
+        } catch (IllegalArgumentException e) {
+            throw scr.error("results", "must be ENFORCE, AUDIT or OFF");
+        }
+        if (completeControl && resultsMode == ControlMode.OFF) {
+            throw scr.error("results", "must not be OFF when completeControl.enabled is true");
+        }
+        InjectionScreen resultScreen = new InjectionScreen(resultsMode, phrases, true);
 
         ConfigNode out = root.child("output");
         List<String> redact = new ArrayList<>();
         if (out.bool("useDefaultRedactions", true)) {
             redact.addAll(OutputGuard.DEFAULT_REDACTIONS);
         }
+        // Opt-in personal-data patterns (email, phone, payment card, US SSN, IBAN); on by default in complete control.
+        if (out.bool("redactPii", completeControl)) {
+            redact.addAll(OutputGuard.PII_REDACTIONS);
+        }
         redact.addAll(out.strings("redact"));
         // Binary tool output (image/audio data, blobs) is opaque to redaction and screening: off unless allowed.
         OutputGuard outputGuard = new OutputGuard((int) out.integer("maxBytes", 1 << 20), redact,
-                out.bool("allowBinary", false));
+                out.bool("allowBinary", false), resultScreen, out.bool("redactHighEntropy", false));
 
         List<HookBinding> hooks = new ArrayList<>();
         for (ConfigNode h : root.children("hooks")) {
@@ -385,9 +500,10 @@ public final class GatewayFactory {
                             + "' is built in, but a GovernanceHookFactory on the classpath also claims it; rename that factory");
                 }
                 ConfigNode hs = h.child("settings");
-                hook = REMOTE_HOOK.equals(type) ? remoteHook(ctx, hs, egressGuard) : sqlReadOnlyHook(hs);
+                hook = REMOTE_HOOK.equals(type) ? remoteHook(ctx, hs, egressGuard, egressProxy) : sqlReadOnlyHook(hs);
             } else {
-                GovernanceHookFactory f = provider(GovernanceHookFactory.class, type, GovernanceHookFactory::type)
+                GovernanceHookFactory f = provider(GovernanceHookFactory.class, type, GovernanceHookFactory::type,
+                        pluginArtifacts, completeControl)
                         .orElseThrow(() -> new ConfigException(h.path() + ".type unknown hook type '" + type + "'"));
                 hook = f.create(h.child("settings"));
                 if (hook == null) {
@@ -403,8 +519,12 @@ public final class GatewayFactory {
                 }
             }
             ControlMode hookMode = controlMode(h, "mode");
+            long timeoutMs = h.integer("timeoutMs", HookBinding.DEFAULT_TIMEOUT.toMillis());
+            if (timeoutMs < 0 || timeoutMs > HookBinding.MAX_TIMEOUT.toMillis()) {
+                throw h.error("timeoutMs", "must be between 0 (unbounded, in-thread) and " + HookBinding.MAX_TIMEOUT.toMillis());
+            }
             hooks.add(new HookBinding(hook, hookMode, operations, h.strings("methods"), h.stringSet("groups"),
-                    h.stringSet("sources")));
+                    h.stringSet("sources"), Duration.ofMillis(timeoutMs)));
         }
         // Host-supplied hooks (a Knox provider, an embedding application) always enforce, for every
         // operation: a host that compiled a control in did not ask for it to be advisory.
@@ -416,6 +536,22 @@ public final class GatewayFactory {
         String auditFile = audit.requiredString("file");
         boolean auditFsync = audit.bool("fsync", true);
         boolean auditArgs = audit.bool("includeArguments", false);
+        // Additional destinations (SIEM, bus, cloud log) through the AuditSinkFactory SPI. Every sink
+        // receives every record after the journal, and any failure fails the call closed.
+        List<AuditSink> extraSinks = new ArrayList<>();
+        for (ConfigNode sinkNode : audit.children("sinks")) {
+            String sinkType = sinkNode.requiredString("type");
+            io.github.vaquarkhan.aegis.config.spi.AuditSinkFactory f = provider(
+                    io.github.vaquarkhan.aegis.config.spi.AuditSinkFactory.class, sinkType,
+                    io.github.vaquarkhan.aegis.config.spi.AuditSinkFactory::type, pluginArtifacts, completeControl)
+                    .orElseThrow(() -> new ConfigException(sinkNode.path() + ".type unknown or unadmitted audit sink type '"
+                            + sinkType + "' (add an AuditSinkFactory provider jar)"));
+            AuditSink created = f.create(sinkNode.child("settings"), ctx);
+            if (created == null) {
+                throw new ConfigException(sinkNode.path() + ".type provider '" + sinkType + "' produced no sink");
+            }
+            extraSinks.add(created);
+        }
         // Head export: absent means none. The file belongs on storage the journal writer cannot rewrite.
         AuditCheckpointPolicy auditCheckpoints = null;
         if (audit.has("checkpoint")) {
@@ -433,7 +569,18 @@ public final class GatewayFactory {
             if (cpPath.equals(ctx.baseDir().resolve(auditFile).toAbsolutePath().normalize())) {
                 throw cpNode.error("file", "must not be the audit journal itself");
             }
-            auditCheckpoints = new AuditCheckpointPolicy(cpPath, everyRecords, Duration.ofSeconds(everySeconds), ctx.clock());
+            java.security.PrivateKey cpKey = null;
+            String cpKeyFile = cpNode.string("signingKeyFile", null);
+            if (cpKeyFile != null) {
+                // O-11 C: each exported head is signed, so a rewritten journal plus a regenerated checkpoint
+                // file cannot carry valid signatures without this key (kept off the journal host).
+                try {
+                    cpKey = SignedCatalogManifest.readPrivateKey(ctx.baseDir().resolve(cpKeyFile));
+                } catch (java.io.IOException e) {
+                    throw cpNode.error("signingKeyFile", "cannot be read as an Ed25519 private key: " + e.getMessage());
+                }
+            }
+            auditCheckpoints = new AuditCheckpointPolicy(cpPath, everyRecords, Duration.ofSeconds(everySeconds), ctx.clock(), cpKey);
         }
 
         ConfigNode cat = root.child("catalog");
@@ -545,8 +692,10 @@ public final class GatewayFactory {
             int otlpQueue = (int) otlp.integer("maxQueue", 2048);
             int otlpBatch = (int) otlp.integer("batchSize", 128);
             long otlpFlush = otlp.integer("flushMs", 2000);
+            io.github.vaquarkhan.aegis.mcp.http.PinnedHttp otlpTransport =
+                    new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp(egressGuard::pin, otlpTimeout, null, egressProxy);
             tracerFactory = () -> new OtlpSpanExporter(otlpUrl, otlpTimeout, otlpHeaders, otlpService, otlpQueue,
-                    otlpBatch, otlpFlush);
+                    otlpBatch, otlpFlush, otlpTransport);
         }
 
         // State is selected once for the whole gateway, after every other section has been read, so a
@@ -557,20 +706,30 @@ public final class GatewayFactory {
         ConfigNode stateNode = root.child("state");
         StateStore state;
         AutoCloseable stateResource = null;
+        boolean durableState;
         if (ctx.stateStore() != null) {
             stateNode.skip("type");
             stateNode.skip("maxEntries");
             stateNode.skip("settings");
             state = ctx.stateStore();
+            durableState = true; // the host owns this store's durability and sharing (Knox, embedders)
         } else {
             String stateType = stateNode.string("type", "memory").toLowerCase(Locale.ROOT);
+            durableState = !"memory".equals(stateType);
+            if (completeControl && !durableState) {
+                // O-3 A: approvals, nonces, revocations and the signed-serial high-water mark must survive a
+                // restart and be shared by every replica; an in-memory store makes a revoked token valid again.
+                throw stateNode.error("type", "must be a durable, shared store (derby-local, postgres or a host-provided"
+                        + " store) when completeControl.enabled is true");
+            }
             int maxEntries = (int) stateNode.integer("maxEntries", 1_000_000);
             ConfigNode stateSettings = stateNode.child("settings");
             if ("memory".equals(stateType)) {
                 stateSettings.finish();
                 state = new InMemoryStateStore(ctx.clock(), maxEntries);
             } else {
-                StateStoreFactory factory = provider(StateStoreFactory.class, stateType, StateStoreFactory::type)
+                StateStoreFactory factory = provider(StateStoreFactory.class, stateType, StateStoreFactory::type,
+                        pluginArtifacts, completeControl)
                         .orElseThrow(() -> new ConfigException(stateNode.path() + ".type unknown state provider '" + stateType
                                 + "' (built-in: memory; add a StateStoreFactory provider jar for durable state)"));
                 try {
@@ -614,6 +773,9 @@ public final class GatewayFactory {
         }
         OtlpSpanExporter tracer = tracerFactory == null ? null : tracerFactory.get();
         AuditSink sink = auditJournal;
+        for (AuditSink extra : extraSinks) {
+            sink = tee(sink, extra);
+        }
         if (ctx.extraAuditSink() != null) {
             sink = tee(sink, ctx.extraAuditSink());
         }
@@ -664,6 +826,11 @@ public final class GatewayFactory {
                 listeners(metrics, tracer));
         GovernanceEngine engine = new GovernanceEngine(settings, catalog, pdp, approvals, vrp, state, sink, creds,
                 breakers, ctx.clock(), checkArgumentUrls);
+        if (handleRetention > 0) {
+            // P-8: optional AES-256 key (read early, above) so retained bodies are encrypted at rest.
+            engine.enableResultHandles(new io.github.vaquarkhan.aegis.engine.control.ResultHandleStore(state, ctx.clock(),
+                    Duration.ofSeconds(handleRetention), outputGuard.maxBytes(), handleEncryptionKey));
+        }
         List<ContentGovernor.Binding> contentBindings = new ArrayList<>();
         for (SourceBuild sb : sources) {
             if (sb.content != null) {
@@ -688,8 +855,20 @@ public final class GatewayFactory {
         }
         McpServerHandler handler = new McpServerHandler(engine, content, serverOptions,
                 new SessionRegistry(ctx.clock(), sessionIdle, maxSessions));
+        TokenRevocations revocations = new TokenRevocations(state, ctx.clock());
+        // O-2 B: say at startup which write tools still hand raw backend text to the model.
+        for (ToolCatalog.Entry e : catalog.entries()) {
+            if (e.tool().toolClass() != ToolClass.READ
+                    && e.tool().outputPolicy().mode() == io.github.vaquarkhan.aegis.engine.catalog.OutputPolicy.Mode.PASS_THROUGH) {
+                LOG.log(System.Logger.Level.WARNING, "tool '" + e.tool().exposedName() + "' (" + e.tool().toolClass()
+                        + ") returns backend output PASS_THROUGH; set outputPolicy STRUCTURED_ALLOWLIST or HANDLE_ONLY"
+                        + " so a hostile result cannot steer the model after a write");
+            }
+        }
         AdminApi admin = new AdminApi(engine, content, approverGroups, auditVerifierGroups,
-                () -> auditJournal.verify().ok(), serverOptions.allowedOrigins());
+                () -> auditJournal.verify().ok(), serverOptions.allowedOrigins(), ctx.clock())
+                .withRevocations(revokerGroups, revocations, Duration.ofSeconds(revocationRetention))
+                .withResultRelease(resultReleaseGroups);
         ScheduledExecutorService refresher = null;
         if (refreshSeconds > 0) {
             refresher = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -712,7 +891,8 @@ public final class GatewayFactory {
                 }
             }, refreshSeconds, refreshSeconds, TimeUnit.SECONDS);
         }
-        return new Gateway(engine, handler, admin, hostSections, refresher, metrics, tracer, stateResource, ctx.env());
+        return new Gateway(engine, handler, admin, hostSections, refresher, metrics, tracer, stateResource, ctx.env(),
+                revocations, completeControl, durableState);
     }
 
     /**
@@ -720,7 +900,8 @@ public final class GatewayFactory {
      * the process environment. The Vault token itself always comes from the process environment or a
      * file, never from the provider it unlocks.
      */
-    private static BuildContext secrets(ConfigNode s, Map<String, Object> raw, BuildContext ctx) throws Exception {
+    private static BuildContext secrets(ConfigNode s, Map<String, Object> raw, BuildContext ctx,
+                                        List<ArtifactAdmission.Verified> pluginArtifacts, boolean completeControl) throws Exception {
         String source = s.string("source", "env").trim().toLowerCase(Locale.ROOT);
         ConfigNode settings = s.child("settings");
         java.util.function.Function<String, String> resolver;
@@ -731,7 +912,8 @@ public final class GatewayFactory {
             case "file" -> resolver = new FileSecretProvider(ctx.baseDir().resolve(settings.requiredString("directory")));
             case "vault" -> {
                 URI address = endpoint(settings, "address");
-                String why = preliminaryEgress(raw, ctx).check(address);
+                EgressGuard vaultGuard = preliminaryEgress(raw, ctx);
+                String why = vaultGuard.check(address);
                 if (why != null) {
                     throw settings.error("address", "is not allowed by config.egress: " + why);
                 }
@@ -747,7 +929,8 @@ public final class GatewayFactory {
                 try {
                     vault = new VaultKvSecretProvider(address, settings.string("mount", "secret"),
                             settings.requiredString("path"), token, settings.string("namespace", null),
-                            ca == null ? null : ctx.baseDir().resolve(ca), Duration.ofMillis(settings.integer("timeoutMs", 5000)));
+                            ca == null ? null : ctx.baseDir().resolve(ca), Duration.ofMillis(settings.integer("timeoutMs", 5000)),
+                            vaultGuard::pin);
                 } catch (java.io.IOException e) {
                     // Fail closed: no gateway starts without the secrets it was configured to read.
                     throw new ConfigException(settings.path() + ": could not read secrets from " + address
@@ -757,7 +940,8 @@ public final class GatewayFactory {
                 resolver = vault;
             }
             default -> {
-                SecretProviderFactory factory = provider(SecretProviderFactory.class, source, SecretProviderFactory::type)
+                SecretProviderFactory factory = provider(SecretProviderFactory.class, source, SecretProviderFactory::type,
+                        pluginArtifacts, completeControl)
                         .orElseThrow(() -> new ConfigException(s.path() + ".source unknown secret provider '" + source
                                 + "' (built in: env, file, vault; add a SecretProviderFactory provider jar for others)"));
                 EgressGuard guard = preliminaryEgress(raw, ctx);
@@ -801,7 +985,9 @@ public final class GatewayFactory {
 
     /** Per-tool governance settings from configuration. */
     private record ToolSettings(ToolClass toolClass, List<ResourceRule> resources, String dryRunMode, String dryRunArgument,
-                                String previewTool, Set<String> allowedGroups, Set<String> actionScopes, long timeoutMillis) {}
+                                String previewTool, Set<String> allowedGroups, Set<String> actionScopes, long timeoutMillis,
+                                Map<String, Object> inputSchema, ExecutionContract executionContract,
+                                OutputPolicy outputPolicy) {}
 
     /** A verified signed document whose serial still has to be checked against the state store. */
     private record PendingSerial(String kind, long serial, String path) {}
@@ -811,6 +997,10 @@ public final class GatewayFactory {
         String namePrefix;
         ToolClass defaultClass;
         boolean hideUnlisted;
+        /** {@code strictProperties: true}: undeclared argument properties are refused whatever upstream says. */
+        boolean strictProperties;
+        /** Fail startup unless every exposed tool has a non-free-form execution and output contract. */
+        boolean completeControl;
         boolean quarantined;
         String evidence;
         /** Exposed names pinned by this source's signed server-catalog record; null without a catalog. */
@@ -821,6 +1011,8 @@ public final class GatewayFactory {
         io.github.vaquarkhan.aegis.config.credentials.TokenExchangeCredentials exchange;
         ToolSource source;
         List<URI> declaredEndpoints = new ArrayList<>();
+        List<ArtifactAdmission.Verified> admittedArtifacts = List.of();
+        String deploymentSubjectDigest;
         Map<String, ToolSettings> tools = new LinkedHashMap<>();
         Map<String, ToolExecutor> executorsByName = new LinkedHashMap<>();
         ContentSettings content;
@@ -932,10 +1124,148 @@ public final class GatewayFactory {
                     default -> throw new ConfigException("unknown dry-run mode " + s.dryRunMode());
                 }
             }
+            Map<String, Object> operatorSchema = s == null ? null : s.inputSchema();
+            if (strictProperties) {
+                // The server's schema may say additionalProperties: true, or say nothing. Either way, this
+                // gateway forwards only the properties somebody declared (upstream or operator).
+                operatorSchema = GovernedTool.strictProperties(st.descriptor().inputSchema(), operatorSchema);
+            }
+            ExecutionContract execution = s == null ? ExecutionContract.UNKNOWN : s.executionContract();
+            OutputPolicy output = s == null ? OutputPolicy.PASS_THROUGH : s.outputPolicy();
+            if (completeControl && !execution.allowedInCompleteControl()) {
+                throw new ConfigException("source " + id + " tool " + upstream + ": complete control refuses execution kind "
+                        + execution.kind() + "; configure a typed executionContract (FREE_FORM is never allowed)");
+            }
+            if (completeControl && !output.allowedInCompleteControl()) {
+                throw new ConfigException("source " + id + " tool " + upstream
+                        + ": complete control requires outputPolicy mode STRUCTURED_ALLOWLIST or HANDLE_ONLY");
+            }
             return Optional.of(new GovernedTool(namePrefix + upstream, id, st.descriptor(), cls,
                     s == null ? List.of() : s.resources(), dry, s == null ? Set.of() : s.allowedGroups(),
                     s == null ? Set.of() : s.actionScopes(), st.executor(),
-                    s != null && s.timeoutMillis() > 0 ? s.timeoutMillis() : timeoutMillis));
+                    s != null && s.timeoutMillis() > 0 ? s.timeoutMillis() : timeoutMillis, operatorSchema,
+                    execution, output));
+        }
+    }
+
+    /**
+     * Reviewed external attestation bound by the host-anchored signed source block. Shape and lifetime
+     * are always checked. When the host names {@link #REQUIRED_ATTESTATION_KEY} (always in complete
+     * control) the attestation must also carry {@code signature}: an Ed25519 signature by the deployment
+     * admission verifier over {@link #attestationStatement}, which binds the source id, workload
+     * digest, evidence digest, verifier identity and expiry. The admission system remains responsible
+     * for signing only after checking the actual image/workload digest.
+     */
+    private static String deploymentAttestation(ConfigNode source, BuildContext ctx, boolean completeControl,
+                                                java.security.PublicKey attestationKey) {
+        boolean present = source.has("deploymentAttestation");
+        ConfigNode a = source.child("deploymentAttestation");
+        if (!present) {
+            return null;
+        }
+        String subject = a.requiredString("subjectDigest").toLowerCase(Locale.ROOT);
+        String evidence = a.requiredString("evidenceDigest").toLowerCase(Locale.ROOT);
+        String verifier = a.requiredString("verifier");
+        String expiresText = a.requiredString("validUntil");
+        if (!SHA256.matcher(subject).matches()) {
+            throw a.error("subjectDigest", "must be sha256:<64 lower-case hex>");
+        }
+        if (!SHA256.matcher(evidence).matches()) {
+            throw a.error("evidenceDigest", "must be sha256:<64 lower-case hex>");
+        }
+        if (!verifier.matches("[A-Za-z0-9][A-Za-z0-9._:/@-]{0,255}")) {
+            throw a.error("verifier", "must be a 1..256 character identity");
+        }
+        java.time.Instant expires;
+        try {
+            expires = java.time.Instant.parse(expiresText);
+        } catch (java.time.format.DateTimeParseException e) {
+            throw a.error("validUntil", "must be an RFC 3339 instant");
+        }
+        if (!expires.isAfter(ctx.clock().instant())) {
+            throw a.error("validUntil", "has expired at " + expires);
+        }
+        if (completeControl && expires.isAfter(ctx.clock().instant().plus(Duration.ofDays(30)))) {
+            throw a.error("validUntil", "must be no more than 30 days ahead in complete control");
+        }
+        String signature = a.string("signature", null);
+        if (attestationKey != null) {
+            if (signature == null || signature.isBlank()) {
+                throw a.error("signature", "is required: " + REQUIRED_ATTESTATION_KEY + " names the admission verifier key");
+            }
+            byte[] statement = attestationStatement(source.requiredString("id"), subject, evidence, verifier, expiresText);
+            try {
+                if (!SignedCatalogManifest.verifySignature(statement, signature, attestationKey)) {
+                    throw a.error("signature", "does not verify with the admission key named by " + REQUIRED_ATTESTATION_KEY);
+                }
+            } catch (java.io.IOException e) {
+                throw a.error("signature", "could not be verified: " + e.getMessage());
+            }
+        }
+        return subject;
+    }
+
+    /** The exact bytes a deployment admission verifier signs for one source. */
+    public static byte[] attestationStatement(String sourceId, String subjectDigest, String evidenceDigest, String verifier,
+                                              String validUntil) {
+        return ("aegis-deployment-attestation-v1\n" + sourceId + "\n" + subjectDigest + "\n" + evidenceDigest + "\n"
+                + verifier + "\n" + validUntil + "\n").getBytes(StandardCharsets.UTF_8);
+    }
+
+    /** Every executable/script path in a complete-control stdio argv must be immutable and admitted. */
+    private static void requireCommandArtifacts(ConfigNode source, List<String> command, List<String> prefix,
+            Path workingDirectory, Path baseDir, List<ArtifactAdmission.Verified> admitted) {
+        Set<Path> verified = new java.util.HashSet<>();
+        for (ArtifactAdmission.Verified a : admitted) {
+            verified.add(a.path());
+        }
+        if (!prefix.isEmpty()) {
+            requireAdmittedPath(source, prefix.get(0), baseDir, verified, "sandbox launcher");
+        }
+        requireAdmittedPath(source, command.get(0), baseDir, verified, "server executable");
+        // Remaining argv entries are required when they name a file that exists. Flags and ordinary
+        // values are not paths; absolute paths are always treated as files and must resolve.
+        List<String> tails = new ArrayList<>();
+        if (prefix.size() > 1) {
+            tails.addAll(prefix.subList(1, prefix.size()));
+        }
+        if (command.size() > 1) {
+            tails.addAll(command.subList(1, command.size()));
+        }
+        Path argBase = workingDirectory == null ? baseDir : workingDirectory;
+        for (String value : tails) {
+            if (value.startsWith("-") || value.contains("=") || value.isBlank()) {
+                continue;
+            }
+            Path raw;
+            try {
+                raw = Path.of(value);
+            } catch (RuntimeException e) {
+                continue;
+            }
+            Path candidate = raw.isAbsolute() ? raw.normalize() : argBase.resolve(raw).normalize();
+            if (raw.isAbsolute() || Files.exists(candidate)) {
+                requireAdmittedPath(source, value, argBase, verified, "script/data argv path");
+            }
+        }
+    }
+
+    private static void requireAdmittedPath(ConfigNode source, String value, Path baseDir, Set<Path> verified, String role) {
+        Path raw;
+        try {
+            raw = Path.of(value);
+        } catch (RuntimeException e) {
+            throw source.error("command", role + " is not a valid path: " + value);
+        }
+        Path candidate = raw.isAbsolute() ? raw.normalize() : baseDir.resolve(raw).normalize();
+        try {
+            Path real = candidate.toRealPath(java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            if (!verified.contains(real)) {
+                throw source.error("artifacts", "must include " + role + " " + candidate
+                        + " with its SHA-256 before complete-control stdio launch");
+            }
+        } catch (java.io.IOException e) {
+            throw source.error("command", "cannot resolve " + role + " " + candidate + " (" + e.getMessage() + ")");
         }
     }
 
@@ -948,13 +1278,20 @@ public final class GatewayFactory {
         return io.github.vaquarkhan.aegis.engine.model.Digests.canonicalSha256(sourceBlock);
     }
 
-    private static SourceBuild source(ConfigNode s, BuildContext ctx) throws Exception {
+    private static SourceBuild source(ConfigNode s, BuildContext ctx, boolean completeControl,
+                                      java.security.PublicKey attestationKey) throws Exception {
         SourceBuild sb = new SourceBuild();
+        sb.completeControl = completeControl;
         sb.id = s.requiredString("id");
         if (!ID.matcher(sb.id).matches()) {
             throw s.error("id", "must match " + ID.pattern());
         }
         String type = s.requiredString("type").toLowerCase(Locale.ROOT);
+        // Verified before the source switch below, and therefore before stdio starts or a ToolSourceFactory
+        // provider is selected/initialized. The list and expected digests are bound by sourceDigest when a
+        // host-anchored signed server catalog is in force.
+        sb.admittedArtifacts = ArtifactAdmission.verify(s, ctx.baseDir());
+        sb.deploymentSubjectDigest = deploymentAttestation(s, ctx, completeControl, attestationKey);
         sb.namePrefix = s.string("namePrefix", "");
         sb.timeoutMillis = s.integer("timeoutMs", 30_000);
         // Only the two documented values are accepted: a typo must not silently fall back to EXPOSE.
@@ -963,6 +1300,13 @@ public final class GatewayFactory {
             throw s.error("unlistedTools", "must be EXPOSE or HIDE");
         }
         sb.hideUnlisted = "HIDE".equals(unlisted);
+        sb.strictProperties = s.bool("strictProperties", false);
+        if (completeControl && !sb.hideUnlisted) {
+            throw s.error("unlistedTools", "must be HIDE when completeControl.enabled is true");
+        }
+        if (completeControl && !sb.strictProperties) {
+            throw s.error("strictProperties", "must be true when completeControl.enabled is true");
+        }
         try {
             sb.defaultClass = ToolClass.parse(s.string("defaultClass", "DESTRUCTIVE"));
         } catch (IllegalArgumentException e) {
@@ -1002,7 +1346,12 @@ public final class GatewayFactory {
                 if ("http".equals(transport)) {
                     URI url = endpoint(s, "url");
                     sb.declaredEndpoints.add(url);
-                    client = new HttpMcpClient(url, era, legacyVersion, maxBytes, Duration.ofSeconds(5));
+                    if (completeControl && sb.deploymentSubjectDigest == null) {
+                        throw s.error("deploymentAttestation", "is required for a remote MCP source in complete control");
+                    }
+                    // Pinned transport: discovery and calls connect only to addresses the egress control
+                    // approved in the same step (closes the DNS rebinding window of the JDK client).
+                    client = new HttpMcpClient(url, era, legacyVersion, maxBytes, ctx.outbound(Duration.ofSeconds(5)));
                 } else if ("stdio".equals(transport)) {
                     List<String> cmd = s.strings("command");
                     if (cmd.isEmpty()) {
@@ -1014,7 +1363,24 @@ public final class GatewayFactory {
                     }
                     env.putAll(s.stringMap("env"));
                     String wd = s.string("workingDir", null);
-                    client = new StdioMcpClient(cmd, env, wd == null ? null : ctx.baseDir().resolve(wd), era, legacyVersion, maxBytes);
+                    Path work = wd == null ? null : ctx.baseDir().resolve(wd).normalize();
+                    ConfigNode sandbox = s.child("sandbox");
+                    List<String> prefix = sandbox.strings("commandPrefix");
+                    ProcessLauncher launcher = prefix.isEmpty() ? ProcessLauncher.direct()
+                            : ProcessLauncher.prefixed(sandbox.requiredString("profile"), prefix);
+                    if (prefix.isEmpty()) {
+                        sandbox.string("profile", null); // consume and reject non-null below
+                        if (sandbox.has("profile")) {
+                            throw sandbox.error("profile", "requires commandPrefix");
+                        }
+                    }
+                    if (completeControl && !launcher.sandboxed()) {
+                        throw sandbox.error("commandPrefix", "is required when completeControl.enabled is true");
+                    }
+                    if (completeControl) {
+                        requireCommandArtifacts(s, cmd, prefix, work, ctx.baseDir(), sb.admittedArtifacts);
+                    }
+                    client = new StdioMcpClient(cmd, env, work, era, legacyVersion, maxBytes, launcher, completeControl);
                 } else {
                     throw s.error("transport", "must be http or stdio");
                 }
@@ -1028,8 +1394,10 @@ public final class GatewayFactory {
             case "http" -> {
                 URI baseUrl = endpoint(s, "baseUrl");
                 sb.declaredEndpoints.add(baseUrl);
-                HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
-                        .followRedirects(HttpClient.Redirect.NEVER).build();
+                if (completeControl && sb.deploymentSubjectDigest == null) {
+                    throw s.error("deploymentAttestation", "is required for a remote HTTP source in complete control");
+                }
+                io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http = ctx.outbound(Duration.ofSeconds(5));
                 List<ToolSource.SourcedTool> tools = new ArrayList<>();
                 Map<String, String> templates = new LinkedHashMap<>();
                 for (ConfigNode t : s.children("tools")) {
@@ -1068,7 +1436,7 @@ public final class GatewayFactory {
                             req.stringMap("query"), req.raw("body"), req.stringMap("headers"),
                             pointer == null ? null : JsonPointer.parse(pointer), statusCheck,
                             (int) resp.integer("maxBytes", 1 << 20));
-                    HttpToolExecutor exec = new HttpToolExecutor(baseUrl, spec, http);
+                    HttpToolExecutor exec = HttpToolExecutor.over(baseUrl, spec, http);
                     String bodyText = spec.body() == null ? "" : io.github.vaquarkhan.aegis.engine.json.Json.write(spec.body());
                     templates.put(name, path + " " + String.join(" ", spec.query().values())
                             + " " + (bodyText.contains("{*}") ? "{" + "*ALL*" + "}" : bodyText));
@@ -1095,12 +1463,16 @@ public final class GatewayFactory {
                 sb.source = new HttpToolSource(sb.id, tools);
             }
             default -> {
+                if (completeControl && sb.admittedArtifacts.isEmpty()) {
+                    throw s.error("artifacts", "must verify the source plugin JAR(s) before loading a plugin in complete control");
+                }
                 for (Map.Entry<String, ConfigNode> e : s.childMap("tools").entrySet()) {
                     sb.tools.put(e.getKey(), toolSettings(e.getValue(), false));
                 }
-                ToolSourceFactory f = provider(ToolSourceFactory.class, type, ToolSourceFactory::type)
-                        .orElseThrow(() -> new ConfigException(s.path() + ".type unknown source type '" + type
-                                + "' (built-in: mcp, http; others need a ToolSourceFactory on the classpath)"));
+                ToolSourceFactory f = provider(ToolSourceFactory.class, type, ToolSourceFactory::type,
+                        sb.admittedArtifacts, completeControl)
+                        .orElseThrow(() -> new ConfigException(s.path() + ".type unknown or unadmitted source type '" + type
+                                + "' (built-in: mcp, http; others need an admitted ToolSourceFactory on the classpath)"));
                 sb.source = f.create(sb.id, s.child("settings"), ctx);
                 // A plugin's configured endpoints join egress the way an http source's baseUrl does.
                 List<URI> pluginEndpoints = sb.source.configuredEndpoints();
@@ -1114,6 +1486,14 @@ public final class GatewayFactory {
                     sb.declaredEndpoints.add(u);
                 }
             }
+        }
+        if (completeControl && !sb.declaredEndpoints.isEmpty() && sb.deploymentSubjectDigest == null) {
+            try {
+                sb.source.close();
+            } catch (Exception ignored) {
+                // source was never admitted; retain the configuration error
+            }
+            throw s.error("deploymentAttestation", "is required for every remote endpoint in complete control");
         }
         return sb;
     }
@@ -1172,8 +1552,50 @@ public final class GatewayFactory {
             throw dry.error("previewTool", "is required for mode TOOL");
         }
         Set<String> actionScopes = actionScopes(t);
+        // For a proxied (mcp) tool this is the OPERATOR's schema, checked in addition to the one the server
+        // published. It is the way to forbid properties a server's open schema would let through.
+        // (For an http source the configured inputSchema IS the tool definition, read by the caller; there is
+        // no separate upstream schema to overlay, so it is not repeated here.)
+        Map<String, Object> operatorSchema = null;
+        Object schemaRaw = classRequired ? null : t.raw("inputSchema");
+        if (schemaRaw != null) {
+            operatorSchema = JsonValues.asObject(schemaRaw);
+            if (operatorSchema == null) {
+                throw t.error("inputSchema", "must be an object");
+            }
+            String bad = SchemaValidator.validate(operatorSchema, Map.of());
+            if (bad != null && !bad.startsWith("missing required property")) {
+                throw t.error("inputSchema", "is not a usable schema: " + bad);
+            }
+        }
+        ExecutionContract execution;
+        ConfigNode executionNode = t.child("executionContract");
+        try {
+            ExecutionContract.Kind kind = ExecutionContract.Kind.valueOf(
+                    executionNode.string("kind", "UNKNOWN").trim().toUpperCase(Locale.ROOT));
+            execution = new ExecutionContract(kind, executionNode.string("operationId", null));
+        } catch (IllegalArgumentException e) {
+            throw executionNode.error("kind", e.getMessage());
+        }
+        OutputPolicy outputPolicy;
+        ConfigNode outputNode = t.child("outputPolicy");
+        try {
+            OutputPolicy.Mode outputMode = OutputPolicy.Mode.valueOf(
+                    outputNode.string("mode", "PASS_THROUGH").trim().toUpperCase(Locale.ROOT));
+            Object outputSchemaRaw = outputNode.raw("schema");
+            Map<String, Object> outputSchema = outputSchemaRaw == null ? null : JsonValues.asObject(outputSchemaRaw);
+            if (outputSchemaRaw != null && outputSchema == null) {
+                throw outputNode.error("schema", "must be an object");
+            }
+            outputPolicy = new OutputPolicy(outputMode, outputSchema);
+        } catch (ConfigException e) {
+            throw e;
+        } catch (IllegalArgumentException e) {
+            throw outputNode.error("mode", e.getMessage());
+        }
         return new ToolSettings(cls == null ? null : ToolClass.parse(cls), res, mode, arg, preview,
-                t.stringSet("allowedGroups"), actionScopes, t.integer("timeoutMs", 0));
+                t.stringSet("allowedGroups"), actionScopes, t.integer("timeoutMs", 0), operatorSchema,
+                execution, outputPolicy);
     }
 
     /** Exact RFC 6749 scope tokens, configured by the operator for one governed tool action. */
@@ -1208,7 +1630,7 @@ public final class GatewayFactory {
                         requireEnv(ctx, c.requiredString("clientIdEnv"), c.path() + ".clientIdEnv"),
                         requireEnv(ctx, c.requiredString("clientSecretEnv"), c.path() + ".clientSecretEnv"),
                         audience, resource, c.string("scope", null), Duration.ofMillis(timeout), c.bool("checkSubject", true)),
-                ctx.clock());
+                ctx.clock(), ctx.outbound(Duration.ofMillis(timeout)));
     }
 
     private static StaticCredentialProvider.Spec credentials(ConfigNode c, BuildContext ctx) {
@@ -1262,11 +1684,13 @@ public final class GatewayFactory {
 
     /**
      * Builds the built-in {@code remote} hook. The endpoint is checked against the egress allow list
-     * here, at startup, and refused if it is not allowed: the hook's own HTTP call is not re-checked
-     * per request, so this is the one place an operator can be told that a control they configured
-     * would send governance data somewhere the egress policy does not permit.
+     * here, at startup, and refused if it is not allowed, so an operator is told at once that a
+     * control they configured would send governance data somewhere the egress policy does not
+     * permit. Every later call also goes through {@link io.github.vaquarkhan.aegis.mcp.http.PinnedHttp}:
+     * the host is re-checked and the socket connects only to the checked answers.
      */
-    private static GovernanceHook remoteHook(BuildContext ctx, ConfigNode s, EgressGuard egressGuard) {
+    private static GovernanceHook remoteHook(BuildContext ctx, ConfigNode s, EgressGuard egressGuard,
+                                             io.github.vaquarkhan.aegis.mcp.http.PinnedHttp.Proxy proxy) {
         URI url;
         try {
             url = new URI(s.requiredString("url"));
@@ -1292,7 +1716,9 @@ public final class GatewayFactory {
         }
         return new RemoteHook(s.string("name", "remote"), url, Duration.ofMillis(s.integer("timeoutMs", 2000)), headers,
                 s.bool("includeArguments", false), s.bool("includeResult", false),
-                (int) s.integer("maxResponseBytes", 8192), phases);
+                (int) s.integer("maxResponseBytes", 8192), phases,
+                new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp(egressGuard::pin,
+                        Duration.ofMillis(s.integer("timeoutMs", 2000)), null, proxy));
     }
 
     /** The observers, in order. Both are optional and both are read-only: neither can change a decision. */
@@ -1317,8 +1743,23 @@ public final class GatewayFactory {
         if (args.isEmpty()) {
             throw s.error("arguments", "must name at least one statement argument to check, for example [sql]");
         }
+        // functions: DENY_LISTED (default) refuses the known side-effecting functions; DENY_UNLISTED refuses
+        // every function call that is not on the allow list (built-in read-only functions plus allowFunctions).
+        String functions = s.string("functions", "DENY_LISTED").trim().toUpperCase(Locale.ROOT);
+        Set<String> allowed = null;
+        if ("DENY_UNLISTED".equals(functions)) {
+            allowed = new LinkedHashSet<>();
+            if (s.bool("useDefaultAllowedFunctions", true)) {
+                allowed.addAll(SqlReadOnlyHook.DEFAULT_ALLOWED_FUNCTIONS);
+            }
+            allowed.addAll(s.strings("allowFunctions"));
+        } else if (!"DENY_LISTED".equals(functions)) {
+            throw s.error("functions", "must be DENY_LISTED or DENY_UNLISTED");
+        } else if (s.has("allowFunctions") || s.has("useDefaultAllowedFunctions")) {
+            throw s.error("allowFunctions", "only applies with functions: DENY_UNLISTED");
+        }
         return new SqlReadOnlyHook(s.string("name", "sql-readonly"), new LinkedHashSet<>(args),
-                (int) s.integer("maxChars", 8192));
+                (int) s.integer("maxChars", 8192), allowed);
     }
 
     /**
@@ -1328,6 +1769,85 @@ public final class GatewayFactory {
      * configuration file, so editing the configuration cannot drop the catalog or replace its key.
      */
     public static final String REQUIRED_CATALOG_KEY = "AEGIS_REQUIRE_SERVER_CATALOG_KEY";
+
+    /**
+     * Host-level setting naming the deployment admission verifier's Ed25519 public key (X.509 PEM,
+     * absolute path). When set (required in complete control) every deploymentAttestation must carry a
+     * signature by that key. JVM property alternative: {@code aegis.requireAttestationKey}.
+     */
+    public static final String REQUIRED_ATTESTATION_KEY = "AEGIS_REQUIRE_ATTESTATION_KEY";
+
+    private static java.security.PublicKey requiredAttestationKey(BuildContext host) {
+        String v = host.env().apply(REQUIRED_ATTESTATION_KEY);
+        if (v == null || v.isBlank()) {
+            v = System.getProperty("aegis.requireAttestationKey");
+        }
+        if (v == null || v.isBlank()) {
+            return null;
+        }
+        Path p = Path.of(v.strip());
+        if (!p.isAbsolute()) {
+            throw new ConfigException(REQUIRED_ATTESTATION_KEY + " must be an absolute path to the admission public key");
+        }
+        try {
+            return SignedCatalogManifest.readPublicKey(p);
+        } catch (java.io.IOException e) {
+            throw new ConfigException(REQUIRED_ATTESTATION_KEY + ": cannot read the admission public key: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Host-level setting holding the SHA-256 of the {@code completeControl.artifacts} list (the plugin
+     * allow list), computed by {@link #sourceDigest} over {@code {"artifacts": [...]}}. Required whenever
+     * that list is non-empty: someone who can edit the configuration and write to the classpath must not
+     * be able to admit a new plugin without the host operator re-anchoring the digest (O-4 B). JVM property
+     * alternative: {@code aegis.requirePluginDigest}.
+     */
+    public static final String REQUIRED_PLUGIN_DIGEST = "AEGIS_REQUIRE_PLUGIN_DIGEST";
+
+    /** Decodes a 32-byte AES-256 key from 64 hex characters or base64 (standard or URL). */
+    private static byte[] decodeAes256(String value, ConfigNode where) {
+        String v = value.strip();
+        byte[] key;
+        if (v.matches("[0-9a-fA-F]{64}")) {
+            key = java.util.HexFormat.of().parseHex(v);
+        } else {
+            try {
+                key = (v.indexOf('-') >= 0 || v.indexOf('_') >= 0)
+                        ? java.util.Base64.getUrlDecoder().decode(v) : java.util.Base64.getDecoder().decode(v);
+            } catch (IllegalArgumentException e) {
+                throw where.error("handleEncryptionKeyEnv", "must be 64 hex characters or base64 for a 32-byte AES-256 key");
+            }
+        }
+        if (key.length != 32) {
+            throw where.error("handleEncryptionKeyEnv", "must decode to exactly 32 bytes (AES-256); got " + key.length);
+        }
+        return key;
+    }
+
+    private static void requirePluginDigest(ConfigNode completeControlNode, BuildContext host) {
+        List<Object> artifacts = JsonValues.asList(completeControlNode.raw("artifacts"));
+        if (artifacts == null || artifacts.isEmpty()) {
+            return;
+        }
+        String v = host.env().apply(REQUIRED_PLUGIN_DIGEST);
+        if (v == null || v.isBlank()) {
+            v = System.getProperty("aegis.requirePluginDigest");
+        }
+        if (v == null || v.isBlank()) {
+            throw completeControlNode.error("artifacts", "lists plugin JARs, so host-side " + REQUIRED_PLUGIN_DIGEST
+                    + " must hold the digest of this list (configuration alone must not be able to admit a plugin)");
+        }
+        String actual = sourceDigest(Map.of("artifacts", artifacts));
+        String expected = v.strip().toLowerCase(Locale.ROOT);
+        if (!expected.startsWith("sha256:")) {
+            expected = "sha256:" + expected;
+        }
+        if (!java.security.MessageDigest.isEqual(actual.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8))) {
+            throw completeControlNode.error("artifacts", "differs from the plugin list anchored by " + REQUIRED_PLUGIN_DIGEST
+                    + " (this list is " + actual + ")");
+        }
+    }
 
     /** JVM system property alternative to {@link #REQUIRED_CATALOG_KEY}, for hosts such as Knox. */
     public static final String REQUIRED_CATALOG_KEY_PROPERTY = "aegis.requireServerCatalogKey";
@@ -1399,10 +1919,27 @@ public final class GatewayFactory {
      * source; it only matters if configuration actually asks for that type.
      */
     private static <T> Optional<T> provider(Class<T> spi, String type, java.util.function.Function<T, String> typeOf) {
+        return provider(spi, type, typeOf, List.of(), false);
+    }
+
+    /**
+     * As {@link #provider(Class, String, java.util.function.Function)}, but in complete-control mode a
+     * provider class is instantiated only when its actual code-source JAR is one of the artifacts that
+     * were hash-verified from the signed source block. {@code Provider.type()} does not initialize the
+     * class; calling {@code get()} is deliberately after this check.
+     */
+    private static <T> Optional<T> provider(Class<T> spi, String type, java.util.function.Function<T, String> typeOf,
+            List<ArtifactAdmission.Verified> admitted, boolean requireAdmittedCodeSource) {
         java.util.Iterator<ServiceLoader.Provider<T>> it = ServiceLoader.load(spi).stream().iterator();
         while (it.hasNext()) {
             try {
-                T p = it.next().get();
+                ServiceLoader.Provider<T> candidate = it.next();
+                if (requireAdmittedCodeSource && !codeSourceAdmitted(candidate.type(), admitted)) {
+                    LOG.log(System.Logger.Level.WARNING, "skipping unadmitted " + spi.getSimpleName()
+                            + " provider class " + candidate.type().getName());
+                    continue;
+                }
+                T p = candidate.get();
                 if (type.equals(typeOf.apply(p))) {
                     return Optional.of(p);
                 }
@@ -1411,6 +1948,24 @@ public final class GatewayFactory {
             }
         }
         return Optional.empty();
+    }
+
+    private static boolean codeSourceAdmitted(Class<?> provider, List<ArtifactAdmission.Verified> admitted) {
+        try {
+            java.security.CodeSource source = provider.getProtectionDomain().getCodeSource();
+            if (source == null || source.getLocation() == null || !"file".equalsIgnoreCase(source.getLocation().getProtocol())) {
+                return false;
+            }
+            Path actual = Path.of(source.getLocation().toURI()).toRealPath(java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            for (ArtifactAdmission.Verified artifact : admitted) {
+                if (artifact.path().equals(actual) && "plugin".equalsIgnoreCase(artifact.role())) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static AuditSink tee(AuditSink primary, AuditSink extra) {

@@ -1,0 +1,11 @@
+﻿[INFO] Building Aegis 2.0 governance engine 2.0.0-SNAPSHOT                [1/5]
+[INFO] Tests run: 152, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Building Aegis 2.0 MCP protocol 2.0.0-SNAPSHOT                     [2/5]
+[INFO] Tests run: 54, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Building Aegis 2.0 declarative configuration 2.0.0-SNAPSHOT        [3/5]
+[INFO] Tests run: 70, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Building Aegis 2.0 MCP security perimeter 2.0.0-SNAPSHOT           [4/5]
+[INFO] Tests run: 25, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Building Aegis 2.0 gateway 2.0.0-SNAPSHOT                          [5/5]
+[INFO] Tests run: 35, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS

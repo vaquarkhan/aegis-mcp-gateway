@@ -31,8 +31,16 @@ import java.util.Objects;
  * @param everyRecords  export after this many new records (at least 1)
  * @param every         also export on this interval when new records exist; {@link Duration#ZERO} disables the timer
  * @param clock         timestamp source for the {@code ts} field
+ * @param signingKey    optional Ed25519 key; when present every checkpoint line carries {@code signature}
+ *                      over its canonical JSON without that field, so a regenerated checkpoint file cannot
+ *                      vouch for a rewritten journal without this key
  */
-public record AuditCheckpointPolicy(Path file, long everyRecords, Duration every, Clock clock) {
+public record AuditCheckpointPolicy(Path file, long everyRecords, Duration every, Clock clock,
+                                    java.security.PrivateKey signingKey) {
+
+    public AuditCheckpointPolicy(Path file, long everyRecords, Duration every, Clock clock) {
+        this(file, everyRecords, every, clock, null);
+    }
 
     public AuditCheckpointPolicy {
         Objects.requireNonNull(file, "file");

@@ -50,6 +50,11 @@ class ProtectedResourceMetadataTest {
 
     static final Map<String, String> ENV = Map.of("AEGIS_SIGNING_KEY", "k".repeat(40), "JWT_SECRET", "s".repeat(40));
 
+    /** Fresh HTTP/1.1 client: no shared keep-alive pool across requests in this class. */
+    private static HttpClient http1() {
+        return HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+    }
+
     @Test
     void metadataPathAndChallengeFollowRfc9728() {
         ProtectedResourceMetadata m = new ProtectedResourceMetadata(URI.create("https://aegis.example.com/mcp"),
@@ -238,14 +243,17 @@ class ProtectedResourceMetadataTest {
         assertEquals("Bearer realm=\"aegis\"", st.challenge());
         try (AegisServer server = new AegisServer(gw, st)) {
             server.start();
-            HttpClient http = HttpClient.newHttpClient();
+            // One HTTP/1.1 client per call: the JDK forbids a client Connection header, and keep-alive
+            // reuse against a just-started listener flaked on Windows ("header parser received no bytes").
             String base = "http://127.0.0.1:" + server.port();
-            assertEquals(404, http.send(HttpRequest.newBuilder(URI.create(base + "/.well-known/oauth-protected-resource"))
-                    .GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
-            HttpResponse<String> unauth = http.send(HttpRequest.newBuilder(URI.create(base + "/mcp"))
+            assertEquals(200, http1().send(HttpRequest.newBuilder(URI.create(base + "/healthz")).GET().build(),
+                    HttpResponse.BodyHandlers.ofString()).statusCode());
+            HttpResponse<String> unauth = http1().send(HttpRequest.newBuilder(URI.create(base + "/mcp"))
                     .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.ofString());
             assertEquals(401, unauth.statusCode());
             assertFalse(unauth.headers().firstValue("WWW-Authenticate").orElse("").contains("resource_metadata"));
+            assertEquals(404, http1().send(HttpRequest.newBuilder(URI.create(base + "/.well-known/oauth-protected-resource"))
+                    .GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
         }
     }
 

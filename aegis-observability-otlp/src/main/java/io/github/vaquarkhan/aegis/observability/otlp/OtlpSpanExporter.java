@@ -18,6 +18,7 @@ package io.github.vaquarkhan.aegis.observability.otlp;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.spi.DecisionListener;
 import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -77,13 +78,19 @@ public final class OtlpSpanExporter implements DecisionListener, AutoCloseable {
     private final AtomicLong dropped = new AtomicLong();
     private final AtomicLong exported = new AtomicLong();
     private final AtomicLong failed = new AtomicLong();
-    private final HttpClient http;
+    private final OutboundHttp http;
     private final Thread worker;
     private final long flushMillis;
     private volatile boolean running = true;
 
     public OtlpSpanExporter(URI endpoint, Duration timeout, Map<String, String> headers, String serviceName,
                             int maxQueue, int batchSize, long flushMillis) {
+        this(endpoint, timeout, headers, serviceName, maxQueue, batchSize, flushMillis, null);
+    }
+
+    /** @param transport the gateway passes a pinned transport bound to the egress control (null = JDK client) */
+    public OtlpSpanExporter(URI endpoint, Duration timeout, Map<String, String> headers, String serviceName,
+                            int maxQueue, int batchSize, long flushMillis, OutboundHttp transport) {
         if (endpoint == null) {
             throw new IllegalArgumentException("an OTLP exporter needs an endpoint");
         }
@@ -93,8 +100,8 @@ public final class OtlpSpanExporter implements DecisionListener, AutoCloseable {
         this.serviceName = serviceName == null || serviceName.isBlank() ? "aegis" : serviceName;
         this.batchSize = Math.max(1, batchSize);
         this.queue = new ArrayBlockingQueue<>(Math.max(this.batchSize, maxQueue));
-        this.http = HttpClient.newBuilder().connectTimeout(this.timeout)
-                .followRedirects(HttpClient.Redirect.NEVER).build();
+        this.http = transport != null ? transport : OutboundHttp.jdk(HttpClient.newBuilder().connectTimeout(this.timeout)
+                .followRedirects(HttpClient.Redirect.NEVER).build());
         this.flushMillis = flushMillis <= 0 ? 2000 : flushMillis;
         long flush = this.flushMillis;
         this.worker = new Thread(() -> run(flush), "aegis-otlp-exporter");
@@ -161,7 +168,7 @@ public final class OtlpSpanExporter implements DecisionListener, AutoCloseable {
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body));
         headers.forEach(b::header);
         try {
-            BoundedHttp.Result r = BoundedHttp.send(http, b.build(), 64 * 1024, timeout.toMillis());
+            BoundedHttp.Result r = http.send(b.build(), 64 * 1024, timeout.toMillis());
             if (r.status() >= 200 && r.status() < 300) {
                 exported.addAndGet(batch.size());
             } else {

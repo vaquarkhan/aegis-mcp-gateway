@@ -66,10 +66,10 @@ class AdapterConfigsTest {
      * Beam, Hudi, Kudu and Ozone files were removed because their declared HTTP routes do not exist.
      * Keeping them as product-named configuration made a contract harness look like an integration.
      */
-    static final int EXPECTED_ADAPTERS = 25;
+    static final int EXPECTED_ADAPTERS = 27;
 
-    /** The 116 tools are only those remaining in deployable configuration files. */
-    static final int EXPECTED_TOOLS = 116;
+    /** The 123 tools are only those remaining in deployable configuration files. */
+    static final int EXPECTED_TOOLS = 123;
 
     @TempDir
     Path dir;
@@ -123,6 +123,9 @@ class AdapterConfigsTest {
             case "chartId" -> "12";
             case "revisionVersion" -> 0;
             case "revisionClientId" -> "aegis-test";
+            // SkyWalking duration window (yyyy-MM-dd HHmm for the MINUTE step).
+            case "start" -> "2026-11-07 0000";
+            case "end" -> "2026-11-07 2359";
             default -> throw new IllegalStateException("no sample value for argument '" + arg + "' (" + engine + ")");
         };
     }
@@ -226,6 +229,11 @@ class AdapterConfigsTest {
             // ZooKeeper registry is the oracle for whether each command exists. The data tree is not HTTP.
             case "zookeeper" -> m.route("GET", "/commands/ruok", 200, ok)
                     .route("GET", "/commands/stats", 200, ok);
+            // AsterixDB API port 19002: admin reads, SQL++ query, controller shutdown.
+            case "asterixdb" -> m.route("GET", "/admin/version", 200, ok).route("GET", "/admin/cluster", 200, ok)
+                    .route("POST", "/query/service", 200, ok).route("POST", "/admin/shutdown", 200, ok);
+            // SkyWalking OAP exposes one GraphQL query endpoint; every read tool posts to it.
+            case "skywalking" -> m.route("POST", "/graphql", 200, ok);
             default -> {
                 m.close();
                 throw new IllegalStateException("no documented endpoint shapes for adapter '" + engine

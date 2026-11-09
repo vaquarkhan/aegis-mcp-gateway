@@ -1,0 +1,24 @@
+ M aegis-config/src/main/java/io/github/vaquarkhan/aegis/config/GatewayFactory.java
+ M aegis-config/src/main/java/io/github/vaquarkhan/aegis/config/hooks/SqlReadOnlyHook.java
+ M aegis-engine/src/main/java/io/github/vaquarkhan/aegis/engine/GovernanceEngine.java
+ M aegis-engine/src/main/java/io/github/vaquarkhan/aegis/engine/approval/ApprovalService.java
+ M aegis-engine/src/main/java/io/github/vaquarkhan/aegis/engine/control/HookBinding.java
+ M aegis-engine/src/main/java/io/github/vaquarkhan/aegis/engine/control/HookRunner.java
+ M aegis-engine/src/main/java/io/github/vaquarkhan/aegis/engine/control/InjectionScreen.java
+ M aegis-engine/src/main/java/io/github/vaquarkhan/aegis/engine/control/OutputGuard.java
+ M aegis-engine/src/main/java/io/github/vaquarkhan/aegis/engine/state/InMemoryStateStore.java
+ M aegis-gateway/src/main/java/io/github/vaquarkhan/aegis/gateway/AegisServer.java
+ M aegis-mcp-security/src/main/java/io/github/vaquarkhan/aegis/security/identity/JwtVerifier.java
+ M aegis-mcp-security/src/main/java/io/github/vaquarkhan/aegis/security/perimeter/OwnServerPerimeter.java
+ M aegis-mcp-security/src/main/java/io/github/vaquarkhan/aegis/security/perimeter/OwnServerSecuritySettings.java
+ M aegis-mcp/src/main/java/io/github/vaquarkhan/aegis/mcp/client/ClientSupport.java
+ M aegis-mcp/src/main/java/io/github/vaquarkhan/aegis/mcp/server/SessionRegistry.java
+ M charts/aegis/ci/test-values.yaml
+ M charts/aegis/values.yaml
+?? aegis-config/src/test/java/io/github/vaquarkhan/aegis/config/hooks/ThreatModelCveSqlTest.java
+?? aegis-engine/src/test/java/io/github/vaquarkhan/aegis/engine/ThreatModelCveEngineTest.java
+?? aegis-gateway/src/test/java/io/github/vaquarkhan/aegis/gateway/ThreatModelCveServerTest.java
+?? aegis-mcp-security/src/test/java/io/github/vaquarkhan/aegis/security/identity/ThreatModelCveAuthTest.java
+?? aegis-mcp-security/src/test/java/io/github/vaquarkhan/aegis/security/perimeter/ThreatModelCvePerimeterTest.java
+?? aegis-mcp/src/test/java/io/github/vaquarkhan/aegis/mcp/client/ThreatModelCveUpstreamNameTest.java
+?? aegis-mcp/src/test/java/io/github/vaquarkhan/aegis/mcp/server/ThreatModelCveTransportTest.java

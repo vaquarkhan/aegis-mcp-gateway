@@ -192,7 +192,7 @@ The repository includes **28 retained runs**: the 27 profiles ActiveMQ Classic, 
 
 Four more profiles ship as configuration for their product-stack run: Atlas, Cassandra, Impala, and Paimon. Each folder has the canonical YAML. The product each one still needs is on the [future roadmap](ROADMAP.md#future-roadmap-remaining-target-verification).
 
-The catalog has 25 deployable adapter configurations and 116 tools. The comparison surface is 165 tools, including Kafka Admin reads and Apache Burr (incubating). Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources for a later release. See [Validation](VALIDATION.md), the [coverage contract](COVERAGE-0.1-VS-2.0.md), and the [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md).
+The catalog has 27 deployable adapter configurations and 123 tools. The comparison surface is 165 tools, including Kafka Admin reads and Apache Burr (incubating). Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources for a later release. See [Validation](VALIDATION.md), the [coverage contract](COVERAGE-0.1-VS-2.0.md), and the [adopter catalog](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md).
 
 ### What is proven, and what is not
 
@@ -347,8 +347,6 @@ mvn -B clean install
 $env:AEGIS_SIGNING_KEY = '<operator-provisioned-secret>'
 $env:ORDERS_MCP_TOKEN = '<operator-provisioned-service-token>'
 java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config aegis.yaml
-# Without --stdio this is Streamable HTTP (host.listen; Hello World uses 8080).
-# A StdioBoot log or port 8090 is Aegis 0.1 only (tag v0.1.0), not this line.
 ```
 
 The values above are placeholders; provision secrets through the operating system, a secret manager integration, or deployment tooling rather than committing them. Configure `host` for TLS and identity, `server` for MCP limits/origins/instructions, and route groups/scopes if the own-host listener needs an outer admission boundary. [Adoption guide](ADOPTION-GUIDE.md) provides an own-host TLS/JWT example; [Configuration](CONFIGURATION.md) is authoritative for every accepted key.

@@ -55,8 +55,11 @@ public final class DerbyStateStore implements HighWaterStateStore, AutoCloseable
     public DerbyStateStore(Path path, Clock clock) throws SQLException {
         this.clock = clock;
         Path database = path.toAbsolutePath();
+        Path parent = database.getParent();
         try {
-            Files.createDirectories(database.getParent());
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
         } catch (java.io.IOException e) {
             throw new SQLException("cannot create Derby state parent directory", e);
         }

@@ -20,6 +20,7 @@ import io.github.vaquarkhan.aegis.engine.json.JsonException;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
 import io.github.vaquarkhan.aegis.mcp.protocol.HeaderValues;
 import io.github.vaquarkhan.aegis.mcp.protocol.JsonRpc;
 import io.github.vaquarkhan.aegis.mcp.protocol.McpVersions;
@@ -63,13 +64,28 @@ public final class HttpMcpClient implements McpClient {
     private final Era configured;
     private final String legacyVersion;
     private final int maxResponseBytes;
-    private final HttpClient http;
+    private final OutboundHttp http;
     private final AtomicLong ids = new AtomicLong();
     private volatile Era resolved;
     private volatile String sessionId;
     private volatile String negotiated;
 
+    /** JDK transport (resolves the host at connect time); kept for embedders and tests. */
     public HttpMcpClient(URI endpoint, Era era, String legacyVersion, int maxResponseBytes, Duration connectTimeout) {
+        this(endpoint, era, legacyVersion, maxResponseBytes, OutboundHttp.jdk(HttpClient.newBuilder()
+                .connectTimeout(connectTimeout == null ? Duration.ofSeconds(5) : connectTimeout)
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build()));
+    }
+
+    /**
+     * @param transport outbound transport; the gateway passes a {@link io.github.vaquarkhan.aegis.mcp.http.PinnedHttp}
+     *                  so every exchange connects only to addresses the egress control approved
+     */
+    public HttpMcpClient(URI endpoint, Era era, String legacyVersion, int maxResponseBytes, OutboundHttp transport) {
+        if (transport == null) {
+            throw new IllegalArgumentException("an outbound transport is required");
+        }
         this.endpoint = endpoint;
         this.configured = era == null ? Era.AUTO : era;
         this.legacyVersion = legacyVersion == null ? McpVersions.V2025_11_25 : legacyVersion;
@@ -77,10 +93,7 @@ public final class HttpMcpClient implements McpClient {
             throw new IllegalArgumentException("legacy protocol version must be one of " + McpVersions.LEGACY);
         }
         this.maxResponseBytes = maxResponseBytes <= 0 ? 4 << 20 : maxResponseBytes;
-        this.http = HttpClient.newBuilder()
-                .connectTimeout(connectTimeout == null ? Duration.ofSeconds(5) : connectTimeout)
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
+        this.http = transport;
     }
 
     @Override
@@ -285,7 +298,7 @@ public final class HttpMcpClient implements McpClient {
             }
         }
         try {
-            BoundedHttp.Result resp = BoundedHttp.send(http, b.build(), maxResponseBytes, Math.max(1, timeoutMillis));
+            BoundedHttp.Result resp = http.send(b.build(), maxResponseBytes, Math.max(1, timeoutMillis));
             String ct = resp.headers().firstValue("Content-Type").orElse("").toLowerCase(Locale.ROOT);
             return new Raw(resp.status(), ct, resp.body(), resp.headers().firstValue(McpVersions.HEADER_SESSION_ID).orElse(null));
         } catch (HttpTimeoutException e) {

@@ -16,6 +16,7 @@
 package io.github.vaquarkhan.aegis.engine.control;
 
 import io.github.vaquarkhan.aegis.engine.spi.GovernanceHook;
+import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -34,9 +35,18 @@ import java.util.Set;
  * @param methods    tool-name or MCP-method globs; empty means any
  * @param groups     caller groups; empty means any caller
  * @param sources    configured source ids; empty means any source
+ * @param timeout    wall-clock budget for one hook invocation; exceeding it is a hook failure (deny in
+ *                   ENFORCE, note in AUDIT). Default {@link #DEFAULT_TIMEOUT}. Zero disables the budget
+ *                   and runs the hook on the request thread, which is only safe for hooks that cannot
+ *                   block (no network, no locks).
  */
 public record HookBinding(GovernanceHook hook, ControlMode mode, Set<GovernanceHook.Operation> operations,
-                          List<String> methods, Set<String> groups, Set<String> sources) {
+                          List<String> methods, Set<String> groups, Set<String> sources, Duration timeout) {
+
+    /** A hook that has not answered in five seconds is treated as failed; the request thread is not held hostage. */
+    public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
+    /** Upper bound an operator may configure, so one hook cannot pin a worker for longer than a backend call. */
+    public static final Duration MAX_TIMEOUT = Duration.ofSeconds(60);
 
     public HookBinding {
         if (hook == null) {
@@ -48,11 +58,26 @@ public record HookBinding(GovernanceHook hook, ControlMode mode, Set<GovernanceH
         methods = methods == null ? List.of() : List.copyOf(methods);
         groups = groups == null ? Set.of() : Set.copyOf(groups);
         sources = sources == null ? Set.of() : Set.copyOf(sources);
+        timeout = timeout == null ? DEFAULT_TIMEOUT : timeout;
+        if (timeout.isNegative() || timeout.compareTo(MAX_TIMEOUT) > 0) {
+            throw new IllegalArgumentException("hook timeout must be between 0 and " + MAX_TIMEOUT.toSeconds() + " seconds");
+        }
+    }
+
+    /** Binding with the default timeout. */
+    public HookBinding(GovernanceHook hook, ControlMode mode, Set<GovernanceHook.Operation> operations,
+                       List<String> methods, Set<String> groups, Set<String> sources) {
+        this(hook, mode, operations, methods, groups, sources, null);
     }
 
     /** Enforcing, for every operation, with no conditions (the default for a programmatically added hook). */
     public static HookBinding enforceAll(GovernanceHook hook) {
-        return new HookBinding(hook, ControlMode.ENFORCE, null, null, null, null);
+        return new HookBinding(hook, ControlMode.ENFORCE, null, null, null, null, null);
+    }
+
+    /** True when the hook runs under a wall-clock budget on a hook thread. */
+    public boolean bounded() {
+        return !timeout.isZero();
     }
 
     /** True when this hook must run for this operation. */

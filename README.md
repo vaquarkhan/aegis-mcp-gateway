@@ -62,13 +62,11 @@ JDK 17+ and Maven 3.9+ are required. The default build runs without external ser
 mvn -B clean install
 ```
 
-For a first smoke test on this branch, use the [Hello World guide](docs/guide/hello-world.html): it opens Streamable HTTP on **8080**. A `StdioBoot` log or port **8090** is Aegis **0.1** (tag `v0.1.0`). `--stdio` is only for desktop MCP pipes; it does not bind an HTTP port.
-
 The validation report records deterministic governance evidence, retained target-version verification evidence, and clearly scoped contract profiles. Use the [adopter catalog](examples/adopters/README.md) to select the profile and evidence level appropriate for your deployment.
 
 ## Evidence rule
 
-Aegis ships **28 adopter profiles with retained real two-door runs** (own host, and a stock Apache Knox 3.0.0 process) and **4 configuration/contract-supported profiles** that still need a full product stack before a real Keep run (Atlas, Cassandra, Impala, Paimon). The catalog includes **25 deployable adapter configurations and 116 tools**. Every profile with a retained run has redacted own-host and Knox configuration, engine configuration, a runnable guide, and retained results. Those two-door runs were extended on 2026-10-05 and stay historical until they are repeated on a release candidate and bound to that commit. They do not by themselves support a release compatibility claim. The [adopter catalog](examples/adopters/README.md) identifies which is which and why a target remains unverified.
+Aegis ships **28 adopter profiles with retained real two-door runs** (own host, and a stock Apache Knox 3.0.0 process) and **6 configuration/contract-supported profiles** that still need a full product stack before a real Keep run (Atlas, Cassandra, Impala, Paimon, AsterixDB, SkyWalking). The catalog includes **27 deployable adapter configurations and 123 tools**. Every profile with a retained run has redacted own-host and Knox configuration, engine configuration, a runnable guide, and retained results. Those two-door runs were extended on 2026-10-05 and stay historical until they are repeated on a release candidate and bound to that commit. They do not by themselves support a release compatibility claim. The [adopter catalog](examples/adopters/README.md) identifies which is which and why a target remains unverified.
 
 ## Project references
 

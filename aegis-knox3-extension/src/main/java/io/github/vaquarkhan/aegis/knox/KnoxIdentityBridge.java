@@ -47,6 +47,32 @@ public final class KnoxIdentityBridge {
 
     private KnoxIdentityBridge() {}
 
+    /**
+     * Gateway-side subject revocation on the Knox path. Knox gives no token id or issue time, so a
+     * subject entry refuses every request for that subject, for the primary actor and for any actor in
+     * the delegation chain until the entry expires (revoke through POST .../admin/revocations/subject/{sub}
+     * with the Knox issuer). Registers the Knox issuer so such revocations are accepted.
+     *
+     * @return the caller, or null when the caller or one of its actors is revoked
+     */
+    public static CallerIdentity unlessRevoked(CallerIdentity caller,
+                                               io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations) {
+        if (caller == null || revocations == null) {
+            return caller;
+        }
+        revocations.registerIssuer(caller.issuer());
+        if (revocations.check(caller.issuer(), null, caller.effectiveSubject(), null) != null
+                || revocations.check(caller.issuer(), null, caller.actor(), null) != null) {
+            return null;
+        }
+        for (String actor : caller.actorChain()) {
+            if (revocations.check(caller.issuer(), null, actor, null) != null) {
+                return null;
+            }
+        }
+        return caller;
+    }
+
     /** @return the caller, or null when Knox established no authenticated subject */
     public static CallerIdentity fromCurrentSubject(String topology) {
         return fromSubject(SubjectUtils.getCurrentSubject(), topology);

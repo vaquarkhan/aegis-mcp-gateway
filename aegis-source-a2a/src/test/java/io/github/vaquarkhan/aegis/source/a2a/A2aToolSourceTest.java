@@ -256,11 +256,12 @@ class A2aToolSourceTest {
             assertEquals(DenyCodes.APPROVAL_REQUIRED, o.decision().code(), "a MUTATE agent needs an approval like any write");
             assertTrue(requests.isEmpty());
         }
-        try (Gateway g = GatewayFactory.build(Json.parseObject(cfg.formatted("", base)), BuildContext.defaults(dir))) {
-            CallOutcome o = g.engine().call(buyer, new ToolCall("1", "inventory_agent", Map.of("text", "reserve 3"), Map.of(), ""));
-            assertFalse(o.allowed());
-            assertTrue(requests.isEmpty(), "nothing reached the agent: " + o.decision().code());
-        }
+        // Without an egress allowance even the agent card is not fetched: the gateway-built transport
+        // checks and pins every connection, discovery included, so the source fails to start.
+        Exception refused = assertThrows(Exception.class,
+                () -> GatewayFactory.build(Json.parseObject(cfg.formatted("", base)), BuildContext.defaults(dir)).close());
+        assertTrue(String.valueOf(refused.getCause()).contains("egress denied at connect"), String.valueOf(refused.getCause()));
+        assertTrue(requests.isEmpty(), "nothing reached the agent");
     }
 
     @Test

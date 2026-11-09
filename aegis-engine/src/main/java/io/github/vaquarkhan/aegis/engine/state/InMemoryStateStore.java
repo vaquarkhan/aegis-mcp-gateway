@@ -43,7 +43,16 @@ public final class InMemoryStateStore implements HighWaterStateStore {
         }
     }
 
-    private record Window(long start, long used) {}
+    /**
+     * A fixed counting window. {@code length} is recorded per window so a capacity sweep can tell an
+     * expired one-minute rate window from a live one-hour budget window; sweeping by the acquiring
+     * key's window length would reset every caller's hourly budget sixty seconds after it started.
+     */
+    private record Window(long start, long used, long length) {
+        boolean expired(long nowMs) {
+            return start + length <= nowMs;
+        }
+    }
 
     private final ConcurrentHashMap<String, Entry> entries = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
@@ -161,19 +170,19 @@ public final class InMemoryStateStore implements HighWaterStateStore {
         long nowMs = now.toEpochMilli();
         long start = nowMs - Math.floorMod(nowMs, w);
         if (!windows.containsKey(key) && windows.size() >= maxEntries) {
-            sweepWindows(nowMs, w);
+            sweepWindows(nowMs);
             if (windows.size() >= maxEntries) {
                 return false;
             }
         }
         AtomicBoolean admitted = new AtomicBoolean(false);
         windows.compute(key, (k, cur) -> {
-            Window base = (cur == null || cur.start() != start) ? new Window(start, 0) : cur;
+            Window base = (cur == null || cur.start() != start) ? new Window(start, 0, w) : cur;
             if (base.used() + cost > capacity) {
                 return base;
             }
             admitted.set(true);
-            return new Window(start, base.used() + cost);
+            return new Window(start, base.used() + cost, w);
         });
         return admitted.get();
     }
@@ -199,8 +208,9 @@ public final class InMemoryStateStore implements HighWaterStateStore {
         }
     }
 
-    private void sweepWindows(long nowMs, long w) {
-        windows.entrySet().removeIf(e -> e.getValue().start() + w <= nowMs);
+    /** Removes only windows that have ended by their own length. */
+    private void sweepWindows(long nowMs) {
+        windows.entrySet().removeIf(e -> e.getValue().expired(nowMs));
     }
 
     public int size() {
