@@ -39,6 +39,7 @@ The inventory records **28 retained runs**: 27 adopter profiles marked **passed*
 | **NiFi** | 1.28.1 Docker | `examples/adopters/nifi/results/` |
 | Pulsar | 4.0.13 | `examples/adopters/pulsar/results/` |
 | **Ranger** | 2.9.0 Admin and database Docker | `examples/adopters/ranger/results/` |
+| **SkyWalking** | 9.7.0 OAP Docker | `examples/adopters/skywalking/results/` |
 | Solr | 9.10.1 | `examples/adopters/solr/results/` |
 | Spark | 4.0.1 | `examples/adopters/spark/results/` |
 | Spark Connect | 4.0.1 (gRPC plugin) | `examples/adopters/spark-connect/results/` |

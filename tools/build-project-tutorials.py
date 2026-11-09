@@ -100,6 +100,7 @@ PROJECTS = {
     "pulsar": ("Apache Pulsar", None),
     "ranger": ("Apache Ranger", None),
     "solr": ("Apache Solr", None),
+    "skywalking": ("Apache SkyWalking", None),
     "spark": ("Apache Spark", "../TUTORIAL-SPARK-AND-SPARK-CONNECT.md"),
     "spark-connect": ("Apache Spark Connect", "../TUTORIAL-SPARK-AND-SPARK-CONNECT.md"),
     "storm": ("Apache Storm", None),

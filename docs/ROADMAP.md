@@ -93,7 +93,7 @@ Shipped capabilities are not repeated here; they live in [FEATURES.md](FEATURES.
 
 ## Future roadmap: remaining target verification
 
-Hive and Ranger now have retained two-door runs. These six profiles already ship their governance
+Hive and Ranger now have retained two-door runs. These five profiles already ship their governance
 configuration and contract tests. The planned work is a retained real-engine run through both front doors.
 Done means a green `<Engine>FrontDoorsTest`, results kept under `examples/adopters/<engine>/results/`,
 a regenerated tutorial, and the catalog row marked **passed**
@@ -106,7 +106,6 @@ a regenerated tutorial, and the catalog row marked **passed**
 | Impala | An Impala coordinator that serves the debug UI (`/`, `/metrics`, `/queries`, `/cancel_query`). Apache does not publish a coordinator image that does this without the rest of the cluster. |
 | Paimon | A production Paimon REST catalog. Apache does not ship one. The published API is `/v1/{prefix}/databases`; the profile calls `/v1/databases`. |
 | AsterixDB | A running AsterixDB cluster on its API port (default 19002). The profile calls `/admin/version`, `/admin/cluster`, `/query/service` and `/admin/shutdown`. |
-| SkyWalking | A SkyWalking OAP server with the GraphQL endpoint on port 12800. The profile posts `getAllServices`, `getServiceInstances` and `queryBasicTraces` to `/graphql`. |
 
 ## Next: release-candidate evidence
 

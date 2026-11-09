@@ -1,0 +1,103 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Apache SkyWalking: governed MCP tools over the SkyWalking OAP query API, configuration only.
+# SkyWalking OAP exposes a single GraphQL query endpoint (default port 12800): POST /graphql.
+# Every tool here is READ: the OAP GraphQL surface is a query API, not a mutation API. Each tool
+# carries a fixed, reviewed GraphQL query and binds only typed variables (duration, service), so no
+# caller-supplied GraphQL text is ever spliced into the request.
+# New in 2.0; SkyWalking had no Aegis 0.1 adapter. No kept real-engine run yet: contract test only.
+
+gateway:
+  name: aegis-skywalking
+
+access:
+  writeGroups: [skywalking-operators]
+  approverGroups: [skywalking-approvers]
+
+approval:
+  keyEnv: AEGIS_SIGNING_KEY          # >= 32 bytes; shared by every replica
+
+policy:
+  rules:
+    - {id: read, groups: [skywalking-users, skywalking-operators], classes: [READ]}
+
+rateLimits:
+  perCallerPerMinute: 120
+  budgetPerHour: 2000
+
+egress:
+  allowCidrs: [127.0.0.0/8]           # your cluster network; the baseUrl host is allowed automatically
+
+audit:
+  file: audit/aegis-skywalking.jsonl
+
+sources:
+  - id: skywalking
+    type: http
+    baseUrl: http://127.0.0.1:38671
+    tools:
+      - name: skywalking_list_services
+        description: "List observed services over a time window."
+        class: READ
+        inputSchema:
+          type: object
+          properties:
+            start: {type: string, maxLength: 32}
+            end: {type: string, maxLength: 32}
+          required: [start, end]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/graphql"
+          body:
+            query: "query($d:Duration!){getAllServices(duration:$d){id name group}}"
+            variables: {d: {start: "{start}", end: "{end}", step: "MINUTE"}}
+
+      - name: skywalking_service_instances
+        description: "List instances of one service over a time window."
+        class: READ
+        inputSchema:
+          type: object
+          properties:
+            service: {type: string, maxLength: 256}
+            start: {type: string, maxLength: 32}
+            end: {type: string, maxLength: 32}
+          required: [service, start, end]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/graphql"
+          body:
+            query: "query($id:ID!,$d:Duration!){getServiceInstances(serviceId:$id,duration:$d){id name}}"
+            variables: {id: "{service}", d: {start: "{start}", end: "{end}", step: "MINUTE"}}
+        resources: [{type: "skywalking:service", pointer: /service}]
+
+      - name: skywalking_query_traces
+        description: "List recent trace ids for one service over a time window."
+        class: READ
+        inputSchema:
+          type: object
+          properties:
+            service: {type: string, maxLength: 256}
+            start: {type: string, maxLength: 32}
+            end: {type: string, maxLength: 32}
+          required: [service, start, end]
+          additionalProperties: false
+        request:
+          method: POST
+          path: "/graphql"
+          body:
+            query: "query($c:TraceQueryCondition!){queryBasicTraces(condition:$c){traces{segmentId start}}}"
+            variables: {c: {serviceId: "{service}", queryDuration: {start: "{start}", end: "{end}", step: "MINUTE"}, traceState: ALL, queryOrder: BY_START_TIME, paging: {pageNum: 1, pageSize: 15}}}
+        resources: [{type: "skywalking:service", pointer: /service}]
