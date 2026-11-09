@@ -43,6 +43,7 @@ case "$adopter" in
   bookkeeper)    module=aegis-validation;               test=BookKeeperFrontDoorsTest ;;
   pulsar)        module=aegis-validation;               test=PulsarFrontDoorsTest ;; # needs AEGIS_PULSAR_HOME
   ranger)        module=aegis-validation;               test=RangerFrontDoorsTest ;;   # needs Docker (apache/ranger)
+  skywalking)    module=aegis-validation;               test=SkyWalkingFrontDoorsTest ;; # needs Docker (apache/skywalking-oap-server)
   spark-connect) module=aegis-validation-spark-connect; test=SparkConnectFrontDoorsTest ;;
   spark-iceberg) module=aegis-validation-spark-connect; test=SparkIcebergFrontDoorsTest ;; # docs/TUTORIAL-SPARK-ICEBERG.md
   *) echo "no runnable example for '$adopter'" >&2; exit 2 ;;
