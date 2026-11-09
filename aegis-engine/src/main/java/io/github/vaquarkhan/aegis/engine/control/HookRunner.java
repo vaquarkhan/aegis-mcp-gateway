@@ -22,6 +22,13 @@ import io.github.vaquarkhan.aegis.engine.spi.GovernanceHook;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Runs configured {@link GovernanceHook}s for one operation. Shared by the tool chain and the
@@ -48,9 +55,56 @@ public final class HookRunner {
             Set.of(DenyCodes.POLICY_DENIED, DenyCodes.INVALID_INPUT, DenyCodes.PROMPT_INJECTION);
 
     private final List<HookBinding> bindings;
+    /** Hook threads: daemon, created on demand, idle ones reclaimed. Null when no binding is time-bounded. */
+    private final ExecutorService hookThreads;
 
     public HookRunner(List<HookBinding> bindings) {
         this.bindings = bindings == null ? List.of() : List.copyOf(bindings);
+        this.hookThreads = this.bindings.stream().anyMatch(HookBinding::bounded)
+                ? Executors.newCachedThreadPool(r -> {
+                    Thread t = new Thread(r, "aegis-hook");
+                    t.setDaemon(true);
+                    return t;
+                })
+                : null;
+    }
+
+    /** Thrown when a hook does not answer inside its binding's timeout. */
+    public static final class HookTimeoutException extends Exception {
+        private static final long serialVersionUID = 1L;
+
+        HookTimeoutException(String hook, long millis) {
+            super("hook " + hook + " did not answer within " + millis + " ms");
+        }
+    }
+
+    /**
+     * Runs one hook invocation under the binding's wall-clock budget. The documented fail-closed rule
+     * ("a hook that throws, times out or returns nothing denies") is enforced here rather than trusted to
+     * each hook implementation: an in-process hook that blocks on a lock, a socket or a slow directory
+     * would otherwise hold the request thread and its circuit-breaker permit indefinitely.
+     */
+    private <T> T invoke(HookBinding b, Callable<T> work) throws Exception {
+        if (!b.bounded() || hookThreads == null) {
+            return work.call();
+        }
+        Future<T> f = hookThreads.submit(work);
+        try {
+            return f.get(b.timeout().toMillis(), TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            f.cancel(true);
+            throw new HookTimeoutException(b.hook().name(), b.timeout().toMillis());
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof Exception ex) {
+                throw ex;
+            }
+            throw new IllegalStateException(cause);
+        } catch (InterruptedException e) {
+            f.cancel(true);
+            Thread.currentThread().interrupt();
+            throw e;
+        }
     }
 
     public boolean isEmpty() {
@@ -83,7 +137,7 @@ public final class HookRunner {
             GovernanceHook h = b.hook();
             Decision d;
             try {
-                d = h.before(context);
+                d = invoke(b, () -> h.before(context));
             } catch (GovernanceHook.HookDenied e) {
                 if (b.enforcing()) {
                     return Decision.deny(code(e.code()), step, "hook " + h.name() + ": " + e.getMessage());
@@ -123,7 +177,8 @@ public final class HookRunner {
             }
             GovernanceHook h = b.hook();
             try {
-                ToolResult next = h.afterTool(context, current);
+                ToolResult in = current;
+                ToolResult next = invoke(b, () -> h.afterTool(context, in));
                 if (next == null) {
                     if (b.enforcing()) {
                         current = withheld(h.name(), "the hook returned no result");
@@ -162,7 +217,8 @@ public final class HookRunner {
             }
             GovernanceHook h = b.hook();
             try {
-                Map<String, Object> next = h.afterContent(context, current);
+                Map<String, Object> in = current;
+                Map<String, Object> next = invoke(b, () -> h.afterContent(context, in));
                 if (next == null) {
                     if (b.enforcing()) {
                         return new Content(null, Decision.deny(DenyCodes.POLICY_DENIED, step,
@@ -189,6 +245,9 @@ public final class HookRunner {
 
     /** Closes every hook. Called once, when the gateway shuts down. */
     public void close() {
+        if (hookThreads != null) {
+            hookThreads.shutdownNow();
+        }
         for (HookBinding b : bindings) {
             try {
                 b.hook().close();
@@ -202,8 +261,11 @@ public final class HookRunner {
         return ToolResult.text("Output withheld by Aegis: hook " + hook + ": " + why, true);
     }
 
-    /** A hook error names the hook and the failure type, never the backend's own message. */
+    /** A hook error names the hook and the failure type, never the backend's own message. A timeout says so. */
     private static String failure(GovernanceHook h, Exception e) {
+        if (e instanceof HookTimeoutException) {
+            return e.getMessage();
+        }
         return "hook " + h.name() + " failed (" + e.getClass().getSimpleName() + ")";
     }
 

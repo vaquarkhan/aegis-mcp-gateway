@@ -36,9 +36,10 @@ import java.util.Set;
  * answers; all DNS answers are checked (not just the first); and URL-bearing arguments are found
  * at any nesting depth (see {@link #urlsIn}).
  *
- * <p>Residual risk: between this check and the executor's own connection the
- * name can be re-resolved (DNS rebinding window). Operators with that threat should allow IP
- * literals or CIDRs rather than names, or run the gateway with a pinned resolver.
+ * <p>DNS rebinding: {@link #pin} resolves once and returns the checked answers. The built-in
+ * outbound transport ({@code io.github.vaquarkhan.aegis.mcp.http.PinnedHttp}) connects only to
+ * those answers, with TLS SNI and hostname verification still bound to the original name, so a
+ * second resolution cannot swap in an internal address between the check and the connection.
  */
 public final class EgressGuard {
 
@@ -66,47 +67,78 @@ public final class EgressGuard {
         this.resolver = resolver == null ? AddressResolver.SYSTEM : resolver;
     }
 
+    /**
+     * Result of one resolve-and-classify step. When {@link #denied} is null, {@link #addresses} are
+     * the exact answers that were checked; a transport that connects only to these addresses has no
+     * DNS rebinding window, because nothing is resolved again after the check.
+     *
+     * @param denied    null when allowed, else the reason
+     * @param host      normalised host name (no brackets), null when the URL had none
+     * @param addresses checked answers in resolver order (empty when denied)
+     */
+    public record Pin(String denied, String host, List<InetAddress> addresses) {
+        public Pin {
+            addresses = addresses == null ? List.of() : List.copyOf(addresses);
+        }
+
+        public boolean allowed() {
+            return denied == null;
+        }
+
+        static Pin deny(String why, String host) {
+            return new Pin(why, host, List.of());
+        }
+    }
+
     /** @return null when allowed, else a reason (host shown, never full URL with query) */
     public String check(URI target) {
+        return pin(target).denied();
+    }
+
+    /**
+     * Resolves the target ONCE and checks every answer. Use the returned addresses to connect
+     * (see {@code PinnedHttp}); resolving the name again would reopen the rebinding window.
+     */
+    public Pin pin(URI target) {
         if (target == null) {
-            return "missing egress target";
+            return Pin.deny("missing egress target", null);
         }
         String scheme = target.getScheme() == null ? "" : target.getScheme().toLowerCase(Locale.ROOT);
         if (!allowSchemes.contains(scheme)) {
-            return "scheme not allowed: " + scheme;
+            return Pin.deny("scheme not allowed: " + scheme, null);
         }
         if (target.getRawUserInfo() != null) {
-            return "user-info in egress URL is not allowed";
+            return Pin.deny("user-info in egress URL is not allowed", null);
         }
         String rawHost = target.getHost();
         if (rawHost == null || rawHost.isEmpty()) {
-            return "egress URL has no host";
+            return Pin.deny("egress URL has no host", null);
         }
         String host;
         try {
             host = normaliseHost(rawHost);
         } catch (IllegalArgumentException e) {
-            return "invalid egress host";
+            return Pin.deny("invalid egress host", null);
         }
         if (!hostAllowed(host)) {
-            return "host not on egress allow list: " + host;
+            return Pin.deny("host not on egress allow list: " + host, host);
         }
         InetAddress[] answers;
         try {
             answers = resolver.resolveAll(stripBrackets(host));
         } catch (UnknownHostException e) {
-            return "egress host does not resolve: " + host;
+            return Pin.deny("egress host does not resolve: " + host, host);
         }
         if (answers == null || answers.length == 0) {
-            return "egress host does not resolve: " + host;
+            return Pin.deny("egress host does not resolve: " + host, host);
         }
         for (InetAddress a : answers) {
             AddressClass cls = classify(a);
             if (cls != AddressClass.PUBLIC && !cidrAllowed(a)) {
-                return "egress host " + host + " resolves to a " + cls + " address that is not allowed";
+                return Pin.deny("egress host " + host + " resolves to a " + cls + " address that is not allowed", host);
             }
         }
-        return null;
+        return new Pin(null, stripBrackets(host), List.of(answers));
     }
 
     private boolean hostAllowed(String host) {

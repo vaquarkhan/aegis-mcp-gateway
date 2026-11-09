@@ -19,6 +19,7 @@ import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonException;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
+import io.github.vaquarkhan.aegis.engine.control.TokenRevocations;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
 import java.math.BigInteger;
@@ -87,8 +88,32 @@ public final class JwtVerifier implements IdentityResolver {
             if ((algorithms.contains("RS256") || algorithms.contains("ES256")) && jwksUri == null) {
                 throw new IllegalArgumentException("RS256/ES256 require a jwksUri");
             }
+            if (jwksUri != null && !jwksTransportTrusted(jwksUri)) {
+                // A JWKS fetched over plaintext lets an on-path attacker substitute their own signing key
+                // and mint any identity and group. Only TLS, or a loopback address, is acceptable.
+                throw new IllegalArgumentException("jwksUri must use https (plain http is accepted only for a loopback address): " + jwksUri);
+            }
             groupsClaim = groupsClaim == null ? "groups" : groupsClaim;
             subjectClaim = subjectClaim == null ? "sub" : subjectClaim;
+        }
+
+        static boolean jwksTransportTrusted(URI u) {
+            String scheme = u.getScheme() == null ? "" : u.getScheme().toLowerCase(java.util.Locale.ROOT);
+            if ("https".equals(scheme)) {
+                return true;
+            }
+            if (!"http".equals(scheme) || u.getHost() == null) {
+                return false;
+            }
+            String host = u.getHost().toLowerCase(java.util.Locale.ROOT);
+            if ("localhost".equals(host) || "[::1]".equals(host) || "::1".equals(host)) {
+                return true;
+            }
+            try {
+                return java.net.InetAddress.getByName(host).isLoopbackAddress() && host.matches("[0-9a-fA-F:.\\[\\]]+");
+            } catch (java.net.UnknownHostException e) {
+                return false;
+            }
         }
 
         @Override
@@ -97,18 +122,79 @@ public final class JwtVerifier implements IdentityResolver {
         }
     }
 
+    /**
+     * Token-id and revocation policy.
+     *
+     * @param requireJti        refuse tokens without a {@code jti} (1 to 256 characters)
+     * @param requireRevocation refuse every token while no revocation list is bound (fail closed when
+     *                          the operator relies on revocation and the gateway state is not wired)
+     */
+    public record TokenIdPolicy(boolean requireJti, boolean requireRevocation) {
+        public static final TokenIdPolicy DEFAULT = new TokenIdPolicy(false, false);
+    }
+
     private final Settings s;
     private final Clock clock;
-    private final HttpClient http;
+    private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
+    private final TokenIdPolicy idPolicy;
+    private volatile TokenRevocations revocations;
     private volatile Map<String, PublicKey> keys = Map.of();
     private volatile long keysFetchedAt = -1;
     private volatile long lastRefreshAttempt = -1;
     private final ConcurrentHashMap<String, Boolean> warned = new ConcurrentHashMap<>();
 
     public JwtVerifier(Settings settings, Clock clock) {
+        this(settings, clock, TokenIdPolicy.DEFAULT);
+    }
+
+    public JwtVerifier(Settings settings, Clock clock, TokenIdPolicy idPolicy) {
         this.s = settings;
         this.clock = clock;
-        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).followRedirects(HttpClient.Redirect.NEVER).build();
+        this.idPolicy = idPolicy == null ? TokenIdPolicy.DEFAULT : idPolicy;
+        this.http = jwksTransport(settings.jwksUri());
+    }
+
+    /**
+     * O-9 A: the JWKS fetch goes through the pinned transport too. The allow list is exactly the JWKS host
+     * (plus the loopback ranges when the URI is loopback, which Settings permits for local testing), so
+     * the identity provider's name is resolved once and the socket dials only those answers.
+     */
+    private static io.github.vaquarkhan.aegis.mcp.http.OutboundHttp jwksTransport(URI jwks) {
+        if (jwks == null || jwks.getHost() == null) {
+            return (request, maxBytes, deadline) -> {
+                throw new java.io.IOException("no jwksUri configured");
+            };
+        }
+        // The pin is for the rebinding window only, not for address policy: the operator chose this IdP URL
+        // and corporate identity providers commonly live on private addresses, so every address class is
+        // accepted for this one host.
+        io.github.vaquarkhan.aegis.engine.control.EgressGuard guard = new io.github.vaquarkhan.aegis.engine.control.EgressGuard(
+                List.of(jwks.getHost()), List.of("0.0.0.0/0", "::/0"), Set.of("https", "http"), null);
+        return new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp(guard::pin, Duration.ofSeconds(5), null);
+    }
+
+    /**
+     * Binds the gateway's revocation list (shared state store). Called once by the host after the
+     * gateway is built; a second, different list is refused.
+     */
+    public synchronized void bindRevocations(TokenRevocations list) {
+        if (list == null) {
+            throw new IllegalArgumentException("revocation list is required");
+        }
+        if (revocations != null && revocations != list) {
+            throw new IllegalStateException("a revocation list is already bound");
+        }
+        list.registerIssuer(s.issuer());
+        revocations = list;
+    }
+
+    public TokenIdPolicy idPolicy() {
+        return idPolicy;
+    }
+
+    /** The configured issuer (revocation entries are scoped by it). */
+    public String issuer() {
+        return s.issuer();
     }
 
     @Override
@@ -201,6 +287,43 @@ public final class JwtVerifier implements IdentityResolver {
         if (sub == null || sub.isBlank()) {
             throw new IllegalArgumentException("subject claim missing");
         }
+        Object jtiClaim = claims.get("jti");
+        if (jtiClaim != null && !(jtiClaim instanceof String)) {
+            throw new IllegalArgumentException("jti must be a string");
+        }
+        String jti = (String) jtiClaim;
+        if (jti != null && (jti.isEmpty() || jti.length() > 256)) {
+            throw new IllegalArgumentException("jti must be 1 to 256 characters");
+        }
+        if (idPolicy.requireJti() && jti == null) {
+            throw new IllegalArgumentException("token has no jti and host.identity.jwt.requireJti is true");
+        }
+        TokenRevocations list = revocations;
+        if (list == null && idPolicy.requireRevocation()) {
+            throw new IllegalArgumentException("revocation is required but no revocation list is bound");
+        }
+        if (list != null) {
+            String revoked = list.check(s.issuer(), jti, sub, iat);
+            if (revoked != null) {
+                throw new IllegalArgumentException(revoked);
+            }
+        }
+        List<String> chain = new ArrayList<>();
+        Map<String, Object> act = JsonValues.object(claims, "act");
+        for (int depth = 0; act != null && depth < 8; depth++) {
+            String a = JsonValues.string(act, "sub");
+            if (a != null) {
+                chain.add(a);
+                if (list != null) {
+                    // O-5 A: revoking an agent also refuses every token in which it acts for someone else.
+                    String actorRevoked = list.check(s.issuer(), null, a, iat);
+                    if (actorRevoked != null) {
+                        throw new IllegalArgumentException("actor " + actorRevoked);
+                    }
+                }
+            }
+            act = JsonValues.object(act, "act");
+        }
         Set<String> groups = new LinkedHashSet<>();
         Object g = claims.get(s.groupsClaim());
         if (g instanceof String gs) {
@@ -215,15 +338,6 @@ public final class JwtVerifier implements IdentityResolver {
                     groups.add(x);
                 }
             }
-        }
-        List<String> chain = new ArrayList<>();
-        Map<String, Object> act = JsonValues.object(claims, "act");
-        for (int depth = 0; act != null && depth < 8; depth++) {
-            String a = JsonValues.string(act, "sub");
-            if (a != null) {
-                chain.add(a);
-            }
-            act = JsonValues.object(act, "act");
         }
         // With delegation (RFC 8693), sub is the subject acted for and act.sub is the acting party.
         String actor = chain.isEmpty() ? sub : chain.get(0);
@@ -313,8 +427,8 @@ public final class JwtVerifier implements IdentityResolver {
         }
         lastRefreshAttempt = now;
         try {
-            io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.Result r = io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.send(
-                    http, HttpRequest.newBuilder(s.jwksUri()).timeout(Duration.ofSeconds(5)).GET().build(), 256 * 1024, 5_000);
+            io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.Result r = http.send(
+                    HttpRequest.newBuilder(s.jwksUri()).timeout(Duration.ofSeconds(5)).GET().build(), 256 * 1024, 5_000);
             byte[] body = r.body();
             if (r.status() != 200) {
                 throw new IllegalStateException("JWKS HTTP " + r.status());

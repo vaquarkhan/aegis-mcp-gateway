@@ -42,14 +42,24 @@ public final class OpaPolicy implements PolicyDecisionPoint {
     private final Duration timeout;
     private final boolean includeArguments;
     private final Map<String, String> headers;
-    private final HttpClient http;
+    private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
 
     public OpaPolicy(URI url, Duration timeout, boolean includeArguments, Map<String, String> headers) {
+        this(url, timeout, includeArguments, headers, io.github.vaquarkhan.aegis.mcp.http.OutboundHttp.jdk(
+                HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER).build()));
+    }
+
+    /** @param transport the gateway passes a pinned transport bound to the egress control */
+    public OpaPolicy(URI url, Duration timeout, boolean includeArguments, Map<String, String> headers,
+                     io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
+        if (transport == null) {
+            throw new IllegalArgumentException("an outbound transport is required");
+        }
         this.url = url;
         this.timeout = timeout;
         this.includeArguments = includeArguments;
         this.headers = headers == null ? Map.of() : Map.copyOf(headers);
-        this.http = HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER).build();
+        this.http = transport;
     }
 
     @Override
@@ -78,7 +88,7 @@ public final class OpaPolicy implements PolicyDecisionPoint {
         headers.forEach(b::header);
         // Total deadline covers the body too; a slow OPA cannot stall callers past the timeout.
         io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.Result resp =
-                io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.send(http, b.build(), 64 * 1024, timeout.toMillis());
+                http.send(b.build(), 64 * 1024, timeout.toMillis());
         if (resp.status() != 200) {
             return Result.deny("OPA returned HTTP " + resp.status());
         }

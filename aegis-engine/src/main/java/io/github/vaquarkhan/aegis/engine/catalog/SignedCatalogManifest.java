@@ -168,6 +168,20 @@ public final class SignedCatalogManifest {
         }
     }
 
+    /**
+     * Verifies a base64 Ed25519 signature over {@code body} (used for catalog manifests and for
+     * deployment attestations). A malformed signature is simply invalid.
+     */
+    public static boolean verifySignature(byte[] body, String base64Signature, PublicKey key) throws IOException {
+        byte[] sig;
+        try {
+            sig = Base64.getDecoder().decode(base64Signature == null ? "" : base64Signature.strip());
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return verify(body, sig, key);
+    }
+
     static boolean verify(byte[] body, byte[] sig, PublicKey key) throws IOException {
         try {
             Signature s = Signature.getInstance(ALGORITHM);

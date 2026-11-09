@@ -147,7 +147,7 @@ fact.
 - No log parsing. The audit record is the data structure.
 - No agreement about vocabulary. The [deny codes](DENY-CODES.md) and step numbers are a fixed registry;
   a hook cannot invent a wire code.
-- No per-engine work. The current deployable adapter inventory is 25 configurations and 116 tools,
+- No per-engine work. The current deployable adapter inventory is 25 configurations and 123 tools,
   and all produce records in one shape because governance lives in the engine and adapters contribute
   capability only.
 - No sampling decisions. There is no sampling.
@@ -239,7 +239,7 @@ supports that decision.
 
 ### Seam 3: a new backend, without code
 
-The deployable adapter inventory is 25 configurations and 116 tools. Twenty-two configurations are
+The deployable adapter inventory is 25 configurations and 123 tools. Twenty-two configurations are
 HTTP-only; Calcite and Hive use `jdbc`; ZooKeeper combines HTTP AdminServer commands with the
 `zookeeper` client-protocol source. Additional typed sources such as `kafka-admin` and
 `spark-connect` are plugins outside that 25-folder adapter inventory. `AdapterConfigsTest` drives every

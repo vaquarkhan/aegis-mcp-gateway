@@ -1,0 +1,98 @@
+# Hardened front door for the deliberately vulnerable MCP server in this folder.
+# The driver rewrites UPSTREAM_PORT before start. Loopback only. Static tokens
+# come from the environment, not from this file.
+gateway:
+  name: aegis-e2e-vulnerable
+
+access:
+  writeGroups: [operators]
+  approverGroups: [approvers]
+
+approval:
+  keyEnv: AEGIS_E2E_SIGNING_KEY
+
+policy:
+  rules:
+    - {id: read, groups: [analysts, operators], classes: [READ]}
+    - {id: write, groups: [operators], classes: [MUTATE, DESTRUCTIVE]}
+
+scopes:
+  - {groups: [analysts, operators], resources: ["file:path:reports/*"]}
+
+catalog:
+  mode: TOFU
+  pinFile: pins.json
+  refreshSeconds: 5
+
+screening:
+  results: ENFORCE          # Fix 17: a backend result carrying an injection phrase is withheld
+
+output:
+  redactHighEntropy: true   # Fix 18: prefix-less key material is redacted too
+
+hooks:
+  - type: sql-readonly
+    methods: [query_sql]
+    settings:
+      arguments: [sql]
+      functions: DENY_UNLISTED   # Fix 16: only known read-only functions may be called
+      allowFunctions: []
+
+egress:
+  allowHosts: []
+  allowCidrs: [127.0.0.0/8]
+
+audit:
+  file: audit.jsonl
+
+sources:
+  - id: vulnerable
+    type: mcp
+    transport: http
+    url: http://127.0.0.1:UPSTREAM_PORT/mcp
+    era: MODERN
+    unlistedTools: HIDE
+    strictProperties: true    # Fix 15: undeclared properties are refused whatever the server's schema says
+    tools:
+      query_sql:
+        class: READ
+        executionContract: {kind: SQL_READ}
+      fetch_url:
+        class: READ
+        executionContract: {kind: NETWORK_READ}
+      read_file:
+        class: READ
+        executionContract: {kind: FILE_BROKERED}
+        resources: [{type: "file:path", pointer: /path}]
+      show_config:
+        class: READ
+        executionContract: {kind: PURE_DATA}
+      run_shell:
+        class: DESTRUCTIVE
+        executionContract: {kind: FREE_FORM}  # accepted only because this proof is not completeControl mode
+      poison_note:
+        class: READ
+        executionContract: {kind: PURE_DATA}
+      poison_result:
+        class: READ
+        executionContract: {kind: PURE_DATA}
+        outputPolicy: {mode: HANDLE_ONLY}
+      loose_echo:
+        class: READ
+        executionContract: {kind: PURE_DATA}
+        outputPolicy: {mode: HANDLE_ONLY}
+        # Fix 15: operator schema, tighter than the open one the server publishes
+        inputSchema: {type: object, additionalProperties: false, properties: {note: {type: string, maxLength: 64}}}
+      leak_token:
+        class: READ
+        executionContract: {kind: PURE_DATA}
+        outputPolicy: {mode: HANDLE_ONLY}
+
+host:
+  listen: {host: 127.0.0.1, port: 18772}
+  identity:
+    type: static
+    static:
+      tokens:
+        - {tokenEnv: AEGIS_E2E_ANALYST, actor: analyst, groups: [analysts]}
+        - {tokenEnv: AEGIS_E2E_OPERATOR, actor: operator, groups: [operators]}

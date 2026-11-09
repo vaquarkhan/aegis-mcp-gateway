@@ -73,7 +73,8 @@ public final class OpenApiDraft {
     /** Reads an OpenAPI document (JSON, or YAML by file extension). Integer YAML keys such as 200 become strings. */
     public static Map<String, Object> read(Path file) throws IOException {
         String text = Files.readString(file, StandardCharsets.UTF_8);
-        String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
+        Path fileName = file.getFileName();
+        String name = fileName == null ? "" : fileName.toString().toLowerCase(Locale.ROOT);
         Object root;
         if (name.endsWith(".yaml") || name.endsWith(".yml")) {
             root = SpecYaml.load(text, file.toString());

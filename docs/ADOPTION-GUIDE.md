@@ -23,7 +23,7 @@ code, no rebuild. You write one configuration file and pick a front door.
 | Your project has... | Use | Example |
 | --- | --- | --- |
 | an MCP server (HTTP or stdio) | `type: mcp` | `adopters/configurations/existing-mcp-server/existing-mcp-server.yaml` |
-| a REST API | `type: http` (declarative tools) | `adopters/configurations/flink/flink.yaml`, `adopters/configurations/spark/spark.yaml`, `adopters/configurations/iceberg/iceberg.yaml`, `adopters/configurations/kafka/kafka.yaml` (Kafka Connect), plus the REST entries in the **25 deployable adapter configurations and 116 tools** under `adopters/configurations/adapters/` |
+| a REST API | `type: http` (declarative tools) | `adopters/configurations/flink/flink.yaml`, `adopters/configurations/spark/spark.yaml`, `adopters/configurations/iceberg/iceberg.yaml`, `adopters/configurations/kafka/kafka.yaml` (Kafka Connect), plus the REST entries in the **27 deployable adapter configurations and 123 tools** under `adopters/configurations/adapters/` |
 | only a Java client library or a non-REST protocol | a `ToolSourceFactory` plugin | `adopters/configurations/kafka/kafka.yaml` with `type: kafka-admin`; the JDBC and ZooKeeper converter sources |
 
 ## Step 1a: govern an existing MCP server
@@ -68,7 +68,7 @@ To try it, copy the shipped profile, set the source URL, classify tools and reso
 ## Step 1b: check whether your engine already ships a config
 
 Aegis 0.1 had one Maven module per engine (`mcp-adapter-<engine>`). In 2.0, 24 usable 0.1
-surfaces plus the new Apache Burr (incubating) integration are **25 deployable adapter folders and 116 tools** under
+surfaces plus the new Apache Burr (incubating) integration are **27 deployable adapter folders and 123 tools** under
 [`adopters/configurations/adapters/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/adopters/configurations/adapters). Each folder contains a
 same-named executable YAML profile and developer README. Most use
 `type: http`; Hive and Calcite use the JDBC converter, and ZooKeeper combines its real AdminServer HTTP
@@ -91,8 +91,8 @@ java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
   --config adopters/configurations/adapters/airflow/airflow.yaml
 ```
 
-`AdapterConfigsTest` derives its inventory directly from the configurations: **25 deployable adapter
-configurations and 116 tools** are parsed, governed, and checked against the applicable source
+`AdapterConfigsTest` derives its inventory directly from the configurations: **27 deployable adapter
+configurations and 123 tools** are parsed, governed, and checked against the applicable source
 contract. Converter behaviour is additionally tested against real embedded Apache software (Derby for
 JDBC and ZooKeeper for the data-tree client). The current real-engine compatibility status for every
 adapter is the source of truth in [VALIDATION.md](VALIDATION.md). A configuration becomes

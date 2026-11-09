@@ -53,6 +53,14 @@ public final class AuditCheckpointVerifier {
     }
 
     public static Report verify(Path journal, Path checkpointFile) throws IOException {
+        return verify(journal, checkpointFile, null);
+    }
+
+    /**
+     * @param signingKey when non-null every checkpoint line must carry a valid Ed25519 {@code signature}
+     *                   by this key over its canonical JSON without the signature field
+     */
+    public static Report verify(Path journal, Path checkpointFile, java.security.PublicKey signingKey) throws IOException {
         TreeMap<Long, String> expected = new TreeMap<>();
         long lines = 0;
         String journalName = HashChainFileAuditSink.fileName(journal);
@@ -66,6 +74,15 @@ public final class AuditCheckpointVerifier {
                     cp = parseCheckpoint(line, checkpointFile);
                 } catch (IOException e) {
                     return new Report(0, null, lines, lastSeq, "checkpoint " + lines + ": " + e.getMessage());
+                }
+                if (signingKey != null) {
+                    cp = new java.util.LinkedHashMap<>(cp); // the parser's map is read-only
+                    Object sig = cp.remove("signature");
+                    if (!(sig instanceof String s) || !io.github.vaquarkhan.aegis.engine.catalog.SignedCatalogManifest
+                            .verifySignature(Json.canonical(cp).getBytes(StandardCharsets.UTF_8), s, signingKey)) {
+                        return new Report(0, null, lines, lastSeq, "checkpoint " + lines
+                                + " has no valid signature by the checkpoint signing key; the checkpoint file was rewritten");
+                    }
                 }
                 if (!journalName.equals(cp.get("journal"))) {
                     return new Report(0, null, lines, lastSeq, "checkpoint " + lines + " belongs to journal '"

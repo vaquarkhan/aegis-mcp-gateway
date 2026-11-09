@@ -65,6 +65,7 @@ public final class StdioMcpClient implements McpClient {
     private final HttpMcpClient.Era configured;
     private final String legacyVersion;
     private final int maxLineChars;
+    private final ProcessLauncher launcher;
     private final AtomicLong ids = new AtomicLong();
     private final ConcurrentHashMap<Long, CompletableFuture<Map<String, Object>>> pending = new ConcurrentHashMap<>();
     private final Object writeLock = new Object();
@@ -74,6 +75,15 @@ public final class StdioMcpClient implements McpClient {
 
     public StdioMcpClient(List<String> command, Map<String, String> env, Path workingDir, HttpMcpClient.Era era,
                           String legacyVersion, int maxLineChars) {
+        this(command, env, workingDir, era, legacyVersion, maxLineChars, ProcessLauncher.direct(), false);
+    }
+
+    /**
+     * @param launcher       exact process launcher; a prefix launcher never invokes a shell
+     * @param requireSandbox refuse construction unless the launcher declares an external sandbox boundary
+     */
+    public StdioMcpClient(List<String> command, Map<String, String> env, Path workingDir, HttpMcpClient.Era era,
+                          String legacyVersion, int maxLineChars, ProcessLauncher launcher, boolean requireSandbox) {
         if (command == null || command.isEmpty()) {
             throw new IllegalArgumentException("stdio MCP source needs a command");
         }
@@ -83,6 +93,10 @@ public final class StdioMcpClient implements McpClient {
         this.configured = era == null ? HttpMcpClient.Era.AUTO : era;
         this.legacyVersion = legacyVersion == null ? McpVersions.V2025_11_25 : legacyVersion;
         this.maxLineChars = maxLineChars <= 0 ? 4 << 20 : maxLineChars;
+        this.launcher = launcher == null ? ProcessLauncher.direct() : launcher;
+        if (requireSandbox && !this.launcher.sandboxed()) {
+            throw new IllegalArgumentException("complete control requires a sandboxed stdio ProcessLauncher");
+        }
     }
 
     @Override
@@ -143,23 +157,16 @@ public final class StdioMcpClient implements McpClient {
             return;
         }
         stopProcess();
-        ProcessBuilder pb = new ProcessBuilder(command);
-        Map<String, String> childEnv = pb.environment();
-        Map<String, String> keep = new LinkedHashMap<>();
+        Map<String, String> childEnv = new LinkedHashMap<>();
         for (String k : BASE_ENV) {
             String v = System.getenv(k);
             if (v != null) {
-                keep.put(k, v);
+                childEnv.put(k, v);
             }
         }
-        childEnv.clear();
-        childEnv.putAll(keep);
         childEnv.putAll(env);
-        if (workingDir != null) {
-            pb.directory(workingDir.toFile());
-        }
         try {
-            process = pb.start();
+            process = launcher.start(command, childEnv, workingDir);
         } catch (IOException e) {
             throw new McpCallException("could not start stdio MCP server: " + e.getMessage(), null, false, e);
         }
@@ -223,6 +230,12 @@ public final class StdioMcpClient implements McpClient {
             write(JsonRpc.request(id, method, params));
             return f.get(Math.max(1, timeoutMillis), TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
+            // A timed-out server may still be executing the operation. Terminate the whole process tree
+            // before another call can reuse it; the next request starts a clean child.
+            synchronized (this) {
+                stopProcess();
+                resolved = null;
+            }
             throw new McpCallException("stdio MCP call timed out", null, true, e);
         } catch (ExecutionException e) {
             throw new McpCallException("stdio MCP server failed: " + e.getCause().getMessage(), null, false, e);
@@ -322,16 +335,40 @@ public final class StdioMcpClient implements McpClient {
 
     private void stopProcess() {
         if (process != null) {
-            process.destroy();
+            Process p = process;
+            // Descendants first prevents a launcher or server from leaving helpers behind after timeout.
+            p.toHandle().descendants().forEach(h -> {
+                try {
+                    h.destroy();
+                } catch (RuntimeException ignored) {
+                    // best effort; forced pass follows
+                }
+            });
+            p.destroy();
             try {
-                if (!process.waitFor(2, TimeUnit.SECONDS)) {
-                    process.destroyForcibly();
+                if (!p.waitFor(2, TimeUnit.SECONDS)) {
+                    p.toHandle().descendants().forEach(h -> {
+                        try {
+                            h.destroyForcibly();
+                        } catch (RuntimeException ignored) {
+                            // process may already have exited
+                        }
+                    });
+                    p.destroyForcibly();
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                process.destroyForcibly();
+                p.toHandle().descendants().forEach(h -> {
+                    try {
+                        h.destroyForcibly();
+                    } catch (RuntimeException ignored) {
+                        // process may already have exited
+                    }
+                });
+                p.destroyForcibly();
             }
             process = null;
+            stdin = null;
         }
     }
 

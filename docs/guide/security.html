@@ -35,6 +35,11 @@
       <a href="#evidence">Validation evidence</a>
       <a href="#residual">Residual risk</a>
       <a href="#references">Full documents</a>
+      <a href="threat-modeling.html">Threat modeling</a>
+      <a href="mcp-cve-containment.html">CVE containment</a>
+      <a href="deploy.html">Deploy on AWS and IDE</a>
+      <a href="responsible-ai.html">Responsible AI</a>
+      <a href="tutorials.html">Tutorials</a>
       <a href="hello-world.html">Hello World</a>
       <a href="handbook.html">User handbook</a>
       <a href="modules.html">Module reference</a>
@@ -144,6 +149,8 @@
       <p class="eyebrow">RECORDED EVIDENCE</p>
       <h2>Focused control-suite record.</h2>
       <p>The 2026-10-05 record reports a focused S1 to S31 selection run on JDK 17 with Maven Surefire: <strong>227 selected tests, 0 failures</strong>. Tests added after that date are outside the 227 count.</p>
+      <p>A later hardening pass on 2026-11-07 ran the eight core modules as one build with every gate on: <strong>408 tests, 0 failures</strong>, with SpotBugs and the FindSecBugs plugin, JaCoCo coverage, and the Apache RAT license check all green. The SpotBugs run reported 72 findings on its first pass; the real defects (constant-time digest comparison, a regex denial-of-service path, null guards, dead code) were fixed, and every remaining exclusion carries a written reason. CodeQL and an OSV dependency scan are committed as CI workflows but are not yet run from this host.</p>
+      <p class="callout">Build gates in the hardened profile: SpotBugs with FindSecBugs (static and security analysis), JaCoCo (coverage), Apache RAT (license headers), and the CI-side CodeQL and OSV scans. The <a href="mcp-cve-containment.html">CVE containment demo</a> adds a runtime before-and-after proof against three real MCP server flaw classes.</p>
       <div class="two-column">
         <div>
           <h3>Included</h3>
@@ -174,6 +181,7 @@
       <p class="eyebrow">REFERENCE MAP</p>
       <h2>Continue in the full documents.</h2>
       <div class="reference-table">
+        <a href="threat-modeling.html"><strong>Threat modeling</strong><span>Honest coverage and gaps</span></a>
         <a href="../THREAT-MODEL.html"><strong>Threat model</strong><span>STRIDE, TM01 to TM10, DFD</span></a>
         <a href="../SECURITY.html"><strong>Security model</strong><span>S1 to S31 and limits</span></a>
         <a href="../evidence/SECURITY-VALIDATION.html"><strong>Validation record</strong><span>Focused control suite, 227 tests</span></a>

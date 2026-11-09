@@ -1,0 +1,157 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Where Aegis contributes to Responsible AI: human oversight, accountability, security and privacy at the MCP action boundary, mapped to NIST AI RMF and the EU AI Act.">
+  <title>Aegis and Responsible AI</title>
+  <link rel="stylesheet" href="handbook.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Responsible AI navigation">
+    <a class="brand" href="../index.html">Aegis <span>Gateway 2.0</span></a>
+    <nav>
+      <a href="#start">Start here</a>
+      <a href="#where">Where Aegis fits</a>
+      <a href="#oversight">Human oversight</a>
+      <a href="#accountability">Accountability and traceability</a>
+      <a href="#privacy">Privacy and data minimization</a>
+      <a href="#nist">NIST AI RMF</a>
+      <a href="#euaiact">EU AI Act touchpoints</a>
+      <a href="#limits">What Aegis does not do</a>
+      <a href="#references">Reference map</a>
+      <a href="security.html">Security guide</a>
+      <a href="handbook.html">User handbook</a>
+    </nav>
+    <p class="sidebar-note">Aegis governs what an AI agent is allowed to do and see at the tool boundary. It is one layer of Responsible AI, not the whole of it: it does not train, evaluate or judge the model.</p>
+  </aside>
+  <main>
+    <header id="start" class="hero">
+      <p class="eyebrow">RESPONSIBLE AI</p>
+      <h1>Governance where the agent acts, not where it thinks.</h1>
+      <p class="lead">Most Responsible AI work is about the model: fairness, evaluation, training data, transparency of outputs. Aegis sits at a different, concrete point: the moment an AI agent tries to call a tool or read data through MCP. At that boundary it enforces human oversight, least privilege, auditability and data minimization. That makes it a practical control for the accountability and safety parts of a Responsible AI program.</p>
+      <div class="actions">
+        <a class="button primary" href="mcp-cve-containment.html">See it enforce</a>
+        <a class="button" href="security.html">Security guide</a>
+        <a class="button" href="threat-modeling.html">Threat modeling</a>
+      </div>
+    </header>
+
+    <section id="where">
+      <p class="eyebrow">THE BOUNDARY</p>
+      <h2>Aegis owns the action and data-access slice.</h2>
+      <p>A Responsible AI program spans the model, the data, and the actions the system takes. Aegis does not touch the first two. It owns the third: every tool call, resource read, prompt and completion that an agent routes through MCP passes a fail-closed decision plane that applies identity, policy, approval, egress, screening, output control and audit before anything reaches a real system.</p>
+      <p class="callout">Principle served: an AI system should not be able to take a consequential action, or expose sensitive data, without an enforced, recorded, reviewable control. Aegis is the enforcement point for that principle on the tool path.</p>
+    </section>
+
+    <section id="oversight" class="band">
+      <p class="eyebrow">HUMAN OVERSIGHT</p>
+      <h2>A person stays in the loop for consequential actions.</h2>
+      <div class="two-column">
+        <div>
+          <h3>Independent approval</h3>
+          <p>Destructive and mutating tool calls require a per-call approval from a different identity than the requester. The agent cannot approve its own action, and a delegated identity cannot stand in for the approver. This is meaningful human oversight at the point of action, not a policy document.</p>
+        </div>
+        <div>
+          <h3>Dry-run receipts</h3>
+          <p>Before a destructive call commits, Aegis produces a receipt of what will happen, bound to the caller, tool, arguments and definition digest. The approver sees the exact action they are authorizing, and the binding prevents a swap between approval and execution.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="accountability">
+      <p class="eyebrow">ACCOUNTABILITY</p>
+      <h2>Every decision is traceable and contestable.</h2>
+      <ul>
+        <li>A hash-chained audit journal records the intent before execution and the outcome after, so an action cannot be executed without a prior, tamper-evident record.</li>
+        <li>Every governed result carries provenance in its metadata: source, tool, definition digest, result digest and the trust label, so a downstream reviewer can trace where an answer came from.</li>
+        <li>Each denial returns a machine-readable reason and step, so a refusal can be explained and contested rather than being an opaque failure.</li>
+        <li>Signed checkpoints and a SIEM sink interface let the record leave the gateway host for storage the host cannot rewrite.</li>
+      </ul>
+    </section>
+
+    <section id="privacy" class="band">
+      <p class="eyebrow">PRIVACY</p>
+      <h2>Data minimization at the tool boundary.</h2>
+      <div class="cards">
+        <article><h3>Secret and PII redaction</h3><p>Results are scanned for credentials, keys, PEM blocks and personal data patterns, which are redacted before the model sees them. High-entropy strings with no recognizable prefix can be redacted too.</p></article>
+        <article><h3>Handle-only output</h3><p>For tools whose output cannot be safely released, Aegis returns an opaque handle rather than the content, so raw or uncertain data never enters model context.</p></article>
+        <article><h3>Least privilege</h3><p>Tool classes, typed resource scopes and per-caller token exchange give each call only the access it needs, so an over-broad agent cannot reach a tenant or a dataset it was not scoped to.</p></article>
+        <article><h3>No token passthrough</h3><p>A caller's bearer token is never forwarded to a backend. The backend receives only a scoped, gateway-issued credential, which limits how far a compromised agent can reach.</p></article>
+      </div>
+    </section>
+
+    <section id="nist">
+      <p class="eyebrow">NIST AI RMF</p>
+      <h2>Mapping to the four functions.</h2>
+      <div class="table-wrap">
+        <table class="ref-table">
+          <thead><tr><th>Function</th><th>Aegis contribution</th></tr></thead>
+          <tbody>
+            <tr><td>Govern</td><td>Policy as configuration, separation of duties through approver groups, fail-closed defaults, and a documented threat model and security properties.</td></tr>
+            <tr><td>Map</td><td>A typed catalog of exactly which tools, resources and destinations an agent may reach, with each tool classed by its risk surface.</td></tr>
+            <tr><td>Measure</td><td>A hash-chained audit journal, decision records with reasons, and a repeatable control suite plus the before-and-after CVE containment run.</td></tr>
+            <tr><td>Manage</td><td>Independent approval and dry-run receipts for consequential actions, live token and session revocation, rate limits and budgets, and break-glass containment of a source.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The NIST AI Risk Management Framework names these four functions. Aegis addresses the action-and-data parts of each; model-centric activities such as bias measurement stay with the model team.</p>
+    </section>
+
+    <section id="euaiact" class="band">
+      <p class="eyebrow">EU AI ACT</p>
+      <h2>Concrete touchpoints for high-risk obligations.</h2>
+      <div class="two-column">
+        <div>
+          <h3>Human oversight</h3>
+          <p>The independent-approval and dry-run-receipt controls are a direct, enforced mechanism for keeping a person able to intervene before a consequential automated action, which the Act requires for high-risk systems.</p>
+        </div>
+        <div>
+          <h3>Logging and record-keeping</h3>
+          <p>The tamper-evident audit journal, with intent recorded before execution, supports the Act's record-keeping expectation: an operator can reconstruct what the system did, when and under whose authority.</p>
+        </div>
+      </div>
+      <p>These are enabling controls, not a compliance certification. The EU AI Act obligations fall on the provider and deployer of the overall AI system; Aegis gives them an enforcement and evidence layer for the action boundary. Confirm applicability with your own compliance function.</p>
+    </section>
+
+    <section id="limits">
+      <p class="eyebrow">HONEST LIMITS</p>
+      <h2>What Aegis does not do.</h2>
+      <ul>
+        <li>It does not train, fine-tune, evaluate or judge the model, and it does not measure fairness or bias. Those are model and data-pipeline concerns.</li>
+        <li>It cannot decide whether an answer is true. It gives provenance for review; it does not adjudicate misinformation.</li>
+        <li>Prompt-injection screening is heuristic. The durable controls are typed scope, independent approval and handle-only output, not phrase matching.</li>
+        <li>It governs only the calls that pass through it. An agent that bypasses Aegis is an endpoint and network concern, covered by the complete-control endpoint component, not this gateway alone.</li>
+      </ul>
+    </section>
+
+    <section id="references" class="band">
+      <p class="eyebrow">REFERENCE MAP</p>
+      <h2>Continue in the guides.</h2>
+      <div class="reference-table">
+        <a href="security.html"><strong>Security guide</strong><span>Zones, STRIDE, S1 to S31</span></a>
+        <a href="threat-modeling.html"><strong>Threat modeling</strong><span>Honest coverage and gaps</span></a>
+        <a href="mcp-cve-containment.html"><strong>CVE containment</strong><span>Before and after Aegis</span></a>
+        <a href="deploy.html"><strong>Deploy</strong><span>AWS and AI IDE</span></a>
+        <a href="../MCP-GOVERNANCE-GUIDELINE.html"><strong>MCP governance guideline</strong><span>Spec and OWASP mapping</span></a>
+        <a href="handbook.html"><strong>User handbook</strong><span>Deploy and operate</span></a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

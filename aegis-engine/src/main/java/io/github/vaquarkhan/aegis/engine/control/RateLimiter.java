@@ -22,6 +22,8 @@ import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.spi.StateStore;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
+import java.util.TreeSet;
 
 /**
  * Step 6. Per-caller and per-caller-per-tool call rates, plus a weighted budget per caller where
@@ -35,11 +37,22 @@ import java.time.Instant;
  * @param readCost                  budget cost of a READ call
  * @param mutateCost                budget cost of a MUTATE call
  * @param destructiveCost           budget cost of a DESTRUCTIVE call
+ * @param perGroupPerMinute         team quotas: calls per minute shared by all members of a group (empty disables)
  */
 public record RateLimiter(long perCallerPerMinute, long perCallerPerToolPerMinute, long budgetPerHour,
-                          long readCost, long mutateCost, long destructiveCost) {
+                          long readCost, long mutateCost, long destructiveCost, Map<String, Long> perGroupPerMinute) {
 
     public static final RateLimiter DISABLED = new RateLimiter(0, 0, 0, 1, 5, 20);
+
+    public RateLimiter {
+        perGroupPerMinute = perGroupPerMinute == null ? Map.of() : Map.copyOf(perGroupPerMinute);
+    }
+
+    /** Source-compatible constructor without team quotas. */
+    public RateLimiter(long perCallerPerMinute, long perCallerPerToolPerMinute, long budgetPerHour,
+                       long readCost, long mutateCost, long destructiveCost) {
+        this(perCallerPerMinute, perCallerPerToolPerMinute, budgetPerHour, readCost, mutateCost, destructiveCost, Map.of());
+    }
 
     /** @return null when admitted, else the deny code */
     public String admit(StateStore store, CallerIdentity caller, Action action, Instant now) {
@@ -52,6 +65,17 @@ public record RateLimiter(long perCallerPerMinute, long perCallerPerToolPerMinut
                 && !store.tryAcquire("rate:tool:" + pk + ":" + action.tool(), 1, perCallerPerToolPerMinute,
                         Duration.ofMinutes(1), now)) {
             return DenyCodes.RATE_LIMITED;
+        }
+        // Team quotas: every configured group the caller is in shares one budget across its members, so
+        // many identities in one team cannot multiply the per-caller limit. Sorted order keeps the key
+        // order the same for every caller.
+        if (!perGroupPerMinute.isEmpty()) {
+            for (String g : new TreeSet<>(caller.groups())) {
+                Long cap = perGroupPerMinute.get(g);
+                if (cap != null && !store.tryAcquire("rate:group:" + g, 1, cap, Duration.ofMinutes(1), now)) {
+                    return DenyCodes.RATE_LIMITED;
+                }
+            }
         }
         if (budgetPerHour > 0) {
             long cost = action.toolClass() == ToolClass.DESTRUCTIVE ? destructiveCost

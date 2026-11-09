@@ -19,6 +19,11 @@ image:
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 
+# COMPLETE_CONTROL deployment gate. When config.completeControl.enabled is true the chart requires:
+# immutable image.digest, enabled NetworkPolicy with explicit ingress peers, a sandbox runtime class,
+# non-root/read-only/no-escalation settings, and a non-Unconfined seccomp profile.
+runtimeClassName: ""             # e.g. gvisor; required only for complete control
+
 # More than one replica needs shared approval and receipt state (config.state with type postgres);
 # otherwise an approval granted on one pod is unknown to the next. The chart refuses replicaCount > 1
 # unless sharedState is true. Each replica writes its own audit journal on its own volume.
@@ -27,6 +32,8 @@ sharedState: false
 
 # The Aegis configuration, written to /etc/aegis/aegis.yaml. Required. Rules the chart checks:
 #   host.listen.host must be 0.0.0.0 and host.listen.port must equal containerPort;
+#   a 0.0.0.0 listener without host.tls.keystore must set host.listen.allowPlaintext: true, which
+#   states that TLS is terminated by the ingress or a sidecar (the gateway refuses to start otherwise);
 #   audit.file must be under persistence.mountPath, the only writable data directory.
 # Secrets are never written here: name them (keyEnv, tokenEnv, ...) and supply them with envFrom.
 config: {}

@@ -146,7 +146,10 @@ public class AegisMcpResource {
     private CallerIdentity caller() {
         String ctx = servletContext.getContextPath();
         String topology = ctx == null ? "" : ctx.substring(ctx.lastIndexOf('/') + 1);
-        return KnoxIdentityBridge.fromCurrentSubject(topology);
+        CallerIdentity caller = KnoxIdentityBridge.fromCurrentSubject(topology);
+        KnoxGatewayRegistry.Holder h = holder();
+        // O-6 A: gateway-side subject revocation applies on the Knox path too.
+        return KnoxIdentityBridge.unlessRevoked(caller, h.gateway() == null ? null : h.gateway().revocations());
     }
 
     private Map<String, List<String>> headers() {

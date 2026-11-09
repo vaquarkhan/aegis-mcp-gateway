@@ -18,5 +18,9 @@
 [allowlist]
 paths = [
   '''^examples/adopters/airflow/results/knox-transcript\.log$''',
-  '''^examples/adopters/airflow/results/own-host-transcript\.log$'''
+  '''^examples/adopters/airflow/results/own-host-transcript\.log$''',
+  # CVE containment demo and threat-model evidence use synthetic tokens and a local
+  # payroll-secret fixture; they are not production credentials.
+  '''^threat-model/e2e/.*$''',
+  '''^threat-model/evidence/.*$'''
 ]

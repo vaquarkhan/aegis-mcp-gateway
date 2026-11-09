@@ -20,6 +20,8 @@ import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
 import io.github.vaquarkhan.aegis.config.Gateway;
+import io.github.vaquarkhan.aegis.security.identity.JwtVerifier;
+import io.github.vaquarkhan.aegis.security.perimeter.ClientAddressLimiter;
 import io.github.vaquarkhan.aegis.security.perimeter.OwnServerPerimeter;
 import io.github.vaquarkhan.aegis.security.perimeter.OwnServerSecuritySettings;
 import io.github.vaquarkhan.aegis.engine.catalog.ToolCatalog;
@@ -48,10 +50,10 @@ import javax.net.ssl.SSLContext;
  * and hands everything else to the shared handler. It contains no governance logic.
  *
  * <p>Defaults are conservative: binds to 127.0.0.1 (MCP transport guidance for local servers),
- * bounded request bodies, a bounded worker pool with a bounded queue (overload applies
- * back-pressure to the accept thread instead of queueing without limit), and request/response
- * time limits via the JDK server properties {@code sun.net.httpserver.maxReqTime} and
- * {@code maxRspTime}, which {@link #applyServerTimeLimits} sets unless the operator already did.
+ * bounded request bodies, a bounded worker pool with a bounded queue (overload refuses the
+ * connection instead of blocking the accept thread or queueing without limit), and request, response,
+ * header-size and connection limits via the JDK server properties that
+ * {@link #applyServerTimeLimits} sets unless the operator already did.
  */
 public final class AegisServer implements AutoCloseable {
 
@@ -61,20 +63,50 @@ public final class AegisServer implements AutoCloseable {
     private final OwnServerSecuritySettings settings;
     private final OwnServerPerimeter perimeter;
     private final HttpServer server;
+    private final HttpServer adminServer;
     private final ThreadPoolExecutor pool;
+    private final ClientAddressLimiter limiter;
 
     /**
      * Slow-client protection for the JDK HTTP server: a request must arrive within 30 s and a
-     * response be written within 120 s. These are JDK-wide properties read when the server
-     * implementation initialises, so they are set before the first server is created.
+     * response be written within 120 s, a request may carry at most 100 header lines and 16 KiB of
+     * header bytes, and the server keeps at most 1,024 open connections. The header and connection
+     * bounds matter because the JDK parses headers on a worker thread BEFORE this class authenticates
+     * the request, so without them an unauthenticated client could hold worker threads with a
+     * half-sent header. These are JDK-wide properties read when the server implementation initialises,
+     * so they are set before the first server is created and never override an operator's value.
      */
     static void applyServerTimeLimits() {
-        if (System.getProperty("sun.net.httpserver.maxReqTime") == null) {
-            System.setProperty("sun.net.httpserver.maxReqTime", "30");
+        setIfAbsent("sun.net.httpserver.maxReqTime", "30");
+        setIfAbsent("sun.net.httpserver.maxRspTime", "120");
+        setIfAbsent("sun.net.httpserver.maxReqHeaders", "100");
+        setIfAbsent("sun.net.httpserver.maxReqHeaderSize", "16384");
+        setIfAbsent("jdk.httpserver.maxConnections", "1024");
+    }
+
+    private static void setIfAbsent(String key, String value) {
+        if (System.getProperty(key) == null) {
+            System.setProperty(key, value);
         }
-        if (System.getProperty("sun.net.httpserver.maxRspTime") == null) {
-            System.setProperty("sun.net.httpserver.maxRspTime", "120");
-        }
+    }
+
+    /**
+     * The worker pool: {@code threads} workers and a queue of eight requests per worker. When both are
+     * full the request is REJECTED (the JDK dispatcher logs and closes that connection) rather than run
+     * on the accept thread. Running it there, as {@code CallerRunsPolicy} does, lets a burst of slow
+     * clients stop the server accepting anyone, which is the pre-authentication exhaustion pattern.
+     */
+    static ThreadPoolExecutor boundedPool(int threads) {
+        return new ThreadPoolExecutor(threads, threads, 60, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(threads * 8), r -> {
+                    Thread t = new Thread(r, "aegis-http");
+                    t.setDaemon(true);
+                    return t;
+                }, (r, executor) -> {
+                    LOG.log(System.Logger.Level.WARNING, "HTTP worker pool saturated (" + threads + " workers, "
+                            + threads * 8 + " queued); refusing a connection");
+                    throw new java.util.concurrent.RejectedExecutionException("aegis worker pool saturated");
+                });
     }
 
     public AegisServer(Gateway gateway, OwnServerSecuritySettings settings) throws Exception {
@@ -82,11 +114,22 @@ public final class AegisServer implements AutoCloseable {
         this.gateway = gateway;
         this.settings = settings;
         this.perimeter = new OwnServerPerimeter(settings);
+        this.limiter = new ClientAddressLimiter(settings.limits());
         if (settings.cors().enabled() && !gateway.mcp().options().allowedOrigins().containsAll(settings.cors().allowedOrigins())) {
             throw new IllegalArgumentException("host.cors.allowedOrigins must be a subset of server.allowedOrigins; "
                     + "preflight must never advertise an origin the MCP handler will reject");
         }
-        InetSocketAddress addr = new InetSocketAddress(settings.host(), settings.port());
+        checkCompleteControlPerimeter(gateway.completeControl(), settings);
+        if (settings.identity() instanceof JwtVerifier jwt && jwt.idPolicy().requireRevocation() && !gateway.durableState()) {
+            // O-3 A: a revocation that lives only in one replica's memory is lost on restart.
+            throw new IllegalArgumentException("host.identity.jwt.requireRevocation needs a durable, shared state store"
+                    + " (state.type derby-local or postgres); the in-memory store forgets revocations on restart");
+        }
+        // Gateway-side token revocation: the JWT verifier consults the gateway's shared state store.
+        if (settings.identity() instanceof JwtVerifier jwt && gateway.revocations() != null) {
+            jwt.bindRevocations(gateway.revocations());
+        }
+        SSLContext ssl = null;
         if (settings.keystore() != null) {
             KeyStore ks = KeyStore.getInstance(settings.keystoreType());
             try (InputStream in = Files.newInputStream(settings.keystore())) {
@@ -94,34 +137,24 @@ public final class AegisServer implements AutoCloseable {
             }
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             kmf.init(ks, settings.keystorePassword());
-            SSLContext ssl = SSLContext.getInstance("TLS");
+            ssl = SSLContext.getInstance("TLS");
             javax.net.ssl.TrustManager[] clientTrust = settings.requireClientCert()
                     ? clientTrustManagers(settings.clientCaFile()) : null;
             ssl.init(kmf.getKeyManagers(), clientTrust, null);
-            HttpsServer https = HttpsServer.create(addr, 128);
-            boolean needClientAuth = settings.requireClientCert();
-            https.setHttpsConfigurator(new HttpsConfigurator(ssl) {
-                @Override
-                public void configure(com.sun.net.httpserver.HttpsParameters params) {
-                    javax.net.ssl.SSLParameters p = getSSLContext().getDefaultSSLParameters();
-                    // Mutual TLS: a client without a certificate that chains to clientCaFile fails the handshake.
-                    p.setNeedClientAuth(needClientAuth);
-                    params.setSSLParameters(p);
-                }
-            });
-            server = https;
-        } else {
-            server = HttpServer.create(addr, 128);
         }
-        pool = new ThreadPoolExecutor(settings.threads(), settings.threads(), 60, TimeUnit.SECONDS,
-                new ArrayBlockingQueue<>(settings.threads() * 8), r -> {
-                    Thread t = new Thread(r, "aegis-http");
-                    t.setDaemon(true);
-                    return t;
-                }, new ThreadPoolExecutor.CallerRunsPolicy()); // overload: back-pressure on the accept thread
+        server = listener(new InetSocketAddress(settings.host(), settings.port()), ssl);
+        adminServer = settings.separateAdminListener()
+                ? listener(new InetSocketAddress(settings.adminHost(), settings.adminPort()), ssl) : null;
+        pool = boundedPool(settings.threads());
         server.setExecutor(pool);
         server.createContext(settings.mcpPath(), ex -> serve(ex, false));
-        server.createContext(settings.adminPath(), ex -> serve(ex, true));
+        if (adminServer == null) {
+            server.createContext(settings.adminPath(), ex -> serve(ex, true));
+        } else {
+            adminServer.setExecutor(pool);
+            adminServer.createContext(settings.adminPath(), ex -> serve(ex, true));
+            adminServer.createContext("/healthz", ex -> write(ex, McpHttpResponse.json(200, Map.of("status", "ok"))));
+        }
         if (gateway.metrics() != null) {
             // Authenticated like /mcp (metrics name tools and sources); optionally restricted to groups.
             server.createContext(settings.metricsPath(), this::metrics);
@@ -139,14 +172,100 @@ public final class AegisServer implements AutoCloseable {
         });
     }
 
+    /**
+     * Complete control: the admin API is never reachable by "any authenticated caller" and never
+     * shares the MCP listener, so an MCP client credential alone cannot reach an admin route, and
+     * JWT callers must carry token ids that the gateway can revoke.
+     */
+    static void checkCompleteControlPerimeter(boolean completeControl, OwnServerSecuritySettings settings) {
+        if (!completeControl) {
+            return;
+        }
+        if (settings.adminGroups().isEmpty()) {
+            throw new IllegalArgumentException("completeControl.enabled requires host.routes.adminGroups (the admin API"
+                    + " must not be open to every authenticated caller)");
+        }
+        if (!settings.separateAdminListener()) {
+            throw new IllegalArgumentException("completeControl.enabled requires host.adminListen (the admin API must"
+                    + " not share the MCP listener)");
+        }
+        if (settings.identity() instanceof JwtVerifier jwt
+                && !(jwt.idPolicy().requireJti() && jwt.idPolicy().requireRevocation())) {
+            throw new IllegalArgumentException("completeControl.enabled requires host.identity.jwt.requireJti and"
+                    + " requireRevocation (a stolen token must be revocable at the gateway)");
+        }
+    }
+
+    private HttpServer listener(InetSocketAddress addr, SSLContext ssl) throws IOException {
+        if (ssl == null) {
+            return HttpServer.create(addr, 128);
+        }
+        HttpsServer https = HttpsServer.create(addr, 128);
+        boolean needClientAuth = settings.requireClientCert();
+        https.setHttpsConfigurator(new HttpsConfigurator(ssl) {
+            @Override
+            public void configure(com.sun.net.httpserver.HttpsParameters params) {
+                javax.net.ssl.SSLParameters p = getSSLContext().getDefaultSSLParameters();
+                // Mutual TLS: a client without a certificate that chains to clientCaFile fails the handshake.
+                p.setNeedClientAuth(needClientAuth);
+                params.setSSLParameters(p);
+            }
+        });
+        return https;
+    }
+
     public void start() {
         server.start();
+        if (adminServer != null) {
+            adminServer.start();
+            LOG.log(System.Logger.Level.INFO, "Aegis admin API listening on " + settings.adminHost() + ":" + adminPort()
+                    + settings.adminPath());
+        }
         LOG.log(System.Logger.Level.INFO, "Aegis gateway listening on " + (settings.keystore() != null ? "https" : "http")
                 + "://" + settings.host() + ":" + port() + settings.mcpPath());
     }
 
     public int port() {
         return server.getAddress().getPort();
+    }
+
+    /** Port of the separate admin listener, or -1 when the admin API shares the MCP listener. */
+    public int adminPort() {
+        return adminServer == null ? -1 : adminServer.getAddress().getPort();
+    }
+
+    /** Pre-authentication limiter (diagnostics and tests). */
+    ClientAddressLimiter limiter() {
+        return limiter;
+    }
+
+    /**
+     * Pre-authentication gate: per-address request budget and failed-authentication lockout, applied
+     * before any credential is verified. Returns the client address when admitted, else null after
+     * answering 429 with Retry-After.
+     */
+    private String preAuth(HttpExchange ex) throws IOException {
+        java.net.InetSocketAddress remote = ex.getRemoteAddress();
+        String client = limiter.clientAddress(remote == null ? null : remote.getAddress(),
+                ex.getRequestHeaders().get("X-Forwarded-For"));
+        ClientAddressLimiter.Refusal r = limiter.beforeAuthentication(client, System.currentTimeMillis());
+        if (r != null) {
+            refuseBeforeBody(ex, McpHttpResponse.json(r.status(), Map.of("error", r.reason()),
+                    Map.of("Retry-After", Long.toString(r.retryAfterSeconds()))));
+            return null;
+        }
+        return client;
+    }
+
+    /**
+     * Counts a failure only when a credential was presented and rejected. An MCP client's first,
+     * unauthenticated request is part of OAuth discovery (it needs the 401 challenge) and is not an
+     * attack, so it never moves an address towards lockout.
+     */
+    private void afterAdmission(String client, HttpExchange ex, OwnServerPerimeter.Admission admission) {
+        if (!admission.allowed() && admission.status() == 401 && ex.getRequestHeaders().containsKey("Authorization")) {
+            limiter.authenticationFailed(client, System.currentTimeMillis());
+        }
     }
 
     private void serve(HttpExchange ex, boolean admin) throws IOException {
@@ -189,7 +308,7 @@ public final class AegisServer implements AutoCloseable {
         String path = ex.getRequestURI().getPath();
         String rel = path.length() > base.length() ? path.substring(base.length()) : "";
         if (!admin && !rel.isEmpty() && !"/".equals(rel)) {
-            write(ex, McpHttpResponse.json(404, Map.of("error", "not found")));
+            refuseBeforeBody(ex, McpHttpResponse.json(404, Map.of("error", "not found")));
             return;
         }
         Map<String, List<String>> headers = new LinkedHashMap<>();
@@ -202,7 +321,13 @@ public final class AegisServer implements AutoCloseable {
         // CORS policy belongs at the HTTP boundary. The shared MCP/admin handlers retain their own
         // origin check too, so Knox and embedding hosts get the same non-browser origin defense.
         if (origin != null && settings.cors().enabled() && !settings.cors().allowsOrigin(origin)) {
-            write(ex, McpHttpResponse.json(403, Map.of("error", "origin not allowed")));
+            refuseBeforeBody(ex, McpHttpResponse.json(403, Map.of("error", "origin not allowed")));
+            return;
+        }
+        // Pre-authentication limits per client address come first: a flood of bad tokens is refused
+        // by a map lookup, before any signature verification or JWKS fetch.
+        String client = preAuth(ex);
+        if (client == null) {
             return;
         }
         // Authenticate and admit the route before consuming an untrusted request body. The body is
@@ -212,8 +337,10 @@ public final class AegisServer implements AutoCloseable {
         OwnServerPerimeter.Admission admission = perimeter.admit(
                 admin ? OwnServerPerimeter.RouteGroup.ADMIN : OwnServerPerimeter.RouteGroup.MCP,
                 new McpHttpRequest(ex.getRequestMethod(), rel, headers, new byte[0], peer));
+        afterAdmission(client, ex, admission);
         if (!admission.allowed()) {
-            write(ex, McpHttpResponse.json(admission.status(), Map.of("error", admission.publicMessage()), admission.headers()));
+            refuseBeforeBody(ex, McpHttpResponse.json(admission.status(), Map.of("error", admission.publicMessage()),
+                    admission.headers()));
             return;
         }
         CallerIdentity caller = admission.caller();
@@ -356,12 +483,18 @@ public final class AegisServer implements AutoCloseable {
             write(ex, McpHttpResponse.empty(405, Map.of("Allow", "GET")));
             return;
         }
+        String client = preAuth(ex);
+        if (client == null) {
+            return;
+        }
         Map<String, List<String>> headers = new LinkedHashMap<>();
         ex.getRequestHeaders().forEach(headers::put);
         OwnServerPerimeter.Admission admission = perimeter.admit(OwnServerPerimeter.RouteGroup.METRICS,
                 new McpHttpRequest("GET", "", headers, new byte[0], verifiedPeerChain(ex)));
+        afterAdmission(client, ex, admission);
         if (!admission.allowed()) {
-            write(ex, McpHttpResponse.json(admission.status(), Map.of("error", admission.publicMessage()), admission.headers()));
+            refuseBeforeBody(ex, McpHttpResponse.json(admission.status(), Map.of("error", admission.publicMessage()),
+                    admission.headers()));
             return;
         }
         byte[] body = gateway.metrics().renderPrometheus().getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -400,6 +533,26 @@ public final class AegisServer implements AutoCloseable {
         return out.toByteArray();
     }
 
+    /**
+     * Answer before the request body is read. Drain any posted bytes and close the connection so a
+     * keep-alive client cannot reuse a half-consumed stream (JDK HttpClient on Windows then fails the
+     * next request with "HTTP/1.1 header parser received no bytes").
+     */
+    private void refuseBeforeBody(HttpExchange ex, McpHttpResponse r) throws IOException {
+        discardRequestBody(ex);
+        Map<String, String> headers = new LinkedHashMap<>(r.headers());
+        headers.put("Connection", "close");
+        write(ex, new McpHttpResponse(r.status(), headers, r.body()));
+    }
+
+    private static void discardRequestBody(HttpExchange ex) {
+        try (InputStream in = ex.getRequestBody()) {
+            in.transferTo(OutputStream.nullOutputStream());
+        } catch (IOException ignored) {
+            // Best-effort; the exchange close still tears the socket down.
+        }
+    }
+
     private void write(HttpExchange ex, McpHttpResponse r) throws IOException {
         r.headers().forEach((k, v) -> ex.getResponseHeaders().set(k, v));
         applyCorsHeaders(ex);
@@ -423,6 +576,9 @@ public final class AegisServer implements AutoCloseable {
     @Override
     public void close() {
         server.stop(1);
+        if (adminServer != null) {
+            adminServer.stop(1);
+        }
         pool.shutdownNow();
         gateway.close();
     }

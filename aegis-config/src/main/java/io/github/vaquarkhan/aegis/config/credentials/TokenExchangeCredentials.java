@@ -21,6 +21,7 @@ import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.Digests;
 import io.github.vaquarkhan.aegis.engine.spi.SubjectToken;
 import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -83,7 +84,7 @@ public final class TokenExchangeCredentials {
     private final String sourceId;
     private final Settings settings;
     private final Clock clock;
-    private final HttpClient http;
+    private final OutboundHttp http;
     private final Map<String, Cached> cache = new LinkedHashMap<>(64, 0.75f, true) {
         private static final long serialVersionUID = 1L;
 
@@ -94,11 +95,22 @@ public final class TokenExchangeCredentials {
     };
 
     public TokenExchangeCredentials(String sourceId, Settings settings, Clock clock) {
+        this(sourceId, settings, clock, OutboundHttp.jdk(HttpClient.newBuilder().connectTimeout(settings.timeout())
+                .followRedirects(HttpClient.Redirect.NEVER).build()));
+    }
+
+    /**
+     * @param transport the gateway passes a pinned transport so every caller's subject token is sent
+     *                  only to an address the egress control approved in the same step
+     */
+    public TokenExchangeCredentials(String sourceId, Settings settings, Clock clock, OutboundHttp transport) {
+        if (transport == null) {
+            throw new IllegalArgumentException("an outbound transport is required");
+        }
         this.sourceId = sourceId;
         this.settings = settings;
         this.clock = clock == null ? Clock.systemUTC() : clock;
-        this.http = HttpClient.newBuilder().connectTimeout(settings.timeout())
-                .followRedirects(HttpClient.Redirect.NEVER).build();
+        this.http = transport;
     }
 
     public URI tokenEndpoint() {
@@ -139,7 +151,7 @@ public final class TokenExchangeCredentials {
                 .header("Accept", "application/json")
                 .header("Authorization", "Basic " + basic)
                 .POST(HttpRequest.BodyPublishers.ofString(form.toString(), StandardCharsets.UTF_8)).build();
-        BoundedHttp.Result r = BoundedHttp.send(http, req, 64 * 1024, settings.timeout().toMillis());
+        BoundedHttp.Result r = http.send(req, 64 * 1024, settings.timeout().toMillis());
         Map<String, Object> body;
         try {
             body = Json.parseObject(r.body(), JsonLimits.DEFAULT);

@@ -391,7 +391,7 @@ Each entry has five parts:
 - **Design:** `config.http.HttpToolExecutor`, `HttpToolSpec`.
 - **Tests:** `GatewayFactoryTest.httpTemplatesAreInjectionSafe`,
   `GatewayFactoryTest.pathTypedPlaceholderAcceptsDepthButNotTraversal`, `ExampleConfigsTest` (Flink,
-  Spark, Iceberg, Kafka Connect), `AdapterConfigsTest` (**25 deployable adapter configurations and 116 tools**),
+  Spark, Iceberg, Kafka Connect), `AdapterConfigsTest` (**27 deployable adapter configurations and 123 tools**),
   `RealFlinkTest`, `RealIcebergRestCatalogTest`, `RealKafkaTest`, `RealSparkTest`.
 
 ## F22a. The 0.1 Java adapter modules become configuration
@@ -400,7 +400,7 @@ Each entry has five parts:
   URLs by string concatenation, its own `tools.yaml`, its own test and its own release surface. Every
   new engine meant new code to review, and every adapter was a place a governance mistake could hide.
 - **Solution:** Twenty-four usable 0.1 adapter surfaces plus the new Apache Burr (incubating) integration are now **25
-  deployable adapter configurations and 116 tools** under `adopters/configurations/adapters/`. REST surfaces use
+  deployable adapter configurations and 123 tools** under `adopters/configurations/adapters/`. REST surfaces use
   declarative `http` tools. Hive and Calcite use the JDBC converter. ZooKeeper uses its client-protocol converter for znodes and HTTP for AdminServer commands. Arrow, Beam, Hudi, Kudu, and Ozone are planned typed sources for a later release. The shared governance engine remains the sole policy owner: arguments are
   schema-validated; named objects become typed resources; writes need approval; destructive calls need a
   dry-run receipt.
@@ -418,7 +418,7 @@ Each entry has five parts:
     ZooKeeper sources demonstrate the typed converter seam.
 - **Design:** `adopters/configurations/adapters/*/*.yaml`, `aegis-source-jdbc` and
   `aegis-source-zookeeper`.
-- **Tests:** `AdapterConfigsTest` loads all **25 deployable adapter configurations and 116 tools** and exercises
+- **Tests:** `AdapterConfigsTest` loads all **27 deployable adapter configurations and 123 tools** and exercises
   their governance flow. `DocumentationClaimsTest` binds the published inventory to those files.
   `JdbcToolSourceTest` and `ZooKeeperToolSourceTest` exercise converter behavior against actual Apache
   software. `ZooKeeperAdminCommandsTest` checks command names against ZooKeeper's own registry.

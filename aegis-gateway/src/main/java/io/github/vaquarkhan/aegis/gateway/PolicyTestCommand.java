@@ -85,7 +85,8 @@ final class PolicyTestCommand {
             // Policy evaluation never executes an executor. Supplying an opaque value for every
             // environment lookup preserves signed source blocks while avoiding secret resolution.
             try (Gateway g = GatewayFactory.build(raw, BuildContext.defaults(cfg.getParent())
-                    .withEnv(name -> "AEGIS_REQUIRE_SERVER_CATALOG_KEY".equals(name)
+                    .withEnv(name -> GatewayFactory.REQUIRED_CATALOG_KEY.equals(name)
+                            || GatewayFactory.REQUIRED_ATTESTATION_KEY.equals(name)
                             ? null : "policy-test-non-secret-placeholder"))) {
                 for (Map<String, Object> c : cases) {
                     String name = c.get("name") instanceof String s ? s : "case " + (checked + failed + 1);

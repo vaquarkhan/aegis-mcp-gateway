@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.engine.catalog;
 
+import io.github.vaquarkhan.aegis.engine.model.Digests;
 import io.github.vaquarkhan.aegis.engine.control.ControlMode;
 import io.github.vaquarkhan.aegis.engine.control.InjectionScreen;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
@@ -168,7 +169,7 @@ public final class ToolCatalog implements AutoCloseable {
                 }
             }
         }
-        boolean changed = prev == null || !prev.digest().equals(digest) || prev.status() != e.status();
+        boolean changed = prev == null || !Digests.constantTimeEquals(prev.digest(), digest) || prev.status() != e.status();
         if (changed) {
             event(e.active() ? "TOOL_ACTIVE" : "TOOL_QUARANTINED", tool.sourceId(), tool.exposedName(),
                     e.reason() + " digest=" + digest);
@@ -191,7 +192,7 @@ public final class ToolCatalog implements AutoCloseable {
      */
     public synchronized boolean accept(String exposedName, String expectedDigest) throws Exception {
         Entry e = entries.get(exposedName);
-        if (e == null || e.active() || expectedDigest == null || !expectedDigest.equals(e.digest())) {
+        if (e == null || e.active() || expectedDigest == null || !Digests.constantTimeEquals(expectedDigest, e.digest())) {
             return false;
         }
         if (!integrity.accept(exposedName, expectedDigest)) {

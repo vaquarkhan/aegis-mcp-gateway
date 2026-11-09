@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.source.a2a;
 
+import io.github.vaquarkhan.aegis.config.BuildContext;
 import io.github.vaquarkhan.aegis.config.ConfigNode;
 import io.github.vaquarkhan.aegis.config.spi.ToolSourceFactory;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
@@ -49,6 +50,20 @@ public final class A2aToolSourceFactory implements ToolSourceFactory {
 
     @Override
     public ToolSource create(String id, ConfigNode settings) {
+        return create(id, settings, (io.github.vaquarkhan.aegis.mcp.http.OutboundHttp) null);
+    }
+
+    /**
+     * Gateway construction: the card fetch and every agent call use the gateway's pinned outbound
+     * transport, so they connect only to addresses the egress control approved in the same step.
+     */
+    @Override
+    public ToolSource create(String id, ConfigNode settings, BuildContext context) {
+        return create(id, settings, context == null ? null
+                : context.outbound(java.time.Duration.ofMillis(Math.min(settings.integer("cardTimeoutMs", 5_000), 5_000))));
+    }
+
+    private ToolSource create(String id, ConfigNode settings, io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
         URI card = url(settings, "cardUrl", true);
         URI pinned = url(settings, "endpointUrl", false);
         String toolName = settings.string("toolName", id.replace('-', '_'));
@@ -67,7 +82,9 @@ public final class A2aToolSourceFactory implements ToolSourceFactory {
         if (cardTimeout < 100 || cardTimeout > 60_000) {
             throw settings.error("cardTimeoutMs", "must be between 100 and 60000");
         }
-        return new A2aToolSource(id, card, pinned, toolName, (int) maxText, (int) maxBytes, cardTimeout);
+        return transport == null
+                ? new A2aToolSource(id, card, pinned, toolName, (int) maxText, (int) maxBytes, cardTimeout)
+                : new A2aToolSource(id, card, pinned, toolName, (int) maxText, (int) maxBytes, cardTimeout, transport);
     }
 
     private static URI url(ConfigNode settings, String key, boolean required) {

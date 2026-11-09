@@ -77,11 +77,15 @@ public final class TestStdioMcpServer {
                     result = Map.of("tools", List.of(
                             Map.of("name", "echo", "description", "Echo text.", "inputSchema",
                                     Map.of("type", "object", "properties", Map.of("text", Map.of("type", "string")))),
+                            Map.of("name", "hang", "description", "Sleep for timeout testing.", "inputSchema", Map.of("type", "object")),
                             Map.of("name", "env_probe", "description", "Report env.", "inputSchema", Map.of("type", "object"))));
                 }
                 case "tools/call" -> {
                     String name = (String) params.get("name");
                     Map<String, Object> a = JsonValues.objectOrEmpty(params, "arguments");
+                    if ("hang".equals(name)) {
+                        Thread.sleep(30_000);
+                    }
                     String text = "env_probe".equals(name)
                             ? "secret-visible=" + (System.getenv("AEGIS_TEST_SECRET") != null)
                             : "echo:" + a.get("text") + (modern ? " (modern)" : " (legacy)");

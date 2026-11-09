@@ -50,8 +50,10 @@ import java.util.function.Function;
  *     # type: spiffe -> spiffe: {trustDomain: example.org, ids: [{id: spiffe://example.org/agent, actor: a, groups: [..]}]}
  *     type: jwt
  *     jwt: {issuer: https://idp.example.com, audience: aegis, algorithms: [RS256],
- *           jwksUri: https://idp.example.com/jwks, groupsClaim: groups}
+ *           jwksUri: https://idp.example.com/jwks, groupsClaim: groups,
+ *           requireJti: true, requireRevocation: true}   # token ids + gateway-side revocation (POST adminPath/revocations/...)
  *   routes: {mcpGroups: [mcp-users], adminGroups: [mcp-admins]} # empty groups means any authenticated caller
+ *   #       (admin routes then rely on their own per-route checks: approver, requester, verifier groups)
  *   #       mcpScopes / adminScopes: [..]  optional OAuth scopes the token must carry (jwt only); a valid
  *   #       token without them gets 403 insufficient_scope with the required scope in WWW-Authenticate
  *   cors:                                                   # off unless allowedOrigins is non-empty
@@ -62,6 +64,9 @@ import java.util.function.Function;
  *     maxAgeSeconds: 600
  *     allowCredentials: false
  *   stdio: {actor: local-dev, groups: [analysts]}
+ *   limits: {requestsPerMinute: 1200, authFailuresPerMinute: 20, lockoutSeconds: 300,   # per client address, pre-auth; off unless set
+ *            trustedProxies: [10.0.0.0/8], maxTracked: 100000}   # X-Forwarded-For believed only from these
+ *   adminListen: {host: 127.0.0.1, port: 9443}             # optional: admin API on its own listener
  *   metrics: {path: /metrics, allowedGroups: [operators]}   # Prometheus text; authenticated like /mcp; optional requiredScopes
  *   oauth:                                                 # RFC 9728, required by MCP authorization
  *     resource: https://aegis.example.com/mcp              # canonical URI; tokens must be bound to it
@@ -76,10 +81,17 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
                                  String metricsPath, Set<String> metricsGroups, Set<String> mcpGroups,
                                  Set<String> adminGroups, CorsPolicy cors, ProtectedResourceMetadata oauth,
                                  Map<OwnServerPerimeter.RouteGroup, Set<String>> requiredScopes,
-                                 boolean requireClientCert, Path clientCaFile) {
+                                 boolean requireClientCert, Path clientCaFile,
+                                 ClientAddressLimiter.Settings limits, String adminHost, int adminPort) {
 
     public OwnServerSecuritySettings {
         requiredScopes = requiredScopes == null ? Map.of() : Map.copyOf(requiredScopes);
+        limits = limits == null ? ClientAddressLimiter.Settings.DEFAULT : limits;
+    }
+
+    /** True when the admin API has its own listener ({@code host.adminListen}) instead of sharing the MCP one. */
+    public boolean separateAdminListener() {
+        return adminPort >= 0;
     }
 
     /** OAuth scopes a token must carry to reach {@code route}; empty means no scope requirement. */
@@ -156,6 +168,7 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
         String adminPath = listen.string("adminPath", "/aegis/v1");
         int threads = (int) listen.integer("threads", 32);
         int maxRequestBytes = (int) listen.integer("maxRequestBytes", 1 << 20);
+        boolean allowPlaintext = listen.bool("allowPlaintext", false);
 
         ConfigNode tls = root.child("tls");
         Path keystore = null;
@@ -169,6 +182,18 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
                 throw new ConfigException("config.host.tls.keystorePasswordEnv names " + pwEnv + " which is not set");
             }
             pw = v.toCharArray();
+        }
+        if (keystore == null && !isLoopback(host) && !allowPlaintext) {
+            // Every identity type here is a bearer secret (JWT, static token) or needs TLS (SPIFFE). A
+            // non-loopback plaintext listener puts those secrets on the wire for replay, which is the most
+            // common pattern in 2026 MCP advisories. Operators who terminate TLS in front (a sidecar or
+            // ingress) say so explicitly instead of getting it by omission.
+            throw new ConfigException("config.host.listen.host " + host + " is not a loopback address and config.host.tls.keystore"
+                    + " is not set: bearer tokens would travel in cleartext. Configure tls.keystore, or set"
+                    + " config.host.listen.allowPlaintext: true when TLS is terminated by a trusted sidecar or ingress");
+        }
+        if (allowPlaintext && (keystore != null || isLoopback(host))) {
+            throw listen.error("allowPlaintext", "has no effect with tls.keystore set or a loopback listen.host; remove it");
         }
         // Mutual TLS: the handshake itself refuses a client without a certificate that chains to clientCaFile.
         String clientAuth = tls.string("clientAuth", "none").toLowerCase(Locale.ROOT);
@@ -211,7 +236,10 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
                 resolver = new JwtVerifier(new JwtVerifier.Settings(j.requiredString("issuer"), j.requiredString("audience"),
                         Set.copyOf(algs.isEmpty() ? List.of("RS256") : algs), secret, jwks == null ? null : URI.create(jwks),
                         j.string("groupsClaim", "groups"), j.string("subjectClaim", "sub"), j.integer("clockSkewSeconds", 60),
-                        j.integer("jwksTtlSeconds", 3600), j.integer("jwksRefreshCooldownSeconds", 30)), clock);
+                        j.integer("jwksTtlSeconds", 3600), j.integer("jwksRefreshCooldownSeconds", 30)), clock,
+                        // requireJti: refuse tokens without a token id. requireRevocation: refuse every token
+                        // until the gateway's shared revocation list is bound (AegisServer binds it at start).
+                        new JwtVerifier.TokenIdPolicy(j.bool("requireJti", false), j.bool("requireRevocation", false)));
             } catch (IllegalArgumentException e) {
                 throw new ConfigException("config.host.identity.jwt: " + e.getMessage());
             }
@@ -353,9 +381,53 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
                 }
             }
         }
+        // Pre-authentication limits per client address (before any token is verified).
+        ConfigNode lim = root.child("limits");
+        ClientAddressLimiter.Settings limits;
+        try {
+            limits = new ClientAddressLimiter.Settings(lim.integer("requestsPerMinute", 0),
+                    lim.integer("authFailuresPerMinute", 0), lim.integer("lockoutSeconds", 300),
+                    lim.strings("trustedProxies"), (int) lim.integer("maxTracked", 100_000));
+            new ClientAddressLimiter(limits); // validates trustedProxies now, not on the first request
+        } catch (IllegalArgumentException e) {
+            throw new ConfigException("config.host.limits: " + e.getMessage());
+        }
+        // Optional separate admin listener: the admin API is then not reachable on the MCP port at all.
+        ConfigNode adminListen = root.child("adminListen");
+        String adminHost = null;
+        int adminPort = -1;
+        if (adminListen.has("port")) {
+            adminHost = adminListen.string("host", "127.0.0.1");
+            adminPort = (int) adminListen.integer("port", 0);
+            if (adminPort < 0 || adminPort > 65_535 || (adminPort == port && port != 0 && adminHost.equals(host))) {
+                throw adminListen.error("port", "must be a free port distinct from listen.port");
+            }
+            if (keystore == null && !isLoopback(adminHost) && !allowPlaintext) {
+                throw adminListen.error("host", "is not a loopback address and tls.keystore is not set");
+            }
+        } else if (adminListen.has("host")) {
+            throw adminListen.error("host", "needs adminListen.port");
+        }
         root.finish();
         return new OwnServerSecuritySettings(host, port, mcpPath, adminPath, threads, keystore, pw, ksType, resolver, stdioId, maxRequestBytes,
-                metricsPath, metricsGroups, mcpGroups, adminGroups, corsPolicy, oauth, requiredScopes, requireClientCert, clientCaFile);
+                metricsPath, metricsGroups, mcpGroups, adminGroups, corsPolicy, oauth, requiredScopes, requireClientCert, clientCaFile,
+                limits, adminHost, adminPort);
+    }
+
+    /** True for localhost and loopback IP literals; a host NAME is never resolved here. */
+    static boolean isLoopback(String host) {
+        String h = host == null ? "" : host.trim().toLowerCase(Locale.ROOT);
+        if (h.isEmpty() || "localhost".equals(h)) {
+            return true;
+        }
+        if (!h.matches("[0-9a-f:.\\[\\]]+")) {
+            return false;
+        }
+        try {
+            return java.net.InetAddress.getByName(h.replace("[", "").replace("]", "")).isLoopbackAddress();
+        } catch (java.net.UnknownHostException e) {
+            return false;
+        }
     }
 
     /** RFC 6749 section 3.3 scope-token: printable ASCII without space, double quote or backslash. */

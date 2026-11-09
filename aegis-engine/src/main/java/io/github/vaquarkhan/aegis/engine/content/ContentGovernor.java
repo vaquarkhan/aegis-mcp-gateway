@@ -221,7 +221,7 @@ public final class ContentGovernor {
      */
     public synchronized boolean acceptPrompt(String exposedName, String expectedDigest) throws Exception {
         PromptEntry e = prompts.get(exposedName);
-        if (e == null || e.active() || expectedDigest == null || !expectedDigest.equals(e.digest())) {
+        if (e == null || e.active() || expectedDigest == null || !Digests.constantTimeEquals(expectedDigest, e.digest())) {
             return false;
         }
         if (!integrity.accept(pinKey(exposedName), expectedDigest)) {
@@ -379,7 +379,7 @@ public final class ContentGovernor {
         List<Set<String>> spec = argumentSpec(def);
         PromptEntry e = new PromptEntry(exposed, JsonValues.string(def, "name"), cs.sourceId(),
                 Collections.unmodifiableMap(advertised), Set.copyOf(spec.get(0)), Set.copyOf(spec.get(1)), digest, active, reason);
-        boolean changed = prev == null || !prev.digest().equals(digest) || prev.active() != active;
+        boolean changed = prev == null || !Digests.constantTimeEquals(prev.digest(), digest) || prev.active() != active;
         if (changed) {
             event(active ? "PROMPT_ACTIVE" : "PROMPT_QUARANTINED", cs.sourceId(), exposed, reason + " digest=" + digest);
         }

@@ -39,7 +39,8 @@ public final class ConfigLoader {
 
     public static Map<String, Object> load(Path file) throws IOException {
         byte[] bytes = Files.readAllBytes(file);
-        String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
+        Path fileName = file.getFileName();
+        String name = fileName == null ? "" : fileName.toString().toLowerCase(Locale.ROOT);
         if (name.endsWith(".yaml") || name.endsWith(".yml")) {
             return parseYaml(new String(bytes, java.nio.charset.StandardCharsets.UTF_8), file.toString());
         }

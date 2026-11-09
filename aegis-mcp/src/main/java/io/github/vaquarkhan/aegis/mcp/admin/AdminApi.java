@@ -20,6 +20,7 @@ import io.github.vaquarkhan.aegis.engine.GovernanceEngine;
 import io.github.vaquarkhan.aegis.engine.approval.ApprovalService;
 import io.github.vaquarkhan.aegis.engine.catalog.ToolCatalog;
 import io.github.vaquarkhan.aegis.engine.content.ContentGovernor;
+import io.github.vaquarkhan.aegis.engine.control.TokenRevocations;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpResponse;
@@ -57,6 +58,11 @@ public final class AdminApi {
     private final Set<String> auditVerifierGroups;
     private final AuditVerifier auditVerifier;
     private final Set<String> allowedOrigins;
+    private final Set<String> revokerGroups;
+    private final TokenRevocations revocations;
+    private final java.time.Duration revocationRetention;
+    private final Set<String> resultReleaseGroups;
+    private final java.time.Clock clock;
 
     public AdminApi(GovernanceEngine engine, Set<String> approverGroups, Set<String> allowedOrigins) {
         this(engine, null, approverGroups, Set.of(), null, allowedOrigins);
@@ -73,12 +79,70 @@ public final class AdminApi {
      */
     public AdminApi(GovernanceEngine engine, ContentGovernor content, Set<String> approverGroups,
             Set<String> auditVerifierGroups, AuditVerifier auditVerifier, Set<String> allowedOrigins) {
+        this(engine, content, approverGroups, auditVerifierGroups, auditVerifier, allowedOrigins, null);
+    }
+
+    /** @param clock the gateway clock (O-13); null uses the system clock */
+    public AdminApi(GovernanceEngine engine, ContentGovernor content, Set<String> approverGroups,
+            Set<String> auditVerifierGroups, AuditVerifier auditVerifier, Set<String> allowedOrigins, java.time.Clock clock) {
+        this.clock = clock == null ? java.time.Clock.systemUTC() : clock;
         this.engine = engine;
         this.content = content;
         this.approverGroups = Set.copyOf(approverGroups);
         this.auditVerifierGroups = auditVerifierGroups == null ? Set.of() : Set.copyOf(auditVerifierGroups);
         this.auditVerifier = auditVerifier;
         this.allowedOrigins = allowedOrigins == null ? Set.of() : Set.copyOf(allowedOrigins);
+        this.revokerGroups = Set.of();
+        this.revocations = null;
+        this.revocationRetention = java.time.Duration.ofHours(24);
+        this.resultReleaseGroups = Set.of();
+    }
+
+    private AdminApi(AdminApi base, Set<String> revokerGroups, TokenRevocations revocations, java.time.Duration retention) {
+        this(base, revokerGroups, revocations, retention, base.resultReleaseGroups);
+    }
+
+    private AdminApi(AdminApi base, Set<String> revokerGroups, TokenRevocations revocations, java.time.Duration retention,
+                     Set<String> resultReleaseGroups) {
+        this.clock = base.clock;
+        this.engine = base.engine;
+        this.content = base.content;
+        this.approverGroups = base.approverGroups;
+        this.auditVerifierGroups = base.auditVerifierGroups;
+        this.auditVerifier = base.auditVerifier;
+        this.allowedOrigins = base.allowedOrigins;
+        this.revokerGroups = revokerGroups == null ? Set.of() : Set.copyOf(revokerGroups);
+        this.revocations = revocations;
+        this.revocationRetention = retention == null || retention.isNegative() || retention.isZero()
+                ? java.time.Duration.ofHours(24) : retention;
+        this.resultReleaseGroups = resultReleaseGroups == null ? Set.of() : Set.copyOf(resultReleaseGroups);
+    }
+
+    /**
+     * Same API plus handle-bound result release for {@code outputPolicy: HANDLE_ONLY}:
+     * <pre>
+     *   POST /results/{handle}/release   take-once release of the redacted result (result release groups)
+     * </pre>
+     * The identity that produced the handle can never release it (the model's caller must not be able
+     * to read what the policy withheld from it), the releaser must be non-delegated, and the intent is
+     * journaled before the data leaves the store.
+     */
+    public AdminApi withResultRelease(Set<String> groups) {
+        return new AdminApi(this, revokerGroups, revocations, revocationRetention, groups);
+    }
+
+    /**
+     * Same API plus the token revocation routes:
+     * <pre>
+     *   POST /revocations/subject/{subject}   refuse every token for subject issued until now (revokers)
+     *   POST /revocations/token/{jti}         refuse one token id (revokers)
+     * </pre>
+     * The issuer is the caller's verified issuer unless one {@code Aegis-Token-Issuer} header names
+     * another. An empty {@code revokerGroups} disables the routes (403): revocation is never open
+     * to every authenticated caller.
+     */
+    public AdminApi withRevocations(Set<String> revokerGroups, TokenRevocations revocations, java.time.Duration retention) {
+        return new AdminApi(this, revokerGroups, revocations, retention);
     }
 
     public McpHttpResponse handle(McpHttpRequest req, CallerIdentity caller) {
@@ -115,6 +179,14 @@ public final class AdminApi {
                     // The endpoint intentionally withholds the configured file name and verifier diagnostics.
                     return McpHttpResponse.json(503, Map.of("error", "audit verification unavailable"));
                 }
+            }
+            if (parts.length >= 3 && "revocations".equals(parts[0]) && revocations != null && "POST".equals(req.method())
+                    && ("subject".equals(parts[1]) || "token".equals(parts[1]))) {
+                return revoke(req, caller, parts[1], String.join("/", java.util.Arrays.copyOfRange(parts, 2, parts.length)));
+            }
+            if (parts.length == 3 && "results".equals(parts[0]) && "release".equals(parts[2]) && "POST".equals(req.method())
+                    && engine.resultHandles() != null) {
+                return releaseResult(caller, parts[1]);
             }
             if (parts.length >= 1 && "catalog".equals(parts[0])) {
                 if (!caller.inAnyGroup(approverGroups)) {
@@ -195,6 +267,109 @@ public final class AdminApi {
         } catch (Exception e) {
             return McpHttpResponse.json(500, Map.of("error", "admin operation failed (" + e.getClass().getSimpleName() + ")"));
         }
+    }
+
+    private McpHttpResponse releaseResult(CallerIdentity caller, String handle) {
+        if (resultReleaseGroups.isEmpty() || !caller.inAnyGroup(resultReleaseGroups)) {
+            return McpHttpResponse.json(403, Map.of("error", "caller is not in a result release group"));
+        }
+        if (!caller.actorChain().isEmpty()
+                || !ApprovalService.identityKey(caller.actor()).equals(ApprovalService.identityKey(caller.effectiveSubject()))) {
+            return McpHttpResponse.json(403, Map.of("error", "result release must be made by a non-delegated identity"));
+        }
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("handle", handle);
+        try {
+            engine.journalAdministrative("RESULT_RELEASE_INTENT", caller, details);
+        } catch (Exception e) {
+            return McpHttpResponse.json(503, Map.of("error", "the audit journal could not record this release, so it was not made"));
+        }
+        if (engine.resultHandles().producer(handle).map(caller.principalKey()::equals).orElse(false)) {
+            details.put("refused", "the producer of a handle cannot release it");
+            try {
+                engine.journalAdministrative("RESULT_RELEASE_REFUSED", caller, details);
+            } catch (Exception ignored) {
+                // refusal stands
+            }
+            return McpHttpResponse.json(403, Map.of("error", "the identity that produced this handle cannot release it"));
+        }
+        java.util.Optional<io.github.vaquarkhan.aegis.engine.control.ResultHandleStore.Entry> taken =
+                engine.resultHandles().take(handle);
+        if (taken.isEmpty()) {
+            return McpHttpResponse.json(404, Map.of("error", "unknown, expired or already released handle"));
+        }
+        io.github.vaquarkhan.aegis.engine.control.ResultHandleStore.Entry e = taken.get();
+        details.put("tool", e.tool());
+        details.put("requestId", e.requestId());
+        try {
+            engine.journalAdministrative("RESULT_RELEASE_RESULT", caller, details);
+        } catch (Exception ignored) {
+            // intent already journaled
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("handle", handle);
+        out.put("tool", e.tool());
+        out.put("requestId", e.requestId());
+        out.put("result", e.body());
+        return McpHttpResponse.json(200, out);
+    }
+
+    /**
+     * Token revocation: only revoker groups, only a non-delegated identity, and the intent is
+     * journaled before the entry is written (if the journal is down, nothing is revoked and the
+     * operator is told, so they can retry or revoke at the identity provider).
+     */
+    private McpHttpResponse revoke(McpHttpRequest req, CallerIdentity caller, String kind, String value) {
+        if (revokerGroups.isEmpty() || !caller.inAnyGroup(revokerGroups)) {
+            return McpHttpResponse.json(403, Map.of("error", "caller is not in a revoker group"));
+        }
+        if (!caller.actorChain().isEmpty()
+                || !ApprovalService.identityKey(caller.actor()).equals(ApprovalService.identityKey(caller.effectiveSubject()))) {
+            return McpHttpResponse.json(403, Map.of("error", "revocation must be made by a non-delegated identity"));
+        }
+        if (value == null || value.isBlank() || value.length() > 1024) {
+            return McpHttpResponse.json(400, Map.of("error", kind + " is required"));
+        }
+        String issuer = caller.issuer();
+        if (req.headerCount("Aegis-Token-Issuer") > 1) {
+            return McpHttpResponse.json(400, Map.of("error", "at most one Aegis-Token-Issuer header"));
+        }
+        if (req.header("Aegis-Token-Issuer") != null && !req.header("Aegis-Token-Issuer").isBlank()) {
+            issuer = req.header("Aegis-Token-Issuer").trim();
+        }
+        if (!revocations.acceptsIssuer(issuer)) {
+            // O-7: refuse a revocation no verifier would ever consult (for example a static-token admin
+            // revoking under issuer aegis-static) instead of answering 200 and revoking nothing useful.
+            return McpHttpResponse.json(400, Map.of("error", "no token verifier on this gateway consults issuer '" + issuer
+                    + "'; name the JWT issuer in Aegis-Token-Issuer"));
+        }
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("kind", kind);
+        details.put("issuer", issuer);
+        // The value is journaled as a digest: a token id or subject is an identifier, not an audit secret,
+        // but the digest is enough to correlate with the identity provider and keeps the journal minimal.
+        details.put("valueDigest", io.github.vaquarkhan.aegis.engine.model.Digests.sha256Hex(value));
+        try {
+            engine.journalAdministrative("TOKEN_REVOKE_INTENT", caller, details);
+        } catch (Exception e) {
+            return McpHttpResponse.json(503, Map.of("error", "the audit journal could not record this revocation, so it was not made"));
+        }
+        try {
+            if ("subject".equals(kind)) {
+                java.time.Instant cutoff = revocations.revokeSubject(issuer, value, revocationRetention);
+                details.put("issuedAtOrBefore", cutoff.toString());
+            } else {
+                revocations.revokeToken(issuer, value, clock.instant().plus(revocationRetention));
+            }
+        } catch (IllegalArgumentException e) {
+            return McpHttpResponse.json(400, Map.of("error", e.getMessage()));
+        }
+        try {
+            engine.journalAdministrative("TOKEN_REVOKE_RESULT", caller, details);
+        } catch (Exception e) {
+            // The intent record already names the operator and the entry; the result is best effort.
+        }
+        return McpHttpResponse.json(200, Map.of("revoked", kind, "issuer", issuer));
     }
 
     /**

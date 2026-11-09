@@ -88,10 +88,17 @@ public final class RemoteHook implements GovernanceHook {
     private final boolean includeResult;
     private final int maxResponseBytes;
     private final Set<Phase> phases;
-    private final HttpClient http;
+    private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
 
     public RemoteHook(String name, URI url, Duration timeout, Map<String, String> headers, boolean includeArguments,
                       boolean includeResult, int maxResponseBytes, Set<Phase> phases) {
+        this(name, url, timeout, headers, includeArguments, includeResult, maxResponseBytes, phases, null);
+    }
+
+    /** @param transport the gateway passes a pinned transport bound to the egress control (null = JDK client) */
+    public RemoteHook(String name, URI url, Duration timeout, Map<String, String> headers, boolean includeArguments,
+                      boolean includeResult, int maxResponseBytes, Set<Phase> phases,
+                      io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("a remote hook needs a name");
         }
@@ -106,8 +113,8 @@ public final class RemoteHook implements GovernanceHook {
         this.includeResult = includeResult;
         this.maxResponseBytes = Math.min(Math.max(maxResponseBytes, 256), MAX_RESPONSE_BYTES);
         this.phases = phases == null || phases.isEmpty() ? Set.copyOf(EnumSet.of(Phase.BEFORE)) : Set.copyOf(phases);
-        this.http = HttpClient.newBuilder().connectTimeout(this.timeout)
-                .followRedirects(HttpClient.Redirect.NEVER).build();
+        this.http = transport != null ? transport : io.github.vaquarkhan.aegis.mcp.http.OutboundHttp.jdk(
+                HttpClient.newBuilder().connectTimeout(this.timeout).followRedirects(HttpClient.Redirect.NEVER).build());
     }
 
     @Override
@@ -193,7 +200,7 @@ public final class RemoteHook implements GovernanceHook {
                 .POST(HttpRequest.BodyPublishers.ofByteArray(Json.writeBytes(body)));
         headers.forEach(b::header);
         io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.Result resp =
-                io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.send(http, b.build(), maxResponseBytes, timeout.toMillis());
+                http.send(b.build(), maxResponseBytes, timeout.toMillis());
         if (resp.status() != 200) {
             throw new HookDenied(null, "the hook endpoint returned HTTP " + resp.status());
         }

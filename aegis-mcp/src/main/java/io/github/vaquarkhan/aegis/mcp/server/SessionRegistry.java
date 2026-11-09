@@ -64,6 +64,15 @@ public final class SessionRegistry {
                     .ifPresent(s -> sessions.remove(s.id(), s));
         }
         if (sessions.size() >= maxSessions) {
+            // Still full after sweeping idle sessions and this caller's own share: evict the globally least
+            // recently used session. The evicted client re-initialises on its next call (one round trip);
+            // refusing here instead would let a few hundred principals, each holding their 32 allowed
+            // sessions, lock every other caller out with 503 until the idle TTL passes.
+            sessions.values().stream()
+                    .min(java.util.Comparator.comparingLong(Session::lastSeen))
+                    .ifPresent(s -> sessions.remove(s.id(), s));
+        }
+        if (sessions.size() >= maxSessions) {
             return Optional.empty();
         }
         byte[] b = new byte[32];

@@ -69,9 +69,9 @@ class Coverage01VsTwoTest {
 
     static final int EXPECTED_01_ROWS = 156;
     static final int EXPECTED_01_ENGINES = 33;
-    /** All configuration files participating in this comparison, including Burr's 10-tool addition. */
-    static final int EXPECTED_SHIPPED_TOOLS = 165;
-    /** Non-Burr 2.0 tools participating in the comparison; this includes 2.0 additions as well as successors. */
+    /** All configuration files in this comparison: 155 0.1-successor surface + 10 Burr + 4 AsterixDB + 3 SkyWalking. */
+    static final int EXPECTED_SHIPPED_TOOLS = 172;
+    /** The 0.1-successor comparison surface, excluding the engines that are new in 2.0 (Burr, AsterixDB, SkyWalking). */
     static final int EXPECTED_COMPARABLE_TOOLS = 155;
 
     /** 0.1 {@code engine/tool} to the 2.0 tool name(s) that carry it. */
@@ -383,7 +383,11 @@ class Coverage01VsTwoTest {
     void thePublishedTwoZeroSurfaceMatchesTheEvidenceCount() throws Exception {
         Map<String, Map<String, String>> now = shipped();
         int total = now.values().stream().mapToInt(Map::size).sum();
-        int comparable = total - now.getOrDefault("burr", Map.of()).size();
+        // Engines new in 2.0 have no 0.1 predecessor, so they are excluded from the 0.1-successor surface.
+        int newInTwoZero = now.getOrDefault("burr", Map.of()).size()
+                + now.getOrDefault("asterixdb", Map.of()).size()
+                + now.getOrDefault("skywalking", Map.of()).size();
+        int comparable = total - newInTwoZero;
         assertEquals(EXPECTED_SHIPPED_TOOLS, total, "the published total changed; update the coverage and claim matrix");
         assertEquals(EXPECTED_COMPARABLE_TOOLS, comparable,
                 "the implemented 0.1 successor surface changed; update the coverage and claim matrix");

@@ -228,6 +228,10 @@ public final class HashChainFileAuditSink implements AuditSink {
         cp.put("seq", seq);
         cp.put("head", prev);
         cp.put("reason", reason);
+        if (checkpoints.signingKey() != null) {
+            cp.put("signature", io.github.vaquarkhan.aegis.engine.catalog.SignedCatalogManifest.sign(
+                    Json.canonical(cp).getBytes(StandardCharsets.UTF_8), checkpoints.signingKey()));
+        }
         ByteBuffer buf = ByteBuffer.wrap((Json.canonical(cp) + "\n").getBytes(StandardCharsets.UTF_8));
         while (buf.hasRemaining()) {
             checkpointChannel.write(buf);

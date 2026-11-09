@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="800" viewBox="0 0 1500 800" role="img" aria-labelledby="title desc">
+  <title id="title">Aegis complete control plane</title>
+  <desc id="desc">A managed endpoint sends requests through the Aegis gateway to admitted sandboxed MCP servers. A signed policy and admission plane controls every layer. Raw output is quarantined before reaching the model.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#101d32"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#67e8f9"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="1500" height="800" fill="url(#bg)"/>
+  <text x="70" y="62" fill="#f8fafc" font-family="Segoe UI, Arial" font-size="32" font-weight="700">Aegis complete control plane</text>
+  <text x="70" y="98" fill="#94a3b8" font-family="Segoe UI, Arial" font-size="18">The security boundary includes the endpoint, gateway, server runtime, network and artifact admission.</text>
+
+  <rect x="55" y="135" width="1390" height="150" rx="18" fill="#13213a" stroke="#38bdf8" stroke-width="2" filter="url(#shadow)"/>
+  <text x="82" y="174" fill="#7dd3fc" font-family="Segoe UI, Arial" font-size="20" font-weight="700">SIGNED CONTROL AND ADMISSION PLANE</text>
+  <g font-family="Segoe UI, Arial" font-size="17" fill="#e2e8f0">
+    <rect x="85" y="195" width="240" height="58" rx="10" fill="#1e3a5f"/><text x="115" y="230">Client policy + versions</text>
+    <rect x="350" y="195" width="240" height="58" rx="10" fill="#1e3a5f"/><text x="377" y="230">Server catalog v2</text>
+    <rect x="615" y="195" width="240" height="58" rx="10" fill="#1e3a5f"/><text x="640" y="230">SLSA + image digest</text>
+    <rect x="880" y="195" width="240" height="58" rx="10" fill="#1e3a5f"/><text x="912" y="230">SBOM + CVE policy</text>
+    <rect x="1145" y="195" width="240" height="58" rx="10" fill="#1e3a5f"/><text x="1174" y="230">Live revoke + audit</text>
+  </g>
+
+  <g filter="url(#shadow)" font-family="Segoe UI, Arial">
+    <rect x="55" y="350" width="255" height="245" rx="18" fill="#172554" stroke="#818cf8" stroke-width="2"/>
+    <text x="82" y="390" fill="#c7d2fe" font-size="21" font-weight="700">Managed endpoint</text>
+    <text x="82" y="425" fill="#e2e8f0" font-size="16">• only signed client versions</text>
+    <text x="82" y="456" fill="#e2e8f0" font-size="16">• no project stdio servers</text>
+    <text x="82" y="487" fill="#e2e8f0" font-size="16">• only Aegis MCP URLs</text>
+    <text x="82" y="518" fill="#e2e8f0" font-size="16">• taint propagation</text>
+    <text x="82" y="549" fill="#e2e8f0" font-size="16">• OS policy blocks bypass</text>
+
+    <rect x="375" y="350" width="350" height="245" rx="18" fill="#0f3d46" stroke="#22d3ee" stroke-width="2"/>
+    <text x="404" y="390" fill="#a5f3fc" font-size="21" font-weight="700">Aegis gateway</text>
+    <text x="404" y="425" fill="#e2e8f0" font-size="16">• identity, scope, policy</text>
+    <text x="404" y="456" fill="#e2e8f0" font-size="16">• typed capability contracts</text>
+    <text x="404" y="487" fill="#e2e8f0" font-size="16">• no free-form commands</text>
+    <text x="404" y="518" fill="#e2e8f0" font-size="16">• approval + egress</text>
+    <text x="404" y="549" fill="#e2e8f0" font-size="16">• output declassification</text>
+
+    <rect x="790" y="350" width="315" height="245" rx="18" fill="#3b2f16" stroke="#fbbf24" stroke-width="2"/>
+    <text x="820" y="390" fill="#fde68a" font-size="21" font-weight="700">Sandboxed MCP server</text>
+    <text x="820" y="425" fill="#e2e8f0" font-size="16">• verified artifact/image</text>
+    <text x="820" y="456" fill="#e2e8f0" font-size="16">• read-only filesystem</text>
+    <text x="820" y="487" fill="#e2e8f0" font-size="16">• tenant-scoped identity</text>
+    <text x="820" y="518" fill="#e2e8f0" font-size="16">• resource + syscall limits</text>
+    <text x="820" y="549" fill="#e2e8f0" font-size="16">• no direct client ingress</text>
+
+    <rect x="1170" y="350" width="275" height="245" rx="18" fill="#3f1d2e" stroke="#fb7185" stroke-width="2"/>
+    <text x="1200" y="390" fill="#fecdd3" font-size="21" font-weight="700">Egress + data broker</text>
+    <text x="1200" y="425" fill="#e2e8f0" font-size="16">• default deny network</text>
+    <text x="1200" y="456" fill="#e2e8f0" font-size="16">• approved destinations only</text>
+    <text x="1200" y="487" fill="#e2e8f0" font-size="16">• file handles, not paths</text>
+    <text x="1200" y="518" fill="#e2e8f0" font-size="16">• no raw credentials</text>
+    <text x="1200" y="549" fill="#e2e8f0" font-size="16">• tenant data enforcement</text>
+  </g>
+
+  <path d="M310 472 H365" stroke="#67e8f9" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M725 472 H780" stroke="#67e8f9" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1105 472 H1160" stroke="#67e8f9" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="375" y="650" width="730" height="92" rx="16" fill="#12243a" stroke="#34d399" stroke-width="2"/>
+  <text x="405" y="685" fill="#a7f3d0" font-family="Segoe UI, Arial" font-size="20" font-weight="700">Model-visible release rule</text>
+  <text x="405" y="716" fill="#e2e8f0" font-family="Segoe UI, Arial" font-size="17">Only typed, allowlisted, declassified output crosses. Raw or uncertain text becomes an opaque handle.</text>
+  <path d="M550 595 V640" stroke="#34d399" stroke-width="4" marker-end="url(#arrow)"/>
+</svg>

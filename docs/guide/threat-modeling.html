@@ -1,0 +1,171 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Aegis threat modeling: the complete control plane, what is enforced today, and an honest list of what Aegis does not own.">
+  <title>Aegis threat modeling and honest coverage</title>
+  <link rel="stylesheet" href="handbook.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Threat modeling navigation">
+    <a class="brand" href="../index.html">Aegis <span>Gateway 2.0</span></a>
+    <nav>
+      <a href="#start">Start here</a>
+      <a href="#plane">Complete control plane</a>
+      <a href="#levels">Control levels G1 to G3</a>
+      <a href="#present">What is enforced today</a>
+      <a href="#owasp">OWASP MCP and LLM</a>
+      <a href="#absent">What Aegis does not have</a>
+      <a href="#external">What needs another owner</a>
+      <a href="#scanner">Frontier scanner review</a>
+      <a href="#references">Full documents</a>
+      <a href="security.html">Security and threat model</a>
+      <a href="mcp-cve-containment.html">CVE containment</a>
+      <a href="deploy.html">Deploy on AWS and IDE</a>
+      <a href="responsible-ai.html">Responsible AI</a>
+      <a href="tutorials.html">Tutorials</a>
+      <a href="handbook.html">User handbook</a>
+      <a href="modules.html">Module reference</a>
+    </nav>
+    <p class="sidebar-note">Closed means an enforced, tested control for calls on the managed path. It never means absence of every vulnerability. Admitted software can still carry an unknown defect; isolation keeps that defect inside its assigned capability.</p>
+  </aside>
+  <main>
+    <header id="start" class="hero">
+      <p class="eyebrow">THREAT MODELING</p>
+      <h1>An honest map of what Aegis controls and what it does not.</h1>
+      <p class="lead">This page is the plain-language companion to the security review. It states the one claim Aegis can make under its full boundary, lists the controls that are enforced and tested today, and names, without softening, the findings that remain open, the components Aegis does not own, and the checks this host could not run.</p>
+      <div class="actions">
+        <a class="button primary" href="security.html">Security and threat model</a>
+        <a class="button" href="../THREAT-MODEL.html">Full threat model</a>
+        <a class="button" href="../evidence/SECURITY-VALIDATION.html">Validation record</a>
+      </div>
+    </header>
+
+    <section id="plane">
+      <p class="eyebrow">THE CLAIM</p>
+      <h2>Complete control of the managed path, not absence of all vulnerabilities.</h2>
+      <p>The gateway alone reaches a hard limit. A client exploit that runs before the HTTP request never enters the request path, and a backend that opens its own socket acts in another process the engine cannot observe. To close most of that gap, Aegis has to grow from one gateway process into a controlled system boundary: a managed endpoint, the semantic gateway, signed admission for every client, server artifact, plug-in and policy, a sandboxed server runtime with default-deny network, a data broker that hands out handles instead of raw paths, an output declassification gate, and live revocation with retained evidence.</p>
+      <img class="explainer-image" src="../assets/complete-control-plane.svg" alt="The Aegis complete control plane: a signed control and admission plane over a managed endpoint, the Aegis gateway, a sandboxed MCP server, and an egress and data broker, with a model-visible release rule that turns raw output into an opaque handle.">
+      <p class="callout">Under that boundary the precise claim is: <strong>no unadmitted tool request and no raw, untrusted tool result crosses the Aegis-controlled boundary</strong>. Aegis still cannot claim that admitted software has no defect. Scans, signatures and provenance cannot prove the absence of an unknown flaw. Isolation and least privilege keep such a flaw unable to escape its assigned capability.</p>
+    </section>
+
+    <section id="levels" class="band">
+      <p class="eyebrow">CONTROL LEVELS</p>
+      <h2>Three levels, and the mode that earns the name.</h2>
+      <div class="cards">
+        <article><h3>G1 Semantic gateway</h3><p>The current hardened profile: identity, policy, resource scope, operator schema, approval, egress checks, catalog pins, audit, rate limits, result screening and redaction. It governs MCP traffic that reaches it.</p></article>
+        <article><h3>G2 Admitted and isolated servers</h3><p>Adds artifact admission, process isolation, backend network policy, tenant-scoped credentials, and removal of direct client-to-server routes. This contains backend-internal defects and malicious unchanged behavior.</p></article>
+        <article><h3>G3 Managed endpoints and declassified output</h3><p>Adds endpoint policy, client admission, bypass prevention, taint propagation and a strict output release rule. Arbitrary backend text does not enter model context; it becomes a typed object or an opaque handle.</p></article>
+        <article><h3>The fail-closed rule</h3><p>A deployment may call itself complete control only at G3 and only while every mandatory control reports healthy. A missing endpoint attestation, stale vulnerability receipt, disabled network policy, unavailable declassifier or unsigned catalog must make admission fail.</p></article>
+      </div>
+    </section>
+
+    <section id="present">
+      <p class="eyebrow">ENFORCED TODAY</p>
+      <h2>What is implemented and tested in this build.</h2>
+      <p>Each control below has a class that enforces it and a test that must stay green. Breaking one is treated as a vulnerability. These are the gateway-ownable controls that passes four to seven added or hardened.</p>
+      <div class="steps">
+        <div><strong>DNS and egress pinning</strong><span>Outbound HTTP resolves once and connects to the pinned address, closing the rebinding window. Nested URLs and redirects are classified, not followed.</span></div>
+        <div><strong>Token revocation</strong><span>JWT jti plus a revocation list refuses a stolen token before expiry, now across the full delegation chain, with a durable store required under complete control.</span></div>
+        <div><strong>Pre-auth limits</strong><span>Per-address and per-IPv6 /64 limits and lockout run before token verification, opt-in and paired with a trusted-proxy list so a shared proxy cannot lock everyone out.</span></div>
+      </div>
+      <div class="two-column">
+        <div>
+          <h3>Admission and attestation</h3>
+          <p>A signed server catalog decides at startup which servers may start. A signed deployment attestation and host-anchored plugin digest gate what the engine will load. Free-form execution contracts are refused under complete control.</p>
+        </div>
+        <div>
+          <h3>Output release and evidence</h3>
+          <p>Structured allowlist and handle-only output policies keep raw backend text away from the model. Retained handle bodies can be encrypted with AES-256-GCM. The audit journal is hash-chained with signed checkpoints and a SIEM sink interface.</p>
+        </div>
+      </div>
+      <p>Static analysis is now part of the build. SpotBugs with FindSecBugs at maximum effort reported 72 findings on the first run; the real defects (constant-time digest comparison, a regex denial-of-service path, null guards and dead code) were fixed, and every remaining exclusion carries a written reason in <code>spotbugs-exclude.xml</code>. CodeQL and OSV workflows are committed for CI.</p>
+    </section>
+
+    <section id="owasp" class="band">
+      <p class="eyebrow">OWASP MCP AND LLM</p>
+      <h2>Thirteen of twenty risks are gateway-ownable and closed.</h2>
+      <p>Across the OWASP MCP Top 10 and the OWASP LLM Top 10, 13 of 20 risks reach a closed state on the gateway path or the managed path. The gateway-ownable part of every other risk is also implemented. Seven risks have a part that no tool gateway can own, and those are listed as external below.</p>
+      <div class="owasp-grid">
+        <div class="strong"><strong>MCP01, MCP02, MCP07, MCP08</strong>Full gateway path: token non-forwarding and revocation, scope and privilege control, strict authentication with pre-auth limits, and hash-chained audit with checkpoints.</div>
+        <div class="strong"><strong>MCP03, MCP04, MCP05, MCP06, MCP10</strong>Full managed path: signed catalog and pins, artifact admission, execution contracts with no free-form, normalised screening, and structured or handle-only output.</div>
+        <div class="external"><strong>MCP09 Shadow servers</strong>A gateway that is not on a server's path cannot discover it. The signed catalog and egress allow list bound what Aegis can reach; endpoint and network control own the rest.</div>
+        <div class="limited"><strong>LLM01, LLM03, LLM04, LLM07, LLM08, LLM09</strong>External or split: direct user-to-model injection, model weights, training data, system prompts, vector stores and truth are owned by the model provider, client or data pipeline.</div>
+      </div>
+      <p><a href="../MCP-GOVERNANCE-GUIDELINE.html">Read the full OWASP MCP and LLM mapping</a> with the class and test behind each row.</p>
+    </section>
+
+    <section id="absent">
+      <p class="eyebrow">WHAT AEGIS DOES NOT HAVE</p>
+      <h2>Open findings a frontier scanner would still report.</h2>
+      <p>These are not hidden. After the seventh pass, every finding that Aegis code can close is closed and tested, with the exceptions below. They are performance or scope limits, or controls that a gateway cannot own in principle.</p>
+      <div class="table-wrap">
+        <table class="ref-table">
+          <thead><tr><th>Id</th><th>Finding</th><th>State and reason</th></tr></thead>
+          <tbody>
+            <tr><td>P-1</td><td>Prompt-injection screening is a phrase list. Confusables and five language packs are folded in, but paraphrase and languages outside the packs pass.</td><td>Not fully fixable in code. A word list cannot judge intent. The durable control is complete-control output policy plus approval for every write; a classifier remote hook raises the bar further.</td></tr>
+            <tr><td>P-2</td><td>The checkpoint signing key sits on the gateway host. Root on that host holds both the journal and the key.</td><td>Deployment, not code. A signing process needs a key it can read. Closing it means WORM or object-lock storage for checkpoints, or signing on a separate host. The code supports both paths.</td></tr>
+            <tr><td>P-4</td><td>Pinned HTTP opens a fresh TCP and TLS connection per call, with no pool and no HTTP/2.</td><td>Fixable, deliberately deferred. Purely performance. A pinned keep-alive pool adds stale-connection and pin-invalidation risk for no security gain.</td></tr>
+            <tr><td>P-6</td><td>The confusables table is a curated Cyrillic, Greek, Armenian and IPA subset, not the full Unicode TR39 data.</td><td>Fixable only at build time; left curated. Generating the complete table from the Unicode source is the only full fix; a hand-added partial set risks wrong mappings.</td></tr>
+            <tr><td>P-7</td><td>Pre-authentication limits are per address or per IPv6 /64. A flood from many networks is bounded only by the worker pool and connection cap.</td><td>Not fixed by choice. A global cap is itself a denial-of-service lever: one attacker would trip it for everyone. Distributed floods belong to edge rate limiting in front of Aegis.</td></tr>
+            <tr><td>P-8</td><td>Retained handle bodies were stored redacted but in plaintext in the state store.</td><td>Fixed in the seventh pass with optional AES-256-GCM, and still best paired with database at-rest encryption and a short retention window.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The complete-control components in the plane diagram are a design with a staged roadmap. The endpoint guard, the admission controller for artifact and image verification, the managed sandbox runtime, and the deployment operator are specified and partly seamed into the current tree, but they are not all shipped. A deployment reaches the full G3 claim only when all of them are present and proven in one retained run.</p>
+    </section>
+
+    <section id="external" class="band">
+      <p class="eyebrow">NEEDS ANOTHER OWNER</p>
+      <h2>Residual that lives outside a tool gateway.</h2>
+      <div class="cards">
+        <article><h3>Sandbox runtime</h3><p>gVisor, Linux namespaces or a microVM for stdio servers. The launcher prefix is enforced; the runtime is the platform's job and is unproven on this Windows host.</p></article>
+        <article><h3>Cluster and supply chain</h3><p>Kubernetes network policy, Helm render gates, image scanning, SBOM and Sigstore signing. Templates exist; Aegis verifies a signed statement rather than scanning images itself.</p></article>
+        <article><h3>Shadow MCP and endpoint</h3><p>Clients that bypass Aegis, project MCP files and direct server URLs are endpoint and network control. A gateway cannot govern a path that never reaches it.</p></article>
+        <article><h3>Backend and model internals</h3><p>Symlink escape, SQL built inside the server, and model-side risks such as direct injection, model supply chain and weight poisoning are owned by the backend process and the model provider.</p></article>
+      </div>
+    </section>
+
+    <section id="scanner">
+      <p class="eyebrow">FRONTIER SCANNER REVIEW</p>
+      <h2>What a model-class scan would report here.</h2>
+      <p>I could not run a frontier scanner on this host, so I did that review by hand across the whole tree: following data flow between modules and trying to write an input that breaks each new control. The fifth pass found five defects I had introduced, all fixed and tested. A second re-review after the sixth pass fixed three more and triaged the static-analysis output.</p>
+      <ul>
+        <li>A scanner would report P-1 and P-2 as findings: the phrase list is a tripwire by design, and the signing key is co-located with the journal until WORM storage is used.</li>
+        <li>It would report the rest as notes: performance and scope limits (P-4, P-6, P-7), one control proven by compilation only (Knox-path revocation, no Knox runtime here), and items that need a cluster, a CI service or the real engines this host does not have.</li>
+        <li>No conventional scan replaces the structural controls. Even a perfect injection classifier cannot prove intent; the deterministic guarantee comes from handle-only output and independent approval for writes.</li>
+      </ul>
+      <p class="callout">Report vulnerabilities privately via a GitHub security advisory. Do not open a public issue for an unfixed vulnerability.</p>
+    </section>
+
+    <section id="references" class="band">
+      <p class="eyebrow">REFERENCE MAP</p>
+      <h2>Continue in the full documents.</h2>
+      <div class="reference-table">
+        <a href="security.html"><strong>Security and threat model</strong><span>Zones, STRIDE, S1 to S31</span></a>
+        <a href="../THREAT-MODEL.html"><strong>Threat model</strong><span>STRIDE, TM01 to TM10, DFD</span></a>
+        <a href="../SECURITY.html"><strong>Security model</strong><span>S1 to S31 and limits</span></a>
+        <a href="../MCP-GOVERNANCE-GUIDELINE.html"><strong>MCP governance guideline</strong><span>Spec and OWASP mapping</span></a>
+        <a href="../evidence/SECURITY-VALIDATION.html"><strong>Validation record</strong><span>Focused control suite</span></a>
+        <a href="handbook.html"><strong>User handbook</strong><span>Deploy and operate</span></a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aegis MCP Gateway 2.0 - product and architecture</title>
+<style>
+  :root{
+    --navy:#09243a; --navy2:#0b4055; --teal:#007c78; --teal2:#0a8f89;
+    --ink:#142531; --muted:#50707c; --line:#d5e0e2; --soft:#eef6f5; --paper:#ffffff;
+    --good:#16806e; --warn:#bb7600; --ext:#5b6b77;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:#51636d;font-family:"Segoe UI",Arial,Helvetica,sans-serif;color:var(--ink);}
+  .slide{position:relative;width:1280px;height:720px;margin:20px auto;background:var(--paper);
+    overflow:hidden;box-shadow:0 10px 30px #0004;}
+  .pad{padding:52px 70px;height:100%;}
+  h1,h2,h3{margin:0;line-height:1.08;letter-spacing:-.02em;color:var(--navy);}
+  h1{font-size:62px;}
+  h2{font-size:38px;}
+  h3{font-size:22px;}
+  p,li{font-size:20px;line-height:1.42;color:var(--ink);}
+  .eyebrow{color:var(--teal);font-weight:800;letter-spacing:.16em;font-size:14px;text-transform:uppercase;margin:0 0 12px;}
+  .lead{font-size:23px;color:#2a3f4a;max-width:1080px;}
+  ul{margin:12px 0 0;padding-left:24px;}
+  li{margin:8px 0;}
+  .foot{position:absolute;left:70px;right:70px;bottom:24px;display:flex;justify-content:space-between;
+    font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:9px;}
+  .foot b{color:var(--navy);}
+  .cover{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 55%,var(--teal) 140%);color:#fff;}
+  .cover h1{color:#fff;font-size:74px;}
+  .cover .eyebrow{color:#8fe6df;}
+  .cover p{color:#d9f1ef;}
+  .dark{background:#0b1220;color:#eaf6f4;}
+  .dark h2{color:#fff;}
+  .dark .eyebrow{color:#67e8f9;}
+  .pill{display:inline-block;padding:6px 14px;border:1px solid #ffffff55;border-radius:999px;color:#eafffd;font-size:15px;margin-right:8px;margin-top:10px;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px;}
+  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px;}
+  .four{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:16px;}
+  .card{background:var(--soft);border:1px solid var(--line);border-left:5px solid var(--teal);border-radius:12px;padding:16px 18px;}
+  .card h3{font-size:19px;margin-bottom:5px;}
+  .card p,.card li{font-size:16px;margin:3px 0;}
+  .card.good{border-left-color:var(--good);}
+  .card.alt{border-left-color:var(--navy2);}
+  .card.gold{border-left-color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:16.5px;}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top;}
+  th{background:var(--soft);color:var(--navy);font-weight:800;}
+  code{font-family:Consolas,"Courier New",monospace;font-size:.92em;background:#eef3f3;padding:1px 5px;border-radius:4px;}
+  .tag{display:inline-block;font-size:12.5px;font-weight:700;padding:2px 9px;border-radius:999px;}
+  .t-good{background:#ddf3ee;color:#0c5f52;}
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:20px;}
+  .kpi div{background:var(--navy);color:#fff;border-radius:14px;padding:18px;}
+  .kpi b{display:block;font-size:40px;color:#8fe6df;line-height:1;}
+  .kpi span{font-size:14px;color:#cfe6e4;}
+  .center{display:flex;align-items:center;justify-content:center;height:calc(100% - 36px);}
+  svg{display:block;}
+  .note{font-size:14.5px;color:var(--muted);margin-top:12px;}
+  .big{font-size:27px;color:#1d3540;max-width:1070px;margin-top:10px;}
+  @media print{
+    @page{size:1280px 720px;margin:0;}
+    body{background:#fff;}
+    .slide{margin:0;box-shadow:none;page-break-after:always;}
+    .slide:last-child{page-break-after:auto;}
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 COVER -->
+<section class="slide cover"><div class="pad">
+  <p class="eyebrow">MCP GOVERNANCE GATEWAY</p>
+  <h1>Aegis Gateway 2.0</h1>
+  <p class="lead" style="margin-top:20px">Let AI agents reach real systems with confidence. Aegis gives every MCP call one governed route: typed tools, independent approvals, destructive-action receipts, egress control, output declassification, and verifiable audit, applied before anything touches a backend.</p>
+  <div>
+    <span class="pill">Apache-2.0</span>
+    <span class="pill">Independent project (io.github.vaquarkhan)</span>
+    <span class="pill">Own host or Apache Knox</span>
+    <span class="pill">Fail-closed by default</span>
+  </div>
+  <div class="foot" style="color:#bfe8e4;border-top-color:#ffffff33"><span>Aegis MCP Gateway 2.0</span><span>Product and architecture overview</span></div>
+</div></section>
+
+<!-- 2 EXECUTIVE SUMMARY -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">In one slide</p>
+  <h2>Safe agent autonomy, without rewriting your systems.</h2>
+  <p class="big">Aegis is a configuration-driven governance plane that sits between AI agents and the tools, data and services they call over MCP. It turns raw agent power into controlled, approved, audited actions, and it drops in front of an existing MCP server or an Apache project with no change to the governed code.</p>
+  <div class="four">
+    <div class="card good"><h3>Control</h3><p>Identity, policy, scope and approval on every call, fail-closed.</p></div>
+    <div class="card good"><h3>Confidence</h3><p>Hash-chained audit and provenance make every action reviewable.</p></div>
+    <div class="card good"><h3>Coverage</h3><p>13 of 20 OWASP MCP and LLM risks closed on the gateway path.</p></div>
+    <div class="card good"><h3>Proof</h3><p>Real exploits for three MCP CVE classes denied in a live run.</p></div>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>2 / 26</span></div>
+</div></section>
+
+<!-- 3 THE OPPORTUNITY -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">The opportunity</p>
+  <h2>MCP unlocks agent value. Governance lets you scale it.</h2>
+  <p class="lead" style="margin-top:12px">The Model Context Protocol has made agents genuinely useful: one standard way to call tools, read files, query databases and reach services. Teams that add a governance layer get to say yes to agent automation across more systems, faster, because each new tool arrives already controlled.</p>
+  <div class="three">
+    <div class="card"><h3>Say yes, safely</h3><p>Onboard a new MCP server or REST tool behind one reviewed configuration, with controls already applied.</p></div>
+    <div class="card"><h3>Move fast</h3><p>Typed contracts and reusable profiles mean a new integration is configuration, not a security project.</p></div>
+    <div class="card"><h3>Prove it</h3><p>Every decision is recorded, so adoption comes with an audit trail from day one.</p></div>
+  </div>
+  <p class="note">Aegis meets the moment: as MCP adoption grows, Aegis is the layer that makes broad, confident rollout practical.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>3 / 26</span></div>
+</div></section>
+
+<!-- 4 WHAT AEGIS IS -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">The product</p>
+  <h2>A configuration-driven decision plane for MCP calls.</h2>
+  <div class="two">
+    <div>
+      <p>Aegis sits between the agent and the backend. Every tool, resource, prompt and completion call passes a fail-closed engine that applies identity, policy, scope, approval, egress, screening, output control and audit before reaching a real system.</p>
+      <ul>
+        <li>One configuration file drives it; the governed project is untouched.</li>
+        <li>Typed capability contracts keep tools precise and predictable.</li>
+        <li>Independent approval and dry-run receipts for consequential actions.</li>
+        <li>Hash-chained audit with intent recorded before execution.</li>
+      </ul>
+    </div>
+    <div class="card alt"><h3>A clean fit in your stack</h3>
+      <p>Aegis governs the action and data-access boundary, the point inside a single MCP JSON-RPC body where tool, method, arguments and schema live. It complements your WAF, API gateway, identity provider and SIEM rather than competing with them.</p>
+      <p>Independent project under Apache-2.0. It runs on its own or inside an Apache Knox topology.</p>
+    </div>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>4 / 26</span></div>
+</div></section>
+
+<!-- 5 KEY BENEFITS -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Why teams choose it</p>
+  <h2>Eight strengths, one gateway.</h2>
+  <div class="four">
+    <div class="card good"><h3>Fail-closed</h3><p>Nothing runs unless a control allows it.</p></div>
+    <div class="card good"><h3>Human in the loop</h3><p>Independent approval for destructive actions.</p></div>
+    <div class="card good"><h3>No token passthrough</h3><p>Backends get a scoped, gateway-issued credential.</p></div>
+    <div class="card good"><h3>Egress control</h3><p>Pinned DNS and an allow list stop data exfiltration.</p></div>
+    <div class="card good"><h3>Output safety</h3><p>Redaction and handle-only keep raw text from the model.</p></div>
+    <div class="card good"><h3>Tamper-evident audit</h3><p>Hash-chained journal, signed checkpoints, SIEM sink.</p></div>
+    <div class="card good"><h3>Runs anywhere</h3><p>One image on EKS, ECS, EC2 or your own host.</p></div>
+    <div class="card good"><h3>Drop-in adoption</h3><p>Front any MCP server or Apache project by config.</p></div>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>5 / 26</span></div>
+</div></section>
+
+<!-- 6 ARCHITECTURE SVG -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Architecture</p>
+  <h2>Six trust zones, one fail-closed engine.</h2>
+  <div class="center">
+  <svg viewBox="0 0 1150 460" width="1150" height="460" role="img" aria-label="Aegis system architecture across six trust zones">
+    <defs>
+      <marker id="ar" markerWidth="11" markerHeight="11" refX="9" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 z" fill="#0a8f89"/></marker>
+      <linearGradient id="eng" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b4055"/><stop offset="1" stop-color="#09243a"/></linearGradient>
+    </defs>
+    <rect x="8" y="70" width="150" height="300" rx="12" fill="#f2f6f7" stroke="#c6d3d6"/>
+    <text x="83" y="58" text-anchor="middle" font-size="14" font-weight="700" fill="#5b6b77">Z1 CLIENT</text>
+    <rect x="24" y="110" width="118" height="54" rx="8" fill="#fff" stroke="#c6d3d6"/><text x="83" y="142" text-anchor="middle" font-size="15" fill="#142531">AI agent / IDE</text>
+    <rect x="24" y="176" width="118" height="54" rx="8" fill="#fff" stroke="#c6d3d6"/><text x="83" y="208" text-anchor="middle" font-size="15" fill="#142531">MCP client</text>
+    <rect x="24" y="242" width="118" height="54" rx="8" fill="#fff" stroke="#c6d3d6"/><text x="83" y="267" text-anchor="middle" font-size="13" fill="#142531">Untrusted</text><text x="83" y="285" text-anchor="middle" font-size="13" fill="#142531">documents</text>
+    <rect x="178" y="70" width="150" height="300" rx="12" fill="#eef6f5" stroke="#bcd8d4"/>
+    <text x="253" y="58" text-anchor="middle" font-size="14" font-weight="700" fill="#0c5f52">Z2 FRONT DOOR</text>
+    <rect x="194" y="120" width="118" height="80" rx="8" fill="#fff" stroke="#9ecdc7"/><text x="253" y="152" text-anchor="middle" font-size="15" fill="#142531">Own-host HTTP</text><text x="253" y="174" text-anchor="middle" font-size="12" fill="#50707c">TLS, JWT/JWKS, CORS</text>
+    <rect x="194" y="214" width="118" height="80" rx="8" fill="#fff" stroke="#9ecdc7"/><text x="253" y="246" text-anchor="middle" font-size="15" fill="#142531">Apache Knox</text><text x="253" y="268" text-anchor="middle" font-size="12" fill="#50707c">perimeter + identity</text>
+    <rect x="348" y="60" width="430" height="330" rx="14" fill="url(#eng)"/>
+    <text x="563" y="48" text-anchor="middle" font-size="14" font-weight="700" fill="#0c5f52">Z3 GOVERNANCE CORE (fail-closed)</text>
+    <g font-size="14" fill="#eaf6f4">
+      <rect x="366" y="80" width="185" height="44" rx="8" fill="#13324a"/><text x="458" y="107" text-anchor="middle">Identity + scope</text>
+      <rect x="575" y="80" width="185" height="44" rx="8" fill="#13324a"/><text x="667" y="107" text-anchor="middle">Catalog + pins</text>
+      <rect x="366" y="134" width="185" height="44" rx="8" fill="#13324a"/><text x="458" y="161" text-anchor="middle">Policy (deny-overrides)</text>
+      <rect x="575" y="134" width="185" height="44" rx="8" fill="#13324a"/><text x="667" y="161" text-anchor="middle">Approval + receipt</text>
+      <rect x="366" y="188" width="185" height="44" rx="8" fill="#13324a"/><text x="458" y="215" text-anchor="middle">Egress control</text>
+      <rect x="575" y="188" width="185" height="44" rx="8" fill="#13324a"/><text x="667" y="215" text-anchor="middle">Screening + hooks</text>
+      <rect x="366" y="242" width="185" height="44" rx="8" fill="#13324a"/><text x="458" y="269" text-anchor="middle">Output declassify</text>
+      <rect x="575" y="242" width="185" height="44" rx="8" fill="#13324a"/><text x="667" y="269" text-anchor="middle">Hash-chained audit</text>
+      <rect x="366" y="300" width="394" height="42" rx="8" fill="#0a5a56"/><text x="563" y="326" text-anchor="middle" fill="#eafffd">Rate limits, budgets, revocation, pre-auth limits</text>
+    </g>
+    <rect x="798" y="70" width="150" height="300" rx="12" fill="#eef6f5" stroke="#bcd8d4"/>
+    <text x="873" y="58" text-anchor="middle" font-size="14" font-weight="700" fill="#0c5f52">Z4 SOURCES</text>
+    <g font-size="14" fill="#142531">
+      <rect x="814" y="104" width="118" height="42" rx="8" fill="#fff" stroke="#9ecdc7"/><text x="873" y="130" text-anchor="middle">HTTP / REST</text>
+      <rect x="814" y="156" width="118" height="42" rx="8" fill="#fff" stroke="#9ecdc7"/><text x="873" y="182" text-anchor="middle">MCP proxy</text>
+      <rect x="814" y="208" width="118" height="42" rx="8" fill="#fff" stroke="#9ecdc7"/><text x="873" y="234" text-anchor="middle">Plugins / A2A</text>
+      <rect x="814" y="260" width="118" height="42" rx="8" fill="#fff" stroke="#9ecdc7"/><text x="873" y="286" text-anchor="middle">JDBC / typed</text>
+    </g>
+    <rect x="968" y="70" width="150" height="300" rx="12" fill="#f2f6f7" stroke="#c6d3d6"/>
+    <text x="1043" y="58" text-anchor="middle" font-size="14" font-weight="700" fill="#5b6b77">Z5 BACKEND</text>
+    <rect x="984" y="150" width="118" height="140" rx="8" fill="#fff" stroke="#c6d3d6"/><text x="1043" y="212" text-anchor="middle" font-size="14" fill="#142531">Kafka, Spark,</text><text x="1043" y="232" text-anchor="middle" font-size="14" fill="#142531">DBs, services</text>
+    <path d="M158 220 H176" stroke="#0a8f89" stroke-width="3" marker-end="url(#ar)"/>
+    <path d="M328 220 H346" stroke="#0a8f89" stroke-width="3" marker-end="url(#ar)"/>
+    <path d="M778 220 H796" stroke="#0a8f89" stroke-width="3" marker-end="url(#ar)"/>
+    <path d="M948 220 H966" stroke="#0a8f89" stroke-width="3" marker-end="url(#ar)"/>
+    <rect x="348" y="402" width="430" height="44" rx="10" fill="#e5ebef" stroke="#c6d3d6"/>
+    <text x="563" y="430" text-anchor="middle" font-size="14" fill="#3c4b55" font-weight="700">Z6 Operator / IdP / network (integrates with your stack)</text>
+  </svg>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>6 / 26</span></div>
+</div></section>
+
+<!-- 7 REQUEST FLOW SVG -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Request lifecycle</p>
+  <h2>How a destructive call becomes a safe, approved action.</h2>
+  <div class="center">
+  <svg viewBox="0 0 1150 430" width="1150" height="430" role="img" aria-label="Aegis request lifecycle, fail-closed at every step">
+    <defs><marker id="ar2" markerWidth="11" markerHeight="11" refX="9" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 z" fill="#0a8f89"/></marker></defs>
+    <g font-size="15">
+      <rect x="20" y="70" width="150" height="70" rx="10" fill="#0b4055"/><text x="95" y="100" text-anchor="middle" fill="#fff">1 Authenticate</text><text x="95" y="122" text-anchor="middle" fill="#bfe3df" font-size="12">identity + scope</text>
+      <rect x="205" y="70" width="150" height="70" rx="10" fill="#0b4055"/><text x="280" y="100" text-anchor="middle" fill="#fff">2 Classify</text><text x="280" y="122" text-anchor="middle" fill="#bfe3df" font-size="12">tool class + schema</text>
+      <rect x="390" y="70" width="150" height="70" rx="10" fill="#0b4055"/><text x="465" y="100" text-anchor="middle" fill="#fff">3 Policy</text><text x="465" y="122" text-anchor="middle" fill="#bfe3df" font-size="12">deny-overrides</text>
+      <rect x="575" y="70" width="150" height="70" rx="10" fill="#0b4055"/><text x="650" y="96" text-anchor="middle" fill="#fff">4 Approve</text><text x="650" y="118" text-anchor="middle" fill="#bfe3df" font-size="12">dry-run receipt</text>
+      <rect x="760" y="70" width="150" height="70" rx="10" fill="#0b4055"/><text x="835" y="100" text-anchor="middle" fill="#fff">5 Egress check</text><text x="835" y="122" text-anchor="middle" fill="#bfe3df" font-size="12">allow list</text>
+      <rect x="945" y="70" width="150" height="70" rx="10" fill="#0a5a56"/><text x="1020" y="96" text-anchor="middle" fill="#fff">6 Commit audit</text><text x="1020" y="118" text-anchor="middle" fill="#cfeee9" font-size="12">intent first</text>
+      <rect x="390" y="250" width="150" height="70" rx="10" fill="#0a5a56"/><text x="465" y="280" text-anchor="middle" fill="#fff">7 Execute</text><text x="465" y="302" text-anchor="middle" fill="#cfeee9" font-size="12">scoped credential</text>
+      <rect x="575" y="250" width="150" height="70" rx="10" fill="#0a5a56"/><text x="650" y="276" text-anchor="middle" fill="#fff">8 Declassify</text><text x="650" y="298" text-anchor="middle" fill="#cfeee9" font-size="12">redact / handle-only</text>
+      <rect x="760" y="250" width="150" height="70" rx="10" fill="#16806e"/><text x="835" y="280" text-anchor="middle" fill="#fff">Result to model</text><text x="835" y="302" text-anchor="middle" fill="#d7f3ee" font-size="12">+ provenance</text>
+    </g>
+    <g stroke="#0a8f89" stroke-width="3" fill="none">
+      <path d="M170 105 H203" marker-end="url(#ar2)"/><path d="M355 105 H388" marker-end="url(#ar2)"/><path d="M540 105 H573" marker-end="url(#ar2)"/><path d="M725 105 H758" marker-end="url(#ar2)"/><path d="M910 105 H943" marker-end="url(#ar2)"/>
+    </g>
+    <path d="M1020 140 V200 H465 V248" stroke="#0a8f89" stroke-width="3" fill="none" marker-end="url(#ar2)"/>
+    <g stroke="#0a8f89" stroke-width="3" fill="none"><path d="M540 285 H573" marker-end="url(#ar2)"/><path d="M725 285 H758" marker-end="url(#ar2)"/></g>
+    <rect x="20" y="348" width="1075" height="52" rx="10" fill="#eef6f5" stroke="#bcd8d4"/>
+    <text x="40" y="370" font-size="15" fill="#0c5f52" font-weight="700">Fail-closed by design: any step can stop the call, and every decision is written to the audit journal.</text>
+    <text x="40" y="390" font-size="14" fill="#2a3f4a">The agent gets a clear, machine-readable reason, so a safe default never looks like an unexplained failure.</text>
+  </svg>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>7 / 26</span></div>
+</div></section>
+
+<!-- 8 DEPLOYMENT SVG -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Where it runs</p>
+  <h2>One image: EKS, ECS or EC2, or own host.</h2>
+  <div class="center">
+  <svg viewBox="0 0 1150 440" width="1150" height="440" role="img" aria-label="Aegis deployment topology on AWS and own host">
+    <defs><marker id="ar3" markerWidth="11" markerHeight="11" refX="9" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 z" fill="#0a8f89"/></marker></defs>
+    <rect x="300" y="20" width="840" height="400" rx="16" fill="#f3f8f8" stroke="#bcd8d4"/>
+    <text x="320" y="48" font-size="15" font-weight="700" fill="#0c5f52">AWS account / VPC</text>
+    <rect x="18" y="150" width="150" height="130" rx="12" fill="#fff" stroke="#c6d3d6"/>
+    <text x="93" y="140" text-anchor="middle" font-size="14" font-weight="700" fill="#5b6b77">AGENTS / IDE</text>
+    <text x="93" y="205" text-anchor="middle" font-size="14" fill="#142531">Kiro, Cursor,</text><text x="93" y="226" text-anchor="middle" font-size="14" fill="#142531">VS Code, Claude</text>
+    <path d="M168 215 H230 V215" stroke="#0a8f89" stroke-width="3" fill="none"/>
+    <rect x="330" y="150" width="120" height="130" rx="10" fill="#fff" stroke="#9ecdc7"/><text x="390" y="205" text-anchor="middle" font-size="15" fill="#142531">ALB</text><text x="390" y="226" text-anchor="middle" font-size="12" fill="#50707c">TLS term.</text>
+    <path d="M230 215 H328" stroke="#0a8f89" stroke-width="3" fill="none" marker-end="url(#ar3)"/>
+    <rect x="490" y="70" width="300" height="300" rx="12" fill="#09243a"/>
+    <text x="640" y="98" text-anchor="middle" font-size="15" font-weight="700" fill="#8fe6df">Aegis gateway (same image)</text>
+    <g font-size="14" fill="#eaf6f4">
+      <rect x="510" y="112" width="260" height="46" rx="8" fill="#13324a"/><text x="640" y="140" text-anchor="middle">EKS pod via Helm chart</text>
+      <rect x="510" y="166" width="260" height="46" rx="8" fill="#13324a"/><text x="640" y="194" text-anchor="middle">ECS / Fargate task</text>
+      <rect x="510" y="220" width="260" height="46" rx="8" fill="#13324a"/><text x="640" y="248" text-anchor="middle">EC2 / own-host jar</text>
+      <rect x="510" y="286" width="260" height="66" rx="8" fill="#0a5a56"/><text x="640" y="312" text-anchor="middle" fill="#eafffd" font-size="13">non-root, read-only FS,</text><text x="640" y="332" text-anchor="middle" fill="#eafffd" font-size="13">dropped caps, seccomp</text>
+    </g>
+    <path d="M450 215 H488" stroke="#0a8f89" stroke-width="3" fill="none" marker-end="url(#ar3)"/>
+    <rect x="830" y="90" width="150" height="56" rx="8" fill="#fff" stroke="#9ecdc7"/><text x="905" y="124" text-anchor="middle" font-size="14" fill="#142531">Postgres state</text>
+    <rect x="830" y="162" width="150" height="56" rx="8" fill="#fff" stroke="#9ecdc7"/><text x="905" y="196" text-anchor="middle" font-size="14" fill="#142531">SIEM / WORM audit</text>
+    <rect x="830" y="234" width="150" height="56" rx="8" fill="#fff" stroke="#9ecdc7"/><text x="905" y="268" text-anchor="middle" font-size="14" fill="#142531">Secrets Manager</text>
+    <rect x="830" y="306" width="150" height="56" rx="8" fill="#fff" stroke="#c6d3d6"/><text x="905" y="334" text-anchor="middle" font-size="14" fill="#142531">Backends (scoped)</text>
+    <g stroke="#0a8f89" stroke-width="2.5" fill="none" marker-end="url(#ar3)">
+      <path d="M790 135 H828"/><path d="M790 190 H828"/><path d="M790 250 H828"/><path d="M790 330 H828"/>
+    </g>
+    <rect x="1000" y="150" width="130" height="130" rx="10" fill="#eef6f5" stroke="#bcd8d4"/><text x="1065" y="205" text-anchor="middle" font-size="13" fill="#0c5f52">Network policy</text><text x="1065" y="226" text-anchor="middle" font-size="13" fill="#0c5f52">+ egress allow</text>
+  </svg>
+  </div>
+  <p class="note">The same container image runs everywhere. TLS at the load balancer or a mounted keystore; shared Postgres state for scale; audit forwarded to storage the gateway host cannot rewrite.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>8 / 26</span></div>
+</div></section>
+
+<!-- 9 COMPLETE CONTROL PLANE (dark) -->
+<section class="slide dark"><div class="pad">
+  <p class="eyebrow">Complete control</p>
+  <h2>The full boundary: endpoint to egress.</h2>
+  <div class="center">
+  <svg viewBox="0 0 1500 760" width="1060" height="537" role="img" aria-label="Aegis complete control plane">
+    <defs>
+      <marker id="cc" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#67e8f9"/></marker>
+    </defs>
+    <rect x="55" y="40" width="1390" height="120" rx="18" fill="#13213a" stroke="#38bdf8" stroke-width="2"/>
+    <text x="82" y="82" fill="#7dd3fc" font-size="22" font-weight="700">SIGNED CONTROL AND ADMISSION PLANE</text>
+    <g font-size="18" fill="#e2e8f0">
+      <rect x="85" y="100" width="240" height="42" rx="10" fill="#1e3a5f"/><text x="115" y="128">Client policy + versions</text>
+      <rect x="350" y="100" width="240" height="42" rx="10" fill="#1e3a5f"/><text x="377" y="128">Server catalog v2</text>
+      <rect x="615" y="100" width="240" height="42" rx="10" fill="#1e3a5f"/><text x="640" y="128">SLSA + image digest</text>
+      <rect x="880" y="100" width="240" height="42" rx="10" fill="#1e3a5f"/><text x="912" y="128">SBOM + CVE policy</text>
+      <rect x="1145" y="100" width="240" height="42" rx="10" fill="#1e3a5f"/><text x="1174" y="128">Live revoke + audit</text>
+    </g>
+    <g font-family="Segoe UI, Arial">
+      <rect x="55" y="230" width="255" height="300" rx="18" fill="#172554" stroke="#818cf8" stroke-width="2"/>
+      <text x="82" y="272" fill="#c7d2fe" font-size="22" font-weight="700">Managed endpoint</text>
+      <text x="82" y="312" fill="#e2e8f0" font-size="17">only signed client versions</text>
+      <text x="82" y="346" fill="#e2e8f0" font-size="17">no project stdio servers</text>
+      <text x="82" y="380" fill="#e2e8f0" font-size="17">only Aegis MCP URLs</text>
+      <text x="82" y="414" fill="#e2e8f0" font-size="17">taint propagation</text>
+      <text x="82" y="448" fill="#e2e8f0" font-size="17">OS policy blocks bypass</text>
+      <rect x="375" y="230" width="350" height="300" rx="18" fill="#0f3d46" stroke="#22d3ee" stroke-width="2"/>
+      <text x="404" y="272" fill="#a5f3fc" font-size="22" font-weight="700">Aegis gateway</text>
+      <text x="404" y="312" fill="#e2e8f0" font-size="17">identity, scope, policy</text>
+      <text x="404" y="346" fill="#e2e8f0" font-size="17">typed capability contracts</text>
+      <text x="404" y="380" fill="#e2e8f0" font-size="17">no free-form commands</text>
+      <text x="404" y="414" fill="#e2e8f0" font-size="17">approval + egress</text>
+      <text x="404" y="448" fill="#e2e8f0" font-size="17">output declassification</text>
+      <rect x="790" y="230" width="315" height="300" rx="18" fill="#3b2f16" stroke="#fbbf24" stroke-width="2"/>
+      <text x="820" y="272" fill="#fde68a" font-size="22" font-weight="700">Sandboxed server</text>
+      <text x="820" y="312" fill="#e2e8f0" font-size="17">verified artifact/image</text>
+      <text x="820" y="346" fill="#e2e8f0" font-size="17">read-only filesystem</text>
+      <text x="820" y="380" fill="#e2e8f0" font-size="17">tenant-scoped identity</text>
+      <text x="820" y="414" fill="#e2e8f0" font-size="17">resource + syscall limits</text>
+      <text x="820" y="448" fill="#e2e8f0" font-size="17">no direct client ingress</text>
+      <rect x="1170" y="230" width="275" height="300" rx="18" fill="#3f1d2e" stroke="#fb7185" stroke-width="2"/>
+      <text x="1200" y="272" fill="#fecdd3" font-size="22" font-weight="700">Egress + broker</text>
+      <text x="1200" y="312" fill="#e2e8f0" font-size="17">default deny network</text>
+      <text x="1200" y="346" fill="#e2e8f0" font-size="17">approved destinations</text>
+      <text x="1200" y="380" fill="#e2e8f0" font-size="17">file handles, not paths</text>
+      <text x="1200" y="414" fill="#e2e8f0" font-size="17">no raw credentials</text>
+      <text x="1200" y="448" fill="#e2e8f0" font-size="17">tenant data enforcement</text>
+    </g>
+    <path d="M310 380 H373" stroke="#67e8f9" stroke-width="4" marker-end="url(#cc)"/>
+    <path d="M725 380 H788" stroke="#67e8f9" stroke-width="4" marker-end="url(#cc)"/>
+    <path d="M1105 380 H1168" stroke="#67e8f9" stroke-width="4" marker-end="url(#cc)"/>
+    <rect x="375" y="580" width="730" height="84" rx="16" fill="#12243a" stroke="#34d399" stroke-width="2"/>
+    <text x="405" y="616" fill="#a7f3d0" font-size="21" font-weight="700">Model-visible release rule</text>
+    <text x="405" y="648" fill="#e2e8f0" font-size="17">Only typed, allowlisted, declassified output crosses. Raw text becomes an opaque handle.</text>
+    <path d="M550 530 V574" stroke="#34d399" stroke-width="4" marker-end="url(#cc)"/>
+  </svg>
+  </div>
+  <div class="foot" style="border-top-color:#1f2d44;color:#8ba2ad"><span>Aegis Gateway 2.0</span><span>9 / 26</span></div>
+</div></section>
+
+<!-- 10 TWO FRONT DOORS -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Flexible front door</p>
+  <h2>Own host or Apache Knox, same engine.</h2>
+  <div class="two">
+    <div class="card"><h3>Own-host HTTP</h3>
+      <p>A standalone server with TLS, JWT/JWKS or mTLS/SPIFFE identity, route groups, CORS and an optional separate admin listener. Ideal for a quick start and container deployments.</p></div>
+    <div class="card"><h3>Apache Knox</h3>
+      <p>Drop the same governance engine inside an existing Knox topology for perimeter, identity and route admission, with Knox-path token revocation. No Knox classes in the own-host jar.</p></div>
+  </div>
+  <p class="big" style="margin-top:18px">Both doors feed one fixed governance core, so a profile you prove on your laptop moves to either front door without change.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>10 / 26</span></div>
+</div></section>
+
+<!-- 11 CORE MODEL -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">The governance model</p>
+  <h2>Identity to audit, every call.</h2>
+  <div class="two">
+    <div><ul>
+      <li><b>Identity required.</b> JWT/JWKS, mTLS/SPIFFE, static or Knox subject.</li>
+      <li><b>No token passthrough.</b> Backends get a scoped, gateway-issued credential.</li>
+      <li><b>Default deny.</b> Only configured tools, classes, resources and destinations are reachable.</li>
+      <li><b>Separation of duties.</b> Destructive calls need an independent approver and a receipt.</li>
+    </ul></div>
+    <div><ul>
+      <li><b>Catalog pinning.</b> A changed tool is quarantined; a signed catalog decides what starts.</li>
+      <li><b>Egress control.</b> URLs and DNS classified, redirects not followed, DNS pinned.</li>
+      <li><b>Output declassification.</b> Redaction, structured allowlist, or handle-only.</li>
+      <li><b>Properties S1 to S31.</b> Each names an enforcing class and a test that stays green.</li>
+    </ul></div>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>11 / 26</span></div>
+</div></section>
+
+<!-- 12 MODULES -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Inside the build</p>
+  <h2>Eight core modules, one engine decides.</h2>
+  <table>
+    <thead><tr><th>Module</th><th>Role</th><th>Enforces</th></tr></thead>
+    <tbody>
+      <tr><td>aegis-engine</td><td>The decision core</td><td>Policy, scope, approval, catalog integrity, egress, output policy, audit</td></tr>
+      <tr><td>aegis-mcp</td><td>MCP protocol and clients</td><td>Transport, HTTP/stdio sources, pinned HTTP, process launcher</td></tr>
+      <tr><td>aegis-config</td><td>Configuration and wiring</td><td>Sources, hooks, secrets, token exchange, artifact admission</td></tr>
+      <tr><td>aegis-mcp-security</td><td>Perimeter and identity</td><td>JWT/JWKS, pre-auth limits and lockout, scope enforcement</td></tr>
+      <tr><td>aegis-gateway</td><td>Own-host server + CLI</td><td>Route groups, admin listener, CSRF/Origin, startup checks</td></tr>
+      <tr><td>aegis-knox3-extension</td><td>Apache Knox front door</td><td>Knox identity bridge, route admission, revocation</td></tr>
+      <tr><td>aegis-source-a2a</td><td>Agent-to-agent source</td><td>A2A agents as governed tools</td></tr>
+      <tr><td>aegis-observability-otlp</td><td>Telemetry</td><td>OTLP span export of decisions</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Optional modules add Derby and Postgres state, JDBC and ZooKeeper sources, and guardrails.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>12 / 26</span></div>
+</div></section>
+
+<!-- 13 CONTROLS ADDED -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">2.0 hardening</p>
+  <h2>A comprehensive control set, added and tested.</h2>
+  <div class="three">
+    <div class="card good"><h3>Network and identity</h3><p>DNS and egress pinning, JWT jti with revocation across the delegation chain, per-address and IPv6 /64 pre-auth limits, pinned JWKS, authenticated egress proxy.</p></div>
+    <div class="card good"><h3>Admission and output</h3><p>Signed deployment attestation, host-anchored plugin digest, execution contracts, structured-allowlist and handle-only output, AES-256-GCM for retained handles.</p></div>
+    <div class="card good"><h3>Evidence and audit</h3><p>Signed audit checkpoints, a SIEM sink interface, and the complete-control profile that enforces all of the above together.</p></div>
+  </div>
+  <p class="big" style="margin-top:16px">Seven passes of hardening, each validated with a green build, bring these controls together under one profile.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>13 / 26</span></div>
+</div></section>
+
+<!-- 14 BUILD GATES -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Engineering quality</p>
+  <h2>Every build passes four gates.</h2>
+  <div class="four">
+    <div class="card good"><h3>SpotBugs + FindSecBugs</h3><p>Static and security analysis at maximum effort; real defects fixed, exclusions justified.</p></div>
+    <div class="card good"><h3>JaCoCo</h3><p>Coverage enforced as part of the build.</p></div>
+    <div class="card good"><h3>Apache RAT</h3><p>License headers checked on every source file.</p></div>
+    <div class="card good"><h3>CodeQL + OSV</h3><p>Deep security and dependency scanning as CI workflows.</p></div>
+  </div>
+  <div class="two" style="margin-top:18px">
+    <div class="card"><h3>Clean result</h3><p>The first SpotBugs run reported 72 findings. The genuine defects (constant-time digest comparison, a regex performance path, null guards, dead code) were fixed, and every remaining exclusion carries a written reason.</p></div>
+    <div class="card"><h3>Green build</h3><p>408 tests, 0 failures, across the eight core modules on 2026-11-07, with all four gates on in one run.</p></div>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>14 / 26</span></div>
+</div></section>
+
+<!-- 15 OWASP -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Standards coverage</p>
+  <h2>Strong, tested OWASP coverage.</h2>
+  <div class="two">
+    <div>
+      <div class="card good"><h3>Full gateway path</h3><p>MCP01 tokens, MCP02 privilege, MCP07 authn/authz, MCP08 audit, LLM05 output handling, LLM06 excessive agency, LLM10 unbounded consumption.</p></div>
+      <div class="card good" style="margin-top:12px"><h3>Full managed path</h3><p>MCP03 tool poisoning, MCP04 supply chain, MCP05 command injection, MCP06 prompt injection, MCP10 over-sharing, LLM02 disclosure.</p></div>
+    </div>
+    <div>
+      <div class="card gold"><h3>Complementary controls</h3><p>Seven risks (shadow servers, direct injection, model supply chain, poisoning, system prompt, vector stores, misinformation) are owned with your endpoint, network and model providers. Aegis contributes to each and names the owner.</p></div>
+      <div class="card good" style="margin-top:12px"><h3>Headline</h3><p>13 of 20 risks closed on the gateway path, with the gateway-ownable part of every other risk implemented and tested.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>15 / 26</span></div>
+</div></section>
+
+<!-- 16 THREAT MODEL -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Threat model</p>
+  <h2>STRIDE, named abuse cases, a precise claim.</h2>
+  <div class="two">
+    <div>
+      <p>STRIDE per zone becomes abuse cases TM01 to TM10, each with preconditions, attacker goal, expected outcome and the owning property.</p>
+      <ul>
+        <li>TM01 prompt-injected destructive call</li>
+        <li>TM02 tool poisoning and rug pull</li>
+        <li>TM03 confused deputy, TM04 SSRF</li>
+        <li>TM06 self-approval, TM07 shadow MCP</li>
+      </ul>
+    </div>
+    <div class="card good"><h3>The claim, under complete control</h3><p>No unadmitted tool request and no raw, untrusted tool result crosses the Aegis-controlled boundary. Isolation and least privilege keep any defect in admitted software inside its assigned capability.</p>
+      <p class="note">A confident, bounded promise: the managed path is controlled end to end.</p>
+    </div>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>16 / 26</span></div>
+</div></section>
+
+<!-- 17 CVE PROOF -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Proof, not claim</p>
+  <h2>Real exploits, stopped in a live run.</h2>
+  <table>
+    <thead><tr><th>CVE class</th><th>Direct (no gateway)</th><th>Through Aegis</th></tr></thead>
+    <tbody>
+      <tr><td>Filesystem path traversal (CVE-2025-53109/53110)</td><td>reads a secret file</td><td><span class="tag t-good">DENIED</span> SCOPE_DENIED</td></tr>
+      <tr><td>Command injection (CVE-2025-69256)</td><td>shell chain executes</td><td><span class="tag t-good">DENIED</span> READONLY_CALLER / APPROVAL_REQUIRED</td></tr>
+      <tr><td>Arbitrary SQL / git server (CVE-2025-68143/68145)</td><td><code>DROP TABLE</code> executes</td><td><span class="tag t-good">DENIED</span> INVALID_INPUT</td></tr>
+      <tr><td>SSRF to cloud metadata</td><td>request is made</td><td><span class="tag t-good">DENIED</span> EGRESS_DENIED</td></tr>
+      <tr><td>Secret disclosure / tool poisoning</td><td>key, PEM, hidden instruction returned</td><td><span class="tag t-good">CONTAINED</span> REDACTED / CATALOG_INTEGRITY / HANDLE_ONLY</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Verbatim from a real run of the 2.0 build. Reproducible with one command. Aegis complements client-side protections for client-only CVEs.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>17 / 26</span></div>
+</div></section>
+
+<!-- 18 CVE CENSUS -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Coverage at scale</p>
+  <h2>Mapped against the real MCP CVE landscape.</h2>
+  <p class="lead" style="margin-top:10px">We built a dated census of MCP-related CVEs from the national vulnerability database and mapped each one to how Aegis handles it. The result shows the breadth of the path Aegis governs.</p>
+  <div class="kpi">
+    <div><b>561</b><span>unique MCP-related CVEs catalogued</span></div>
+    <div><b>22</b><span>closed on the gateway path today</span></div>
+    <div><b>297</b><span>closed on the managed (complete-control) path</span></div>
+    <div><b>319</b><span>fall on a path Aegis governs</span></div>
+  </div>
+  <p class="note">Every row records product, versions, CWE, CVSS, attack boundary and the Aegis control. Dated 2026-11-07.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>18 / 26</span></div>
+</div></section>
+
+<!-- 19 RESPONSIBLE AI -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Responsible AI</p>
+  <h2>Governance where the agent acts.</h2>
+  <div class="three">
+    <div class="card good"><h3>Human oversight</h3><p>Independent approval and dry-run receipts for consequential actions.</p></div>
+    <div class="card good"><h3>Accountability</h3><p>Hash-chained audit, provenance on results, explainable decisions.</p></div>
+    <div class="card good"><h3>Privacy</h3><p>Secret and PII redaction, handle-only output, least privilege.</p></div>
+  </div>
+  <table>
+    <thead><tr><th>NIST AI RMF</th><th>Aegis contribution</th></tr></thead>
+    <tbody>
+      <tr><td>Govern</td><td>Policy as configuration, separation of duties, fail-closed defaults</td></tr>
+      <tr><td>Map</td><td>Typed catalog of exactly which tools, resources and destinations are reachable</td></tr>
+      <tr><td>Measure</td><td>Audit journal, decision records, control suite and CVE containment run</td></tr>
+      <tr><td>Manage</td><td>Approval, revocation, rate limits, break-glass containment</td></tr>
+    </tbody>
+  </table>
+  <p class="note">An enabling layer for EU AI Act human-oversight and record-keeping obligations.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>19 / 26</span></div>
+</div></section>
+
+<!-- 20 EVIDENCE -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Evidence</p>
+  <h2>Proven, on the record.</h2>
+  <div class="kpi">
+    <div><b>408</b><span>tests, 0 failures, 8 core modules</span></div>
+    <div><b>4</b><span>build gates, all green</span></div>
+    <div><b>13/20</b><span>OWASP MCP+LLM risks closed</span></div>
+    <div><b>0</b><span>attacks reached the backend through Aegis</span></div>
+  </div>
+  <div class="two" style="margin-top:20px">
+    <div class="card good"><h3>Recorded and reproducible</h3><p>The hardened 8-module build, the S1 to S31 control suite, and the before-and-after CVE containment run on the real jar, each with retained evidence.</p></div>
+    <div class="card good"><h3>Transparent</h3><p>Every number ties to a dated log or test. Where a check needs a cluster or a CI service, that is stated plainly, so the evidence is trustworthy.</p></div>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>20 / 26</span></div>
+</div></section>
+
+<!-- 21 IDE -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Adoption</p>
+  <h2>Connect an AI IDE in minutes.</h2>
+  <div class="two">
+    <div>
+      <p>To the IDE, Aegis is a normal MCP server over HTTP. Point the client at the gateway URL and present a bearer token. Aegis decides the rest.</p>
+      <ul>
+        <li>Kiro and Cursor: <code>url</code> plus <code>Authorization: Bearer</code>.</li>
+        <li>VS Code: a prompted secret input plus an <code>http</code> server entry.</li>
+        <li>Claude Desktop and the MCP Python SDK: the same URL and token.</li>
+        <li>Ready-made settings ship for 27 Apache projects, own host and Knox.</li>
+      </ul>
+    </div>
+    <div class="card good"><h3>The token is the identity</h3><p>Its groups decide which tool classes it may use, whether a write needs an approver, and what it may read. Issue a narrow token per person or agent.</p>
+      <p class="note">Deploy on AWS, then swap the local URL for the load balancer address. Nothing else changes.</p>
+    </div>
+  </div>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>21 / 26</span></div>
+</div></section>
+
+<!-- 22 ECOSYSTEM -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Ecosystem</p>
+  <h2>Proven across the Apache data stack.</h2>
+  <p class="lead" style="margin-top:10px">Aegis ships one IDE-ready tutorial per verified project, each built from a retained real run through both front doors, with the engine command line, prompts mapped to tools, and the full request table.</p>
+  <div class="four">
+    <div class="card"><h3>Streaming</h3><p>Kafka, Pulsar, Flink, Storm, NiFi, Flume</p></div>
+    <div class="card"><h3>Lakehouse</h3><p>Spark, Iceberg, Hive, Doris, Druid, Pinot</p></div>
+    <div class="card"><h3>Data and search</h3><p>HBase, Hadoop, CouchDB, Solr, Ignite, Calcite</p></div>
+    <div class="card"><h3>Platform</h3><p>ZooKeeper, BookKeeper, Airflow, Ranger, Superset, ActiveMQ</p></div>
+  </div>
+  <p class="note">27 project tutorials, each with VS Code, Kiro and Cursor settings, plus an existing-MCP-server walkthrough.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>22 / 26</span></div>
+</div></section>
+
+<!-- 23 AEGIS + YOUR STACK -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Clean fit</p>
+  <h2>Aegis plus your existing controls.</h2>
+  <p class="lead" style="margin-top:10px">Aegis is strongest as the governance layer in a defense-in-depth stack. It owns the MCP action boundary and integrates cleanly with the controls you already run.</p>
+  <table>
+    <thead><tr><th>You already have</th><th>Aegis adds</th></tr></thead>
+    <tbody>
+      <tr><td>WAF and API gateway</td><td>Semantic control inside the MCP JSON-RPC body that a transport gateway cannot read</td></tr>
+      <tr><td>Identity provider</td><td>Per-call policy, scope and approval, with no token passthrough to backends</td></tr>
+      <tr><td>SIEM</td><td>A hash-chained decision journal and a sink that feeds your SIEM directly</td></tr>
+      <tr><td>Network and endpoint policy</td><td>The in-path controls that make those policies effective for agent traffic</td></tr>
+    </tbody>
+  </table>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>23 / 26</span></div>
+</div></section>
+
+<!-- 24 ROADMAP -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Roadmap</p>
+  <h2>Strong today, and getting stronger.</h2>
+  <table>
+    <thead><tr><th>Stage</th><th>State</th><th>What it adds</th></tr></thead>
+    <tbody>
+      <tr><td>G1 Semantic gateway</td><td><span class="tag t-good">Shipped</span></td><td>Identity, policy, scope, approval, egress, catalog pins, audit, output control</td></tr>
+      <tr><td>G2 Admitted and isolated servers</td><td><span class="tag t-good">In progress</span></td><td>Artifact admission, process isolation, backend network policy, scoped credentials</td></tr>
+      <tr><td>G3 Managed endpoint</td><td><span class="tag t-good">Designed</span></td><td>Endpoint guard, client admission, taint propagation, strict release rule</td></tr>
+      <tr><td>CI and supply chain</td><td><span class="tag t-good">Workflows added</span></td><td>CodeQL, OSV scan, Helm render gate</td></tr>
+    </tbody>
+  </table>
+  <p class="big" style="margin-top:14px">Every stage is useful on its own, and each one builds toward complete control of the managed path.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>24 / 26</span></div>
+</div></section>
+
+<!-- 25 GETTING STARTED -->
+<section class="slide"><div class="pad">
+  <p class="eyebrow">Getting started</p>
+  <h2>Four steps to a governed agent.</h2>
+  <div class="four">
+    <div class="card good"><h3>1 Start</h3><p>Run the gateway image locally or on AWS with one configuration file.</p></div>
+    <div class="card good"><h3>2 Connect</h3><p>Point your IDE agent at the gateway URL with a bearer token.</p></div>
+    <div class="card good"><h3>3 Govern</h3><p>Declare tools, classes, scopes and approvers; Aegis enforces them.</p></div>
+    <div class="card good"><h3>4 Prove</h3><p>Review the audit journal and the decision receipts for every action.</p></div>
+  </div>
+  <p class="big" style="margin-top:18px">A profile you prove on a laptop moves to EKS, ECS or EC2 unchanged. Start small, scale with confidence.</p>
+  <div class="foot"><span><b>Aegis</b> Gateway 2.0</span><span>25 / 26</span></div>
+</div></section>
+
+<!-- 26 CLOSE -->
+<section class="slide cover"><div class="pad">
+  <p class="eyebrow">Summary</p>
+  <h1>One governed route. Proven, and ready.</h1>
+  <div class="two" style="margin-top:24px">
+    <div>
+      <p style="color:#eafffd;font-size:22px">Aegis turns an agent's power over real systems into controlled, approved, audited actions. The same image runs on EKS, ECS, EC2 or your own host, in front of an existing MCP server or an Apache project, with no change to the governed code.</p>
+    </div>
+    <div>
+      <p style="color:#bfe8e4;font-size:20px">408 tests on 8 modules with four gates green, 13 of 20 OWASP risks closed on the gateway path, 561 MCP CVEs mapped, and a live run that denied three real MCP CVE classes.</p>
+    </div>
+  </div>
+  <div style="margin-top:22px">
+    <span class="pill">Deploy on AWS</span>
+    <span class="pill">Connect your IDE</span>
+    <span class="pill">Run the CVE demo</span>
+    <span class="pill">Read the threat model</span>
+  </div>
+  <div class="foot" style="color:#bfe8e4;border-top-color:#ffffff33"><span>Aegis MCP Gateway 2.0</span><span>Apache-2.0 - independent project</span></div>
+</div></section>
+
+</body>
+</html>

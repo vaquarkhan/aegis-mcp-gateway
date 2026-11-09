@@ -42,6 +42,11 @@ layout: null
       <article class="card"><h3><a href="guide/hello-world.html">Hello World</a></h3><p>Put Aegis into your IDE and Apache project development cycle: build, start a profile, point MCP at Aegis, send one prompt.</p></article>
       <article class="card"><h3><a href="guide/handbook.html">User handbook</a></h3><p>A concise route map for application teams, operators, security reviewers, and plugin authors.</p></article>
       <article class="card"><h3><a href="guide/security.html">Security and threat model</a></h3><p>Trust zones, STRIDE abuse cases TM01 to TM10, OWASP MCP Top 10 handling, S1 to S31 promises, and dated control-suite records with their attestation status.</p></article>
+      <article class="card"><h3><a href="guide/threat-modeling.html">Threat modeling and honest coverage</a></h3><p>The complete control plane, the controls enforced today, and a direct list of the open findings, the components Aegis does not own, and the checks that need a cluster or runtime.</p></article>
+      <article class="card"><h3><a href="guide/mcp-cve-containment.html">MCP CVE containment demo</a></h3><p>Three real MCP server CVE classes exploited directly, then denied or contained through Aegis, with before-and-after evidence from a real run.</p></article>
+      <article class="card"><h3><a href="guide/deploy.html">Deploy on AWS and your AI IDE</a></h3><p>Run the gateway image on EKS, ECS or EC2, then connect Kiro, Cursor, VS Code or Claude Desktop as a governed MCP server.</p></article>
+      <article class="card"><h3><a href="guide/responsible-ai.html">Responsible AI</a></h3><p>Where Aegis contributes: human oversight, accountability, privacy and least privilege at the MCP action boundary, mapped to NIST AI RMF and the EU AI Act.</p></article>
+      <article class="card"><h3><a href="guide/tutorials.html">All tutorials</a></h3><p>Deep-dive walkthroughs and one IDE-ready tutorial per verified Apache project, each from a retained real run.</p></article>
       <article class="card"><h3><a href="guide/modules.html">Module reference</a></h3><p>What each core root-reactor module does, its principal configuration keys, and the security controls it enforces.</p></article>
       <article class="card"><h3><a href="TUTORIAL-SPARK-ICEBERG.html">Tutorial: Spark and Iceberg from your IDE</a></h3><p>A tiny Iceberg dataset, Spark Connect, and your IDE's agent governed by Aegis, with and without Knox. <a href="TUTORIALS.html">All tutorials</a>.</p></article>
       <article class="card"><h3><a href="ADOPTION-GUIDE.html">Adopt Aegis</a></h3><p>Connect an MCP server, declare REST tools, or choose a typed source without changing the governed project.</p></article>
@@ -73,6 +78,8 @@ layout: null
         <tr><td>Adapter catalog</td><td>25 deployable adapter configurations and 116 tools, parsed and governed in the default build.</td><td><a href="https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/examples/adopters">Repository adopter catalog</a></td></tr>
         <tr><td>Real-engine runs</td><td>Twenty-eight profiles have own-host and Knox runs, each with an IDE-ready tutorial. Four more ship as configuration for the next product-stack run: Atlas, Cassandra, Impala, and Paimon.</td><td><a href="evidence/ADOPTER-REAL-ENGINE-STATUS.html">Adopter status</a></td></tr>
         <tr><td>Security and threat model</td><td>Threat model (STRIDE, TM01 to TM10), security properties S1 to S31, and a focused control suite of 227 tests with 0 failures.</td><td><a href="guide/security.html">Security guide</a></td></tr>
+        <tr><td>Security hardening and build gates (2.0)</td><td>Hardened build on 2026-11-07: 408 tests across the eight core modules, 0 failures, with SpotBugs and the FindSecBugs plugin, JaCoCo coverage, and the Apache RAT license check all green. CodeQL and an OSV dependency scan are added as CI workflows.</td><td><a href="guide/threat-modeling.html">Threat modeling</a></td></tr>
+        <tr><td>MCP CVE containment</td><td>Three real MCP server CVE classes (filesystem path traversal, command injection, arbitrary file access) exploited directly, then denied or contained through Aegis, with before-and-after evidence from a real run.</td><td><a href="guide/mcp-cve-containment.html">CVE containment</a></td></tr>
         <tr><td>Added 2026-10-03</td><td>Per-caller backend credentials by RFC 8693 token exchange (Keycloak 26.8.0), A2A agents as governed tools (a2a-sdk 1.2.1 through both front doors), an OpenAPI-to-draft command, three reference hook services, and a container image and Helm chart.</td><td><a href="VALIDATION.html#runs-added-on-2026-10-03">Runs added on 2026-10-03</a></td></tr>
         <tr><td>Knox extension</td><td>Knox 3.0.0 API-level tests, and a 2026-10-05 run of the current bundle inside a stock Knox 3.0.0 gateway against real ZooKeeper. Knox 3.1 needs a Jakarta build. An operator must validate their Knox topology and plugin set.</td><td><a href="KNOX-EXTENSION.html">Knox extension guide</a></td></tr>
       </tbody>
@@ -83,7 +90,7 @@ layout: null
     </section>
   </main>
   <footer>
-    <strong>Aegis Gateway 2.0</strong> · Apache-2.0 · <a href="guide/handbook.html">User handbook</a> · <a href="guide/security.html">Security guide</a>
+    <strong>Aegis Gateway 2.0</strong> · Apache-2.0 · <a href="guide/handbook.html">User handbook</a> · <a href="guide/security.html">Security guide</a> · <a href="guide/threat-modeling.html">Threat modeling</a> · <a href="guide/deploy.html">Deploy</a> · <a href="guide/responsible-ai.html">Responsible AI</a>
   </footer>
 </body>
 </html>

@@ -1,0 +1,191 @@
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Deploy the Aegis gateway on AWS (EKS, ECS, EC2) and connect it to an AI IDE such as Kiro, Cursor, VS Code or Claude Desktop.">
+  <title>Deploy Aegis on AWS and connect your AI IDE</title>
+  <link rel="stylesheet" href="handbook.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Deployment navigation">
+    <a class="brand" href="../index.html">Aegis <span>Gateway 2.0</span></a>
+    <nav>
+      <a href="#start">Start here</a>
+      <a href="#image">Build the image</a>
+      <a href="#eks">AWS EKS with Helm</a>
+      <a href="#ecs">AWS ECS and Fargate</a>
+      <a href="#ec2">EC2 and the plain jar</a>
+      <a href="#ide">Connect an AI IDE</a>
+      <a href="#checklist">Production checklist</a>
+      <a href="#references">Reference map</a>
+      <a href="hello-world.html">Hello World</a>
+      <a href="handbook.html">User handbook</a>
+      <a href="security.html">Security guide</a>
+    </nav>
+    <p class="sidebar-note">Aegis terminates no TLS of its own on a cloud load balancer path: either mount a keystore or set allowPlaintext and let the load balancer or a sidecar terminate TLS. The gateway refuses to start on a public listener without one of the two.</p>
+  </aside>
+  <main>
+    <header id="start" class="hero">
+      <p class="eyebrow">DEPLOY</p>
+      <h1>Put Aegis on AWS, then point your IDE agent at it.</h1>
+      <p class="lead">Aegis is one shaded Java jar in a container, configured by a single mounted file. The same image runs on EKS through the Helm chart, on ECS or Fargate as a task, or on an EC2 host as a plain process. Once it is listening, an AI IDE connects to it as an ordinary MCP server over HTTP, and every tool call is governed.</p>
+      <div class="actions">
+        <a class="button primary" href="hello-world.html">Start local first</a>
+        <a class="button" href="#eks">Jump to EKS</a>
+        <a class="button" href="#ide">Jump to IDE setup</a>
+      </div>
+    </header>
+
+    <section id="image">
+      <p class="eyebrow">IMAGE</p>
+      <h2>One image, built from the repository Dockerfile.</h2>
+      <p>The Dockerfile builds the gateway jar on a Temurin 21 base, then runs it as a non-root user (uid 10001) with a read-only root filesystem. The only writable directory is <code>/var/lib/aegis</code>, where the audit journal lives. Configuration is mounted read-only at <code>/etc/aegis/aegis.yaml</code>. Base images are pinned by digest.</p>
+      <pre><code># Build and push to Amazon ECR
+aws ecr create-repository --repository-name aegis-gateway
+docker build -t aegis-gateway:2.0.0 .
+aws ecr get-login-password --region us-east-1 \
+  | docker login --username AWS --password-stdin &lt;account&gt;.dkr.ecr.us-east-1.amazonaws.com
+docker tag aegis-gateway:2.0.0 &lt;account&gt;.dkr.ecr.us-east-1.amazonaws.com/aegis-gateway:2.0.0
+docker push &lt;account&gt;.dkr.ecr.us-east-1.amazonaws.com/aegis-gateway:2.0.0</code></pre>
+      <p class="callout">Record the pushed image digest (<code>sha256:...</code>). The Helm chart can pin by digest, and complete-control mode requires it: a mutable tag is refused.</p>
+    </section>
+
+    <section id="eks" class="band">
+      <p class="eyebrow">AWS EKS</p>
+      <h2>EKS with the bundled Helm chart.</h2>
+      <p>The chart is at <code>charts/aegis</code>. It defaults the pod to non-root, read-only root filesystem, dropped capabilities and a <code>RuntimeDefault</code> seccomp profile. Put the Aegis configuration under <code>config:</code> and name your secrets with <code>envFrom</code>, never inline.</p>
+      <pre><code># values-prod.yaml (excerpt)
+image:
+  repository: &lt;account&gt;.dkr.ecr.us-east-1.amazonaws.com/aegis-gateway
+  digest: "sha256:..."          # pin by digest, not tag
+envFrom:
+  - secretRef: {name: aegis-secrets}   # AEGIS_SIGNING_KEY, tokens, and so on
+persistence:
+  size: 1Gi
+  storageClassName: gp3
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - podSelector: {matchLabels: {app: agent-workloads}}
+config:
+  gateway: {name: aegis-prod}
+  host:
+    listen: {host: 0.0.0.0, port: 8080, allowPlaintext: true}  # ALB terminates TLS
+  audit: {file: /var/lib/aegis/audit.jsonl}
+  # ... identity, policy, sources ...</code></pre>
+      <pre><code>helm upgrade --install aegis charts/aegis -n aegis --create-namespace -f values-prod.yaml
+kubectl -n aegis get pods
+kubectl -n aegis logs deploy/aegis | Select-String listening</code></pre>
+      <p>Expose it with an <code>Ingress</code> on an AWS Load Balancer Controller (ALB) that terminates TLS and adds authentication at the edge if you want, or keep it <code>ClusterIP</code> and reach it from agent workloads inside the cluster. For more than one replica, set <code>sharedState: true</code> and configure a Postgres state store, otherwise an approval granted on one pod is unknown to the next; the chart refuses <code>replicaCount &gt; 1</code> without shared state.</p>
+    </section>
+
+    <section id="ecs">
+      <p class="eyebrow">AWS ECS AND FARGATE</p>
+      <h2>ECS or Fargate as a task.</h2>
+      <p>No Kubernetes needed. Run the same ECR image as a task definition.</p>
+      <div class="two-column">
+        <div>
+          <h3>Task shape</h3>
+          <p>One container, port 8080. Mount the config from an EFS access point or bake a ConfigMap-equivalent into the image build. Put the audit journal on an EFS volume at <code>/var/lib/aegis</code> so it survives task replacement.</p>
+        </div>
+        <div>
+          <h3>Secrets and edge</h3>
+          <p>Inject <code>AEGIS_SIGNING_KEY</code> and tokens from AWS Secrets Manager through the task <code>secrets</code> block. Front the service with an ALB that terminates TLS; set <code>host.listen.allowPlaintext: true</code> because TLS ends at the load balancer.</p>
+        </div>
+      </div>
+      <p class="callout">Least privilege: the task role needs only what your configured sources call (for example a scoped Secrets Manager read). Aegis never needs broad AWS permissions to govern MCP traffic.</p>
+    </section>
+
+    <section id="ec2" class="band">
+      <p class="eyebrow">EC2 AND OWN HOST</p>
+      <h2>EC2, or any host, as a plain process.</h2>
+      <p>The gateway is a single jar. On an EC2 instance with a JRE 21, this is the whole deployment:</p>
+      <pre><code>export AEGIS_SIGNING_KEY=...        # from Secrets Manager or SSM Parameter Store
+java -XX:MaxRAMPercentage=75 -jar aegis-gateway-2.0.0-all.jar --config /etc/aegis/aegis.yaml</code></pre>
+      <p>Run it under systemd as a non-login user, keep <code>/etc/aegis/aegis.yaml</code> read-only, and let the audit journal write to a dedicated data directory. This own-host path is the same one the tutorials use, so a profile you proved locally moves to EC2 unchanged.</p>
+    </section>
+
+    <section id="ide">
+      <p class="eyebrow">AI IDE</p>
+      <h2>Connect Kiro, Cursor, VS Code or Claude Desktop.</h2>
+      <p>To the IDE, Aegis is a normal MCP server reached over HTTP. Point the client at the gateway URL and present the bearer token of the person the agent acts as. Do not list auto-approved tools: let Aegis decide. Replace the URL with your ALB or service address in a cloud deployment.</p>
+      <div class="two-column">
+        <div>
+          <h3>Kiro and Cursor</h3>
+          <pre><code>{
+  "mcpServers": {
+    "aegis": {
+      "url": "https://aegis.example.com/mcp",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}</code></pre>
+        </div>
+        <div>
+          <h3>VS Code</h3>
+          <pre><code>{
+  "inputs": [
+    { "type": "promptString", "id": "aegis-token",
+      "password": true, "description": "Aegis bearer token" }
+  ],
+  "servers": {
+    "aegis": {
+      "type": "http",
+      "url": "https://aegis.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${input:aegis-token}" }
+    }
+  }
+}</code></pre>
+        </div>
+      </div>
+      <p>Claude Desktop and the MCP Python SDK connect the same way: the gateway URL plus a bearer token. Ready-made per-project settings for VS Code, Kiro and Cursor, including the optional Knox front door, are in the repository tutorial directory. Walk one end to end on the <a href="tutorials.html">tutorials page</a>.</p>
+      <p class="callout">The token identifies the caller to Aegis. Its groups decide which tool classes it may use, whether a write needs an independent approver, and what it may read. Issue a narrow token per person or per agent, not one shared admin token.</p>
+    </section>
+
+    <section id="checklist" class="band">
+      <p class="eyebrow">BEFORE PRODUCTION</p>
+      <h2>Deployment checklist.</h2>
+      <ul>
+        <li>Image pinned by digest, pushed to a private registry, scanned in your pipeline.</li>
+        <li>TLS terminated at the load balancer or by a mounted keystore; no plaintext public listener without <code>allowPlaintext</code> set deliberately.</li>
+        <li>Secrets from Secrets Manager, SSM or a vault through <code>envFrom</code> or task secrets, never in the config file.</li>
+        <li>Durable state (Postgres) and <code>sharedState</code> set before scaling past one replica.</li>
+        <li>Network policy or security groups allow only agent workloads to reach the gateway, and allow the gateway only its reviewed egress destinations.</li>
+        <li>Audit journal on durable storage; forward checkpoints to a SIEM or object-lock bucket the gateway host cannot rewrite.</li>
+        <li>Narrow per-caller tokens; approver groups for destructive tools.</li>
+      </ul>
+    </section>
+
+    <section id="references">
+      <p class="eyebrow">REFERENCE MAP</p>
+      <h2>Continue in the guides.</h2>
+      <div class="reference-table">
+        <a href="hello-world.html"><strong>Hello World</strong><span>First governed call</span></a>
+        <a href="handbook.html"><strong>User handbook</strong><span>Deploy and operate</span></a>
+        <a href="tutorials.html"><strong>Tutorials</strong><span>Per-project walkthroughs</span></a>
+        <a href="security.html"><strong>Security guide</strong><span>Zones, STRIDE, S1 to S31</span></a>
+        <a href="mcp-cve-containment.html"><strong>CVE containment</strong><span>Before and after Aegis</span></a>
+        <a href="responsible-ai.html"><strong>Responsible AI</strong><span>Governance mapping</span></a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

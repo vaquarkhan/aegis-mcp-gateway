@@ -39,6 +39,11 @@
       <a href="#tutorials">Tutorials</a>
       <a href="#conventions">Conventions</a>
       <a href="security.html">Security guide</a>
+      <a href="threat-modeling.html">Threat modeling</a>
+      <a href="mcp-cve-containment.html">CVE containment</a>
+      <a href="deploy.html">Deploy on AWS and IDE</a>
+      <a href="responsible-ai.html">Responsible AI</a>
+      <a href="tutorials.html">Tutorials</a>
       <a href="handbook.html">User handbook</a>
     </nav>
     <p class="sidebar-note">Commands, keys and interface names on this page are the ones in the 2.0.0-SNAPSHOT source tree. The Markdown version is <a href="../DEVELOPER.html">DEVELOPER.md</a>.</p>
@@ -67,7 +72,6 @@ java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --openapi-dr
 docker build -t aegis-gateway:2.0.0-SNAPSHOT .            # non-root image; plugins go in /opt/aegis/plugins
 helm install aegis charts/aegis -f my-values.yaml          # StatefulSet, one audit journal volume per replica</code></pre>
       <p>For a Spark Connect source use <code>examples/aegis-gateway-spark/target/aegis-gateway-spark-2.0.0-SNAPSHOT-all.jar</code>, and for the Kafka Admin source <code>examples/aegis-gateway-kafka/target/</code>; the commands are the same. Exit codes of the command-line modes: 0 success, 1 broken audit chain or manifest, 2 usage error. A configuration error stops start-up with a message that names the key.</p>
-      <p class="callout"><strong>HTTP vs stdio.</strong> Without <code>--stdio</code>, the jar listens for Streamable HTTP; the port comes from <code>host.listen</code> (Hello World uses <code>8080</code>). With <code>--stdio</code>, stdout is MCP JSON-RPC and <strong>no HTTP port opens</strong>. Aegis 0.1 logged <code>StdioBoot</code> and defaulted HTTP to <code>8090</code>; that code is only on tag <code>v0.1.0</code> / branch <code>release/0.1</code>, not on this 2.0 line. For a first review smoke test, use <a href="hello-world.html">Hello World</a> and <code>curl http://127.0.0.1:8080/readyz</code>.</p>
     </section>
 
     <section id="configure">

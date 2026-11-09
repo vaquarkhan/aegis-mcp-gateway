@@ -15,7 +15,11 @@
  */
 package io.github.vaquarkhan.aegis.config;
 
+import io.github.vaquarkhan.aegis.engine.control.EgressBinding;
 import io.github.vaquarkhan.aegis.engine.spi.AddressResolver;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
+import io.github.vaquarkhan.aegis.mcp.http.PinnedHttp;
+import java.time.Duration;
 import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
 import io.github.vaquarkhan.aegis.engine.spi.CredentialProvider;
 import io.github.vaquarkhan.aegis.engine.spi.GovernanceHook;
@@ -38,6 +42,8 @@ import java.util.function.Function;
  * @param extraAuditSink    additional sink written in addition to the configured journal (may be null)
  * @param credentialOverride replaces the configured static credentials when non-null
  * @param stateStore        shared state store for multi-replica deployments (null = in-memory)
+ * @param egressBinding     late-bound gateway egress control used by {@link #outbound}; the factory
+ *                          binds a fresh one per build (null = a fresh unbound binding)
  */
 public record BuildContext(
         Function<String, String> env,
@@ -47,7 +53,8 @@ public record BuildContext(
         List<GovernanceHook> extraHooks,
         AuditSink extraAuditSink,
         CredentialProvider credentialOverride,
-        StateStore stateStore) {
+        StateStore stateStore,
+        EgressBinding egressBinding) {
 
     public BuildContext {
         env = env == null ? System::getenv : env;
@@ -55,13 +62,38 @@ public record BuildContext(
         clock = clock == null ? Clock.systemUTC() : clock;
         resolver = resolver == null ? AddressResolver.SYSTEM : resolver;
         extraHooks = extraHooks == null ? List.of() : List.copyOf(extraHooks);
+        egressBinding = egressBinding == null ? new EgressBinding() : egressBinding;
+    }
+
+    /** Source-compatible constructor (pre egress pinning). */
+    public BuildContext(Function<String, String> env, Path baseDir, Clock clock, AddressResolver resolver,
+                        List<GovernanceHook> extraHooks, AuditSink extraAuditSink, CredentialProvider credentialOverride,
+                        StateStore stateStore) {
+        this(env, baseDir, clock, resolver, extraHooks, extraAuditSink, credentialOverride, stateStore, null);
     }
 
     public static BuildContext defaults(Path baseDir) {
-        return new BuildContext(null, baseDir, null, null, null, null, null, null);
+        return new BuildContext(null, baseDir, null, null, null, null, null, null, null);
     }
 
     public BuildContext withEnv(Function<String, String> newEnv) {
-        return new BuildContext(newEnv, baseDir, clock, resolver, extraHooks, extraAuditSink, credentialOverride, stateStore);
+        return new BuildContext(newEnv, baseDir, clock, resolver, extraHooks, extraAuditSink, credentialOverride, stateStore,
+                egressBinding);
+    }
+
+    /** Same context with a new, unbound egress binding (one per gateway build). */
+    public BuildContext withFreshEgressBinding() {
+        return new BuildContext(env, baseDir, clock, resolver, extraHooks, extraAuditSink, credentialOverride, stateStore,
+                new EgressBinding());
+    }
+
+    /**
+     * Pinned outbound transport for providers: every exchange is resolved and checked by the
+     * gateway egress control once, and the socket connects only to those checked addresses.
+     * Connections are refused until the gateway's egress control is bound.
+     */
+    public OutboundHttp outbound(Duration connectTimeout) {
+        return new PinnedHttp(egressBinding::pin, connectTimeout, null,
+                egressBinding.proxy() instanceof PinnedHttp.Proxy p ? p : null);
     }
 }

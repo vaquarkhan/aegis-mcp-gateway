@@ -19,12 +19,15 @@ import io.github.vaquarkhan.aegis.config.ConfigException;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonException;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
+import io.github.vaquarkhan.aegis.engine.control.EgressGuard;
+import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
+import io.github.vaquarkhan.aegis.mcp.http.PinnedHttp;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
@@ -36,7 +39,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
@@ -48,7 +50,21 @@ import javax.net.ssl.TrustManagerFactory;
  */
 public final class VaultKvSecretProvider implements Function<String, String> {
 
-    private static final Pattern SEGMENT = Pattern.compile("[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*");
+    /** Plain KV path: non-empty segments of [A-Za-z0-9_.-] separated by single slashes. A linear scan, no regex. */
+    static boolean plainPath(String value) {
+        if (value == null || value.isEmpty() || value.startsWith("/") || value.endsWith("/") || value.contains("//")) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            boolean ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '_' || c == '.' || c == '-' || c == '/';
+            if (!ok) {
+                return false;
+            }
+        }
+        return true;
+    }
     private static final int MAX_RESPONSE_BYTES = 1 << 20;
 
     private final Map<String, String> values;
@@ -63,18 +79,36 @@ public final class VaultKvSecretProvider implements Function<String, String> {
      */
     public VaultKvSecretProvider(URI address, String mount, String path, String token, String namespace, Path caFile,
                                  Duration timeout) throws IOException, InterruptedException {
-        if (!SEGMENT.matcher(mount).matches() || mount.contains("..")) {
+        this(address, mount, path, token, namespace, caFile, timeout, null);
+    }
+
+    /**
+     * @param pinner when non-null, the request goes through {@link PinnedHttp}: the Vault host is
+     *               resolved and checked once by the egress control and the token is sent only to
+     *               one of those checked addresses (no DNS rebinding window for the token)
+     */
+    public VaultKvSecretProvider(URI address, String mount, String path, String token, String namespace, Path caFile,
+                                 Duration timeout, Function<URI, EgressGuard.Pin> pinner)
+            throws IOException, InterruptedException {
+        if (!plainPath(mount) || mount.contains("..")) {
             throw new ConfigException("config.secrets.settings.mount must be a plain path such as 'secret'");
         }
-        if (!SEGMENT.matcher(path).matches() || path.contains("..")) {
+        if (!plainPath(path) || path.contains("..")) {
             throw new ConfigException("config.secrets.settings.path must be a plain path such as 'aegis/prod'");
         }
         if (token == null || token.isBlank()) {
             throw new ConfigException("config.secrets.settings: the Vault token is empty");
         }
-        HttpClient.Builder b = HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER);
-        if (caFile != null) {
-            b.sslContext(trusting(caFile));
+        SSLContext ssl = caFile == null ? null : trusting(caFile);
+        OutboundHttp transport;
+        if (pinner != null) {
+            transport = new PinnedHttp(pinner, timeout, ssl);
+        } else {
+            HttpClient.Builder b = HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER);
+            if (ssl != null) {
+                b.sslContext(ssl);
+            }
+            transport = OutboundHttp.jdk(b.build());
         }
         String base = address.toString().replaceAll("/+$", "");
         HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(base + "/v1/" + mount + "/data/" + path))
@@ -82,27 +116,27 @@ public final class VaultKvSecretProvider implements Function<String, String> {
         if (namespace != null && !namespace.isBlank()) {
             req.header("X-Vault-Namespace", namespace);
         }
-        // One request at start-up; HttpClient is not closed explicitly because it is AutoCloseable only from JDK 21.
-        HttpResponse<InputStream> r = b.build().send(req.build(), HttpResponse.BodyHandlers.ofInputStream());
-        byte[] body;
-        try (InputStream in = r.body()) {
-            body = in.readNBytes(MAX_RESPONSE_BYTES + 1);
-        }
         String where = mount + "/data/" + path;
-        if (r.statusCode() == 403) {
+        BoundedHttp.Result r;
+        try {
+            r = transport.send(req.build(), MAX_RESPONSE_BYTES, timeout.toMillis());
+        } catch (IOException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("response exceeds")) {
+                throw new ConfigException("config.secrets: the Vault response is larger than " + MAX_RESPONSE_BYTES + " bytes");
+            }
+            throw e;
+        }
+        if (r.status() == 403) {
             throw new ConfigException("config.secrets: the Vault token may not read " + where + " (HTTP 403)");
         }
-        if (r.statusCode() == 404) {
+        if (r.status() == 404) {
             throw new ConfigException("config.secrets: no secret at " + where + " (HTTP 404)");
         }
-        if (r.statusCode() != 200) {
+        if (r.status() != 200) {
             // The body is not echoed: an error page could include request details.
-            throw new ConfigException("config.secrets: Vault answered HTTP " + r.statusCode() + " for " + where);
+            throw new ConfigException("config.secrets: Vault answered HTTP " + r.status() + " for " + where);
         }
-        if (body.length > MAX_RESPONSE_BYTES) {
-            throw new ConfigException("config.secrets: the Vault response is larger than " + MAX_RESPONSE_BYTES + " bytes");
-        }
-        this.values = parse(body);
+        this.values = parse(r.body());
     }
 
     static Map<String, String> parse(byte[] body) {

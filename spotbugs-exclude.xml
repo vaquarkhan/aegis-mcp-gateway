@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!--
+  SpotBugs + FindSecBugs exclusions. Every entry names the detector, the code it covers and why the
+  report is not a defect here. Add an entry only with that justification; never exclude a whole
+  package without one. Security detectors (FindSecBugs, UNSAFE_HASH_EQUALS, injection families) are
+  never excluded globally: each one is fixed in code or excluded for one named class with a reason.
+-->
+<FindBugsFilter>
+
+  <!-- EI_EXPOSE_REP / EI_EXPOSE_REP2: "may expose internal representation". Aegis records hold
+       List/Map fields that are defensively copied with List.copyOf / Map.copyOf in compact constructors,
+       and service fields (StateStore, AuditSink, ResultHandleStore) are shared on purpose: they are the
+       collaborating services, not data. The detector cannot see the copy and flags the type. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+
+  <!-- IS2_INCONSISTENT_SYNC on HashChainFileAuditSink: the "unsynchronized" accesses are in
+       openCheckpoints(), called only from the constructor before the object is published to any other
+       thread; every later access is synchronized. -->
+  <Match>
+    <Bug pattern="IS2_INCONSISTENT_SYNC"/>
+    <Class name="io.github.vaquarkhan.aegis.engine.audit.HashChainFileAuditSink"/>
+  </Match>
+
+  <!-- NP_BOOLEAN_RETURN_NULL on ControlTokens.boolOrNull: a deliberate tri-state (absent / true / false)
+       read of an optional control token; callers test for null first. -->
+  <Match>
+    <Bug pattern="NP_BOOLEAN_RETURN_NULL"/>
+    <Class name="io.github.vaquarkhan.aegis.engine.model.ControlTokens"/>
+  </Match>
+
+  <!-- COMMAND_INJECTION on ProcessLauncher: the argv comes from the operator's configuration (never from a
+       request), is passed as a list (no shell), and in complete control every executable and script in it
+       must be a hash-admitted artifact (GatewayFactory.requireCommandArtifacts). -->
+  <Match>
+    <Bug pattern="COMMAND_INJECTION"/>
+    <Class name="~io\.github\.vaquarkhan\.aegis\.mcp\.client\.ProcessLauncher.*"/>
+  </Match>
+
+  <!-- UNENCRYPTED_SOCKET on PinnedHttp: the plain socket is the pinned TCP connection; for https it is
+       wrapped by SSLSocketFactory.createSocket(socket, host, port, true) with SNI and HTTPS endpoint
+       identification before any byte is sent. Plain http is permitted only when egress.schemes allows it. -->
+  <Match>
+    <Bug pattern="UNENCRYPTED_SOCKET"/>
+    <Class name="io.github.vaquarkhan.aegis.mcp.http.PinnedHttp"/>
+  </Match>
+
+  <!-- REC_CATCH_EXCEPTION in JwtVerifier: catching Exception around signature verification and JWKS
+       parsing is the fail-closed design (any failure means "signature invalid" or "refresh failed"); a
+       narrower list would turn an unexpected provider exception into a request failure instead. -->
+  <Match>
+    <Bug pattern="REC_CATCH_EXCEPTION"/>
+    <Class name="io.github.vaquarkhan.aegis.security.identity.JwtVerifier"/>
+  </Match>
+
+  <!-- RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT on ConfigNode.child(...) in OwnServerSecuritySettings.parse:
+       the call marks the other identity block as read so strict parsing does not report it unknown; the
+       returned node is intentionally unused. -->
+  <Match>
+    <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT,RV_RETURN_VALUE_IGNORED,RV_RETURN_VALUE_IGNORED_INFERRED"/>
+    <Class name="io.github.vaquarkhan.aegis.security.perimeter.OwnServerSecuritySettings"/>
+  </Match>
+
+  <!-- PATH_TRAVERSAL_IN / PATH_TRAVERSAL_OUT in the configuration module: file paths (journal, keys,
+       catalog, artifacts) come from the operator's own configuration file and are resolved against
+       baseDir; reading them is the purpose of the module. Request-derived paths never reach these calls. -->
+  <Match>
+    <Bug pattern="PATH_TRAVERSAL_IN,PATH_TRAVERSAL_OUT"/>
+    <Package name="~io\.github\.vaquarkhan\.aegis\.config.*"/>
+  </Match>
+
+  <!-- SQL_INJECTION_JDBC on JdbcToolSource: this generic JDBC converter exists to run the one governed
+       statement a SQL tool carries, so the statement is dynamic by design and cannot be parameterized
+       (arbitrary DDL/DML structure is not a bind parameter). The controls are the sql-readonly hook
+       (one read statement, no writing keyword) plus a read-only database credential on the source, as
+       documented in FEATURES.md F13c; a tool that needs certainty is classified MUTATE and gated by
+       approval. Parameterization is not the applicable control here. -->
+  <Match>
+    <Bug pattern="SQL_INJECTION_JDBC"/>
+    <Class name="io.github.vaquarkhan.aegis.source.jdbc.JdbcToolSource"/>
+  </Match>
+</FindBugsFilter>

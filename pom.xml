@@ -65,6 +65,9 @@
     <junit.version>5.10.2</junit.version>
     <!-- Same snakeyaml line Apache Knox 3.0.0 ships (knox pom: snakeyaml.version=2.4). Optional only. -->
     <snakeyaml.version>2.4</snakeyaml.version>
+    <!-- O-12 A: static analysis in every build (offline). SpotBugs with the FindSecBugs security detectors. -->
+    <spotbugs.plugin.version>4.9.3.0</spotbugs.plugin.version>
+    <findsecbugs.version>1.13.0</findsecbugs.version>
     <!-- Exact Knox release the extension is compiled against (provided scope, never bundled). -->
     <knox.version>3.0.0</knox.version>
     <javax.ws.rs.version>2.0</javax.ws.rs.version>
@@ -172,6 +175,34 @@
     </pluginManagement>
 
     <plugins>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <version>${spotbugs.plugin.version}</version>
+        <configuration>
+          <effort>Max</effort>
+          <threshold>Medium</threshold>
+          <failOnError>true</failOnError>
+          <includeTests>false</includeTests>
+          <excludeFilterFile>${maven.multiModuleProjectDirectory}/spotbugs-exclude.xml</excludeFilterFile>
+          <plugins>
+            <plugin>
+              <groupId>com.h3xstream.findsecbugs</groupId>
+              <artifactId>findsecbugs-plugin</artifactId>
+              <version>${findsecbugs.version}</version>
+            </plugin>
+          </plugins>
+        </configuration>
+        <executions>
+          <execution>
+            <id>spotbugs-check</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <!-- Every source, build and documentation file must carry the Apache License 2.0 header.
            Files that cannot carry a comment (JSON data, captured logs) are excluded explicitly. -->
       <plugin>
@@ -201,6 +232,10 @@
             <exclude>**/dependency-reduced-pom.xml</exclude>
             <exclude>**/.idea/**</exclude>
             <exclude>**/*.iml</exclude>
+            <!-- Threat-model analysis, captured evidence, the CVE demo and the slide deck.
+                 These are evidence and generated artifacts (logs, transcripts, PDFs, scripts)
+                 that cannot carry a license header; they are kept for review, not shipped code. -->
+            <exclude>threat-model/**</exclude>
           </excludes>
         </configuration>
       </plugin>
