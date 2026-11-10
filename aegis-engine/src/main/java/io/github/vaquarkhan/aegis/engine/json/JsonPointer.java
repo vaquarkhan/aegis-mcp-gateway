@@ -27,86 +27,88 @@ import java.util.Optional;
  */
 public final class JsonPointer {
 
-    private final String text;
-    private final List<String> tokens;
+  private final String text;
+  private final List<String> tokens;
 
-    private JsonPointer(String text, List<String> tokens) {
-        this.text = text;
-        this.tokens = tokens;
-    }
+  private JsonPointer(String text, List<String> tokens) {
+    this.text = text;
+    this.tokens = tokens;
+  }
 
-    public static JsonPointer parse(String pointer) {
-        if (pointer == null) {
-            throw new IllegalArgumentException("JSON pointer must not be null");
-        }
-        if (pointer.isEmpty()) {
-            return new JsonPointer("", List.of());
-        }
-        if (pointer.charAt(0) != '/') {
-            throw new IllegalArgumentException("JSON pointer must start with '/': " + pointer);
-        }
-        List<String> out = new ArrayList<>();
-        for (String raw : pointer.substring(1).split("/", -1)) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < raw.length(); i++) {
-                char c = raw.charAt(i);
-                if (c == '~') {
-                    if (i + 1 >= raw.length()) {
-                        throw new IllegalArgumentException("invalid '~' escape in pointer: " + pointer);
-                    }
-                    char n = raw.charAt(++i);
-                    if (n == '0') {
-                        sb.append('~');
-                    } else if (n == '1') {
-                        sb.append('/');
-                    } else {
-                        throw new IllegalArgumentException("invalid '~' escape in pointer: " + pointer);
-                    }
-                } else {
-                    sb.append(c);
-                }
-            }
-            out.add(sb.toString());
-        }
-        return new JsonPointer(pointer, List.copyOf(out));
+  public static JsonPointer parse(String pointer) {
+    if (pointer == null) {
+      throw new IllegalArgumentException("JSON pointer must not be null");
     }
+    if (pointer.isEmpty()) {
+      return new JsonPointer("", List.of());
+    }
+    if (pointer.charAt(0) != '/') {
+      throw new IllegalArgumentException("JSON pointer must start with '/': " + pointer);
+    }
+    List<String> out = new ArrayList<>();
+    for (String raw : pointer.substring(1).split("/", -1)) {
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < raw.length(); i++) {
+        char c = raw.charAt(i);
+        if (c == '~') {
+          if (i + 1 >= raw.length()) {
+            throw new IllegalArgumentException("invalid '~' escape in pointer: " + pointer);
+          }
+          char n = raw.charAt(++i);
+          if (n == '0') {
+            sb.append('~');
+          } else if (n == '1') {
+            sb.append('/');
+          } else {
+            throw new IllegalArgumentException("invalid '~' escape in pointer: " + pointer);
+          }
+        } else {
+          sb.append(c);
+        }
+      }
+      out.add(sb.toString());
+    }
+    return new JsonPointer(pointer, List.copyOf(out));
+  }
 
-    /** Resolves the pointer; empty when any step is missing or of the wrong container type. */
-    public Optional<Object> resolve(Object root) {
-        Object cur = root;
-        for (String t : tokens) {
-            if (cur instanceof Map<?, ?> m) {
-                if (!m.containsKey(t)) {
-                    return Optional.empty();
-                }
-                cur = m.get(t);
-            } else if (cur instanceof List<?> l) {
-                if (t.isEmpty() || !t.chars().allMatch(Character::isDigit) || (t.length() > 1 && t.charAt(0) == '0')) {
-                    return Optional.empty();
-                }
-                int idx;
-                try {
-                    idx = Integer.parseInt(t);
-                } catch (NumberFormatException e) {
-                    return Optional.empty();
-                }
-                if (idx >= l.size()) {
-                    return Optional.empty();
-                }
-                cur = l.get(idx);
-            } else {
-                return Optional.empty();
-            }
+  /** Resolves the pointer; empty when any step is missing or of the wrong container type. */
+  public Optional<Object> resolve(Object root) {
+    Object cur = root;
+    for (String t : tokens) {
+      if (cur instanceof Map<?, ?> m) {
+        if (!m.containsKey(t)) {
+          return Optional.empty();
         }
-        return Optional.ofNullable(cur);
+        cur = m.get(t);
+      } else if (cur instanceof List<?> l) {
+        if (t.isEmpty()
+            || !t.chars().allMatch(Character::isDigit)
+            || (t.length() > 1 && t.charAt(0) == '0')) {
+          return Optional.empty();
+        }
+        int idx;
+        try {
+          idx = Integer.parseInt(t);
+        } catch (NumberFormatException e) {
+          return Optional.empty();
+        }
+        if (idx >= l.size()) {
+          return Optional.empty();
+        }
+        cur = l.get(idx);
+      } else {
+        return Optional.empty();
+      }
     }
+    return Optional.ofNullable(cur);
+  }
 
-    public List<String> tokens() {
-        return tokens;
-    }
+  public List<String> tokens() {
+    return tokens;
+  }
 
-    @Override
-    public String toString() {
-        return text;
-    }
+  @Override
+  public String toString() {
+    return text;
+  }
 }

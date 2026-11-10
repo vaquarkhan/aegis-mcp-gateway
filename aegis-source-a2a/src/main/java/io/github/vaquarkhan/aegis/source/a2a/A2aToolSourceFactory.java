@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 
 /**
  * {@code type: a2a} source: one A2A 1.0 agent as one governed MCP tool. Settings:
+ *
  * <pre>
  * settings:
  *   cardUrl: https://agents.internal.example/inventory/.well-known/agent-card.json   # required
@@ -34,77 +35,88 @@ import java.util.regex.Pattern;
  *   maxResponseBytes: 1048576      # bound on one reply (1 KiB..16 MiB)
  *   cardTimeoutMs: 5000            # bound on reading the agent card
  * </pre>
+ *
  * Classify the tool in the source's {@code tools:} section by the strongest thing the agent can do;
- * unclassified it is DESTRUCTIVE. The agent's host must be on {@code egress.allowHosts}: the call is
- * checked like any other backend call. Credentials for the agent go in the source's
- * {@code credentials:} section and are sent on calls only, never when reading the public card.
+ * unclassified it is DESTRUCTIVE. The agent's host must be on {@code egress.allowHosts}: the call
+ * is checked like any other backend call. Credentials for the agent go in the source's {@code
+ * credentials:} section and are sent on calls only, never when reading the public card.
  */
 public final class A2aToolSourceFactory implements ToolSourceFactory {
 
-    private static final Pattern TOOL_NAME = Pattern.compile("[A-Za-z0-9_.-]{1,64}");
+  private static final Pattern TOOL_NAME = Pattern.compile("[A-Za-z0-9_.-]{1,64}");
 
-    @Override
-    public String type() {
-        return "a2a";
-    }
+  @Override
+  public String type() {
+    return "a2a";
+  }
 
-    @Override
-    public ToolSource create(String id, ConfigNode settings) {
-        return create(id, settings, (io.github.vaquarkhan.aegis.mcp.http.OutboundHttp) null);
-    }
+  @Override
+  public ToolSource create(String id, ConfigNode settings) {
+    return create(id, settings, (io.github.vaquarkhan.aegis.mcp.http.OutboundHttp) null);
+  }
 
-    /**
-     * Gateway construction: the card fetch and every agent call use the gateway's pinned outbound
-     * transport, so they connect only to addresses the egress control approved in the same step.
-     */
-    @Override
-    public ToolSource create(String id, ConfigNode settings, BuildContext context) {
-        return create(id, settings, context == null ? null
-                : context.outbound(java.time.Duration.ofMillis(Math.min(settings.integer("cardTimeoutMs", 5_000), 5_000))));
-    }
+  /**
+   * Gateway construction: the card fetch and every agent call use the gateway's pinned outbound
+   * transport, so they connect only to addresses the egress control approved in the same step.
+   */
+  @Override
+  public ToolSource create(String id, ConfigNode settings, BuildContext context) {
+    return create(
+        id,
+        settings,
+        context == null
+            ? null
+            : context.outbound(
+                java.time.Duration.ofMillis(
+                    Math.min(settings.integer("cardTimeoutMs", 5_000), 5_000))));
+  }
 
-    private ToolSource create(String id, ConfigNode settings, io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
-        URI card = url(settings, "cardUrl", true);
-        URI pinned = url(settings, "endpointUrl", false);
-        String toolName = settings.string("toolName", id.replace('-', '_'));
-        if (!TOOL_NAME.matcher(toolName).matches()) {
-            throw settings.error("toolName", "must be 1 to 64 letters, digits, '_', '.' or '-'");
-        }
-        long maxText = settings.integer("maxTextChars", 16_000);
-        if (maxText < 1 || maxText > 1_000_000) {
-            throw settings.error("maxTextChars", "must be between 1 and 1000000");
-        }
-        long maxBytes = settings.integer("maxResponseBytes", 1 << 20);
-        if (maxBytes < 1024 || maxBytes > 16L << 20) {
-            throw settings.error("maxResponseBytes", "must be between 1024 and 16777216");
-        }
-        long cardTimeout = settings.integer("cardTimeoutMs", 5_000);
-        if (cardTimeout < 100 || cardTimeout > 60_000) {
-            throw settings.error("cardTimeoutMs", "must be between 100 and 60000");
-        }
-        return transport == null
-                ? new A2aToolSource(id, card, pinned, toolName, (int) maxText, (int) maxBytes, cardTimeout)
-                : new A2aToolSource(id, card, pinned, toolName, (int) maxText, (int) maxBytes, cardTimeout, transport);
+  private ToolSource create(
+      String id, ConfigNode settings, io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
+    URI card = url(settings, "cardUrl", true);
+    URI pinned = url(settings, "endpointUrl", false);
+    String toolName = settings.string("toolName", id.replace('-', '_'));
+    if (!TOOL_NAME.matcher(toolName).matches()) {
+      throw settings.error("toolName", "must be 1 to 64 letters, digits, '_', '.' or '-'");
     }
+    long maxText = settings.integer("maxTextChars", 16_000);
+    if (maxText < 1 || maxText > 1_000_000) {
+      throw settings.error("maxTextChars", "must be between 1 and 1000000");
+    }
+    long maxBytes = settings.integer("maxResponseBytes", 1 << 20);
+    if (maxBytes < 1024 || maxBytes > 16L << 20) {
+      throw settings.error("maxResponseBytes", "must be between 1024 and 16777216");
+    }
+    long cardTimeout = settings.integer("cardTimeoutMs", 5_000);
+    if (cardTimeout < 100 || cardTimeout > 60_000) {
+      throw settings.error("cardTimeoutMs", "must be between 100 and 60000");
+    }
+    return transport == null
+        ? new A2aToolSource(id, card, pinned, toolName, (int) maxText, (int) maxBytes, cardTimeout)
+        : new A2aToolSource(
+            id, card, pinned, toolName, (int) maxText, (int) maxBytes, cardTimeout, transport);
+  }
 
-    private static URI url(ConfigNode settings, String key, boolean required) {
-        String raw = required ? settings.requiredString(key) : settings.string(key, null);
-        if (raw == null) {
-            return null;
-        }
-        URI u;
-        try {
-            u = URI.create(raw.trim());
-        } catch (IllegalArgumentException e) {
-            throw settings.error(key, "is not a valid URL");
-        }
-        if (u.getScheme() == null || u.getHost() == null
-                || !(u.getScheme().toLowerCase(Locale.ROOT).equals("http") || u.getScheme().toLowerCase(Locale.ROOT).equals("https"))) {
-            throw settings.error(key, "must be an absolute http or https URL");
-        }
-        if (u.getRawUserInfo() != null) {
-            throw settings.error(key, "must not carry credentials; use the source's credentials section");
-        }
-        return u;
+  private static URI url(ConfigNode settings, String key, boolean required) {
+    String raw = required ? settings.requiredString(key) : settings.string(key, null);
+    if (raw == null) {
+      return null;
     }
+    URI u;
+    try {
+      u = URI.create(raw.trim());
+    } catch (IllegalArgumentException e) {
+      throw settings.error(key, "is not a valid URL");
+    }
+    if (u.getScheme() == null
+        || u.getHost() == null
+        || !(u.getScheme().toLowerCase(Locale.ROOT).equals("http")
+            || u.getScheme().toLowerCase(Locale.ROOT).equals("https"))) {
+      throw settings.error(key, "must be an absolute http or https URL");
+    }
+    if (u.getRawUserInfo() != null) {
+      throw settings.error(key, "must not carry credentials; use the source's credentials section");
+    }
+    return u;
+  }
 }

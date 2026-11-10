@@ -26,46 +26,51 @@ import org.apache.knox.gateway.topology.Version;
  * provider chain (authentication, identity assertion, authorization) before reaching Aegis.
  *
  * <p>Topology:
+ *
  * <pre>
  * &lt;service&gt;
  *   &lt;role&gt;AEGIS_MCP&lt;/role&gt;
  *   &lt;param&gt;&lt;name&gt;aegis.config&lt;/name&gt;&lt;value&gt;/etc/knox/conf/aegis/aegis.json&lt;/value&gt;&lt;/param&gt;
  * &lt;/service&gt;
  * </pre>
+ *
  * Endpoint: {@code https://<knox>/gateway/<topology>/aegis-mcp/v1/mcp}.
  */
 public final class AegisKnoxServiceContributor extends JerseyServiceDeploymentContributorBase {
 
-    public static final String ROLE = "AEGIS_MCP";
+  public static final String ROLE = "AEGIS_MCP";
 
-    @Override
-    public String getRole() {
-        return ROLE;
-    }
+  @Override
+  public String getRole() {
+    return ROLE;
+  }
 
-    @Override
-    public String getName() {
-        return "aegis-mcp";
-    }
+  @Override
+  public String getName() {
+    return "aegis-mcp";
+  }
 
-    @Override
-    public Version getVersion() {
-        return new Version("2.0.0");
-    }
+  @Override
+  public Version getVersion() {
+    return new Version("2.0.0");
+  }
 
-    @Override
-    protected String[] getPackages() {
-        return new String[] {"io.github.vaquarkhan.aegis.knox.rs"};
-    }
+  @Override
+  protected String[] getPackages() {
+    return new String[] {"io.github.vaquarkhan.aegis.knox.rs"};
+  }
 
-    @Override
-    protected String[] getPatterns() {
-        return new String[] {"aegis-mcp/v1/**?**"};
-    }
+  @Override
+  protected String[] getPatterns() {
+    return new String[] {"aegis-mcp/v1/**?**"};
+  }
 
-    @Override
-    public void contributeService(DeploymentContext context, Service service) throws Exception {
-        super.contributeService(context, service);
-        context.getWebAppDescriptor().createListener().listenerClass(AegisKnoxLifecycle.class.getName());
-    }
+  @Override
+  public void contributeService(DeploymentContext context, Service service) throws Exception {
+    super.contributeService(context, service);
+    context
+        .getWebAppDescriptor()
+        .createListener()
+        .listenerClass(AegisKnoxLifecycle.class.getName());
+  }
 }

@@ -16,10 +16,10 @@
 package io.github.vaquarkhan.aegis.config.secrets;
 
 import io.github.vaquarkhan.aegis.config.ConfigException;
+import io.github.vaquarkhan.aegis.engine.control.EgressGuard;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonException;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
-import io.github.vaquarkhan.aegis.engine.control.EgressGuard;
 import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
 import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
 import io.github.vaquarkhan.aegis.mcp.http.PinnedHttp;
@@ -43,152 +43,198 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
 /**
- * {@code secrets.source: vault}: reads one secret from the KV version 2 HTTP API that HashiCorp Vault
- * and OpenBao both serve ({@code GET /v1/<mount>/data/<path>}) once, at start-up, and answers names
- * from its keys. The address passes {@code config.egress} first; redirects are not followed, so the
- * token is only ever sent to the checked address. Rotation takes effect on the next start.
+ * {@code secrets.source: vault}: reads one secret from the KV version 2 HTTP API that HashiCorp
+ * Vault and OpenBao both serve ({@code GET /v1/<mount>/data/<path>}) once, at start-up, and answers
+ * names from its keys. The address passes {@code config.egress} first; redirects are not followed,
+ * so the token is only ever sent to the checked address. Rotation takes effect on the next start.
  */
 public final class VaultKvSecretProvider implements Function<String, String> {
 
-    /** Plain KV path: non-empty segments of [A-Za-z0-9_.-] separated by single slashes. A linear scan, no regex. */
-    static boolean plainPath(String value) {
-        if (value == null || value.isEmpty() || value.startsWith("/") || value.endsWith("/") || value.contains("//")) {
-            return false;
-        }
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            boolean ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
-                    || c == '_' || c == '.' || c == '-' || c == '/';
-            if (!ok) {
-                return false;
-            }
-        }
-        return true;
+  /**
+   * Plain KV path: non-empty segments of [A-Za-z0-9_.-] separated by single slashes. A linear scan,
+   * no regex.
+   */
+  static boolean plainPath(String value) {
+    if (value == null
+        || value.isEmpty()
+        || value.startsWith("/")
+        || value.endsWith("/")
+        || value.contains("//")) {
+      return false;
     }
-    private static final int MAX_RESPONSE_BYTES = 1 << 20;
-
-    private final Map<String, String> values;
-
-    /**
-     * @param address   for example {@code https://vault.example.com:8200}
-     * @param mount     the KV v2 mount, for example {@code secret}
-     * @param path      the secret's path below the mount, for example {@code aegis/prod}
-     * @param token     the Vault/OpenBao token (sent as {@code X-Vault-Token}, never logged)
-     * @param namespace optional {@code X-Vault-Namespace}
-     * @param caFile    optional PEM bundle that replaces the JDK trust store for this connection
-     */
-    public VaultKvSecretProvider(URI address, String mount, String path, String token, String namespace, Path caFile,
-                                 Duration timeout) throws IOException, InterruptedException {
-        this(address, mount, path, token, namespace, caFile, timeout, null);
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      boolean ok =
+          (c >= 'A' && c <= 'Z')
+              || (c >= 'a' && c <= 'z')
+              || (c >= '0' && c <= '9')
+              || c == '_'
+              || c == '.'
+              || c == '-'
+              || c == '/';
+      if (!ok) {
+        return false;
+      }
     }
+    return true;
+  }
 
-    /**
-     * @param pinner when non-null, the request goes through {@link PinnedHttp}: the Vault host is
-     *               resolved and checked once by the egress control and the token is sent only to
-     *               one of those checked addresses (no DNS rebinding window for the token)
-     */
-    public VaultKvSecretProvider(URI address, String mount, String path, String token, String namespace, Path caFile,
-                                 Duration timeout, Function<URI, EgressGuard.Pin> pinner)
-            throws IOException, InterruptedException {
-        if (!plainPath(mount) || mount.contains("..")) {
-            throw new ConfigException("config.secrets.settings.mount must be a plain path such as 'secret'");
-        }
-        if (!plainPath(path) || path.contains("..")) {
-            throw new ConfigException("config.secrets.settings.path must be a plain path such as 'aegis/prod'");
-        }
-        if (token == null || token.isBlank()) {
-            throw new ConfigException("config.secrets.settings: the Vault token is empty");
-        }
-        SSLContext ssl = caFile == null ? null : trusting(caFile);
-        OutboundHttp transport;
-        if (pinner != null) {
-            transport = new PinnedHttp(pinner, timeout, ssl);
-        } else {
-            HttpClient.Builder b = HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER);
-            if (ssl != null) {
-                b.sslContext(ssl);
-            }
-            transport = OutboundHttp.jdk(b.build());
-        }
-        String base = address.toString().replaceAll("/+$", "");
-        HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(base + "/v1/" + mount + "/data/" + path))
-                .timeout(timeout).header("X-Vault-Token", token).header("Accept", "application/json").GET();
-        if (namespace != null && !namespace.isBlank()) {
-            req.header("X-Vault-Namespace", namespace);
-        }
-        String where = mount + "/data/" + path;
-        BoundedHttp.Result r;
-        try {
-            r = transport.send(req.build(), MAX_RESPONSE_BYTES, timeout.toMillis());
-        } catch (IOException e) {
-            if (e.getMessage() != null && e.getMessage().startsWith("response exceeds")) {
-                throw new ConfigException("config.secrets: the Vault response is larger than " + MAX_RESPONSE_BYTES + " bytes");
-            }
-            throw e;
-        }
-        if (r.status() == 403) {
-            throw new ConfigException("config.secrets: the Vault token may not read " + where + " (HTTP 403)");
-        }
-        if (r.status() == 404) {
-            throw new ConfigException("config.secrets: no secret at " + where + " (HTTP 404)");
-        }
-        if (r.status() != 200) {
-            // The body is not echoed: an error page could include request details.
-            throw new ConfigException("config.secrets: Vault answered HTTP " + r.status() + " for " + where);
-        }
-        this.values = parse(r.body());
-    }
+  private static final int MAX_RESPONSE_BYTES = 1 << 20;
 
-    static Map<String, String> parse(byte[] body) {
-        Map<String, Object> m;
-        try {
-            m = Json.parseObject(body, JsonLimits.DEFAULT);
-        } catch (JsonException e) {
-            throw new ConfigException("config.secrets: the Vault response is not JSON");
-        }
-        if (!(m.get("data") instanceof Map<?, ?> outer) || !(outer.get("data") instanceof Map<?, ?> data)) {
-            throw new ConfigException("config.secrets: the Vault response has no data.data object (is the mount KV version 2?)");
-        }
-        Map<String, String> out = new TreeMap<>();
-        for (Map.Entry<?, ?> e : data.entrySet()) {
-            if (!(e.getValue() instanceof String s)) {
-                throw new ConfigException("config.secrets: key '" + e.getKey() + "' is not a string value");
-            }
-            out.put((String) e.getKey(), s);
-        }
-        return Map.copyOf(out);
-    }
+  private final Map<String, String> values;
 
-    private static SSLContext trusting(Path caFile) throws IOException {
-        try (InputStream in = Files.newInputStream(caFile)) {
-            Collection<? extends Certificate> certs = CertificateFactory.getInstance("X.509").generateCertificates(in);
-            if (certs.isEmpty()) {
-                throw new ConfigException("config.secrets.settings.caFile " + caFile + " holds no certificate");
-            }
-            KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-            ks.load(null, null);
-            int i = 0;
-            for (Certificate c : certs) {
-                ks.setCertificateEntry("ca-" + i++, c);
-            }
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            tmf.init(ks);
-            SSLContext ctx = SSLContext.getInstance("TLS");
-            ctx.init(null, tmf.getTrustManagers(), null);
-            return ctx;
-        } catch (GeneralSecurityException e) {
-            throw new ConfigException("config.secrets.settings.caFile " + caFile + " is not a PEM certificate bundle", e);
-        }
-    }
+  /**
+   * @param address for example {@code https://vault.example.com:8200}
+   * @param mount the KV v2 mount, for example {@code secret}
+   * @param path the secret's path below the mount, for example {@code aegis/prod}
+   * @param token the Vault/OpenBao token (sent as {@code X-Vault-Token}, never logged)
+   * @param namespace optional {@code X-Vault-Namespace}
+   * @param caFile optional PEM bundle that replaces the JDK trust store for this connection
+   */
+  public VaultKvSecretProvider(
+      URI address,
+      String mount,
+      String path,
+      String token,
+      String namespace,
+      Path caFile,
+      Duration timeout)
+      throws IOException, InterruptedException {
+    this(address, mount, path, token, namespace, caFile, timeout, null);
+  }
 
-    /** Key names only, for diagnostics; never the values. */
-    public java.util.Set<String> names() {
-        return values.keySet();
+  /**
+   * @param pinner when non-null, the request goes through {@link PinnedHttp}: the Vault host is
+   *     resolved and checked once by the egress control and the token is sent only to one of those
+   *     checked addresses (no DNS rebinding window for the token)
+   */
+  public VaultKvSecretProvider(
+      URI address,
+      String mount,
+      String path,
+      String token,
+      String namespace,
+      Path caFile,
+      Duration timeout,
+      Function<URI, EgressGuard.Pin> pinner)
+      throws IOException, InterruptedException {
+    if (!plainPath(mount) || mount.contains("..")) {
+      throw new ConfigException(
+          "config.secrets.settings.mount must be a plain path such as 'secret'");
     }
+    if (!plainPath(path) || path.contains("..")) {
+      throw new ConfigException(
+          "config.secrets.settings.path must be a plain path such as 'aegis/prod'");
+    }
+    if (token == null || token.isBlank()) {
+      throw new ConfigException("config.secrets.settings: the Vault token is empty");
+    }
+    SSLContext ssl = caFile == null ? null : trusting(caFile);
+    OutboundHttp transport;
+    if (pinner != null) {
+      transport = new PinnedHttp(pinner, timeout, ssl);
+    } else {
+      HttpClient.Builder b =
+          HttpClient.newBuilder()
+              .connectTimeout(timeout)
+              .followRedirects(HttpClient.Redirect.NEVER);
+      if (ssl != null) {
+        b.sslContext(ssl);
+      }
+      transport = OutboundHttp.jdk(b.build());
+    }
+    String base = address.toString().replaceAll("/+$", "");
+    HttpRequest.Builder req =
+        HttpRequest.newBuilder(URI.create(base + "/v1/" + mount + "/data/" + path))
+            .timeout(timeout)
+            .header("X-Vault-Token", token)
+            .header("Accept", "application/json")
+            .GET();
+    if (namespace != null && !namespace.isBlank()) {
+      req.header("X-Vault-Namespace", namespace);
+    }
+    String where = mount + "/data/" + path;
+    BoundedHttp.Result r;
+    try {
+      r = transport.send(req.build(), MAX_RESPONSE_BYTES, timeout.toMillis());
+    } catch (IOException e) {
+      if (e.getMessage() != null && e.getMessage().startsWith("response exceeds")) {
+        throw new ConfigException(
+            "config.secrets: the Vault response is larger than " + MAX_RESPONSE_BYTES + " bytes");
+      }
+      throw e;
+    }
+    if (r.status() == 403) {
+      throw new ConfigException(
+          "config.secrets: the Vault token may not read " + where + " (HTTP 403)");
+    }
+    if (r.status() == 404) {
+      throw new ConfigException("config.secrets: no secret at " + where + " (HTTP 404)");
+    }
+    if (r.status() != 200) {
+      // The body is not echoed: an error page could include request details.
+      throw new ConfigException(
+          "config.secrets: Vault answered HTTP " + r.status() + " for " + where);
+    }
+    this.values = parse(r.body());
+  }
 
-    @Override
-    public String apply(String name) {
-        String v = name == null ? null : values.get(name);
-        return v == null || v.isEmpty() ? null : v;
+  static Map<String, String> parse(byte[] body) {
+    Map<String, Object> m;
+    try {
+      m = Json.parseObject(body, JsonLimits.DEFAULT);
+    } catch (JsonException e) {
+      throw new ConfigException("config.secrets: the Vault response is not JSON");
     }
+    if (!(m.get("data") instanceof Map<?, ?> outer)
+        || !(outer.get("data") instanceof Map<?, ?> data)) {
+      throw new ConfigException(
+          "config.secrets: the Vault response has no data.data object (is the mount KV version 2?)");
+    }
+    Map<String, String> out = new TreeMap<>();
+    for (Map.Entry<?, ?> e : data.entrySet()) {
+      if (!(e.getValue() instanceof String s)) {
+        throw new ConfigException("config.secrets: key '" + e.getKey() + "' is not a string value");
+      }
+      out.put((String) e.getKey(), s);
+    }
+    return Map.copyOf(out);
+  }
+
+  private static SSLContext trusting(Path caFile) throws IOException {
+    try (InputStream in = Files.newInputStream(caFile)) {
+      Collection<? extends Certificate> certs =
+          CertificateFactory.getInstance("X.509").generateCertificates(in);
+      if (certs.isEmpty()) {
+        throw new ConfigException(
+            "config.secrets.settings.caFile " + caFile + " holds no certificate");
+      }
+      KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+      ks.load(null, null);
+      int i = 0;
+      for (Certificate c : certs) {
+        ks.setCertificateEntry("ca-" + i++, c);
+      }
+      TrustManagerFactory tmf =
+          TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+      tmf.init(ks);
+      SSLContext ctx = SSLContext.getInstance("TLS");
+      ctx.init(null, tmf.getTrustManagers(), null);
+      return ctx;
+    } catch (GeneralSecurityException e) {
+      throw new ConfigException(
+          "config.secrets.settings.caFile " + caFile + " is not a PEM certificate bundle", e);
+    }
+  }
+
+  /** Key names only, for diagnostics; never the values. */
+  public java.util.Set<String> names() {
+    return values.keySet();
+  }
+
+  @Override
+  public String apply(String name) {
+    String v = name == null ? null : values.get(name);
+    return v == null || v.isEmpty() ? null : v;
+  }
 }

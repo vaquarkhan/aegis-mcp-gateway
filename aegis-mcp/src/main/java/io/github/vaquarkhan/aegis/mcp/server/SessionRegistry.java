@@ -23,94 +23,106 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Legacy-era (2025) MCP sessions. A session id is a 256-bit random value AND is bound to the
- * caller that created it: presenting someone else's session id is answered exactly like an
- * unknown id (404), so a leaked id cannot be used by a different principal (session hijack).
+ * Legacy-era (2025) MCP sessions. A session id is a 256-bit random value AND is bound to the caller
+ * that created it: presenting someone else's session id is answered exactly like an unknown id
+ * (404), so a leaked id cannot be used by a different principal (session hijack).
  *
- * <p>Sessions hold only protocol state (the negotiated version). Governance state never hangs
- * off a session, so the same controls hold in the stateless 2026-07-28 era.
+ * <p>Sessions hold only protocol state (the negotiated version). Governance state never hangs off a
+ * session, so the same controls hold in the stateless 2026-07-28 era.
  */
 public final class SessionRegistry {
 
-    public record Session(String id, String principalKey, String protocolVersion, long createdAt, long lastSeen) {}
+  public record Session(
+      String id, String principalKey, String protocolVersion, long createdAt, long lastSeen) {}
 
-    private final ConcurrentHashMap<String, Session> sessions = new ConcurrentHashMap<>();
-    private final SecureRandom random = new SecureRandom();
-    private final Clock clock;
-    private final long idleTtlMillis;
-    private final int maxSessions;
+  private final ConcurrentHashMap<String, Session> sessions = new ConcurrentHashMap<>();
+  private final SecureRandom random = new SecureRandom();
+  private final Clock clock;
+  private final long idleTtlMillis;
+  private final int maxSessions;
 
-    public SessionRegistry(Clock clock, long idleTtlMillis, int maxSessions) {
-        this.clock = clock;
-        this.idleTtlMillis = idleTtlMillis;
-        this.maxSessions = maxSessions;
+  public SessionRegistry(Clock clock, long idleTtlMillis, int maxSessions) {
+    this.clock = clock;
+    this.idleTtlMillis = idleTtlMillis;
+    this.maxSessions = maxSessions;
+  }
+
+  /**
+   * Live sessions one principal may hold, so one caller cannot exhaust the registry for everyone.
+   */
+  public static final int MAX_SESSIONS_PER_CALLER = 32;
+
+  /**
+   * @return the new session, or empty when the registry (or this caller's share) is full (caller
+   *     answers 503)
+   */
+  public synchronized Optional<Session> create(CallerIdentity caller, String version) {
+    long now = clock.millis();
+    String pk = caller.principalKey();
+    if (sessions.size() >= maxSessions) {
+      sessions.values().removeIf(s -> now - s.lastSeen() > idleTtlMillis);
     }
-
-    /** Live sessions one principal may hold, so one caller cannot exhaust the registry for everyone. */
-    public static final int MAX_SESSIONS_PER_CALLER = 32;
-
-    /** @return the new session, or empty when the registry (or this caller's share) is full (caller answers 503) */
-    public synchronized Optional<Session> create(CallerIdentity caller, String version) {
-        long now = clock.millis();
-        String pk = caller.principalKey();
-        if (sessions.size() >= maxSessions) {
-            sessions.values().removeIf(s -> now - s.lastSeen() > idleTtlMillis);
-        }
-        long mine = sessions.values().stream().filter(s -> s.principalKey().equals(pk) && now - s.lastSeen() <= idleTtlMillis).count();
-        if (mine >= MAX_SESSIONS_PER_CALLER) {
-            // Evict this caller's least recently used session rather than refusing a reconnect.
-            sessions.values().stream().filter(s -> s.principalKey().equals(pk))
-                    .min(java.util.Comparator.comparingLong(Session::lastSeen))
-                    .ifPresent(s -> sessions.remove(s.id(), s));
-        }
-        if (sessions.size() >= maxSessions) {
-            // Still full after sweeping idle sessions and this caller's own share: evict the globally least
-            // recently used session. The evicted client re-initialises on its next call (one round trip);
-            // refusing here instead would let a few hundred principals, each holding their 32 allowed
-            // sessions, lock every other caller out with 503 until the idle TTL passes.
-            sessions.values().stream()
-                    .min(java.util.Comparator.comparingLong(Session::lastSeen))
-                    .ifPresent(s -> sessions.remove(s.id(), s));
-        }
-        if (sessions.size() >= maxSessions) {
-            return Optional.empty();
-        }
-        byte[] b = new byte[32];
-        random.nextBytes(b);
-        String id = Base64.getUrlEncoder().withoutPadding().encodeToString(b);
-        Session s = new Session(id, caller.principalKey(), version, now, now);
-        sessions.put(id, s);
-        return Optional.of(s);
+    long mine =
+        sessions.values().stream()
+            .filter(s -> s.principalKey().equals(pk) && now - s.lastSeen() <= idleTtlMillis)
+            .count();
+    if (mine >= MAX_SESSIONS_PER_CALLER) {
+      // Evict this caller's least recently used session rather than refusing a reconnect.
+      sessions.values().stream()
+          .filter(s -> s.principalKey().equals(pk))
+          .min(java.util.Comparator.comparingLong(Session::lastSeen))
+          .ifPresent(s -> sessions.remove(s.id(), s));
     }
-
-    /** Finds a live session owned by this caller; refreshes its idle timer. */
-    public Optional<Session> find(String id, CallerIdentity caller) {
-        if (id == null) {
-            return Optional.empty();
-        }
-        Session s = sessions.get(id);
-        long now = clock.millis();
-        if (s == null) {
-            return Optional.empty();
-        }
-        if (now - s.lastSeen() > idleTtlMillis) {
-            sessions.remove(id, s);
-            return Optional.empty();
-        }
-        if (!s.principalKey().equals(caller.principalKey())) {
-            return Optional.empty();
-        }
-        Session touched = new Session(s.id(), s.principalKey(), s.protocolVersion(), s.createdAt(), now);
-        sessions.replace(id, s, touched);
-        return Optional.of(touched);
+    if (sessions.size() >= maxSessions) {
+      // Still full after sweeping idle sessions and this caller's own share: evict the globally
+      // least
+      // recently used session. The evicted client re-initialises on its next call (one round trip);
+      // refusing here instead would let a few hundred principals, each holding their 32 allowed
+      // sessions, lock every other caller out with 503 until the idle TTL passes.
+      sessions.values().stream()
+          .min(java.util.Comparator.comparingLong(Session::lastSeen))
+          .ifPresent(s -> sessions.remove(s.id(), s));
     }
-
-    public boolean delete(String id, CallerIdentity caller) {
-        Optional<Session> s = find(id, caller);
-        return s.isPresent() && sessions.remove(id) != null;
+    if (sessions.size() >= maxSessions) {
+      return Optional.empty();
     }
+    byte[] b = new byte[32];
+    random.nextBytes(b);
+    String id = Base64.getUrlEncoder().withoutPadding().encodeToString(b);
+    Session s = new Session(id, caller.principalKey(), version, now, now);
+    sessions.put(id, s);
+    return Optional.of(s);
+  }
 
-    public int size() {
-        return sessions.size();
+  /** Finds a live session owned by this caller; refreshes its idle timer. */
+  public Optional<Session> find(String id, CallerIdentity caller) {
+    if (id == null) {
+      return Optional.empty();
     }
+    Session s = sessions.get(id);
+    long now = clock.millis();
+    if (s == null) {
+      return Optional.empty();
+    }
+    if (now - s.lastSeen() > idleTtlMillis) {
+      sessions.remove(id, s);
+      return Optional.empty();
+    }
+    if (!s.principalKey().equals(caller.principalKey())) {
+      return Optional.empty();
+    }
+    Session touched =
+        new Session(s.id(), s.principalKey(), s.protocolVersion(), s.createdAt(), now);
+    sessions.replace(id, s, touched);
+    return Optional.of(touched);
+  }
+
+  public boolean delete(String id, CallerIdentity caller) {
+    Optional<Session> s = find(id, caller);
+    return s.isPresent() && sessions.remove(id) != null;
+  }
+
+  public int size() {
+    return sessions.size();
+  }
 }

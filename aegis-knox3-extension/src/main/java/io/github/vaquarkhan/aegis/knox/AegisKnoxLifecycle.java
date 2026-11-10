@@ -18,16 +18,18 @@ package io.github.vaquarkhan.aegis.knox;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
-/** Closes the topology's Aegis gateway (audit journal, stdio children, refresh thread) on undeploy. */
+/**
+ * Closes the topology's Aegis gateway (audit journal, stdio children, refresh thread) on undeploy.
+ */
 public final class AegisKnoxLifecycle implements ServletContextListener {
 
-    @Override
-    public void contextInitialized(ServletContextEvent sce) {
-        // Built lazily on the first request, so a bad config never blocks topology deployment.
-    }
+  @Override
+  public void contextInitialized(ServletContextEvent sce) {
+    // Built lazily on the first request, so a bad config never blocks topology deployment.
+  }
 
-    @Override
-    public void contextDestroyed(ServletContextEvent sce) {
-        KnoxGatewayRegistry.close(sce.getServletContext());
-    }
+  @Override
+  public void contextDestroyed(ServletContextEvent sce) {
+    KnoxGatewayRegistry.close(sce.getServletContext());
+  }
 }

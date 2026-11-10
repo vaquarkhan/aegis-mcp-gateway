@@ -33,63 +33,84 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** {@code --policy-test}: decisions for each case, from the real configuration, with nothing run. */
+/**
+ * {@code --policy-test}: decisions for each case, from the real configuration, with nothing run.
+ */
 class PolicyTestCommandTest {
 
-    @TempDir
-    Path dir;
+  @TempDir Path dir;
 
-    static final Map<String, String> ENV = Map.of("AEGIS_SIGNING_KEY", "k".repeat(48));
+  static final Map<String, String> ENV = Map.of("AEGIS_SIGNING_KEY", "k".repeat(48));
 
-    private record Run(int code, String out, String err) {}
+  private record Run(int code, String out, String err) {}
 
-    private static Run cli(String... args) throws Exception {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        ByteArrayOutputStream err = new ByteArrayOutputStream();
-        int code = Main.run(args, new ByteArrayInputStream(new byte[0]), new PrintStream(out, true, StandardCharsets.UTF_8),
-                new PrintStream(err, true, StandardCharsets.UTF_8), ENV::get, false);
-        return new Run(code, out.toString(StandardCharsets.UTF_8), err.toString(StandardCharsets.UTF_8));
-    }
+  private static Run cli(String... args) throws Exception {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    ByteArrayOutputStream err = new ByteArrayOutputStream();
+    int code =
+        Main.run(
+            args,
+            new ByteArrayInputStream(new byte[0]),
+            new PrintStream(out, true, StandardCharsets.UTF_8),
+            new PrintStream(err, true, StandardCharsets.UTF_8),
+            ENV::get,
+            false);
+    return new Run(
+        code, out.toString(StandardCharsets.UTF_8), err.toString(StandardCharsets.UTF_8));
+  }
 
-    @Test
-    void refusesRemoteOpaBeforeItCanReceivePolicyInput() throws Exception {
-        Path cfg = Files.writeString(dir.resolve("opa.json"), """
+  @Test
+  void refusesRemoteOpaBeforeItCanReceivePolicyInput() throws Exception {
+    Path cfg =
+        Files.writeString(
+            dir.resolve("opa.json"),
+            """
                 {"policy":{"opa":{"url":"http://127.0.0.1:1/decision"}},
                  "sources":[{"id":"rest","type":"http","baseUrl":"http://127.0.0.1:1","tools":[
                  {"name":"list","description":"List.","class":"READ","request":{"method":"GET","path":"/"}}]}]}""");
-        Path cases = Files.writeString(dir.resolve("opa-cases.json"),
-                "{\"cases\":[{\"caller\":{\"actor\":\"alice\"},\"tool\":\"list\"}]}");
-        Run result = cli("--policy-test", cfg.toString(), cases.toString());
-        assertEquals(Main.BROKEN, result.code(), result.out() + result.err());
-        assertTrue(result.err().contains("does not support policy.opa"), result.err());
-    }
+    Path cases =
+        Files.writeString(
+            dir.resolve("opa-cases.json"),
+            "{\"cases\":[{\"caller\":{\"actor\":\"alice\"},\"tool\":\"list\"}]}");
+    Run result = cli("--policy-test", cfg.toString(), cases.toString());
+    assertEquals(Main.BROKEN, result.code(), result.out() + result.err());
+    assertTrue(result.err().contains("does not support policy.opa"), result.err());
+  }
 
-
-    @Test
-    void refusesMcpAndPluginSourcesBeforeTheyCanDiscoverOrResolveCredentials() throws Exception {
-        Path cfg = Files.writeString(dir.resolve("remote.json"), """
+  @Test
+  void refusesMcpAndPluginSourcesBeforeTheyCanDiscoverOrResolveCredentials() throws Exception {
+    Path cfg =
+        Files.writeString(
+            dir.resolve("remote.json"),
+            """
                 {"secrets":{"source":"vault","address":"http://127.0.0.1:1","tokenEnv":"UNUSED"},
                  "sources":[{"id":"remote","type":"mcp","settings":{"transport":"http","url":"http://127.0.0.1:1"}}]}""");
-        Path cases = Files.writeString(dir.resolve("remote-cases.json"),
-                "{\"cases\":[{\"caller\":{\"actor\":\"alice\"},\"tool\":\"any\"}]}");
-        Run result = cli("--policy-test", cfg.toString(), cases.toString());
-        assertEquals(Main.BROKEN, result.code(), result.out() + result.err());
-        assertTrue(result.err().contains("supports only declarative http sources"), result.err());
-    }
+    Path cases =
+        Files.writeString(
+            dir.resolve("remote-cases.json"),
+            "{\"cases\":[{\"caller\":{\"actor\":\"alice\"},\"tool\":\"any\"}]}");
+    Run result = cli("--policy-test", cfg.toString(), cases.toString());
+    assertEquals(Main.BROKEN, result.code(), result.out() + result.err());
+    assertTrue(result.err().contains("supports only declarative http sources"), result.err());
+  }
 
-
-    @Test
-    void everyCaseGetsTheDecisionARealCallWouldMeetAndNothingRuns() throws Exception {
-        AtomicInteger backendHits = new AtomicInteger();
-        HttpServer backend = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        backend.createContext("/", ex -> {
-            backendHits.incrementAndGet();
-            ex.sendResponseHeaders(200, -1);
-            ex.close();
+  @Test
+  void everyCaseGetsTheDecisionARealCallWouldMeetAndNothingRuns() throws Exception {
+    AtomicInteger backendHits = new AtomicInteger();
+    HttpServer backend = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    backend.createContext(
+        "/",
+        ex -> {
+          backendHits.incrementAndGet();
+          ex.sendResponseHeaders(200, -1);
+          ex.close();
         });
-        backend.start();
-        try {
-            Path cfg = Files.writeString(dir.resolve("aegis.json"), """
+    backend.start();
+    try {
+      Path cfg =
+          Files.writeString(
+              dir.resolve("aegis.json"),
+              """
                     {"gateway": {"name": "gw-policy"},
                      "access": {"writeGroups": ["operators"], "destructiveGroups": ["operators"], "approverGroups": ["approvers"]},
                      "approval": {"keyEnv": "AEGIS_SIGNING_KEY"},
@@ -110,8 +131,12 @@ class PolicyTestCommandTest {
                         "resources": [{"type": "iceberg:table", "pointers": ["/namespace", "/table"]}]},
                        {"name": "report", "description": "Report.", "class": "READ", "actionScopes": ["reports:read"],
                         "request": {"method": "GET", "path": "/report"}}]}]}
-                    """.formatted(backend.getAddress().getPort()));
-            Path cases = Files.writeString(dir.resolve("cases.json"), """
+                    """
+                  .formatted(backend.getAddress().getPort()));
+      Path cases =
+          Files.writeString(
+              dir.resolve("cases.json"),
+              """
                     {"cases": [
                       {"name": "analyst lists", "caller": {"actor": "alice", "groups": ["analysts"]},
                        "tool": "list_tables", "arguments": {"namespace": "sales"}, "expect": "ALLOWED"},
@@ -134,52 +159,80 @@ class PolicyTestCommandTest {
                       {"name": "just show me", "caller": {"actor": "olga", "groups": ["operators"]},
                        "tool": "drop_table", "arguments": {"namespace": "sales", "table": "orders"}}]}
                     """);
-            Run ok = cli("--policy-test", cfg.toString(), cases.toString());
-            assertEquals(Main.OK, ok.code(), ok.out() + ok.err());
-            assertTrue(ok.out().contains("OK cases=10 passed=9 failed=0"), ok.out());
-            assertTrue(ok.out().contains("INFO just show me: APPROVAL_REQUIRED (allowed by policy; needs a per-call approval and a dry-run receipt)"),
-                    ok.out());
+      Run ok = cli("--policy-test", cfg.toString(), cases.toString());
+      assertEquals(Main.OK, ok.code(), ok.out() + ok.err());
+      assertTrue(ok.out().contains("OK cases=10 passed=9 failed=0"), ok.out());
+      assertTrue(
+          ok.out()
+              .contains(
+                  "INFO just show me: APPROVAL_REQUIRED (allowed by policy; needs a per-call approval and a dry-run receipt)"),
+          ok.out());
 
-            // Nothing ran: no backend request, and the configured journal was never created.
-            assertEquals(0, backendHits.get());
-            assertFalse(Files.exists(dir.resolve("real-audit.jsonl")), "the operator's journal is untouched");
+      // Nothing ran: no backend request, and the configured journal was never created.
+      assertEquals(0, backendHits.get());
+      assertFalse(
+          Files.exists(dir.resolve("real-audit.jsonl")), "the operator's journal is untouched");
 
-            // A wrong expectation fails the run with exit 1 and says why.
-            Path wrong = Files.writeString(dir.resolve("wrong.json"), """
+      // A wrong expectation fails the run with exit 1 and says why.
+      Path wrong =
+          Files.writeString(
+              dir.resolve("wrong.json"),
+              """
                     {"cases": [{"name": "outsider reads", "caller": {"actor": "eve", "groups": []},
                                 "tool": "list_tables", "arguments": {"namespace": "sales"}, "expect": "ALLOWED"}]}
                     """);
-            Run bad = cli("--policy-test", cfg.toString(), wrong.toString());
-            assertEquals(Main.BROKEN, bad.code());
-            assertTrue(bad.out().contains("FAIL outsider reads: expected ALLOWED, got POLICY_DENIED (step 3:"), bad.out());
+      Run bad = cli("--policy-test", cfg.toString(), wrong.toString());
+      assertEquals(Main.BROKEN, bad.code());
+      assertTrue(
+          bad.out().contains("FAIL outsider reads: expected ALLOWED, got POLICY_DENIED (step 3:"),
+          bad.out());
 
-            // Usage and malformed cases.
-            assertEquals(Main.USAGE, cli("--policy-test", cfg.toString()).code());
-            Path empty = Files.writeString(dir.resolve("empty.json"), "{\"cases\": []}");
-            Run none = cli("--policy-test", cfg.toString(), empty.toString());
-            assertEquals(Main.BROKEN, none.code());
-            assertTrue(none.err().contains("non-empty \"cases\""), none.err());
-        } finally {
-            backend.stop(0);
-        }
+      // Usage and malformed cases.
+      assertEquals(Main.USAGE, cli("--policy-test", cfg.toString()).code());
+      Path empty = Files.writeString(dir.resolve("empty.json"), "{\"cases\": []}");
+      Run none = cli("--policy-test", cfg.toString(), empty.toString());
+      assertEquals(Main.BROKEN, none.code());
+      assertTrue(none.err().contains("non-empty \"cases\""), none.err());
+    } finally {
+      backend.stop(0);
     }
+  }
 
-    @Test
-    @SuppressWarnings("unchecked")
-    void preservesCredentialReferencesAndPinConfigurationForSignedCatalogs() throws Exception {
-        Map<String, Object> credentials = Map.of("type", "bearer", "tokenEnv", "BACKEND_TOKEN");
-        Map<String, Object> source = Map.of("id", "rest", "type", "http", "baseUrl", "http://127.0.0.1:1",
-                "credentials", credentials, "tools", List.of(Map.of("name", "list", "description", "List.",
-                        "class", "READ", "request", Map.of("method", "GET", "path", "/"))));
-        Map<String, Object> raw = new java.util.LinkedHashMap<>();
-        raw.put("sources", List.of(source));
-        raw.put("serverCatalog", Map.of("file", "servers.json", "publicKeyFile", "servers.pub"));
-        raw.put("catalog", Map.of("pinFile", "operator-pins.json"));
+  @Test
+  @SuppressWarnings("unchecked")
+  void preservesCredentialReferencesAndPinConfigurationForSignedCatalogs() throws Exception {
+    Map<String, Object> credentials = Map.of("type", "bearer", "tokenEnv", "BACKEND_TOKEN");
+    Map<String, Object> source =
+        Map.of(
+            "id",
+            "rest",
+            "type",
+            "http",
+            "baseUrl",
+            "http://127.0.0.1:1",
+            "credentials",
+            credentials,
+            "tools",
+            List.of(
+                Map.of(
+                    "name",
+                    "list",
+                    "description",
+                    "List.",
+                    "class",
+                    "READ",
+                    "request",
+                    Map.of("method", "GET", "path", "/"))));
+    Map<String, Object> raw = new java.util.LinkedHashMap<>();
+    raw.put("sources", List.of(source));
+    raw.put("serverCatalog", Map.of("file", "servers.json", "publicKeyFile", "servers.pub"));
+    raw.put("catalog", Map.of("pinFile", "operator-pins.json"));
 
-        Map<String, Object> isolated = PolicyTestCommand.isolated(raw, dir, dir.resolve("policy-work"));
-        Map<String, Object> isolatedSource = (Map<String, Object>) ((List<?>) isolated.get("sources")).get(0);
-        Map<String, Object> isolatedCatalog = (Map<String, Object>) isolated.get("catalog");
-        assertEquals(credentials, isolatedSource.get("credentials"));
-        assertEquals("operator-pins.json", isolatedCatalog.get("pinFile"));
-    }
+    Map<String, Object> isolated = PolicyTestCommand.isolated(raw, dir, dir.resolve("policy-work"));
+    Map<String, Object> isolatedSource =
+        (Map<String, Object>) ((List<?>) isolated.get("sources")).get(0);
+    Map<String, Object> isolatedCatalog = (Map<String, Object>) isolated.get("catalog");
+    assertEquals(credentials, isolatedSource.get("credentials"));
+    assertEquals("operator-pins.json", isolatedCatalog.get("pinFile"));
+  }
 }

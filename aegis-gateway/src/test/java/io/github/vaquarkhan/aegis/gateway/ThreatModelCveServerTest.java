@@ -31,44 +31,53 @@ import org.junit.jupiter.api.Test;
 
 class ThreatModelCveServerTest {
 
-    static void verdict(String id, String refs, String cls, String verdict, String detail) {
-        System.out.println("THREATMODEL|" + id + "|" + refs + "|" + cls + "|" + verdict + "|" + detail);
-    }
+  static void verdict(String id, String refs, String cls, String verdict, String detail) {
+    System.out.println("THREATMODEL|" + id + "|" + refs + "|" + cls + "|" + verdict + "|" + detail);
+  }
 
-    @Test
-    void open02_saturatedWorkerPool_refusesInsteadOfBlockingTheAcceptThread() throws Exception {
-        AegisServer.applyServerTimeLimits();
-        assertNotNull(System.getProperty("sun.net.httpserver.maxReqHeaders"), "header-count bound set before auth parses headers");
-        assertNotNull(System.getProperty("sun.net.httpserver.maxReqHeaderSize"), "header-size bound set");
-        assertNotNull(System.getProperty("jdk.httpserver.maxConnections"), "connection bound set");
-        assertEquals("30", System.getProperty("sun.net.httpserver.maxReqTime"));
+  @Test
+  void open02_saturatedWorkerPool_refusesInsteadOfBlockingTheAcceptThread() throws Exception {
+    AegisServer.applyServerTimeLimits();
+    assertNotNull(
+        System.getProperty("sun.net.httpserver.maxReqHeaders"),
+        "header-count bound set before auth parses headers");
+    assertNotNull(
+        System.getProperty("sun.net.httpserver.maxReqHeaderSize"), "header-size bound set");
+    assertNotNull(System.getProperty("jdk.httpserver.maxConnections"), "connection bound set");
+    assertEquals("30", System.getProperty("sun.net.httpserver.maxReqTime"));
 
-        int threads = 2;
-        ThreadPoolExecutor pool = AegisServer.boundedPool(threads);
-        CountDownLatch release = new CountDownLatch(1);
-        Runnable slowClient = () -> {
-            try {
-                release.await(30, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+    int threads = 2;
+    ThreadPoolExecutor pool = AegisServer.boundedPool(threads);
+    CountDownLatch release = new CountDownLatch(1);
+    Runnable slowClient =
+        () -> {
+          try {
+            release.await(30, TimeUnit.SECONDS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
         };
-        try {
-            // Fill every worker and every queue slot with half-sent requests.
-            for (int i = 0; i < threads + threads * 8; i++) {
-                pool.execute(slowClient);
-            }
-            // BEFORE the fix (CallerRunsPolicy) the next execute() ran the slow client on the CALLING thread,
-            // which in production is the JDK accept/dispatch thread: nobody else gets accepted.
-            long t0 = System.nanoTime();
-            assertThrows(RejectedExecutionException.class, () -> pool.execute(slowClient));
-            long ms = (System.nanoTime() - t0) / 1_000_000;
-            assertTrue(ms < 1_000, "rejection must be immediate, took " + ms + " ms");
-        } finally {
-            release.countDown();
-            pool.shutdownNow();
-        }
-        verdict("OPEN-02", "review finding (pre-authentication worker exhaustion on the JDK HttpServer)", "slow-header / connection flood before authentication",
-                "FIXED", "maxReqHeaders=100, maxReqHeaderSize=16 KiB, maxConnections=1024 set if absent; saturated pool rejects (JDK closes the connection) instead of CallerRunsPolicy");
+    try {
+      // Fill every worker and every queue slot with half-sent requests.
+      for (int i = 0; i < threads + threads * 8; i++) {
+        pool.execute(slowClient);
+      }
+      // BEFORE the fix (CallerRunsPolicy) the next execute() ran the slow client on the CALLING
+      // thread,
+      // which in production is the JDK accept/dispatch thread: nobody else gets accepted.
+      long t0 = System.nanoTime();
+      assertThrows(RejectedExecutionException.class, () -> pool.execute(slowClient));
+      long ms = (System.nanoTime() - t0) / 1_000_000;
+      assertTrue(ms < 1_000, "rejection must be immediate, took " + ms + " ms");
+    } finally {
+      release.countDown();
+      pool.shutdownNow();
     }
+    verdict(
+        "OPEN-02",
+        "review finding (pre-authentication worker exhaustion on the JDK HttpServer)",
+        "slow-header / connection flood before authentication",
+        "FIXED",
+        "maxReqHeaders=100, maxReqHeaderSize=16 KiB, maxConnections=1024 set if absent; saturated pool rejects (JDK closes the connection) instead of CallerRunsPolicy");
+  }
 }

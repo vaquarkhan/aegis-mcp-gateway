@@ -26,22 +26,46 @@ import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/** Verifies that Spark Connect's gateway credential is resolved by BuildContext, not process-global state. */
+/**
+ * Verifies that Spark Connect's gateway credential is resolved by BuildContext, not process-global
+ * state.
+ */
 class SparkConnectToolSourceFactoryTest {
 
-    @Test
-    void contextSuppliesTheNamedTokenWithoutOpeningASparkConnection() throws Exception {
-        SparkConnectToolSourceFactory factory = new SparkConnectToolSourceFactory();
-        ConfigNode settings = new ConfigNode("source.settings", Map.of(
-                "host", "spark.example", "port", 15002L, "useSsl", true, "tokenEnv", "SPARK_TOKEN"));
-        SparkConnectToolSource source = (SparkConnectToolSource) factory.create("spark", settings,
-                BuildContext.defaults(Path.of(".")).withEnv(Map.of("SPARK_TOKEN", "context-token")::get));
-        assertEquals("context-token", source.settings().token());
+  @Test
+  void contextSuppliesTheNamedTokenWithoutOpeningASparkConnection() throws Exception {
+    SparkConnectToolSourceFactory factory = new SparkConnectToolSourceFactory();
+    ConfigNode settings =
+        new ConfigNode(
+            "source.settings",
+            Map.of(
+                "host",
+                "spark.example",
+                "port",
+                15002L,
+                "useSsl",
+                true,
+                "tokenEnv",
+                "SPARK_TOKEN"));
+    SparkConnectToolSource source =
+        (SparkConnectToolSource)
+            factory.create(
+                "spark",
+                settings,
+                BuildContext.defaults(Path.of("."))
+                    .withEnv(Map.of("SPARK_TOKEN", "context-token")::get));
+    assertEquals("context-token", source.settings().token());
 
-        ConfigNode missing = new ConfigNode("source.settings", Map.of(
-                "host", "spark.example", "port", 15002L, "useSsl", true, "tokenEnv", "MISSING"));
-        ConfigException e = assertThrows(ConfigException.class, () -> factory.create("spark", missing,
-                BuildContext.defaults(Path.of(".")).withEnv(name -> null)));
-        assertTrue(e.getMessage().contains("MISSING"), e.getMessage());
-    }
+    ConfigNode missing =
+        new ConfigNode(
+            "source.settings",
+            Map.of("host", "spark.example", "port", 15002L, "useSsl", true, "tokenEnv", "MISSING"));
+    ConfigException e =
+        assertThrows(
+            ConfigException.class,
+            () ->
+                factory.create(
+                    "spark", missing, BuildContext.defaults(Path.of(".")).withEnv(name -> null)));
+    assertTrue(e.getMessage().contains("MISSING"), e.getMessage());
+  }
 }

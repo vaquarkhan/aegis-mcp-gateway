@@ -27,14 +27,19 @@ import java.net.http.HttpRequest;
 @FunctionalInterface
 public interface OutboundHttp {
 
-    /**
-     * @throws java.net.http.HttpTimeoutException when the whole exchange exceeds {@code deadlineMillis}
-     * @throws IOException on transport failure, an egress denial, or a body over {@code maxBytes}
-     */
-    BoundedHttp.Result send(HttpRequest request, int maxBytes, long deadlineMillis) throws IOException, InterruptedException;
+  /**
+   * @throws java.net.http.HttpTimeoutException when the whole exchange exceeds {@code
+   *     deadlineMillis}
+   * @throws IOException on transport failure, an egress denial, or a body over {@code maxBytes}
+   */
+  BoundedHttp.Result send(HttpRequest request, int maxBytes, long deadlineMillis)
+      throws IOException, InterruptedException;
 
-    /** The JDK client with {@link BoundedHttp}'s total deadline and byte bound (no address pinning). */
-    static OutboundHttp jdk(HttpClient http) {
-        return (request, maxBytes, deadlineMillis) -> BoundedHttp.send(http, request, maxBytes, deadlineMillis);
-    }
+  /**
+   * The JDK client with {@link BoundedHttp}'s total deadline and byte bound (no address pinning).
+   */
+  static OutboundHttp jdk(HttpClient http) {
+    return (request, maxBytes, deadlineMillis) ->
+        BoundedHttp.send(http, request, maxBytes, deadlineMillis);
+  }
 }

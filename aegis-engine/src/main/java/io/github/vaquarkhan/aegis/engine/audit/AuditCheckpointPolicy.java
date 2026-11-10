@@ -21,36 +21,42 @@ import java.time.Duration;
 import java.util.Objects;
 
 /**
- * Where and how often a {@link HashChainFileAuditSink} exports its head. Each checkpoint is one JSON
- * line {@code {"ts","journal","seq","head","reason"}} appended to {@code file}, which the operator
- * places on storage the gateway's journal writer cannot rewrite (another volume, a WORM or object-lock
- * mount, a log shipper's spool). {@link AuditCheckpointVerifier} later proves the journal still
- * contains every exported head, so truncating or regenerating the journal is detected.
+ * Where and how often a {@link HashChainFileAuditSink} exports its head. Each checkpoint is one
+ * JSON line {@code {"ts","journal","seq","head","reason"}} appended to {@code file}, which the
+ * operator places on storage the gateway's journal writer cannot rewrite (another volume, a WORM or
+ * object-lock mount, a log shipper's spool). {@link AuditCheckpointVerifier} later proves the
+ * journal still contains every exported head, so truncating or regenerating the journal is
+ * detected.
  *
- * @param file          checkpoint file; must not be the journal itself
- * @param everyRecords  export after this many new records (at least 1)
- * @param every         also export on this interval when new records exist; {@link Duration#ZERO} disables the timer
- * @param clock         timestamp source for the {@code ts} field
- * @param signingKey    optional Ed25519 key; when present every checkpoint line carries {@code signature}
- *                      over its canonical JSON without that field, so a regenerated checkpoint file cannot
- *                      vouch for a rewritten journal without this key
+ * @param file checkpoint file; must not be the journal itself
+ * @param everyRecords export after this many new records (at least 1)
+ * @param every also export on this interval when new records exist; {@link Duration#ZERO} disables
+ *     the timer
+ * @param clock timestamp source for the {@code ts} field
+ * @param signingKey optional Ed25519 key; when present every checkpoint line carries {@code
+ *     signature} over its canonical JSON without that field, so a regenerated checkpoint file
+ *     cannot vouch for a rewritten journal without this key
  */
-public record AuditCheckpointPolicy(Path file, long everyRecords, Duration every, Clock clock,
-                                    java.security.PrivateKey signingKey) {
+public record AuditCheckpointPolicy(
+    Path file,
+    long everyRecords,
+    Duration every,
+    Clock clock,
+    java.security.PrivateKey signingKey) {
 
-    public AuditCheckpointPolicy(Path file, long everyRecords, Duration every, Clock clock) {
-        this(file, everyRecords, every, clock, null);
-    }
+  public AuditCheckpointPolicy(Path file, long everyRecords, Duration every, Clock clock) {
+    this(file, everyRecords, every, clock, null);
+  }
 
-    public AuditCheckpointPolicy {
-        Objects.requireNonNull(file, "file");
-        Objects.requireNonNull(every, "every");
-        Objects.requireNonNull(clock, "clock");
-        if (everyRecords < 1) {
-            throw new IllegalArgumentException("everyRecords must be at least 1");
-        }
-        if (every.isNegative()) {
-            throw new IllegalArgumentException("every must not be negative");
-        }
+  public AuditCheckpointPolicy {
+    Objects.requireNonNull(file, "file");
+    Objects.requireNonNull(every, "every");
+    Objects.requireNonNull(clock, "clock");
+    if (everyRecords < 1) {
+      throw new IllegalArgumentException("everyRecords must be at least 1");
     }
+    if (every.isNegative()) {
+      throw new IllegalArgumentException("every must not be negative");
+    }
+  }
 }

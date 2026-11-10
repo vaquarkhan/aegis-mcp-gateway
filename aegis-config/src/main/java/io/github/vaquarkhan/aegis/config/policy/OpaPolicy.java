@@ -30,78 +30,97 @@ import java.util.Map;
 
 /**
  * Open Policy Agent decision via its REST Data API ({@code POST /v1/data/<package>/<rule>} with
- * {@code {"input": ...}}). Fixes the 0.1 integration: the input is the full canonical action
- * (tool, class, source, resources, argument digest, and optionally the arguments); there is no
- * per caller+tool cache; and the answer is parsed strictly. Only {@code {"result": true}} or
- * {@code {"result": {"allow": true}}} allows; anything else (missing, non-boolean, HTTP error,
- * timeout) denies.
+ * {@code {"input": ...}}). Fixes the 0.1 integration: the input is the full canonical action (tool,
+ * class, source, resources, argument digest, and optionally the arguments); there is no per
+ * caller+tool cache; and the answer is parsed strictly. Only {@code {"result": true}} or {@code
+ * {"result": {"allow": true}}} allows; anything else (missing, non-boolean, HTTP error, timeout)
+ * denies.
  */
 public final class OpaPolicy implements PolicyDecisionPoint {
 
-    private final URI url;
-    private final Duration timeout;
-    private final boolean includeArguments;
-    private final Map<String, String> headers;
-    private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
+  private final URI url;
+  private final Duration timeout;
+  private final boolean includeArguments;
+  private final Map<String, String> headers;
+  private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
 
-    public OpaPolicy(URI url, Duration timeout, boolean includeArguments, Map<String, String> headers) {
-        this(url, timeout, includeArguments, headers, io.github.vaquarkhan.aegis.mcp.http.OutboundHttp.jdk(
-                HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER).build()));
-    }
+  public OpaPolicy(
+      URI url, Duration timeout, boolean includeArguments, Map<String, String> headers) {
+    this(
+        url,
+        timeout,
+        includeArguments,
+        headers,
+        io.github.vaquarkhan.aegis.mcp.http.OutboundHttp.jdk(
+            HttpClient.newBuilder()
+                .connectTimeout(timeout)
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build()));
+  }
 
-    /** @param transport the gateway passes a pinned transport bound to the egress control */
-    public OpaPolicy(URI url, Duration timeout, boolean includeArguments, Map<String, String> headers,
-                     io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
-        if (transport == null) {
-            throw new IllegalArgumentException("an outbound transport is required");
-        }
-        this.url = url;
-        this.timeout = timeout;
-        this.includeArguments = includeArguments;
-        this.headers = headers == null ? Map.of() : Map.copyOf(headers);
-        this.http = transport;
+  /**
+   * @param transport the gateway passes a pinned transport bound to the egress control
+   */
+  public OpaPolicy(
+      URI url,
+      Duration timeout,
+      boolean includeArguments,
+      Map<String, String> headers,
+      io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
+    if (transport == null) {
+      throw new IllegalArgumentException("an outbound transport is required");
     }
+    this.url = url;
+    this.timeout = timeout;
+    this.includeArguments = includeArguments;
+    this.headers = headers == null ? Map.of() : Map.copyOf(headers);
+    this.http = transport;
+  }
 
-    @Override
-    public Result decide(CallerIdentity caller, Action action, Map<String, Object> backendArguments) throws Exception {
-        Map<String, Object> c = new LinkedHashMap<>();
-        c.put("actor", caller.actor());
-        c.put("effectiveSubject", caller.effectiveSubject());
-        c.put("groups", caller.groups().stream().sorted().toList());
-        c.put("issuer", caller.issuer());
-        c.put("actorChain", caller.actorChain());
-        Map<String, Object> a = new LinkedHashMap<>();
-        a.put("tool", action.tool());
-        a.put("toolClass", action.toolClass().name());
-        a.put("source", action.sourceId());
-        a.put("resources", action.resources());
-        a.put("argsDigest", action.argsDigest());
-        Map<String, Object> input = new LinkedHashMap<>();
-        input.put("caller", c);
-        input.put("action", a);
-        if (includeArguments) {
-            input.put("arguments", backendArguments);
-        }
-        HttpRequest.Builder b = HttpRequest.newBuilder(url).timeout(timeout)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofByteArray(Json.writeBytes(Map.of("input", input))));
-        headers.forEach(b::header);
-        // Total deadline covers the body too; a slow OPA cannot stall callers past the timeout.
-        io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.Result resp =
-                http.send(b.build(), 64 * 1024, timeout.toMillis());
-        if (resp.status() != 200) {
-            return Result.deny("OPA returned HTTP " + resp.status());
-        }
-        Map<String, Object> m = Json.parseObject(resp.body(), JsonLimits.DEFAULT.withMaxBytes(64 * 1024));
-        Object result = m.get("result");
-        if (Boolean.TRUE.equals(result)) {
-            return Result.allow("allowed by OPA");
-        }
-        Map<String, Object> obj = JsonValues.asObject(result);
-        if (obj != null && Boolean.TRUE.equals(obj.get("allow"))) {
-            return Result.allow("allowed by OPA");
-        }
-        String reason = obj == null ? null : JsonValues.string(obj, "reason");
-        return Result.deny(reason == null ? "denied by OPA" : "denied by OPA: " + reason);
+  @Override
+  public Result decide(CallerIdentity caller, Action action, Map<String, Object> backendArguments)
+      throws Exception {
+    Map<String, Object> c = new LinkedHashMap<>();
+    c.put("actor", caller.actor());
+    c.put("effectiveSubject", caller.effectiveSubject());
+    c.put("groups", caller.groups().stream().sorted().toList());
+    c.put("issuer", caller.issuer());
+    c.put("actorChain", caller.actorChain());
+    Map<String, Object> a = new LinkedHashMap<>();
+    a.put("tool", action.tool());
+    a.put("toolClass", action.toolClass().name());
+    a.put("source", action.sourceId());
+    a.put("resources", action.resources());
+    a.put("argsDigest", action.argsDigest());
+    Map<String, Object> input = new LinkedHashMap<>();
+    input.put("caller", c);
+    input.put("action", a);
+    if (includeArguments) {
+      input.put("arguments", backendArguments);
     }
+    HttpRequest.Builder b =
+        HttpRequest.newBuilder(url)
+            .timeout(timeout)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofByteArray(Json.writeBytes(Map.of("input", input))));
+    headers.forEach(b::header);
+    // Total deadline covers the body too; a slow OPA cannot stall callers past the timeout.
+    io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.Result resp =
+        http.send(b.build(), 64 * 1024, timeout.toMillis());
+    if (resp.status() != 200) {
+      return Result.deny("OPA returned HTTP " + resp.status());
+    }
+    Map<String, Object> m =
+        Json.parseObject(resp.body(), JsonLimits.DEFAULT.withMaxBytes(64 * 1024));
+    Object result = m.get("result");
+    if (Boolean.TRUE.equals(result)) {
+      return Result.allow("allowed by OPA");
+    }
+    Map<String, Object> obj = JsonValues.asObject(result);
+    if (obj != null && Boolean.TRUE.equals(obj.get("allow"))) {
+      return Result.allow("allowed by OPA");
+    }
+    String reason = obj == null ? null : JsonValues.string(obj, "reason");
+    return Result.deny(reason == null ? "denied by OPA" : "denied by OPA: " + reason);
+  }
 }

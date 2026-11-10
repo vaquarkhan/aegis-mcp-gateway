@@ -24,46 +24,59 @@ import java.util.Map;
  * governed MCP surface with configuration only.
  *
  * <p>Templating is deliberately narrow and injection-safe:
+ *
  * <ul>
  *   <li>{@code path}: {@code {arg}} placeholders become ONE percent-encoded path segment each;
- *       values that are empty, {@code .} or {@code ..} are refused, so an argument cannot change the
- *       route or climb the path.</li>
- *   <li>{@code path}: {@code {arg/}} is a <b>path-typed</b> value of several segments, for APIs whose
- *       identifier is itself a path (HDFS files, ZooKeeper znodes, object-store keys). Each segment is
- *       validated and encoded separately, so {@code /user/hive/warehouse} is accepted and
- *       {@code /user/../etc} is refused. Use {@code {arg}} unless the API really needs a path.</li>
- *   <li>{@code query}: values are literal or exactly {@code {arg}}; absent optional args are omitted.</li>
+ *       values that are empty, {@code .} or {@code ..} are refused, so an argument cannot change
+ *       the route or climb the path.
+ *   <li>{@code path}: {@code {arg/}} is a <b>path-typed</b> value of several segments, for APIs
+ *       whose identifier is itself a path (HDFS files, ZooKeeper znodes, object-store keys). Each
+ *       segment is validated and encoded separately, so {@code /user/hive/warehouse} is accepted
+ *       and {@code /user/../etc} is refused. Use {@code {arg}} unless the API really needs a path.
+ *   <li>{@code query}: values are literal or exactly {@code {arg}}; absent optional args are
+ *       omitted.
  *   <li>{@code body}: a JSON template; a string that is exactly {@code {arg}} is replaced by the
  *       argument's JSON value (type preserved), {@code {*}} by the whole argument object. Text is
- *       never spliced into larger strings.</li>
+ *       never spliced into larger strings.
  * </ul>
  *
- * @param method      HTTP method
- * @param path        path template appended to the source base URL
- * @param query       query parameter templates
- * @param body        JSON body template, or null for no body
- * @param headers     static request headers (no templating; credentials come from the credential provider)
- * @param responsePointer optional JSON pointer selecting the part of a JSON response returned to the model
- * @param responseStatusCheck optional raw-response integral success assertion, evaluated before responsePointer projection
+ * @param method HTTP method
+ * @param path path template appended to the source base URL
+ * @param query query parameter templates
+ * @param body JSON body template, or null for no body
+ * @param headers static request headers (no templating; credentials come from the credential
+ *     provider)
+ * @param responsePointer optional JSON pointer selecting the part of a JSON response returned to
+ *     the model
+ * @param responseStatusCheck optional raw-response integral success assertion, evaluated before
+ *     responsePointer projection
  * @param maxResponseBytes response bound
  */
 public record HttpToolSpec(
-        String method,
-        String path,
-        Map<String, String> query,
-        Object body,
-        Map<String, String> headers,
-        JsonPointer responsePointer,
-        ResponseStatusCheck responseStatusCheck,
-        int maxResponseBytes) {
+    String method,
+    String path,
+    Map<String, String> query,
+    Object body,
+    Map<String, String> headers,
+    JsonPointer responsePointer,
+    ResponseStatusCheck responseStatusCheck,
+    int maxResponseBytes) {
 
-    /** An exact integral application-status assertion in an otherwise successful HTTP JSON response. */
-    public record ResponseStatusCheck(JsonPointer pointer, long equals) {}
+  /**
+   * An exact integral application-status assertion in an otherwise successful HTTP JSON response.
+   */
+  public record ResponseStatusCheck(JsonPointer pointer, long equals) {}
 
-    public HttpToolSpec {
-        // Insertion order is preserved (configuration order), so the rendered URL is deterministic.
-        query = query == null ? Map.of() : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(query));
-        headers = headers == null ? Map.of() : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(headers));
-        maxResponseBytes = maxResponseBytes <= 0 ? 1 << 20 : maxResponseBytes;
-    }
+  public HttpToolSpec {
+    // Insertion order is preserved (configuration order), so the rendered URL is deterministic.
+    query =
+        query == null
+            ? Map.of()
+            : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(query));
+    headers =
+        headers == null
+            ? Map.of()
+            : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(headers));
+    maxResponseBytes = maxResponseBytes <= 0 ? 1 << 20 : maxResponseBytes;
+  }
 }

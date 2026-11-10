@@ -35,122 +35,144 @@ import java.util.TreeMap;
  */
 public final class CatalogIntegrity {
 
-    public enum Mode { TOFU, REQUIRE_PINS }
+  public enum Mode {
+    TOFU,
+    REQUIRE_PINS
+  }
 
-    public enum Verdict { MATCH, PINNED_NOW, MISMATCH, UNPINNED }
+  public enum Verdict {
+    MATCH,
+    PINNED_NOW,
+    MISMATCH,
+    UNPINNED
+  }
 
-    private final Mode mode;
-    private final Map<String, String> configPins;
-    private final Path pinFile;
-    private final TreeMap<String, String> learned = new TreeMap<>();
-    private final boolean configPinsOnly;
+  private final Mode mode;
+  private final Map<String, String> configPins;
+  private final Path pinFile;
+  private final TreeMap<String, String> learned = new TreeMap<>();
+  private final boolean configPinsOnly;
 
-    public CatalogIntegrity(Mode mode, Map<String, String> configPins, Path pinFile) throws IOException {
-        this(mode, configPins, pinFile, false);
+  public CatalogIntegrity(Mode mode, Map<String, String> configPins, Path pinFile)
+      throws IOException {
+    this(mode, configPins, pinFile, false);
+  }
+
+  /**
+   * @param configPinsOnly when true (a signed server catalog is in force) only the given pins can
+   *     make a definition active: the mode must be REQUIRE_PINS, there is no pin file to learn
+   *     from, and run-time acceptance is refused, so nothing outside the signed document can
+   *     re-trust a definition
+   */
+  public CatalogIntegrity(
+      Mode mode, Map<String, String> configPins, Path pinFile, boolean configPinsOnly)
+      throws IOException {
+    if (configPinsOnly && (mode != Mode.REQUIRE_PINS || pinFile != null)) {
+      throw new IllegalArgumentException("signed-only pinning needs REQUIRE_PINS and no pin file");
     }
-
-    /**
-     * @param configPinsOnly when true (a signed server catalog is in force) only the given pins can make
-     *                       a definition active: the mode must be REQUIRE_PINS, there is no pin file to
-     *                       learn from, and run-time acceptance is refused, so nothing outside the
-     *                       signed document can re-trust a definition
-     */
-    public CatalogIntegrity(Mode mode, Map<String, String> configPins, Path pinFile, boolean configPinsOnly)
-            throws IOException {
-        if (configPinsOnly && (mode != Mode.REQUIRE_PINS || pinFile != null)) {
-            throw new IllegalArgumentException("signed-only pinning needs REQUIRE_PINS and no pin file");
+    this.configPinsOnly = configPinsOnly;
+    this.mode = mode == null ? Mode.TOFU : mode;
+    this.configPins = configPins == null ? Map.of() : Map.copyOf(configPins);
+    this.pinFile = pinFile;
+    if (pinFile != null && Files.exists(pinFile)) {
+      Map<String, Object> m = Json.parseObject(Files.readAllBytes(pinFile), JsonLimits.CONFIG);
+      for (Map.Entry<String, Object> e : m.entrySet()) {
+        if (!(e.getValue() instanceof String s)) {
+          throw new IOException("pin file " + pinFile + " has a non-string pin for " + e.getKey());
         }
-        this.configPinsOnly = configPinsOnly;
-        this.mode = mode == null ? Mode.TOFU : mode;
-        this.configPins = configPins == null ? Map.of() : Map.copyOf(configPins);
-        this.pinFile = pinFile;
-        if (pinFile != null && Files.exists(pinFile)) {
-            Map<String, Object> m = Json.parseObject(Files.readAllBytes(pinFile), JsonLimits.CONFIG);
-            for (Map.Entry<String, Object> e : m.entrySet()) {
-                if (!(e.getValue() instanceof String s)) {
-                    throw new IOException("pin file " + pinFile + " has a non-string pin for " + e.getKey());
-                }
-                learned.put(e.getKey(), s);
-            }
-        }
+        learned.put(e.getKey(), s);
+      }
     }
+  }
 
-    public Mode mode() {
-        return mode;
-    }
+  public Mode mode() {
+    return mode;
+  }
 
-    /** True when only signed or configured pins can activate a definition (no learning, no acceptance). */
-    public boolean configPinsOnly() {
-        return configPinsOnly;
-    }
+  /**
+   * True when only signed or configured pins can activate a definition (no learning, no
+   * acceptance).
+   */
+  public boolean configPinsOnly() {
+    return configPinsOnly;
+  }
 
-    /**
-     * @param firstSightAllowed whether a never-seen tool may be pinned now (true at startup in TOFU
-     *                          mode; false for tools that appear later unless the operator opts in)
-     */
-    public synchronized Verdict verify(String toolName, String digest, boolean firstSightAllowed) throws IOException {
-        String pinned = configPins.get(toolName);
-        if (pinned == null) {
-            pinned = learned.get(toolName);
-        }
-        if (pinned != null) {
-            return io.github.vaquarkhan.aegis.engine.model.Digests.constantTimeEquals(pinned, digest) ? Verdict.MATCH : Verdict.MISMATCH;
-        }
-        if (mode == Mode.REQUIRE_PINS || !firstSightAllowed) {
-            return Verdict.UNPINNED;
-        }
-        learned.put(toolName, digest);
-        persist();
-        return Verdict.PINNED_NOW;
+  /**
+   * @param firstSightAllowed whether a never-seen tool may be pinned now (true at startup in TOFU
+   *     mode; false for tools that appear later unless the operator opts in)
+   */
+  public synchronized Verdict verify(String toolName, String digest, boolean firstSightAllowed)
+      throws IOException {
+    String pinned = configPins.get(toolName);
+    if (pinned == null) {
+      pinned = learned.get(toolName);
     }
+    if (pinned != null) {
+      return io.github.vaquarkhan.aegis.engine.model.Digests.constantTimeEquals(pinned, digest)
+          ? Verdict.MATCH
+          : Verdict.MISMATCH;
+    }
+    if (mode == Mode.REQUIRE_PINS || !firstSightAllowed) {
+      return Verdict.UNPINNED;
+    }
+    learned.put(toolName, digest);
+    persist();
+    return Verdict.PINNED_NOW;
+  }
 
-    /** Operator acceptance of a changed or new definition (admin API). Config pins cannot be overridden. */
-    public synchronized boolean accept(String toolName, String digest) throws IOException {
-        if (configPinsOnly || configPins.containsKey(toolName)) {
-            return false;
-        }
-        learned.put(toolName, digest);
-        persist();
-        return true;
+  /**
+   * Operator acceptance of a changed or new definition (admin API). Config pins cannot be
+   * overridden.
+   */
+  public synchronized boolean accept(String toolName, String digest) throws IOException {
+    if (configPinsOnly || configPins.containsKey(toolName)) {
+      return false;
     }
+    learned.put(toolName, digest);
+    persist();
+    return true;
+  }
 
-    public synchronized String pinFor(String toolName) {
-        String p = configPins.get(toolName);
-        return p != null ? p : learned.get(toolName);
-    }
+  public synchronized String pinFor(String toolName) {
+    String p = configPins.get(toolName);
+    return p != null ? p : learned.get(toolName);
+  }
 
-    private void persist() throws IOException {
-        if (pinFile == null) {
-            return;
-        }
-        Path parent = pinFile.toAbsolutePath().getParent();
-        if (parent != null) {
-            Files.createDirectories(parent);
-        }
-        Path tmp = pinFile.resolveSibling(pinFile.getFileName() + ".tmp");
-        Files.write(tmp, Json.write(learned).getBytes(StandardCharsets.UTF_8));
-        // On Windows a replace-move fails with AccessDeniedException while another process (an indexer or
-        // a virus scanner) briefly holds the previous file open. Retry a few times before giving up; the
-        // pin file is written once per newly learned definition, so the window is hit at startup.
-        IOException last = null;
-        for (int attempt = 0; attempt < 5; attempt++) {
-            try {
-                try {
-                    Files.move(tmp, pinFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-                } catch (AtomicMoveNotSupportedException e) {
-                    Files.move(tmp, pinFile, StandardCopyOption.REPLACE_EXISTING);
-                }
-                return;
-            } catch (java.nio.file.AccessDeniedException e) {
-                last = e;
-                try {
-                    Thread.sleep(20L * (attempt + 1));
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw e;
-                }
-            }
-        }
-        throw last;
+  private void persist() throws IOException {
+    if (pinFile == null) {
+      return;
     }
+    Path parent = pinFile.toAbsolutePath().getParent();
+    if (parent != null) {
+      Files.createDirectories(parent);
+    }
+    Path tmp = pinFile.resolveSibling(pinFile.getFileName() + ".tmp");
+    Files.write(tmp, Json.write(learned).getBytes(StandardCharsets.UTF_8));
+    // On Windows a replace-move fails with AccessDeniedException while another process (an indexer
+    // or
+    // a virus scanner) briefly holds the previous file open. Retry a few times before giving up;
+    // the
+    // pin file is written once per newly learned definition, so the window is hit at startup.
+    IOException last = null;
+    for (int attempt = 0; attempt < 5; attempt++) {
+      try {
+        try {
+          Files.move(
+              tmp, pinFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+          Files.move(tmp, pinFile, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return;
+      } catch (java.nio.file.AccessDeniedException e) {
+        last = e;
+        try {
+          Thread.sleep(20L * (attempt + 1));
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw e;
+        }
+      }
+    }
+    throw last;
+  }
 }

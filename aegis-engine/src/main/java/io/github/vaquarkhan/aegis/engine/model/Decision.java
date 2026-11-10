@@ -21,39 +21,40 @@ import java.util.Map;
  * Outcome of one control. The chain stops at the first denial.
  *
  * @param allowed true when the control passed
- * @param code    stable deny code from {@link DenyCodes}
- * @param step    0.1-compatible step number
- * @param reason  operator-facing reason; never contains argument values or secrets
- * @param data    optional machine-readable details returned to the client (e.g. approval request id)
+ * @param code stable deny code from {@link DenyCodes}
+ * @param step 0.1-compatible step number
+ * @param reason operator-facing reason; never contains argument values or secrets
+ * @param data optional machine-readable details returned to the client (e.g. approval request id)
  */
-public record Decision(boolean allowed, String code, int step, String reason, Map<String, Object> data) {
+public record Decision(
+    boolean allowed, String code, int step, String reason, Map<String, Object> data) {
 
-    private static final Decision ALLOW = new Decision(true, DenyCodes.ALLOWED, 0, "", Map.of());
+  private static final Decision ALLOW = new Decision(true, DenyCodes.ALLOWED, 0, "", Map.of());
 
-    public Decision {
-        code = code == null ? "" : code;
-        reason = reason == null ? "" : reason;
-        data = data == null ? Map.of() : Map.copyOf(data);
-    }
+  public Decision {
+    code = code == null ? "" : code;
+    reason = reason == null ? "" : reason;
+    data = data == null ? Map.of() : Map.copyOf(data);
+  }
 
-    public static Decision allow() {
-        return ALLOW;
-    }
+  public static Decision allow() {
+    return ALLOW;
+  }
 
-    public static Decision deny(String code, int step, String reason) {
-        return new Decision(false, code, step, reason, Map.of());
-    }
+  public static Decision deny(String code, int step, String reason) {
+    return new Decision(false, code, step, reason, Map.of());
+  }
 
-    public static Decision deny(String code, int step, String reason, Map<String, Object> data) {
-        return new Decision(false, code, step, reason, data);
-    }
+  public static Decision deny(String code, int step, String reason, Map<String, Object> data) {
+    return new Decision(false, code, step, reason, data);
+  }
 
-    public boolean denied() {
-        return !allowed;
-    }
+  public boolean denied() {
+    return !allowed;
+  }
 
-    /** Audit rendering, identical to 0.1: {@code ALLOWED} or {@code DENIED:<code>:step<N>}. */
-    public String auditOutcome() {
-        return allowed ? DenyCodes.ALLOWED : "DENIED:" + code + ":step" + step;
-    }
+  /** Audit rendering, identical to 0.1: {@code ALLOWED} or {@code DENIED:<code>:step<N>}. */
+  public String auditOutcome() {
+    return allowed ? DenyCodes.ALLOWED : "DENIED:" + code + ":step" + step;
+  }
 }

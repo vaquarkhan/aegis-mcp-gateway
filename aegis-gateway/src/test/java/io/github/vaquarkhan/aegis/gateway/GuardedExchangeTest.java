@@ -31,54 +31,70 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The request guard the own host wraps around every MCP, admin and metrics exchange, run on the real
- * JDK HTTP server and read back with the real JDK HTTP client.
+ * The request guard the own host wraps around every MCP, admin and metrics exchange, run on the
+ * real JDK HTTP server and read back with the real JDK HTTP client.
  */
 class GuardedExchangeTest {
 
-    HttpServer server;
-    final HttpClient client = HttpClient.newHttpClient();
+  HttpServer server;
+  final HttpClient client = HttpClient.newHttpClient();
 
-    @BeforeEach
-    void start() throws Exception {
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/fails-before-response", ex -> AegisServer.guarded(ex, "test", () -> {
-            throw new IllegalStateException("internal detail that must not reach the client");
-        }));
-        server.createContext("/fails-after-response", ex -> AegisServer.guarded(ex, "test", () -> {
-            byte[] body = "partial".getBytes(StandardCharsets.UTF_8);
-            ex.sendResponseHeaders(200, body.length);
-            try (OutputStream os = ex.getResponseBody()) {
-                os.write(body);
-            }
-            throw new IllegalStateException("after the response started");
-        }));
-        server.start();
-    }
+  @BeforeEach
+  void start() throws Exception {
+    server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/fails-before-response",
+        ex ->
+            AegisServer.guarded(
+                ex,
+                "test",
+                () -> {
+                  throw new IllegalStateException("internal detail that must not reach the client");
+                }));
+    server.createContext(
+        "/fails-after-response",
+        ex ->
+            AegisServer.guarded(
+                ex,
+                "test",
+                () -> {
+                  byte[] body = "partial".getBytes(StandardCharsets.UTF_8);
+                  ex.sendResponseHeaders(200, body.length);
+                  try (OutputStream os = ex.getResponseBody()) {
+                    os.write(body);
+                  }
+                  throw new IllegalStateException("after the response started");
+                }));
+    server.start();
+  }
 
-    @AfterEach
-    void stop() {
-        server.stop(0);
-    }
+  @AfterEach
+  void stop() {
+    server.stop(0);
+  }
 
-    HttpResponse<String> get(String path) throws Exception {
-        return client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.getAddress().getPort() + path))
-                .GET().build(), HttpResponse.BodyHandlers.ofString());
-    }
+  HttpResponse<String> get(String path) throws Exception {
+    return client.send(
+        HttpRequest.newBuilder(
+                URI.create("http://127.0.0.1:" + server.getAddress().getPort() + path))
+            .GET()
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+  }
 
-    @Test
-    void anUnexpectedFailureIsAnsweredWithAGeneric500() throws Exception {
-        HttpResponse<String> r = get("/fails-before-response");
-        assertEquals(500, r.statusCode());
-        assertEquals("{\"error\":\"internal error\"}", r.body());
-        assertEquals("nosniff", r.headers().firstValue("X-Content-Type-Options").orElse(""));
-        assertFalse(r.body().contains("internal detail"), "exception text never reaches the client");
-    }
+  @Test
+  void anUnexpectedFailureIsAnsweredWithAGeneric500() throws Exception {
+    HttpResponse<String> r = get("/fails-before-response");
+    assertEquals(500, r.statusCode());
+    assertEquals("{\"error\":\"internal error\"}", r.body());
+    assertEquals("nosniff", r.headers().firstValue("X-Content-Type-Options").orElse(""));
+    assertFalse(r.body().contains("internal detail"), "exception text never reaches the client");
+  }
 
-    @Test
-    void aFailureAfterTheResponseStartedKeepsTheResponseThatWasSent() throws Exception {
-        HttpResponse<String> r = get("/fails-after-response");
-        assertEquals(200, r.statusCode());
-        assertEquals("partial", r.body());
-    }
+  @Test
+  void aFailureAfterTheResponseStartedKeepsTheResponseThatWasSent() throws Exception {
+    HttpResponse<String> r = get("/fails-after-response");
+    assertEquals(200, r.statusCode());
+    assertEquals("partial", r.body());
+  }
 }

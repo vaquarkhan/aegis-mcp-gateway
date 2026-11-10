@@ -28,67 +28,79 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A minimal plugin source, test scope only, standing in for a converter such as
- * {@code aegis-source-zookeeper}: it builds one executor per tool and does <b>not</b> dispatch by
- * upstream tool name, which is the shape {@code dryRun.previewTool} has to work for.
+ * A minimal plugin source, test scope only, standing in for a converter such as {@code
+ * aegis-source-zookeeper}: it builds one executor per tool and does <b>not</b> dispatch by upstream
+ * tool name, which is the shape {@code dryRun.previewTool} has to work for.
  *
- * <p>It counts how often each tool ran, so a test can assert that a dry run executed the preview and
- * not the destructive operation. Registered through
- * {@code META-INF/services/io.github.vaquarkhan.aegis.config.spi.ToolSourceFactory} under
- * {@code src/test/resources}, so it exists only while this module's tests run.
+ * <p>It counts how often each tool ran, so a test can assert that a dry run executed the preview
+ * and not the destructive operation. Registered through {@code
+ * META-INF/services/io.github.vaquarkhan.aegis.config.spi.ToolSourceFactory} under {@code
+ * src/test/resources}, so it exists only while this module's tests run.
  */
 public final class PreviewPluginToolSourceFactory implements ToolSourceFactory {
 
-    /** Calls per tool name, across every instance, so a test can read them after the gateway closes. */
-    public static final Map<String, AtomicInteger> CALLS = new java.util.concurrent.ConcurrentHashMap<>();
+  /**
+   * Calls per tool name, across every instance, so a test can read them after the gateway closes.
+   */
+  public static final Map<String, AtomicInteger> CALLS =
+      new java.util.concurrent.ConcurrentHashMap<>();
 
-    public static int calls(String tool) {
-        AtomicInteger c = CALLS.get(tool);
-        return c == null ? 0 : c.get();
-    }
+  public static int calls(String tool) {
+    AtomicInteger c = CALLS.get(tool);
+    return c == null ? 0 : c.get();
+  }
 
-    public static void reset() {
-        CALLS.clear();
-    }
+  public static void reset() {
+    CALLS.clear();
+  }
 
-    @Override
-    public String type() {
-        return "preview-plugin";
-    }
+  @Override
+  public String type() {
+    return "preview-plugin";
+  }
 
-    @Override
-    public ToolSource create(String id, ConfigNode settings) {
-        boolean failDiscovery = settings.bool("failDiscovery", false);
-        return new ToolSource() {
-            @Override
-            public String id() {
-                return id;
-            }
+  @Override
+  public ToolSource create(String id, ConfigNode settings) {
+    boolean failDiscovery = settings.bool("failDiscovery", false);
+    return new ToolSource() {
+      @Override
+      public String id() {
+        return id;
+      }
 
-            @Override
-            public List<SourcedTool> discover() throws Exception {
-                if (failDiscovery) {
-                    throw new IllegalStateException("this source cannot list its tools");
-                }
-                return List.of(tool("peek", "Read the thing."), tool("wipe", "Destroy the thing."));
-            }
-        };
-    }
+      @Override
+      public List<SourcedTool> discover() throws Exception {
+        if (failDiscovery) {
+          throw new IllegalStateException("this source cannot list its tools");
+        }
+        return List.of(tool("peek", "Read the thing."), tool("wipe", "Destroy the thing."));
+      }
+    };
+  }
 
-    private static ToolSource.SourcedTool tool(String name, String description) {
-        ToolDescriptor d = new ToolDescriptor(name, null, description,
-                Json.parseObject("{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}"), null, null);
-        return new ToolSource.SourcedTool(d, new ToolExecutor() {
-            @Override
-            public List<URI> egressTargets(Map<String, Object> backendArguments) {
-                return List.of();
-            }
+  private static ToolSource.SourcedTool tool(String name, String description) {
+    ToolDescriptor d =
+        new ToolDescriptor(
+            name,
+            null,
+            description,
+            Json.parseObject(
+                "{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}"),
+            null,
+            null);
+    return new ToolSource.SourcedTool(
+        d,
+        new ToolExecutor() {
+          @Override
+          public List<URI> egressTargets(Map<String, Object> backendArguments) {
+            return List.of();
+          }
 
-            @Override
-            public ToolResult execute(ExecutionContext ctx) {
-                CALLS.computeIfAbsent(name, k -> new AtomicInteger()).incrementAndGet();
-                return ToolResult.text("ran " + name, false);
-            }
+          @Override
+          public ToolResult execute(ExecutionContext ctx) {
+            CALLS.computeIfAbsent(name, k -> new AtomicInteger()).incrementAndGet();
+            return ToolResult.text("ran " + name, false);
+          }
         });
-    }
+  }
 }

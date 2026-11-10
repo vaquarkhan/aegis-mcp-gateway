@@ -15,139 +15,169 @@
  */
 package io.github.vaquarkhan.aegis.config;
 
-import io.github.vaquarkhan.aegis.observability.otlp.OtlpSpanExporter;
 import io.github.vaquarkhan.aegis.engine.GovernanceEngine;
 import io.github.vaquarkhan.aegis.engine.observe.DecisionMetrics;
 import io.github.vaquarkhan.aegis.mcp.admin.AdminApi;
 import io.github.vaquarkhan.aegis.mcp.server.McpServerHandler;
+import io.github.vaquarkhan.aegis.observability.otlp.OtlpSpanExporter;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A fully built gateway: the governance engine plus the host-neutral MCP handler and admin API.
- * Both front doors (the gateway's own server, the Knox extension) hold one of these; neither contains
- * governance logic of its own.
+ * Both front doors (the gateway's own server, the Knox extension) hold one of these; neither
+ * contains governance logic of its own.
  */
 public final class Gateway implements AutoCloseable {
 
-    private final GovernanceEngine engine;
-    private final McpServerHandler mcp;
-    private final AdminApi admin;
-    private final Map<String, Object> hostSections;
-    private final ScheduledExecutorService refresher;
-    private final DecisionMetrics metrics;
-    private final OtlpSpanExporter tracer;
-    private final AutoCloseable stateResource;
-    private final AtomicBoolean closed = new AtomicBoolean();
-    private final java.util.function.Function<String, String> secrets;
-    private final io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations;
-    private final boolean completeControl;
-    private final boolean durableState;
+  private final GovernanceEngine engine;
+  private final McpServerHandler mcp;
+  private final AdminApi admin;
+  private final Map<String, Object> hostSections;
+  private final ScheduledExecutorService refresher;
+  private final DecisionMetrics metrics;
+  private final OtlpSpanExporter tracer;
+  private final AutoCloseable stateResource;
+  private final AtomicBoolean closed = new AtomicBoolean();
+  private final java.util.function.Function<String, String> secrets;
+  private final io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations;
+  private final boolean completeControl;
+  private final boolean durableState;
 
-    /**
-     * The secret lookup selected by {@code secrets.source}; a host parses its own section with it so a
-     * {@code tokenEnv} in {@code host} resolves from the same provider as the rest of the configuration.
-     */
-    public java.util.function.Function<String, String> secrets() {
-        return secrets;
-    }
+  /**
+   * The secret lookup selected by {@code secrets.source}; a host parses its own section with it so
+   * a {@code tokenEnv} in {@code host} resolves from the same provider as the rest of the
+   * configuration.
+   */
+  public java.util.function.Function<String, String> secrets() {
+    return secrets;
+  }
 
-    Gateway(GovernanceEngine engine, McpServerHandler mcp, AdminApi admin, Map<String, Object> hostSections,
-            ScheduledExecutorService refresher, DecisionMetrics metrics, OtlpSpanExporter tracer, AutoCloseable stateResource,
-            java.util.function.Function<String, String> secrets) {
-        this(engine, mcp, admin, hostSections, refresher, metrics, tracer, stateResource, secrets, null, false, false);
-    }
+  Gateway(
+      GovernanceEngine engine,
+      McpServerHandler mcp,
+      AdminApi admin,
+      Map<String, Object> hostSections,
+      ScheduledExecutorService refresher,
+      DecisionMetrics metrics,
+      OtlpSpanExporter tracer,
+      AutoCloseable stateResource,
+      java.util.function.Function<String, String> secrets) {
+    this(
+        engine,
+        mcp,
+        admin,
+        hostSections,
+        refresher,
+        metrics,
+        tracer,
+        stateResource,
+        secrets,
+        null,
+        false,
+        false);
+  }
 
-    Gateway(GovernanceEngine engine, McpServerHandler mcp, AdminApi admin, Map<String, Object> hostSections,
-            ScheduledExecutorService refresher, DecisionMetrics metrics, OtlpSpanExporter tracer, AutoCloseable stateResource,
-            java.util.function.Function<String, String> secrets,
-            io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations, boolean completeControl,
-            boolean durableState) {
-        this.revocations = revocations;
-        this.durableState = durableState;
-        this.completeControl = completeControl;
-        this.secrets = secrets;
-        this.metrics = metrics;
-        this.tracer = tracer;
-        this.engine = engine;
-        this.mcp = mcp;
-        this.admin = admin;
-        this.hostSections = Map.copyOf(hostSections);
-        this.refresher = refresher;
-        this.stateResource = stateResource;
-    }
+  Gateway(
+      GovernanceEngine engine,
+      McpServerHandler mcp,
+      AdminApi admin,
+      Map<String, Object> hostSections,
+      ScheduledExecutorService refresher,
+      DecisionMetrics metrics,
+      OtlpSpanExporter tracer,
+      AutoCloseable stateResource,
+      java.util.function.Function<String, String> secrets,
+      io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations,
+      boolean completeControl,
+      boolean durableState) {
+    this.revocations = revocations;
+    this.durableState = durableState;
+    this.completeControl = completeControl;
+    this.secrets = secrets;
+    this.metrics = metrics;
+    this.tracer = tracer;
+    this.engine = engine;
+    this.mcp = mcp;
+    this.admin = admin;
+    this.hostSections = Map.copyOf(hostSections);
+    this.refresher = refresher;
+    this.stateResource = stateResource;
+  }
 
-    /**
-     * Bearer token revocation list kept in this gateway's governance state store (shared by every
-     * replica that shares the store). The host binds it into its JWT verifier.
-     */
-    public io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations() {
-        return revocations;
-    }
+  /**
+   * Bearer token revocation list kept in this gateway's governance state store (shared by every
+   * replica that shares the store). The host binds it into its JWT verifier.
+   */
+  public io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations() {
+    return revocations;
+  }
 
-    /**
-     * True when governance state (approvals, nonces, revocations) is in a durable or host-provided store,
-     * false for the built-in single-replica in-memory store. Hosts refuse revocation-dependent settings
-     * when this is false (a restart would make a revoked token valid again).
-     */
-    public boolean durableState() {
-        return durableState;
-    }
+  /**
+   * True when governance state (approvals, nonces, revocations) is in a durable or host-provided
+   * store, false for the built-in single-replica in-memory store. Hosts refuse revocation-dependent
+   * settings when this is false (a restart would make a revoked token valid again).
+   */
+  public boolean durableState() {
+    return durableState;
+  }
 
-    /** True when {@code completeControl.enabled} was set; hosts apply their stricter perimeter rules. */
-    public boolean completeControl() {
-        return completeControl;
-    }
+  /**
+   * True when {@code completeControl.enabled} was set; hosts apply their stricter perimeter rules.
+   */
+  public boolean completeControl() {
+    return completeControl;
+  }
 
-    public GovernanceEngine engine() {
-        return engine;
-    }
+  public GovernanceEngine engine() {
+    return engine;
+  }
 
-    public McpServerHandler mcp() {
-        return mcp;
-    }
+  public McpServerHandler mcp() {
+    return mcp;
+  }
 
-    public AdminApi admin() {
-        return admin;
-    }
+  public AdminApi admin() {
+    return admin;
+  }
 
-    /** Decision metrics ({@code metrics.enabled}, default true); null when disabled. */
-    public DecisionMetrics metrics() {
-        return metrics;
-    }
+  /** Decision metrics ({@code metrics.enabled}, default true); null when disabled. */
+  public DecisionMetrics metrics() {
+    return metrics;
+  }
 
-    /** OTLP span exporter ({@code tracing.otlp.endpoint}); null when tracing is not configured. */
-    public OtlpSpanExporter tracer() {
-        return tracer;
-    }
+  /** OTLP span exporter ({@code tracing.otlp.endpoint}); null when tracing is not configured. */
+  public OtlpSpanExporter tracer() {
+    return tracer;
+  }
 
-    /** Raw host-specific section ({@code host} or {@code knox}); the host parses it strictly. */
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> hostSection(String name) {
-        Object v = hostSections.get(name);
-        return v instanceof Map ? (Map<String, Object>) v : Map.of();
-    }
+  /** Raw host-specific section ({@code host} or {@code knox}); the host parses it strictly. */
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> hostSection(String name) {
+    Object v = hostSections.get(name);
+    return v instanceof Map ? (Map<String, Object>) v : Map.of();
+  }
 
-    @Override
-    public void close() {
-        if (!closed.compareAndSet(false, true)) {
-            return;
-        }
-        if (refresher != null) {
-            refresher.shutdownNow();
-        }
-        engine.close();
-        if (tracer != null) {
-            // Last, so spans for the final requests still have somewhere to go.
-            tracer.close();
-        }
-        if (stateResource != null) {
-            try {
-                stateResource.close();
-            } catch (Exception e) {
-                throw new IllegalStateException("could not close governance state store", e);
-            }
-        }
+  @Override
+  public void close() {
+    if (!closed.compareAndSet(false, true)) {
+      return;
     }
+    if (refresher != null) {
+      refresher.shutdownNow();
+    }
+    engine.close();
+    if (tracer != null) {
+      // Last, so spans for the final requests still have somewhere to go.
+      tracer.close();
+    }
+    if (stateResource != null) {
+      try {
+        stateResource.close();
+      } catch (Exception e) {
+        throw new IllegalStateException("could not close governance state store", e);
+      }
+    }
+  }
 }
