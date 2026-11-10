@@ -62,7 +62,7 @@ jobs:
       - name: Aggregate CycloneDX SBOM
         run: mvn -B -DskipTests -Djacoco.skip=true -Dspotbugs.skip=true -Drat.skip=true -Prelease package org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
       - name: Scan the SBOM with OSV
-        uses: google/osv-scanner-action/osv-scanner-action@v2.7.1
+        uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
         with:
           scan-args: |
             --sbom=target/bom.json
