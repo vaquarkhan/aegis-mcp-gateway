@@ -53,6 +53,55 @@
       <version>${jetty.version}</version>
     </dependency>
 
+
+
+
+
+
+
+
+    <dependency>
+      <groupId>org.apache.ignite</groupId>
+      <artifactId>ignite-core</artifactId>
+      <version>${ignite.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.ignite</groupId>
+      <artifactId>ignite-rest-http</artifactId>
+      <version>${ignite.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-webapp</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+
+
+
+    <dependency>
+      <groupId>org.apache.ignite</groupId>
+      <artifactId>ignite-core</artifactId>
+      <version>${ignite.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- 2. HTTP REST module (bundles embedded Jetty) -->
+    <dependency>
+      <groupId>org.apache.ignite</groupId>
+      <artifactId>ignite-rest-http</artifactId>
+      <version>${ignite.version}</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-transport</artifactId>
@@ -268,7 +317,10 @@
             --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.text=ALL-UNNAMED
             --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
             --add-opens=java.base/sun.nio.cs=ALL-UNNAMED --add-opens=java.base/sun.security.action=ALL-UNNAMED
-            --add-opens=java.base/sun.util.calendar=ALL-UNNAMED -Djdk.reflect.useDirectMethodHandle=false
+            --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+            --add-opens=java.base/jdk.internal.misc=ALL-UNNAMED
+            --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED
+            -Djdk.reflect.useDirectMethodHandle=false
             -Dio.netty.tryReflectionSetAccessible=true</argLine>
           <systemPropertyVariables>
             <!-- Each two-front-door scenario writes its HTTP transcript and audit journal here. -->

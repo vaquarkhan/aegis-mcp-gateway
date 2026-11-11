@@ -118,6 +118,8 @@ class CompleteControlStdioTest {
     for (Process p : launcher.started) {
       p.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
     }
-    assertTrue(launcher.started.stream().noneMatch(Process::isAlive), "all spawned processes must be terminated after client close");
+    assertTrue(
+        launcher.started.stream().noneMatch(Process::isAlive),
+        "all spawned processes must be terminated after client close");
   }
 }
