@@ -90,7 +90,7 @@ public final class Main {
                 }
                 case "--adopter-config" -> {
                     if (i + 1 >= args.length) {
-                        err.println("--config-adopter needs a file");
+                        err.println("--adopter-config needs a file");
                         return USAGE;
                     }
                     adopter_config = args[++i];
@@ -147,12 +147,17 @@ public final class Main {
                 }
             }
         }
+        if (gateway_config == null || adopter_config == null) {
+            err.println("usage: Aegis Gateway requires both --gateway-config <file> and --adopter-config <file>");
+            err.println("   or: --verify-audit <file> [--checkpoints <file>] | --hash-token | ...");
+            return USAGE;
+        }
         if (checkpoints != null && verifyAudit == null) {
             err.println("--checkpoints is used with --verify-audit <file>");
             return USAGE;
         }
         if (verifyAudit != null) {
-            if (adopter_config != null && gateway_config != null || stdio) {
+            if (adopter_config != null || gateway_config != null || stdio) {
                 err.println("--verify-audit runs on its own, without --config or --stdio");
                 return USAGE;
             }
