@@ -781,8 +781,13 @@ public final class GatewayFactory {
         }
 
         try {
+            if ((raw2 == null || raw1 == raw2) && root.has("sources")) {
+                root.children("sources"); // Marks the key as consumed on root
+            }
             root.finish(); // unknown keys anywhere are fatal
-            root_adopters.finish();
+            if (raw2 != null && raw2 != raw1) {
+                root_adopters.finish();
+            }
             // Rollback protection: a signed document older than one this gateway already accepted is
             // refused. Durable state (derby-local, postgres) keeps the record across restarts.
             for (PendingSerial p : serials) {
