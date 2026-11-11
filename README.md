@@ -80,6 +80,8 @@ Aegis ships **28 adopter profiles with retained real two-door runs** (own host, 
 - [Validation and claims evidence](docs/VALIDATION.md)
 - [Apache Knox extension](docs/KNOX-EXTENSION.md)
 - [Real-engine examples and contract profiles](examples/adopters/README.md)
+
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
 - [Break-glass MCP servers](examples/break-glass-mcp-servers/README.md): four independent servers (Spark, Kafka, Iceberg, Flink) with a signed server catalog, per-tool scopes and incident containment, run end to end
 - [Container image](Dockerfile) and [Helm chart](charts/aegis/README.md); [reference hook services](adopters/hooks/README.md); [A2A agent profile](adopters/configurations/a2a/README.md); [per-caller credentials with token exchange](docs/CONFIGURATION.md#per-caller-credentials-rfc-8693-token-exchange)
 - [Roadmap](docs/ROADMAP.md), [A2A decision: agents as tool sources, no A2A front door](docs/adr/ADR-001-A2A-AS-TOOL-SOURCE.md) and [Knox 3.1 Jakarta target](docs/adr/ADR-002-KNOX-3.1-JAKARTA-TARGET.md)
