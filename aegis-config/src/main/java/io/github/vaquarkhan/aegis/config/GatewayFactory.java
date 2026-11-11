@@ -126,7 +126,7 @@ public final class GatewayFactory {
     }
 
     public static Gateway build(Path baseConfig, BuildContext ctx) throws Exception {
-        return build(baseConfig, (Path) null, ctx, (BuildContext) null, false);
+        return build(baseConfig, baseConfig, ctx, ctx, false);
     }
     public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1) throws Exception {
         return build(raw1, callerContext1, raw1, callerContext1, false);
@@ -142,7 +142,9 @@ public final class GatewayFactory {
     public static Gateway build(Path file1, Path file2, BuildContext ctx1, BuildContext ctx2, boolean checkSourceInputs) throws Exception {
         Objects.requireNonNull(file1, "file1 (baseConfig) must not be null");
         Objects.requireNonNull(ctx1, "ctx1 must not be null");
-
+        if (file2 == null) {
+            throw new ConfigException("adopter config file (file2) is required and cannot be null");
+        }
         Path base_g = file1.toAbsolutePath().getParent();
         BuildContext c_g = new BuildContext(
                 ctx1.env(), base_g, ctx1.clock(), ctx1.resolver(), ctx1.extraHooks(),
@@ -150,18 +152,18 @@ public final class GatewayFactory {
         );
 
         Map<String, Object> raw1 = ConfigLoader.load(file1);
-        Map<String, Object> raw2 = Map.of();
+
         BuildContext c_a = c_g;
 
-        if (file2 != null) {
-            Path base_a = file2.toAbsolutePath().getParent();
-            BuildContext baseCtx2 = (ctx2 != null) ? ctx2 : ctx1;
-            c_a = new BuildContext(
-                    baseCtx2.env(), base_a, baseCtx2.clock(), baseCtx2.resolver(), baseCtx2.extraHooks(),
-                    baseCtx2.extraAuditSink(), baseCtx2.credentialOverride(), baseCtx2.stateStore()
-            );
-            raw2 = ConfigLoader.load(file2);
-        }
+
+        Path base_a = file2.toAbsolutePath().getParent();
+        BuildContext baseCtx2 = (ctx2 != null) ? ctx2 : ctx1;
+        c_a = new BuildContext(
+                baseCtx2.env(), base_a, baseCtx2.clock(), baseCtx2.resolver(), baseCtx2.extraHooks(),
+                baseCtx2.extraAuditSink(), baseCtx2.credentialOverride(), baseCtx2.stateStore()
+        );
+
+        Map<String, Object> raw2 = ConfigLoader.load(file2);
 
 
         return build(raw1, c_g, raw2, c_a, checkSourceInputs);
