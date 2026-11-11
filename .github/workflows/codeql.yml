@@ -65,5 +65,5 @@ jobs:
         uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
         with:
           scan-args: |
-            --sbom=target/bom.json
+            -L=target/bom.json
             --format=table
