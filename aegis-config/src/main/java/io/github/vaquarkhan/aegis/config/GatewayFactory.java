@@ -782,7 +782,7 @@ public final class GatewayFactory {
 
         try {
             if ((raw2 == null || raw1 == raw2) && root.has("sources")) {
-                root.children("sources"); // Marks the key as consumed on root
+                root.skip("sources"); // Marks the key as consumed on root
             }
             root.finish(); // unknown keys anywhere are fatal
             if (raw2 != null && raw2 != raw1) {
