@@ -115,6 +115,9 @@ class CompleteControlStdioTest {
       assertTrue(launcher.started.size() >= 2, "next call starts a clean child");
       assertNotSame(first, launcher.started.get(launcher.started.size() - 1));
     }
-    assertTrue(launcher.started.stream().noneMatch(Process::isAlive));
+    for (Process p : launcher.started) {
+      p.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+    }
+    assertTrue(launcher.started.stream().noneMatch(Process::isAlive), "all spawned processes must be terminated after client close");
   }
 }
