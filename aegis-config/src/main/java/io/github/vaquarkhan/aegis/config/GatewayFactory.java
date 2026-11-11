@@ -125,17 +125,21 @@ public final class GatewayFactory {
     private GatewayFactory() {
     }
 
-
-    public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1) throws Exception {
-        return build(raw1, callerContext1, Map.of(), callerContext1);
-    }
-
     public static Gateway build(Path baseConfig, BuildContext ctx) throws Exception {
-        return build(baseConfig, (Path) null, ctx, ctx);
+        return build(baseConfig, (Path) null, ctx, (BuildContext) null, false);
+    }
+    public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1) throws Exception {
+        return build(raw1, callerContext1, raw1, callerContext1, false);
     }
 
 
-    public static Gateway build(Path file1, Path file2, BuildContext ctx1, BuildContext ctx2) throws Exception {
+    public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1,
+                                Map<String, Object> raw2, BuildContext callerContext2) throws Exception {
+        return build(raw1, callerContext1, raw2, callerContext2, true);
+    }
+
+
+    public static Gateway build(Path file1, Path file2, BuildContext ctx1, BuildContext ctx2, boolean checkSourceInputs) throws Exception {
         Objects.requireNonNull(file1, "file1 (baseConfig) must not be null");
         Objects.requireNonNull(ctx1, "ctx1 must not be null");
 
@@ -159,10 +163,11 @@ public final class GatewayFactory {
             raw2 = ConfigLoader.load(file2);
         }
 
-        return build(raw1, c_g, raw2, c_a);
+
+        return build(raw1, c_g, raw2, c_a, checkSourceInputs);
     }
 
-    public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1, Map<String, Object> raw2, BuildContext callerContext2) throws Exception {
+    public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1, Map<String, Object> raw2, BuildContext callerContext2, boolean checkSourceInputs) throws Exception {
         ConfigNode root = new ConfigNode("config", raw1);
         ConfigNode root_adopters = new ConfigNode("config", raw2);
         Map<String, Object> hostSections = new LinkedHashMap<>();
@@ -361,7 +366,7 @@ public final class GatewayFactory {
             }
             sources.add(sb);
         }
-        if (sources.isEmpty()) {
+        if (sources.isEmpty() && checkSourceInputs) {
             throw new ConfigException(serverCatalog == null ? "config.sources must list at least one tool source"
                     : "config.sources has no source that the signed server catalog lets start");
         }

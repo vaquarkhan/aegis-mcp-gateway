@@ -184,7 +184,7 @@ public final class Main {
         final String pinnedKey = requireCatalogKey;
         Function<String, String> hostEnv = pinnedKey == null ? env
                 : name -> GatewayFactory.REQUIRED_CATALOG_KEY.equals(name) ? pinnedKey : env.apply(name);
-        Gateway gateway = GatewayFactory.build(cfg_g, cfg_a, BuildContext.defaults(cfg_g.getParent()).withEnv(hostEnv), BuildContext.defaults(cfg_a.getParent()).withEnv(hostEnv));
+        Gateway gateway = GatewayFactory.build(cfg_g, cfg_a, BuildContext.defaults(cfg_g.getParent()).withEnv(hostEnv), BuildContext.defaults(cfg_a.getParent()).withEnv(hostEnv),true);
         OwnServerSecuritySettings settings;
         try {
             settings = OwnServerSecuritySettings.parse(gateway.hostSection("host"), cfg_g.getParent(), gateway.secrets(),
