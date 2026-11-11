@@ -23,31 +23,31 @@ import java.util.Map;
 /** Host-neutral HTTP response. */
 public record McpHttpResponse(int status, Map<String, String> headers, byte[] body) {
 
-    public McpHttpResponse {
-        headers = headers == null ? Map.of() : Map.copyOf(headers);
-        body = body == null ? new byte[0] : body;
-    }
+  public McpHttpResponse {
+    headers = headers == null ? Map.of() : Map.copyOf(headers);
+    body = body == null ? new byte[0] : body;
+  }
 
-    public static McpHttpResponse json(int status, Object value) {
-        return json(status, value, Map.of());
-    }
+  public static McpHttpResponse json(int status, Object value) {
+    return json(status, value, Map.of());
+  }
 
-    public static McpHttpResponse json(int status, Object value, Map<String, String> extraHeaders) {
-        Map<String, String> h = new LinkedHashMap<>(extraHeaders);
-        h.put("Content-Type", "application/json");
-        h.put("Cache-Control", "no-store");
-        return new McpHttpResponse(status, h, Json.write(value).getBytes(StandardCharsets.UTF_8));
-    }
+  public static McpHttpResponse json(int status, Object value, Map<String, String> extraHeaders) {
+    Map<String, String> h = new LinkedHashMap<>(extraHeaders);
+    h.put("Content-Type", "application/json");
+    h.put("Cache-Control", "no-store");
+    return new McpHttpResponse(status, h, Json.write(value).getBytes(StandardCharsets.UTF_8));
+  }
 
-    public static McpHttpResponse empty(int status) {
-        return new McpHttpResponse(status, Map.of(), new byte[0]);
-    }
+  public static McpHttpResponse empty(int status) {
+    return new McpHttpResponse(status, Map.of(), new byte[0]);
+  }
 
-    public static McpHttpResponse empty(int status, Map<String, String> headers) {
-        return new McpHttpResponse(status, headers, new byte[0]);
-    }
+  public static McpHttpResponse empty(int status, Map<String, String> headers) {
+    return new McpHttpResponse(status, headers, new byte[0]);
+  }
 
-    public String bodyText() {
-        return new String(body, StandardCharsets.UTF_8);
-    }
+  public String bodyText() {
+    return new String(body, StandardCharsets.UTF_8);
+  }
 }

@@ -29,6 +29,8 @@ import java.util.Optional;
 @FunctionalInterface
 public interface ToolBinder {
 
-    /** @return the governed tool, or empty to hide the tool entirely */
-    Optional<GovernedTool> bind(String sourceId, ToolSource.SourcedTool tool);
+  /**
+   * @return the governed tool, or empty to hide the tool entirely
+   */
+  Optional<GovernedTool> bind(String sourceId, ToolSource.SourcedTool tool);
 }

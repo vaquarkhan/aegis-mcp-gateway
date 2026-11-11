@@ -34,51 +34,51 @@ import java.util.Set;
  */
 public final class ScopeChallenge {
 
-    private static final ThreadLocal<Set<String>> CURRENT = new ThreadLocal<>();
+  private static final ThreadLocal<Set<String>> CURRENT = new ThreadLocal<>();
 
-    private ScopeChallenge() {}
+  private ScopeChallenge() {}
 
-    /** Starts collecting for the current request; the previous collector is restored on close. */
-    public static Scope open() {
-        Scope s = new Scope(CURRENT.get());
-        CURRENT.set(new LinkedHashSet<>());
-        return s;
+  /** Starts collecting for the current request; the previous collector is restored on close. */
+  public static Scope open() {
+    Scope s = new Scope(CURRENT.get());
+    CURRENT.set(new LinkedHashSet<>());
+    return s;
+  }
+
+  /** Records scopes a refused call requires. A no-op when no front door opened a scope. */
+  public static void require(Collection<String> scopes) {
+    Set<String> current = CURRENT.get();
+    if (current != null && scopes != null) {
+      current.addAll(scopes);
+    }
+  }
+
+  /** The open collector; use with try-with-resources. */
+  public static final class Scope implements AutoCloseable {
+    private final Set<String> previous;
+    private boolean closed;
+
+    private Scope(Set<String> previous) {
+      this.previous = previous;
     }
 
-    /** Records scopes a refused call requires. A no-op when no front door opened a scope. */
-    public static void require(Collection<String> scopes) {
-        Set<String> current = CURRENT.get();
-        if (current != null && scopes != null) {
-            current.addAll(scopes);
-        }
+    /** The scopes recorded so far in this request, in the order first seen. */
+    public List<String> required() {
+      Set<String> current = CURRENT.get();
+      return closed || current == null ? List.of() : List.copyOf(current);
     }
 
-    /** The open collector; use with try-with-resources. */
-    public static final class Scope implements AutoCloseable {
-        private final Set<String> previous;
-        private boolean closed;
-
-        private Scope(Set<String> previous) {
-            this.previous = previous;
-        }
-
-        /** The scopes recorded so far in this request, in the order first seen. */
-        public List<String> required() {
-            Set<String> current = CURRENT.get();
-            return closed || current == null ? List.of() : List.copyOf(current);
-        }
-
-        @Override
-        public void close() {
-            if (closed) {
-                return;
-            }
-            closed = true;
-            if (previous == null) {
-                CURRENT.remove();
-            } else {
-                CURRENT.set(previous);
-            }
-        }
+    @Override
+    public void close() {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      if (previous == null) {
+        CURRENT.remove();
+      } else {
+        CURRENT.set(previous);
+      }
     }
+  }
 }

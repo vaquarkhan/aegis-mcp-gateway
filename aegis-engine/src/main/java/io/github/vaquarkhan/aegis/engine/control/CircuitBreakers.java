@@ -28,99 +28,107 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class CircuitBreakers {
 
-    /** Outcome of {@link #acquire}. */
-    public enum Permit { DENIED, NORMAL, PROBE }
+  /** Outcome of {@link #acquire}. */
+  public enum Permit {
+    DENIED,
+    NORMAL,
+    PROBE
+  }
 
-    private final int failureThreshold;
-    private final long openMillis;
-    private final Clock clock;
-    private final ConcurrentHashMap<String, Breaker> breakers = new ConcurrentHashMap<>();
+  private final int failureThreshold;
+  private final long openMillis;
+  private final Clock clock;
+  private final ConcurrentHashMap<String, Breaker> breakers = new ConcurrentHashMap<>();
 
-    public CircuitBreakers(int failureThreshold, long openMillis, Clock clock) {
-        this.failureThreshold = failureThreshold;
-        this.openMillis = openMillis;
-        this.clock = clock;
+  public CircuitBreakers(int failureThreshold, long openMillis, Clock clock) {
+    this.failureThreshold = failureThreshold;
+    this.openMillis = openMillis;
+    this.clock = clock;
+  }
+
+  public boolean enabled() {
+    return failureThreshold > 0;
+  }
+
+  public Permit acquire(String sourceId) {
+    if (!enabled()) {
+      return Permit.NORMAL;
+    }
+    return breakers
+        .computeIfAbsent(sourceId, k -> new Breaker())
+        .acquire(clock.millis(), openMillis);
+  }
+
+  public void success(String sourceId, Permit permit) {
+    if (enabled() && permit != Permit.DENIED) {
+      breakers.computeIfAbsent(sourceId, k -> new Breaker()).success();
+    }
+  }
+
+  public void failure(String sourceId, Permit permit) {
+    if (enabled() && permit != Permit.DENIED) {
+      breakers
+          .computeIfAbsent(sourceId, k -> new Breaker())
+          .failure(clock.millis(), failureThreshold, permit == Permit.PROBE);
+    }
+  }
+
+  /** Returns a permit that never reached the backend. Only a PROBE permit changes state. */
+  public void release(String sourceId, Permit permit) {
+    if (permit == Permit.PROBE) {
+      Breaker b = breakers.get(sourceId);
+      if (b != null) {
+        b.releaseProbe();
+      }
+    }
+  }
+
+  public String state(String sourceId) {
+    Breaker b = breakers.get(sourceId);
+    return b == null ? "CLOSED" : b.state();
+  }
+
+  private static final class Breaker {
+    private int consecutiveFailures;
+    private long openedAt = -1;
+    private boolean probeInFlight;
+
+    synchronized Permit acquire(long now, long openMillis) {
+      if (openedAt < 0) {
+        return Permit.NORMAL;
+      }
+      if (now - openedAt < openMillis || probeInFlight) {
+        return Permit.DENIED;
+      }
+      probeInFlight = true; // half-open: exactly one probe
+      return Permit.PROBE;
     }
 
-    public boolean enabled() {
-        return failureThreshold > 0;
+    synchronized void success() {
+      consecutiveFailures = 0;
+      openedAt = -1;
+      probeInFlight = false;
     }
 
-    public Permit acquire(String sourceId) {
-        if (!enabled()) {
-            return Permit.NORMAL;
-        }
-        return breakers.computeIfAbsent(sourceId, k -> new Breaker()).acquire(clock.millis(), openMillis);
+    synchronized void failure(long now, int threshold, boolean probe) {
+      consecutiveFailures++;
+      if (probe || consecutiveFailures >= threshold) {
+        openedAt = now;
+      }
+      if (probe) {
+        probeInFlight = false;
+      }
     }
 
-    public void success(String sourceId, Permit permit) {
-        if (enabled() && permit != Permit.DENIED) {
-            breakers.computeIfAbsent(sourceId, k -> new Breaker()).success();
-        }
+    synchronized void releaseProbe() {
+      probeInFlight = false;
     }
 
-    public void failure(String sourceId, Permit permit) {
-        if (enabled() && permit != Permit.DENIED) {
-            breakers.computeIfAbsent(sourceId, k -> new Breaker()).failure(clock.millis(), failureThreshold, permit == Permit.PROBE);
-        }
+    synchronized String state() {
+      if (openedAt < 0) {
+        return "CLOSED";
+      }
+      return probeInFlight ? "HALF_OPEN" : "OPEN";
     }
-
-    /** Returns a permit that never reached the backend. Only a PROBE permit changes state. */
-    public void release(String sourceId, Permit permit) {
-        if (permit == Permit.PROBE) {
-            Breaker b = breakers.get(sourceId);
-            if (b != null) {
-                b.releaseProbe();
-            }
-        }
-    }
-
-    public String state(String sourceId) {
-        Breaker b = breakers.get(sourceId);
-        return b == null ? "CLOSED" : b.state();
-    }
-
-    private static final class Breaker {
-        private int consecutiveFailures;
-        private long openedAt = -1;
-        private boolean probeInFlight;
-
-        synchronized Permit acquire(long now, long openMillis) {
-            if (openedAt < 0) {
-                return Permit.NORMAL;
-            }
-            if (now - openedAt < openMillis || probeInFlight) {
-                return Permit.DENIED;
-            }
-            probeInFlight = true; // half-open: exactly one probe
-            return Permit.PROBE;
-        }
-
-        synchronized void success() {
-            consecutiveFailures = 0;
-            openedAt = -1;
-            probeInFlight = false;
-        }
-
-        synchronized void failure(long now, int threshold, boolean probe) {
-            consecutiveFailures++;
-            if (probe || consecutiveFailures >= threshold) {
-                openedAt = now;
-            }
-            if (probe) {
-                probeInFlight = false;
-            }
-        }
-
-        synchronized void releaseProbe() {
-            probeInFlight = false;
-        }
-
-        synchronized String state() {
-            if (openedAt < 0) {
-                return "CLOSED";
-            }
-            return probeInFlight ? "HALF_OPEN" : "OPEN";
-        }
-    }
+  }
 }

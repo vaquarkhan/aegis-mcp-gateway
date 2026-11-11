@@ -26,23 +26,23 @@ import java.time.Clock;
  */
 public final class DerbyLockProbe {
 
-    private DerbyLockProbe() {}
+  private DerbyLockProbe() {}
 
-    public static void main(String[] args) {
-        try (DerbyStateStore store = new DerbyStateStore(Path.of(args[0]), Clock.systemUTC())) {
-            System.out.println("OPENED");
-        } catch (SQLException e) {
-            StringBuilder states = new StringBuilder();
-            for (Throwable t = e; t != null; t = t.getCause()) {
-                if (t instanceof SQLException s && s.getSQLState() != null) {
-                    states.append(s.getSQLState()).append(' ');
-                }
-            }
-            System.out.println("REFUSED " + states.toString().trim());
-            System.exit(2);
-        } catch (Exception e) {
-            System.out.println("ERROR " + e.getClass().getName());
-            System.exit(3);
+  public static void main(String[] args) {
+    try (DerbyStateStore store = new DerbyStateStore(Path.of(args[0]), Clock.systemUTC())) {
+      System.out.println("OPENED");
+    } catch (SQLException e) {
+      StringBuilder states = new StringBuilder();
+      for (Throwable t = e; t != null; t = t.getCause()) {
+        if (t instanceof SQLException s && s.getSQLState() != null) {
+          states.append(s.getSQLState()).append(' ');
         }
+      }
+      System.out.println("REFUSED " + states.toString().trim());
+      System.exit(2);
+    } catch (Exception e) {
+      System.out.println("ERROR " + e.getClass().getName());
+      System.exit(3);
     }
+  }
 }

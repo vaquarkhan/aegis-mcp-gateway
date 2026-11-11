@@ -18,15 +18,16 @@ package io.github.vaquarkhan.aegis.engine.spi;
 /**
  * An optional {@link StateStore} capability for signed-document rollback protection. It is separate
  * from {@code StateStore} so existing state providers stay source and binary compatible: a provider
- * that has not implemented this atomic operation cannot accidentally claim to protect numbered files.
+ * that has not implemented this atomic operation cannot accidentally claim to protect numbered
+ * files.
  */
 public interface HighWaterStateStore extends StateStore {
 
-    /**
-     * Atomically records {@code candidate} as this key's numeric high-water mark when it is higher
-     * than the stored value, then returns the resulting mark. A candidate of zero reads the mark
-     * without creating it. Values are positive whole numbers; an unreadable stored value fails
-     * closed with {@link IllegalStateException}.
-     */
-    long updateHighWaterMark(String key, long candidate);
+  /**
+   * Atomically records {@code candidate} as this key's numeric high-water mark when it is higher
+   * than the stored value, then returns the resulting mark. A candidate of zero reads the mark
+   * without creating it. Values are positive whole numbers; an unreadable stored value fails closed
+   * with {@link IllegalStateException}.
+   */
+  long updateHighWaterMark(String key, long candidate);
 }

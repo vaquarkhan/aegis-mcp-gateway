@@ -20,39 +20,43 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Step 2 resource scope: which resources a group may touch at all, independent of tool policy.
- * When scopes are configured, every resource of an action must be covered by a scope rule of one
- * of the caller's groups; nothing is widened to {@code *} (0.1 widened a missing resource to *).
+ * Step 2 resource scope: which resources a group may touch at all, independent of tool policy. When
+ * scopes are configured, every resource of an action must be covered by a scope rule of one of the
+ * caller's groups; nothing is widened to {@code *} (0.1 widened a missing resource to *).
  *
- * @param groups    groups this scope applies to ({@code *} = any caller)
+ * @param groups groups this scope applies to ({@code *} = any caller)
  * @param resources resource globs, e.g. {@code iceberg:table:sales.*}
  */
 public record ScopeRule(Set<String> groups, List<String> resources) {
 
-    public ScopeRule {
-        groups = Set.copyOf(groups);
-        resources = List.copyOf(resources);
-    }
+  public ScopeRule {
+    groups = Set.copyOf(groups);
+    resources = List.copyOf(resources);
+  }
 
-    /** @return null when every resource is in scope, else the first out-of-scope resource */
-    public static String firstOutOfScope(List<ScopeRule> scopes, CallerIdentity caller, List<String> resources) {
-        for (String r : resources) {
-            boolean covered = false;
-            for (ScopeRule s : scopes) {
-                try {
-                    if ((s.groups.contains("*") || caller.inAnyGroup(s.groups)) && Glob.anyMatches(s.resources, r)) {
-                        covered = true;
-                        break;
-                    }
-                } catch (Glob.LimitExceededException e) {
-                    // A bounded matcher may not turn a resource into an implicit wildcard grant.
-                    return r;
-                }
-            }
-            if (!covered) {
-                return r;
-            }
+  /**
+   * @return null when every resource is in scope, else the first out-of-scope resource
+   */
+  public static String firstOutOfScope(
+      List<ScopeRule> scopes, CallerIdentity caller, List<String> resources) {
+    for (String r : resources) {
+      boolean covered = false;
+      for (ScopeRule s : scopes) {
+        try {
+          if ((s.groups.contains("*") || caller.inAnyGroup(s.groups))
+              && Glob.anyMatches(s.resources, r)) {
+            covered = true;
+            break;
+          }
+        } catch (Glob.LimitExceededException e) {
+          // A bounded matcher may not turn a resource into an implicit wildcard grant.
+          return r;
         }
-        return null;
+      }
+      if (!covered) {
+        return r;
+      }
     }
+    return null;
+  }
 }

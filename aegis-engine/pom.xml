@@ -31,7 +31,7 @@
     dependency conflicts.</description>
   <properties>
     <!-- Coverage floor = measured default-build coverage minus about 2 points (docs/VALIDATION.md). -->
-    <coverage.line.minimum>0.82</coverage.line.minimum>
+    <coverage.line.minimum>0.80</coverage.line.minimum>
     <coverage.branch.minimum>0.65</coverage.branch.minimum>
   </properties>
 

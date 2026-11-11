@@ -27,22 +27,22 @@ import java.util.Map;
  */
 public final class InMemoryAuditSink implements AuditSink {
 
-    private final List<Map<String, Object>> records = new ArrayList<>();
-    private volatile boolean failing;
+  private final List<Map<String, Object>> records = new ArrayList<>();
+  private volatile boolean failing;
 
-    @Override
-    public synchronized void append(Map<String, Object> record) throws Exception {
-        if (failing) {
-            throw new java.io.IOException("audit sink unavailable (simulated)");
-        }
-        records.add(Map.copyOf(record));
+  @Override
+  public synchronized void append(Map<String, Object> record) throws Exception {
+    if (failing) {
+      throw new java.io.IOException("audit sink unavailable (simulated)");
     }
+    records.add(Map.copyOf(record));
+  }
 
-    public void setFailing(boolean failing) {
-        this.failing = failing;
-    }
+  public void setFailing(boolean failing) {
+    this.failing = failing;
+  }
 
-    public synchronized List<Map<String, Object>> records() {
-        return List.copyOf(records);
-    }
+  public synchronized List<Map<String, Object>> records() {
+    return List.copyOf(records);
+  }
 }

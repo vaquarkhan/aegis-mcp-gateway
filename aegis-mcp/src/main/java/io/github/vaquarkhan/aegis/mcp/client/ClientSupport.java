@@ -29,95 +29,112 @@ import java.util.Set;
 /** Shared helpers for downstream MCP clients. */
 final class ClientSupport {
 
-    private ClientSupport() {}
+  private ClientSupport() {}
 
-    /** JSON-RPC error codes that identify a modern (2026-07-28) server when returned to a modern probe. */
-    static final Set<Long> MODERN_ERROR_CODES = Set.of((long) JsonRpc.UNSUPPORTED_PROTOCOL_VERSION,
-            (long) JsonRpc.HEADER_MISMATCH, (long) JsonRpc.MISSING_REQUIRED_CLIENT_CAPABILITY);
+  /**
+   * JSON-RPC error codes that identify a modern (2026-07-28) server when returned to a modern
+   * probe.
+   */
+  static final Set<Long> MODERN_ERROR_CODES =
+      Set.of(
+          (long) JsonRpc.UNSUPPORTED_PROTOCOL_VERSION,
+          (long) JsonRpc.HEADER_MISMATCH,
+          (long) JsonRpc.MISSING_REQUIRED_CLIENT_CAPABILITY);
 
-    static Map<String, Object> clientInfo() {
-        return Map.of("name", "aegis-gateway", "version", "2.0.0-SNAPSHOT");
+  static Map<String, Object> clientInfo() {
+    return Map.of("name", "aegis-gateway", "version", "2.0.0-SNAPSHOT");
+  }
+
+  /** Adds modern per-request metadata to params (without overwriting unrelated _meta keys). */
+  static Map<String, Object> withModernMeta(Map<String, Object> params) {
+    Map<String, Object> p = new LinkedHashMap<>(params == null ? Map.of() : params);
+    Map<String, Object> meta = new LinkedHashMap<>();
+    Map<String, Object> existing = JsonValues.object(p, "_meta");
+    if (existing != null) {
+      meta.putAll(existing);
     }
+    meta.put(McpVersions.META_PROTOCOL_VERSION, McpVersions.V2026_07_28);
+    meta.putIfAbsent(
+        McpVersions.META_CLIENT_CAPABILITIES, Map.of()); // a forwarded client declaration wins
+    meta.put(McpVersions.META_CLIENT_INFO, clientInfo());
+    p.put("_meta", meta);
+    return p;
+  }
 
-    /** Adds modern per-request metadata to params (without overwriting unrelated _meta keys). */
-    static Map<String, Object> withModernMeta(Map<String, Object> params) {
-        Map<String, Object> p = new LinkedHashMap<>(params == null ? Map.of() : params);
-        Map<String, Object> meta = new LinkedHashMap<>();
-        Map<String, Object> existing = JsonValues.object(p, "_meta");
-        if (existing != null) {
-            meta.putAll(existing);
-        }
-        meta.put(McpVersions.META_PROTOCOL_VERSION, McpVersions.V2026_07_28);
-        meta.putIfAbsent(McpVersions.META_CLIENT_CAPABILITIES, Map.of()); // a forwarded client declaration wins
-        meta.put(McpVersions.META_CLIENT_INFO, clientInfo());
-        p.put("_meta", meta);
-        return p;
+  static byte[] readBounded(InputStream in, int max) throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    byte[] buf = new byte[8192];
+    int total = 0;
+    int n;
+    while ((n = in.read(buf)) >= 0) {
+      total += n;
+      if (total > max) {
+        throw new IOException("downstream response exceeds " + max + " bytes");
+      }
+      out.write(buf, 0, n);
     }
+    return out.toByteArray();
+  }
 
-    static byte[] readBounded(InputStream in, int max) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int total = 0;
-        int n;
-        while ((n = in.read(buf)) >= 0) {
-            total += n;
-            if (total > max) {
-                throw new IOException("downstream response exceeds " + max + " bytes");
-            }
-            out.write(buf, 0, n);
-        }
-        return out.toByteArray();
+  /** Extracts the result of a JSON-RPC response or raises its error. */
+  static Map<String, Object> resultOf(Map<String, Object> response)
+      throws McpClient.McpCallException {
+    Map<String, Object> err = JsonValues.object(response, "error");
+    if (err != null) {
+      Long code = JsonValues.integral(err.get("code"));
+      String msg = JsonValues.string(err, "message");
+      throw new McpClient.McpCallException(
+          "downstream MCP error " + code + ": " + (msg == null ? "" : truncate(msg)),
+          code == null ? null : code.intValue(),
+          false,
+          null);
     }
-
-    /** Extracts the result of a JSON-RPC response or raises its error. */
-    static Map<String, Object> resultOf(Map<String, Object> response) throws McpClient.McpCallException {
-        Map<String, Object> err = JsonValues.object(response, "error");
-        if (err != null) {
-            Long code = JsonValues.integral(err.get("code"));
-            String msg = JsonValues.string(err, "message");
-            throw new McpClient.McpCallException("downstream MCP error " + code + ": " + (msg == null ? "" : truncate(msg)),
-                    code == null ? null : code.intValue(), false, null);
-        }
-        Map<String, Object> result = JsonValues.object(response, "result");
-        if (result == null) {
-            throw new McpClient.McpCallException("downstream MCP response has no result object");
-        }
-        return result;
+    Map<String, Object> result = JsonValues.object(response, "result");
+    if (result == null) {
+      throw new McpClient.McpCallException("downstream MCP response has no result object");
     }
+    return result;
+  }
 
-    static String truncate(String s) {
-        return s.length() > 300 ? s.substring(0, 300) + "..." : s;
+  static String truncate(String s) {
+    return s.length() > 300 ? s.substring(0, 300) + "..." : s;
+  }
+
+  /** Longest upstream tool name the gateway will bind (MCP 2025-11-25 recommends 1..128). */
+  static final int MAX_TOOL_NAME_CHARS = 128;
+
+  /**
+   * True when an MCP Tool object has the fields the gateway needs. The name is model-visible and
+   * reused in admin paths, headers and audit records, so a downstream server does not get to choose
+   * control characters, path separators or an unbounded length for it; such tools are dropped.
+   */
+  static boolean validTool(Object o) {
+    Map<String, Object> m = JsonValues.asObject(o);
+    return m != null
+        && m.get("name") instanceof String n
+        && safeToolName(n)
+        && (m.get("inputSchema") == null || m.get("inputSchema") instanceof Map);
+  }
+
+  static boolean safeToolName(String n) {
+    if (n.isBlank() || n.length() > MAX_TOOL_NAME_CHARS || !n.equals(n.strip())) {
+      return false;
     }
-
-    /** Longest upstream tool name the gateway will bind (MCP 2025-11-25 recommends 1..128). */
-    static final int MAX_TOOL_NAME_CHARS = 128;
-
-    /**
-     * True when an MCP Tool object has the fields the gateway needs. The name is model-visible and
-     * reused in admin paths, headers and audit records, so a downstream server does not get to choose
-     * control characters, path separators or an unbounded length for it; such tools are dropped.
-     */
-    static boolean validTool(Object o) {
-        Map<String, Object> m = JsonValues.asObject(o);
-        return m != null && m.get("name") instanceof String n && safeToolName(n)
-                && (m.get("inputSchema") == null || m.get("inputSchema") instanceof Map);
+    for (int i = 0; i < n.length(); i++) {
+      char c = n.charAt(i);
+      if (c < 0x20
+          || c == 0x7f
+          || c == '/'
+          || c == '\\'
+          || Character.getType(c) == Character.FORMAT) {
+        return false;
+      }
     }
+    return true;
+  }
 
-    static boolean safeToolName(String n) {
-        if (n.isBlank() || n.length() > MAX_TOOL_NAME_CHARS || !n.equals(n.strip())) {
-            return false;
-        }
-        for (int i = 0; i < n.length(); i++) {
-            char c = n.charAt(i);
-            if (c < 0x20 || c == 0x7f || c == '/' || c == '\\' || Character.getType(c) == Character.FORMAT) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    static List<Object> list(Map<String, Object> m, String key) {
-        List<Object> l = JsonValues.asList(m.get(key));
-        return l == null ? List.of() : l;
-    }
+  static List<Object> list(Map<String, Object> m, String key) {
+    List<Object> l = JsonValues.asList(m.get(key));
+    return l == null ? List.of() : l;
+  }
 }

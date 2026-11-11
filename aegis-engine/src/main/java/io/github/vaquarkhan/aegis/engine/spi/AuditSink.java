@@ -20,14 +20,16 @@ import java.util.Map;
 /**
  * Durable, append-only audit journal. {@link #append} returns only after the record is durable to
  * the sink's own standard; if it throws, the engine does not execute the call (fail-closed for
- * ALLOW_INTENT). A host can add its own sink (for example forwarding to Knox's audit service)
- * next to the bundled hash-chained file journal.
+ * ALLOW_INTENT). A host can add its own sink (for example forwarding to Knox's audit service) next
+ * to the bundled hash-chained file journal.
  */
 public interface AuditSink extends AutoCloseable {
 
-    /** @param record flat JSON-compatible map; the sink may add chain fields */
-    void append(Map<String, Object> record) throws Exception;
+  /**
+   * @param record flat JSON-compatible map; the sink may add chain fields
+   */
+  void append(Map<String, Object> record) throws Exception;
 
-    @Override
-    default void close() {}
+  @Override
+  default void close() {}
 }

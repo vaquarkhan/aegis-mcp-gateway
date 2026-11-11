@@ -46,144 +46,154 @@ import javax.ws.rs.core.Response;
 @Path("aegis-mcp/v1")
 public class AegisMcpResource {
 
-    private static final int MAX_BODY = 1 << 20;
+  private static final int MAX_BODY = 1 << 20;
 
-    @Context
-    private HttpServletRequest request;
+  @Context private HttpServletRequest request;
 
-    @Context
-    private ServletContext servletContext;
+  @Context private ServletContext servletContext;
 
-    @POST
-    @Path("mcp")
-    public Response post(InputStream body) {
-        return mcp("POST", body);
+  @POST
+  @Path("mcp")
+  public Response post(InputStream body) {
+    return mcp("POST", body);
+  }
+
+  @GET
+  @Path("mcp")
+  public Response get() {
+    return mcp("GET", null);
+  }
+
+  @DELETE
+  @Path("mcp")
+  public Response delete() {
+    return mcp("DELETE", null);
+  }
+
+  @GET
+  @Path("admin/{path: .*}")
+  public Response adminGet(@PathParam("path") String path) {
+    return admin("GET", path, null);
+  }
+
+  @POST
+  @Path("admin/{path: .*}")
+  public Response adminPost(@PathParam("path") String path, InputStream body) {
+    return admin("POST", path, body);
+  }
+
+  @GET
+  @Path("health")
+  public Response health() {
+    KnoxGatewayRegistry.Holder h = holder();
+    return h.gateway() == null
+        ? json(McpHttpResponse.json(503, Map.of("status", "unavailable", "reason", h.error())))
+        : json(McpHttpResponse.json(200, Map.of("status", "ok")));
+  }
+
+  /**
+   * Prometheus text metrics. Behind the same Knox provider chain as {@code mcp} (authentication,
+   * identity assertion, ACLs), so access is whatever the topology grants to this service.
+   */
+  @GET
+  @Path("metrics")
+  public Response metrics() {
+    KnoxGatewayRegistry.Holder h = holder();
+    if (h.gateway() == null || h.gateway().metrics() == null) {
+      return json(McpHttpResponse.json(404, Map.of("error", "metrics are not enabled")));
     }
-
-    @GET
-    @Path("mcp")
-    public Response get() {
-        return mcp("GET", null);
+    if (caller() == null) {
+      return json(McpHttpResponse.json(401, Map.of("error", "authentication required")));
     }
+    return Response.ok(
+            h.gateway()
+                .metrics()
+                .renderPrometheus()
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+        .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+        .header("X-Content-Type-Options", "nosniff")
+        .build();
+  }
 
-    @DELETE
-    @Path("mcp")
-    public Response delete() {
-        return mcp("DELETE", null);
+  private Response mcp(String method, InputStream body) {
+    KnoxGatewayRegistry.Holder h = holder();
+    if (h.gateway() == null) {
+      return json(
+          McpHttpResponse.json(503, Map.of("error", "Aegis is not available on this topology")));
     }
+    McpHttpRequest req;
+    try {
+      req = new McpHttpRequest(method, "", headers(), read(body));
+    } catch (IOException e) {
+      return json(McpHttpResponse.json(413, Map.of("error", "request body too large")));
+    }
+    return json(h.gateway().mcp().handleHttp(req, caller()));
+  }
 
-    @GET
-    @Path("admin/{path: .*}")
-    public Response adminGet(@PathParam("path") String path) {
-        return admin("GET", path, null);
+  private Response admin(String method, String path, InputStream body) {
+    KnoxGatewayRegistry.Holder h = holder();
+    if (h.gateway() == null) {
+      return json(
+          McpHttpResponse.json(503, Map.of("error", "Aegis is not available on this topology")));
     }
+    try {
+      read(body); // bounded and discarded: admin routes take no body
+    } catch (IOException e) {
+      return json(McpHttpResponse.json(413, Map.of("error", "request body too large")));
+    }
+    return json(
+        h.gateway()
+            .admin()
+            .handle(new McpHttpRequest(method, "/" + path, headers(), null), caller()));
+  }
 
-    @POST
-    @Path("admin/{path: .*}")
-    public Response adminPost(@PathParam("path") String path, InputStream body) {
-        return admin("POST", path, body);
-    }
+  private KnoxGatewayRegistry.Holder holder() {
+    return KnoxGatewayRegistry.get(
+        servletContext, servletContext.getInitParameter(KnoxGatewayRegistry.CONFIG_PARAM));
+  }
 
-    @GET
-    @Path("health")
-    public Response health() {
-        KnoxGatewayRegistry.Holder h = holder();
-        return h.gateway() == null
-                ? json(McpHttpResponse.json(503, Map.of("status", "unavailable", "reason", h.error())))
-                : json(McpHttpResponse.json(200, Map.of("status", "ok")));
-    }
+  private CallerIdentity caller() {
+    String ctx = servletContext.getContextPath();
+    String topology = ctx == null ? "" : ctx.substring(ctx.lastIndexOf('/') + 1);
+    CallerIdentity caller = KnoxIdentityBridge.fromCurrentSubject(topology);
+    KnoxGatewayRegistry.Holder h = holder();
+    // O-6 A: gateway-side subject revocation applies on the Knox path too.
+    return KnoxIdentityBridge.unlessRevoked(
+        caller, h.gateway() == null ? null : h.gateway().revocations());
+  }
 
-    /**
-     * Prometheus text metrics. Behind the same Knox provider chain as {@code mcp} (authentication,
-     * identity assertion, ACLs), so access is whatever the topology grants to this service.
-     */
-    @GET
-    @Path("metrics")
-    public Response metrics() {
-        KnoxGatewayRegistry.Holder h = holder();
-        if (h.gateway() == null || h.gateway().metrics() == null) {
-            return json(McpHttpResponse.json(404, Map.of("error", "metrics are not enabled")));
-        }
-        if (caller() == null) {
-            return json(McpHttpResponse.json(401, Map.of("error", "authentication required")));
-        }
-        return Response.ok(h.gateway().metrics().renderPrometheus().getBytes(java.nio.charset.StandardCharsets.UTF_8))
-                .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-                .header("X-Content-Type-Options", "nosniff").build();
+  private Map<String, List<String>> headers() {
+    Map<String, List<String>> h = new LinkedHashMap<>();
+    for (String name : Collections.list(request.getHeaderNames())) {
+      h.put(name, Collections.list(request.getHeaders(name)));
     }
+    return h;
+  }
 
-    private Response mcp(String method, InputStream body) {
-        KnoxGatewayRegistry.Holder h = holder();
-        if (h.gateway() == null) {
-            return json(McpHttpResponse.json(503, Map.of("error", "Aegis is not available on this topology")));
-        }
-        McpHttpRequest req;
-        try {
-            req = new McpHttpRequest(method, "", headers(), read(body));
-        } catch (IOException e) {
-            return json(McpHttpResponse.json(413, Map.of("error", "request body too large")));
-        }
-        return json(h.gateway().mcp().handleHttp(req, caller()));
+  private static byte[] read(InputStream in) throws IOException {
+    if (in == null) {
+      return new byte[0];
     }
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    byte[] buf = new byte[8192];
+    int total = 0;
+    int n;
+    while ((n = in.read(buf)) >= 0) {
+      total += n;
+      if (total > MAX_BODY) {
+        throw new IOException("too large");
+      }
+      out.write(buf, 0, n);
+    }
+    return out.toByteArray();
+  }
 
-    private Response admin(String method, String path, InputStream body) {
-        KnoxGatewayRegistry.Holder h = holder();
-        if (h.gateway() == null) {
-            return json(McpHttpResponse.json(503, Map.of("error", "Aegis is not available on this topology")));
-        }
-        try {
-            read(body); // bounded and discarded: admin routes take no body
-        } catch (IOException e) {
-            return json(McpHttpResponse.json(413, Map.of("error", "request body too large")));
-        }
-        return json(h.gateway().admin().handle(new McpHttpRequest(method, "/" + path, headers(), null), caller()));
+  private static Response json(McpHttpResponse r) {
+    Response.ResponseBuilder b = Response.status(r.status());
+    r.headers().forEach(b::header);
+    if (r.body().length > 0) {
+      b.entity(r.body());
     }
-
-    private KnoxGatewayRegistry.Holder holder() {
-        return KnoxGatewayRegistry.get(servletContext, servletContext.getInitParameter(KnoxGatewayRegistry.CONFIG_PARAM));
-    }
-
-    private CallerIdentity caller() {
-        String ctx = servletContext.getContextPath();
-        String topology = ctx == null ? "" : ctx.substring(ctx.lastIndexOf('/') + 1);
-        CallerIdentity caller = KnoxIdentityBridge.fromCurrentSubject(topology);
-        KnoxGatewayRegistry.Holder h = holder();
-        // O-6 A: gateway-side subject revocation applies on the Knox path too.
-        return KnoxIdentityBridge.unlessRevoked(caller, h.gateway() == null ? null : h.gateway().revocations());
-    }
-
-    private Map<String, List<String>> headers() {
-        Map<String, List<String>> h = new LinkedHashMap<>();
-        for (String name : Collections.list(request.getHeaderNames())) {
-            h.put(name, Collections.list(request.getHeaders(name)));
-        }
-        return h;
-    }
-
-    private static byte[] read(InputStream in) throws IOException {
-        if (in == null) {
-            return new byte[0];
-        }
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int total = 0;
-        int n;
-        while ((n = in.read(buf)) >= 0) {
-            total += n;
-            if (total > MAX_BODY) {
-                throw new IOException("too large");
-            }
-            out.write(buf, 0, n);
-        }
-        return out.toByteArray();
-    }
-
-    private static Response json(McpHttpResponse r) {
-        Response.ResponseBuilder b = Response.status(r.status());
-        r.headers().forEach(b::header);
-        if (r.body().length > 0) {
-            b.entity(r.body());
-        }
-        return b.build();
-    }
+    return b.build();
+  }
 }

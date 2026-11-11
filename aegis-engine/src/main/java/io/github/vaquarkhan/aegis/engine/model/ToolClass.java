@@ -21,43 +21,45 @@ package io.github.vaquarkhan.aegis.engine.model;
  */
 public enum ToolClass {
 
-    /** Observational. */
-    READ,
+  /** Observational. */
+  READ,
 
-    /** Changes backend state but is recoverable. Requires write unlock and an approval token. */
-    MUTATE,
+  /** Changes backend state but is recoverable. Requires write unlock and an approval token. */
+  MUTATE,
 
-    /** Irreversible or data-losing. Additionally requires a validate-run-promote dry-run receipt. */
-    DESTRUCTIVE;
+  /** Irreversible or data-losing. Additionally requires a validate-run-promote dry-run receipt. */
+  DESTRUCTIVE;
 
-    public boolean atLeast(ToolClass other) {
-        return ordinal() >= other.ordinal();
+  public boolean atLeast(ToolClass other) {
+    return ordinal() >= other.ordinal();
+  }
+
+  public boolean isWrite() {
+    return this != READ;
+  }
+
+  /** The more privileged of two classes. Used so overlays and hints can only raise a class. */
+  public static ToolClass max(ToolClass a, ToolClass b) {
+    if (a == null) {
+      return b;
     }
-
-    public boolean isWrite() {
-        return this != READ;
+    if (b == null) {
+      return a;
     }
+    return a.ordinal() >= b.ordinal() ? a : b;
+  }
 
-    /** The more privileged of two classes. Used so overlays and hints can only raise a class. */
-    public static ToolClass max(ToolClass a, ToolClass b) {
-        if (a == null) {
-            return b;
-        }
-        if (b == null) {
-            return a;
-        }
-        return a.ordinal() >= b.ordinal() ? a : b;
+  public static ToolClass parse(String s) {
+    if (s == null) {
+      throw new IllegalArgumentException("tool class must not be null");
     }
-
-    public static ToolClass parse(String s) {
-        if (s == null) {
-            throw new IllegalArgumentException("tool class must not be null");
-        }
-        return switch (s.trim().toUpperCase(java.util.Locale.ROOT)) {
-            case "READ" -> READ;
-            case "MUTATE" -> MUTATE;
-            case "DESTRUCTIVE" -> DESTRUCTIVE;
-            default -> throw new IllegalArgumentException("unknown tool class '" + s + "' (READ|MUTATE|DESTRUCTIVE)");
-        };
-    }
+    return switch (s.trim().toUpperCase(java.util.Locale.ROOT)) {
+      case "READ" -> READ;
+      case "MUTATE" -> MUTATE;
+      case "DESTRUCTIVE" -> DESTRUCTIVE;
+      default ->
+          throw new IllegalArgumentException(
+              "unknown tool class '" + s + "' (READ|MUTATE|DESTRUCTIVE)");
+    };
+  }
 }

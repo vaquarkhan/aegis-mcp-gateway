@@ -33,61 +33,90 @@ import org.junit.jupiter.api.io.TempDir;
 /** Direct tests for host-neutral own-listener admission and browser policy. */
 class OwnServerPerimeterTest {
 
-    @TempDir
-    Path dir;
+  @TempDir Path dir;
 
-    private static final Map<String, String> ENV = Map.of("DEV_TOKEN", "development-token-0123456789");
+  private static final Map<String, String> ENV =
+      Map.of("DEV_TOKEN", "development-token-0123456789");
 
-    private OwnServerSecuritySettings settings() {
-        return OwnServerSecuritySettings.parse(Json.parseObject("""
+  private OwnServerSecuritySettings settings() {
+    return OwnServerSecuritySettings.parse(
+        Json.parseObject(
+            """
                 {"listen":{"host":"127.0.0.1","port":0},
                  "identity":{"type":"static","static":{"tokens":[
                    {"tokenEnv":"DEV_TOKEN","actor":"dev","groups":["mcp-users"]}]}},
                  "routes":{"mcpGroups":["mcp-users"],"adminGroups":["mcp-admins"]},
                  "cors":{"allowedOrigins":["https://console.example"],"allowedMethods":["POST"],
                    "allowedHeaders":["Authorization","Content-Type"],"exposedHeaders":["Mcp-Session-Id"],
-                   "maxAgeSeconds":300,"allowCredentials":true}}"""), dir, ENV::get, Clock.systemUTC());
-    }
+                   "maxAgeSeconds":300,"allowCredentials":true}}"""),
+        dir,
+        ENV::get,
+        Clock.systemUTC());
+  }
 
-    private static McpHttpRequest bearer(String token) {
-        return new McpHttpRequest("POST", "", Map.of("Authorization", List.of("Bearer " + token)), new byte[0]);
-    }
+  private static McpHttpRequest bearer(String token) {
+    return new McpHttpRequest(
+        "POST", "", Map.of("Authorization", List.of("Bearer " + token)), new byte[0]);
+  }
 
-    @Test
-    void routeAdmissionUsesIdentityAndRouteGroupBeforeAnyBodyIsNeeded() {
-        OwnServerPerimeter p = new OwnServerPerimeter(settings());
-        OwnServerPerimeter.Admission mcp = p.admit(OwnServerPerimeter.RouteGroup.MCP, bearer(ENV.get("DEV_TOKEN")));
-        assertTrue(mcp.allowed());
-        assertEquals("dev", mcp.caller().actor());
-        assertFalse(p.admit(OwnServerPerimeter.RouteGroup.ADMIN, bearer(ENV.get("DEV_TOKEN"))).allowed());
-        OwnServerPerimeter.Admission none = p.admit(OwnServerPerimeter.RouteGroup.MCP,
-                new McpHttpRequest("POST", "", Map.of(), new byte[0]));
-        assertFalse(none.allowed());
-        assertEquals(401, none.status());
-        assertTrue(none.headers().get("WWW-Authenticate").startsWith("Bearer"));
-    }
+  @Test
+  void routeAdmissionUsesIdentityAndRouteGroupBeforeAnyBodyIsNeeded() {
+    OwnServerPerimeter p = new OwnServerPerimeter(settings());
+    OwnServerPerimeter.Admission mcp =
+        p.admit(OwnServerPerimeter.RouteGroup.MCP, bearer(ENV.get("DEV_TOKEN")));
+    assertTrue(mcp.allowed());
+    assertEquals("dev", mcp.caller().actor());
+    assertFalse(
+        p.admit(OwnServerPerimeter.RouteGroup.ADMIN, bearer(ENV.get("DEV_TOKEN"))).allowed());
+    OwnServerPerimeter.Admission none =
+        p.admit(
+            OwnServerPerimeter.RouteGroup.MCP,
+            new McpHttpRequest("POST", "", Map.of(), new byte[0]));
+    assertFalse(none.allowed());
+    assertEquals(401, none.status());
+    assertTrue(none.headers().get("WWW-Authenticate").startsWith("Bearer"));
+  }
 
-    @Test
-    void corsPolicyUsesExactOriginsAndHeaderNormalization() {
-        OwnServerPerimeter p = new OwnServerPerimeter(settings());
-        OwnServerPerimeter.Preflight ok = p.preflight("https://console.example", "post", "authorization, CONTENT-TYPE");
-        assertTrue(ok.allowed());
-        assertEquals("https://console.example", ok.headers().get("Access-Control-Allow-Origin"));
-        assertEquals("true", ok.headers().get("Access-Control-Allow-Credentials"));
-        assertTrue(p.responseCorsHeaders("https://console.example").containsKey("Access-Control-Expose-Headers"));
-        assertFalse(p.preflight("https://attacker.example", "POST", "Authorization").allowed());
-        assertFalse(p.preflight("https://console.example", "DELETE", "Authorization").allowed());
-        assertFalse(p.preflight("https://console.example", "POST", "X-Not-Allowed").allowed());
-        assertTrue(p.responseCorsHeaders("https://attacker.example").isEmpty());
-    }
+  @Test
+  void corsPolicyUsesExactOriginsAndHeaderNormalization() {
+    OwnServerPerimeter p = new OwnServerPerimeter(settings());
+    OwnServerPerimeter.Preflight ok =
+        p.preflight("https://console.example", "post", "authorization, CONTENT-TYPE");
+    assertTrue(ok.allowed());
+    assertEquals("https://console.example", ok.headers().get("Access-Control-Allow-Origin"));
+    assertEquals("true", ok.headers().get("Access-Control-Allow-Credentials"));
+    assertTrue(
+        p.responseCorsHeaders("https://console.example")
+            .containsKey("Access-Control-Expose-Headers"));
+    assertFalse(p.preflight("https://attacker.example", "POST", "Authorization").allowed());
+    assertFalse(p.preflight("https://console.example", "DELETE", "Authorization").allowed());
+    assertFalse(p.preflight("https://console.example", "POST", "X-Not-Allowed").allowed());
+    assertTrue(p.responseCorsHeaders("https://attacker.example").isEmpty());
+  }
 
-    @Test
-    void strictSettingsRejectWildcardAndUnknownSecurityKeys() {
-        assertThrows(ConfigException.class, () -> OwnServerSecuritySettings.parse(Json.parseObject("""
+  @Test
+  void strictSettingsRejectWildcardAndUnknownSecurityKeys() {
+    assertThrows(
+        ConfigException.class,
+        () ->
+            OwnServerSecuritySettings.parse(
+                Json.parseObject(
+                    """
                 {"identity":{"type":"static","static":{"tokens":[{"tokenEnv":"DEV_TOKEN","actor":"dev"}]}},
-                 "cors":{"allowedOrigins":["*"]}}"""), dir, ENV::get, Clock.systemUTC()));
-        assertThrows(ConfigException.class, () -> OwnServerSecuritySettings.parse(Json.parseObject("""
+                 "cors":{"allowedOrigins":["*"]}}"""),
+                dir,
+                ENV::get,
+                Clock.systemUTC()));
+    assertThrows(
+        ConfigException.class,
+        () ->
+            OwnServerSecuritySettings.parse(
+                Json.parseObject(
+                    """
                 {"identity":{"type":"static","static":{"tokens":[{"tokenEnv":"DEV_TOKEN","actor":"dev"}]}},
-                 "routes":{"mcpGrups":["mcp-users"]}}"""), dir, ENV::get, Clock.systemUTC()));
-    }
+                 "routes":{"mcpGrups":["mcp-users"]}}"""),
+                dir,
+                ENV::get,
+                Clock.systemUTC()));
+  }
 }

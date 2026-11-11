@@ -25,21 +25,21 @@ import java.util.List;
  */
 public final class HttpToolSource implements ToolSource {
 
-    private final String id;
-    private final List<SourcedTool> tools;
+  private final String id;
+  private final List<SourcedTool> tools;
 
-    public HttpToolSource(String id, List<SourcedTool> tools) {
-        this.id = id;
-        this.tools = List.copyOf(tools);
-    }
+  public HttpToolSource(String id, List<SourcedTool> tools) {
+    this.id = id;
+    this.tools = List.copyOf(tools);
+  }
 
-    @Override
-    public String id() {
-        return id;
-    }
+  @Override
+  public String id() {
+    return id;
+  }
 
-    @Override
-    public List<SourcedTool> discover() {
-        return tools;
-    }
+  @Override
+  public List<SourcedTool> discover() {
+    return tools;
+  }
 }

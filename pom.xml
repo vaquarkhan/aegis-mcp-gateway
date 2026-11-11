@@ -61,30 +61,34 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-    <!-- Pinned versions. The engine, mcp and config modules have ZERO runtime dependencies. -->
+    <!-- Pinned versions updated for CVE remediations. -->
     <junit.version>5.10.2</junit.version>
-    <!-- Same snakeyaml line Apache Knox 3.0.0 ships (knox pom: snakeyaml.version=2.4). Optional only. -->
     <snakeyaml.version>2.4</snakeyaml.version>
-    <!-- O-12 A: static analysis in every build (offline). SpotBugs with the FindSecBugs security detectors. -->
     <spotbugs.plugin.version>4.9.3.0</spotbugs.plugin.version>
     <findsecbugs.version>1.13.0</findsecbugs.version>
-    <!-- Exact Knox release the extension is compiled against (provided scope, never bundled). -->
     <knox.version>3.0.0</knox.version>
     <javax.ws.rs.version>2.0</javax.ws.rs.version>
     <javax.servlet.version>4.0.1</javax.servlet.version>
-    <kafka.version>3.9.1</kafka.version>
-    <!-- Two uses. Test scope in aegis-source-jdbc: a real embedded SQL engine so that module has no test
-         double. Compile scope in aegis-state-derby: the embedded store behind state.type: derby-local, which
-         the own-server aegis-gateway jar bundles. 10.16 is the line that runs on Java 17; 10.17 is compiled
-         for a newer JDK and fails with UnsupportedClassVersionError here. -->
+    <kafka.version>3.9.2</kafka.version>
     <derby.version>10.16.1.1</derby.version>
-    <!-- PostgreSQL JDBC driver for the optional shared multi-replica state provider. Pinned to the
-         current locally cached pgJDBC release and exercised against a real local PostgreSQL server. -->
     <postgresql.version>42.7.12</postgresql.version>
-    <zookeeper.version>3.9.3</zookeeper.version>
-    <!-- Test scope only, in aegis-source-zookeeper: curator-test provides a real embedded ZooKeeper
-         server so that module is proven against the actual software. Never shipped. -->
+    <zookeeper.version>3.9.5</zookeeper.version>
     <curator.version>5.4.0</curator.version>
+
+    <!-- Security Override Properties -->
+    <jackson.version>2.18.11</jackson.version>
+    <jetty.version>9.4.57.v20241219</jetty.version>
+    <netty.version>4.2.14.Final</netty.version>
+    <guava.version>33.4.1-jre</guava.version>
+    <commons-beanutils.version>1.11.0</commons-beanutils.version>
+    <commons-lang3.version>3.18.0</commons-lang3.version>
+    <commons-configuration2.version>2.15.0</commons-configuration2.version>
+    <avro.version>1.11.4</avro.version>
+    <log4j.version>2.26.1</log4j.version>
+    <bouncycastle.version>1.85</bouncycastle.version>
+    <snappy-java.version>1.1.10.9</snappy-java.version>
+    <lz4-java.version>1.8.1</lz4-java.version>
+
     <!-- Coverage gate defaults; modules override with their measured floor. -->
     <coverage.line.minimum>0.00</coverage.line.minimum>
     <coverage.branch.minimum>0.00</coverage.branch.minimum>
@@ -92,6 +96,7 @@
 
   <dependencyManagement>
     <dependencies>
+      <!-- Internal modules -->
       <dependency>
         <groupId>io.github.vaquarkhan.aegis</groupId>
         <artifactId>aegis-engine</artifactId>
@@ -128,6 +133,161 @@
         <version>${junit.version}</version>
         <scope>test</scope>
       </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-util</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-server</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-http</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.kerby</groupId>
+        <artifactId>kerby-asn1</artifactId>
+        <version>2.1.2</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-security</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.codehaus.plexus</groupId>
+        <artifactId>plexus-utils</artifactId>
+        <version>3.6.1</version>
+      </dependency>
+      <!-- CVE Remediations (Force transitive versions across all submodules) -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-beanutils</groupId>
+        <artifactId>commons-beanutils</artifactId>
+        <version>${commons-beanutils.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>${commons-lang3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-configuration2</artifactId>
+        <version>${commons-configuration2.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro</artifactId>
+        <version>${avro.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.derby</groupId>
+        <artifactId>derby</artifactId>
+        <version>${derby.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.kafka</groupId>
+        <artifactId>kafka-clients</artifactId>
+        <version>${kafka.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.zookeeper</groupId>
+        <artifactId>zookeeper</artifactId>
+        <version>${zookeeper.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-api</artifactId>
+        <version>${log4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-core</artifactId>
+        <version>${log4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-layout-template-json</artifactId>
+        <version>${log4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk18on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.xerial.snappy</groupId>
+        <artifactId>snappy-java</artifactId>
+        <version>${snappy-java.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.lz4</groupId>
+        <artifactId>lz4-java</artifactId>
+        <version>${lz4-java.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>at.yawk.lz4</groupId>
+        <artifactId>lz4-java</artifactId>
+        <version>1.11.4</version>
+      </dependency>
+      <!-- Netty Stack Override -->
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-bom</artifactId>
+        <version>${jetty.version}</version>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-io</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-transport</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-common</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-handler</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-transport-native-epoll</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -142,6 +302,17 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>2.43.0</version>
+          <configuration>
+            <java>
+              <googleJavaFormat/>
+              <removeUnusedImports/>
+            </java>
+          </configuration>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>

@@ -34,6 +34,7 @@
 
   <properties>
     <ignite.version>2.18.0</ignite.version>
+    <jetty.version>9.4.57.v20241219</jetty.version>
   </properties>
 
   <dependencies>
@@ -46,6 +47,11 @@
       <groupId>org.apache.ignite</groupId>
       <artifactId>ignite-spring</artifactId>
       <version>${ignite.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-xml</artifactId>
+      <version>${jetty.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.ignite</groupId>

@@ -21,28 +21,32 @@ import java.net.URI;
 import java.util.function.Function;
 
 /**
- * Where the secrets that configuration refers to by name ({@code keyEnv}, {@code tokenEnv},
- * {@code passwordEnv}, {@code usernameEnv} and the like) come from. Selected once for the whole
- * gateway by {@code secrets.source}; built in are {@code env} (the default), {@code file} and
- * {@code vault}. Others are discovered through {@link java.util.ServiceLoader} in
- * {@code META-INF/services/io.github.vaquarkhan.aegis.config.spi.SecretProviderFactory}.
+ * Where the secrets that configuration refers to by name ({@code keyEnv}, {@code tokenEnv}, {@code
+ * passwordEnv}, {@code usernameEnv} and the like) come from. Selected once for the whole gateway by
+ * {@code secrets.source}; built in are {@code env} (the default), {@code file} and {@code vault}.
+ * Others are discovered through {@link java.util.ServiceLoader} in {@code
+ * META-INF/services/io.github.vaquarkhan.aegis.config.spi.SecretProviderFactory}.
  *
  * <p>A provider only answers "what is the value of this name". It cannot change policy, and a name
  * it does not know must resolve to {@code null} so the referring setting fails closed as "not set".
  */
 public interface SecretProviderFactory {
 
-    /** Configuration value, for example {@code aws-secrets-manager}. Must not be env, file or vault. */
-    String type();
+  /**
+   * Configuration value, for example {@code aws-secrets-manager}. Must not be env, file or vault.
+   */
+  String type();
 
-    /**
-     * @param settings    strict provider-specific {@code secrets.settings}; all supported keys must be consumed
-     * @param context     build environment; {@code context.env()} is the process environment, for the
-     *                    provider's own bootstrap credential
-     * @param egressCheck returns null when a URI is allowed by {@code config.egress}, otherwise the reason;
-     *                    a provider that makes network calls must check every destination with it
-     * @return name to value; {@code null} for an unknown name
-     */
-    Function<String, String> create(ConfigNode settings, BuildContext context, Function<URI, String> egressCheck)
-            throws Exception;
+  /**
+   * @param settings strict provider-specific {@code secrets.settings}; all supported keys must be
+   *     consumed
+   * @param context build environment; {@code context.env()} is the process environment, for the
+   *     provider's own bootstrap credential
+   * @param egressCheck returns null when a URI is allowed by {@code config.egress}, otherwise the
+   *     reason; a provider that makes network calls must check every destination with it
+   * @return name to value; {@code null} for an unknown name
+   */
+  Function<String, String> create(
+      ConfigNode settings, BuildContext context, Function<URI, String> egressCheck)
+      throws Exception;
 }

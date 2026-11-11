@@ -25,23 +25,26 @@ import java.util.Properties;
 import java.util.function.Function;
 
 /**
- * A small third-party style provider registered through {@code META-INF/services}: {@code secrets.source:
- * properties-file} reads a Java properties file. It exists to exercise the SPI the way an external jar would.
+ * A small third-party style provider registered through {@code META-INF/services}: {@code
+ * secrets.source: properties-file} reads a Java properties file. It exists to exercise the SPI the
+ * way an external jar would.
  */
 public final class PropertiesFileSecretProviderFactory implements SecretProviderFactory {
 
-    @Override
-    public String type() {
-        return "properties-file";
-    }
+  @Override
+  public String type() {
+    return "properties-file";
+  }
 
-    @Override
-    public Function<String, String> create(ConfigNode settings, BuildContext context, Function<URI, String> egressCheck)
-            throws Exception {
-        Properties p = new Properties();
-        try (InputStream in = Files.newInputStream(context.baseDir().resolve(settings.requiredString("file")))) {
-            p.load(in);
-        }
-        return p::getProperty;
+  @Override
+  public Function<String, String> create(
+      ConfigNode settings, BuildContext context, Function<URI, String> egressCheck)
+      throws Exception {
+    Properties p = new Properties();
+    try (InputStream in =
+        Files.newInputStream(context.baseDir().resolve(settings.requiredString("file")))) {
+      p.load(in);
     }
+    return p::getProperty;
+  }
 }

@@ -23,9 +23,9 @@ import io.github.vaquarkhan.aegis.mcp.protocol.JsonRpc;
 import io.github.vaquarkhan.aegis.mcp.protocol.McpVersions;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -42,8 +42,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * stdio client for an existing MCP server launched as a subprocess (the most common way MCP
- * servers ship). Newline-delimited JSON-RPC over the child's stdin/stdout.
+ * stdio client for an existing MCP server launched as a subprocess (the most common way MCP servers
+ * ship). Newline-delimited JSON-RPC over the child's stdin/stdout.
  *
  * <p>Security: the child gets a MINIMAL environment (a few OS variables plus what the operator
  * configures), never the gateway's full environment, so gateway secrets do not leak to a
@@ -55,325 +55,394 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StdioMcpClient implements McpClient {
 
-    private static final System.Logger LOG = System.getLogger(StdioMcpClient.class.getName());
-    private static final List<String> BASE_ENV = List.of("PATH", "SYSTEMROOT", "SystemRoot", "WINDIR", "TEMP", "TMP",
-            "HOME", "USERPROFILE", "LANG", "JAVA_HOME", "COMSPEC");
+  private static final System.Logger LOG = System.getLogger(StdioMcpClient.class.getName());
+  private static final List<String> BASE_ENV =
+      List.of(
+          "PATH",
+          "SYSTEMROOT",
+          "SystemRoot",
+          "WINDIR",
+          "TEMP",
+          "TMP",
+          "HOME",
+          "USERPROFILE",
+          "LANG",
+          "JAVA_HOME",
+          "COMSPEC");
 
-    private final List<String> command;
-    private final Map<String, String> env;
-    private final Path workingDir;
-    private final HttpMcpClient.Era configured;
-    private final String legacyVersion;
-    private final int maxLineChars;
-    private final ProcessLauncher launcher;
-    private final AtomicLong ids = new AtomicLong();
-    private final ConcurrentHashMap<Long, CompletableFuture<Map<String, Object>>> pending = new ConcurrentHashMap<>();
-    private final Object writeLock = new Object();
-    private Process process;
-    private volatile OutputStream stdin;
-    private volatile HttpMcpClient.Era resolved;
+  private final List<String> command;
+  private final Map<String, String> env;
+  private final Path workingDir;
+  private final HttpMcpClient.Era configured;
+  private final String legacyVersion;
+  private final int maxLineChars;
+  private final ProcessLauncher launcher;
+  private final AtomicLong ids = new AtomicLong();
+  private final ConcurrentHashMap<Long, CompletableFuture<Map<String, Object>>> pending =
+      new ConcurrentHashMap<>();
+  private final Object writeLock = new Object();
+  private Process process;
+  private volatile OutputStream stdin;
+  private volatile HttpMcpClient.Era resolved;
 
-    public StdioMcpClient(List<String> command, Map<String, String> env, Path workingDir, HttpMcpClient.Era era,
-                          String legacyVersion, int maxLineChars) {
-        this(command, env, workingDir, era, legacyVersion, maxLineChars, ProcessLauncher.direct(), false);
+  public StdioMcpClient(
+      List<String> command,
+      Map<String, String> env,
+      Path workingDir,
+      HttpMcpClient.Era era,
+      String legacyVersion,
+      int maxLineChars) {
+    this(
+        command,
+        env,
+        workingDir,
+        era,
+        legacyVersion,
+        maxLineChars,
+        ProcessLauncher.direct(),
+        false);
+  }
+
+  /**
+   * @param launcher exact process launcher; a prefix launcher never invokes a shell
+   * @param requireSandbox refuse construction unless the launcher declares an external sandbox
+   *     boundary
+   */
+  public StdioMcpClient(
+      List<String> command,
+      Map<String, String> env,
+      Path workingDir,
+      HttpMcpClient.Era era,
+      String legacyVersion,
+      int maxLineChars,
+      ProcessLauncher launcher,
+      boolean requireSandbox) {
+    if (command == null || command.isEmpty()) {
+      throw new IllegalArgumentException("stdio MCP source needs a command");
     }
+    this.command = List.copyOf(command);
+    this.env = env == null ? Map.of() : Map.copyOf(env);
+    this.workingDir = workingDir;
+    this.configured = era == null ? HttpMcpClient.Era.AUTO : era;
+    this.legacyVersion = legacyVersion == null ? McpVersions.V2025_11_25 : legacyVersion;
+    this.maxLineChars = maxLineChars <= 0 ? 4 << 20 : maxLineChars;
+    this.launcher = launcher == null ? ProcessLauncher.direct() : launcher;
+    if (requireSandbox && !this.launcher.sandboxed()) {
+      throw new IllegalArgumentException(
+          "complete control requires a sandboxed stdio ProcessLauncher");
+    }
+  }
 
-    /**
-     * @param launcher       exact process launcher; a prefix launcher never invokes a shell
-     * @param requireSandbox refuse construction unless the launcher declares an external sandbox boundary
-     */
-    public StdioMcpClient(List<String> command, Map<String, String> env, Path workingDir, HttpMcpClient.Era era,
-                          String legacyVersion, int maxLineChars, ProcessLauncher launcher, boolean requireSandbox) {
-        if (command == null || command.isEmpty()) {
-            throw new IllegalArgumentException("stdio MCP source needs a command");
+  @Override
+  public URI endpoint() {
+    return null;
+  }
+
+  @Override
+  public List<Map<String, Object>> listTools(Map<String, String> headers, long timeoutMillis)
+      throws McpCallException {
+    List<Map<String, Object>> out = new ArrayList<>();
+    String cursor = null;
+    for (int page = 0; page < 50; page++) {
+      Map<String, Object> params = new LinkedHashMap<>();
+      if (cursor != null) {
+        params.put("cursor", cursor);
+      }
+      Map<String, Object> r = ClientSupport.resultOf(request("tools/list", params, timeoutMillis));
+      for (Object t : ClientSupport.list(r, "tools")) {
+        if (ClientSupport.validTool(t)) {
+          out.add(JsonValues.asObject(t));
         }
-        this.command = List.copyOf(command);
-        this.env = env == null ? Map.of() : Map.copyOf(env);
-        this.workingDir = workingDir;
-        this.configured = era == null ? HttpMcpClient.Era.AUTO : era;
-        this.legacyVersion = legacyVersion == null ? McpVersions.V2025_11_25 : legacyVersion;
-        this.maxLineChars = maxLineChars <= 0 ? 4 << 20 : maxLineChars;
-        this.launcher = launcher == null ? ProcessLauncher.direct() : launcher;
-        if (requireSandbox && !this.launcher.sandboxed()) {
-            throw new IllegalArgumentException("complete control requires a sandboxed stdio ProcessLauncher");
+      }
+      cursor = JsonValues.string(r, "nextCursor");
+      if (cursor == null || cursor.isEmpty()) {
+        return out;
+      }
+    }
+    throw new McpCallException("downstream tools/list pagination exceeded 50 pages");
+  }
+
+  @Override
+  public Map<String, Object> callTool(
+      String name, Map<String, Object> arguments, Map<String, String> headers, long timeoutMillis)
+      throws McpCallException {
+    Map<String, Object> params = new LinkedHashMap<>();
+    params.put("name", name);
+    params.put("arguments", arguments == null ? Map.of() : arguments);
+    return ClientSupport.resultOf(request("tools/call", params, timeoutMillis));
+  }
+
+  @Override
+  public Map<String, Object> call(
+      String method,
+      Map<String, Object> params,
+      String mcpName,
+      Map<String, String> headers,
+      long timeoutMillis)
+      throws McpCallException {
+    return ClientSupport.resultOf(
+        request(method, params == null ? Map.of() : params, timeoutMillis));
+  }
+
+  public HttpMcpClient.Era resolvedEra() {
+    return resolved;
+  }
+
+  private Map<String, Object> request(String method, Map<String, Object> params, long timeoutMillis)
+      throws McpCallException {
+    ensureStarted(timeoutMillis);
+    boolean modern = resolved == HttpMcpClient.Era.MODERN;
+    return raw(method, modern ? ClientSupport.withModernMeta(params) : params, timeoutMillis);
+  }
+
+  private synchronized void ensureStarted(long timeoutMillis) throws McpCallException {
+    if (process != null && process.isAlive() && resolved != null) {
+      return;
+    }
+    stopProcess();
+    Map<String, String> childEnv = new LinkedHashMap<>();
+    for (String k : BASE_ENV) {
+      String v = System.getenv(k);
+      if (v != null) {
+        childEnv.put(k, v);
+      }
+    }
+    childEnv.putAll(env);
+    try {
+      process = launcher.start(command, childEnv, workingDir);
+    } catch (IOException e) {
+      throw new McpCallException(
+          "could not start stdio MCP server: " + e.getMessage(), null, false, e);
+    }
+    stdin = process.getOutputStream();
+    Process p = process;
+    Thread reader = new Thread(() -> readLoop(p), "aegis-stdio-mcp-out");
+    reader.setDaemon(true);
+    reader.start();
+    Thread err = new Thread(() -> drain(p.getErrorStream()), "aegis-stdio-mcp-err");
+    err.setDaemon(true);
+    err.start();
+
+    resolved = null;
+    if (configured != HttpMcpClient.Era.LEGACY) {
+      Map<String, Object> resp = null;
+      McpCallException probeFailure = null;
+      try {
+        resp =
+            raw(
+                "server/discover",
+                ClientSupport.withModernMeta(Map.of()),
+                Math.min(timeoutMillis, 5_000));
+      } catch (McpCallException e) {
+        probeFailure = e; // legacy servers may time out or reject the unknown method
+      }
+      if (resp != null) {
+        Map<String, Object> result = JsonValues.object(resp, "result");
+        List<Object> versions =
+            result == null ? null : JsonValues.asList(result.get("supportedVersions"));
+        if (versions != null && versions.contains(McpVersions.V2026_07_28)) {
+          resolved = HttpMcpClient.Era.MODERN;
+          return;
         }
-    }
-
-    @Override
-    public URI endpoint() {
-        return null;
-    }
-
-    @Override
-    public List<Map<String, Object>> listTools(Map<String, String> headers, long timeoutMillis) throws McpCallException {
-        List<Map<String, Object>> out = new ArrayList<>();
-        String cursor = null;
-        for (int page = 0; page < 50; page++) {
-            Map<String, Object> params = new LinkedHashMap<>();
-            if (cursor != null) {
-                params.put("cursor", cursor);
-            }
-            Map<String, Object> r = ClientSupport.resultOf(request("tools/list", params, timeoutMillis));
-            for (Object t : ClientSupport.list(r, "tools")) {
-                if (ClientSupport.validTool(t)) {
-                    out.add(JsonValues.asObject(t));
-                }
-            }
-            cursor = JsonValues.string(r, "nextCursor");
-            if (cursor == null || cursor.isEmpty()) {
-                return out;
-            }
+        Map<String, Object> error = JsonValues.object(resp, "error");
+        Long code = error == null ? null : JsonValues.integral(error.get("code"));
+        if (code != null && code == JsonRpc.UNSUPPORTED_PROTOCOL_VERSION) {
+          throw new McpCallException(
+              "stdio MCP server does not support " + McpVersions.V2026_07_28);
         }
-        throw new McpCallException("downstream tools/list pagination exceeded 50 pages");
+      }
+      if (configured == HttpMcpClient.Era.MODERN) {
+        throw probeFailure != null
+            ? probeFailure
+            : new McpCallException(
+                "stdio MCP server did not answer server/discover as a 2026-07-28 server");
+      }
+      if (!process.isAlive()) {
+        throw new McpCallException("stdio MCP server exited during startup");
+      }
     }
-
-    @Override
-    public Map<String, Object> callTool(String name, Map<String, Object> arguments, Map<String, String> headers,
-                                        long timeoutMillis) throws McpCallException {
-        Map<String, Object> params = new LinkedHashMap<>();
-        params.put("name", name);
-        params.put("arguments", arguments == null ? Map.of() : arguments);
-        return ClientSupport.resultOf(request("tools/call", params, timeoutMillis));
+    Map<String, Object> init = new LinkedHashMap<>();
+    init.put("protocolVersion", legacyVersion);
+    init.put("capabilities", Map.of());
+    init.put("clientInfo", ClientSupport.clientInfo());
+    Map<String, Object> r = ClientSupport.resultOf(raw("initialize", init, timeoutMillis));
+    String v = JsonValues.string(r, "protocolVersion");
+    if (v == null || !McpVersions.isLegacy(v)) {
+      throw new McpCallException("stdio MCP server negotiated an unsupported version");
     }
+    write(JsonRpc.notification("notifications/initialized", null));
+    resolved = HttpMcpClient.Era.LEGACY;
+  }
 
-    @Override
-    public Map<String, Object> call(String method, Map<String, Object> params, String mcpName, Map<String, String> headers,
-                                    long timeoutMillis) throws McpCallException {
-        return ClientSupport.resultOf(request(method, params == null ? Map.of() : params, timeoutMillis));
-    }
-
-    public HttpMcpClient.Era resolvedEra() {
-        return resolved;
-    }
-
-    private Map<String, Object> request(String method, Map<String, Object> params, long timeoutMillis) throws McpCallException {
-        ensureStarted(timeoutMillis);
-        boolean modern = resolved == HttpMcpClient.Era.MODERN;
-        return raw(method, modern ? ClientSupport.withModernMeta(params) : params, timeoutMillis);
-    }
-
-    private synchronized void ensureStarted(long timeoutMillis) throws McpCallException {
-        if (process != null && process.isAlive() && resolved != null) {
-            return;
-        }
+  private Map<String, Object> raw(String method, Map<String, Object> params, long timeoutMillis)
+      throws McpCallException {
+    long id = ids.incrementAndGet();
+    CompletableFuture<Map<String, Object>> f = new CompletableFuture<>();
+    pending.put(id, f);
+    try {
+      write(JsonRpc.request(id, method, params));
+      return f.get(Math.max(1, timeoutMillis), TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      // A timed-out server may still be executing the operation. Terminate the whole process tree
+      // before another call can reuse it; the next request starts a clean child.
+      synchronized (this) {
         stopProcess();
-        Map<String, String> childEnv = new LinkedHashMap<>();
-        for (String k : BASE_ENV) {
-            String v = System.getenv(k);
-            if (v != null) {
-                childEnv.put(k, v);
-            }
-        }
-        childEnv.putAll(env);
-        try {
-            process = launcher.start(command, childEnv, workingDir);
-        } catch (IOException e) {
-            throw new McpCallException("could not start stdio MCP server: " + e.getMessage(), null, false, e);
-        }
-        stdin = process.getOutputStream();
-        Process p = process;
-        Thread reader = new Thread(() -> readLoop(p), "aegis-stdio-mcp-out");
-        reader.setDaemon(true);
-        reader.start();
-        Thread err = new Thread(() -> drain(p.getErrorStream()), "aegis-stdio-mcp-err");
-        err.setDaemon(true);
-        err.start();
-
         resolved = null;
-        if (configured != HttpMcpClient.Era.LEGACY) {
-            Map<String, Object> resp = null;
-            McpCallException probeFailure = null;
-            try {
-                resp = raw("server/discover", ClientSupport.withModernMeta(Map.of()), Math.min(timeoutMillis, 5_000));
-            } catch (McpCallException e) {
-                probeFailure = e; // legacy servers may time out or reject the unknown method
-            }
-            if (resp != null) {
-                Map<String, Object> result = JsonValues.object(resp, "result");
-                List<Object> versions = result == null ? null : JsonValues.asList(result.get("supportedVersions"));
-                if (versions != null && versions.contains(McpVersions.V2026_07_28)) {
-                    resolved = HttpMcpClient.Era.MODERN;
-                    return;
-                }
-                Map<String, Object> error = JsonValues.object(resp, "error");
-                Long code = error == null ? null : JsonValues.integral(error.get("code"));
-                if (code != null && code == JsonRpc.UNSUPPORTED_PROTOCOL_VERSION) {
-                    throw new McpCallException("stdio MCP server does not support " + McpVersions.V2026_07_28);
-                }
-            }
-            if (configured == HttpMcpClient.Era.MODERN) {
-                throw probeFailure != null ? probeFailure
-                        : new McpCallException("stdio MCP server did not answer server/discover as a 2026-07-28 server");
-            }
-            if (!process.isAlive()) {
-                throw new McpCallException("stdio MCP server exited during startup");
-            }
-        }
-        Map<String, Object> init = new LinkedHashMap<>();
-        init.put("protocolVersion", legacyVersion);
-        init.put("capabilities", Map.of());
-        init.put("clientInfo", ClientSupport.clientInfo());
-        Map<String, Object> r = ClientSupport.resultOf(raw("initialize", init, timeoutMillis));
-        String v = JsonValues.string(r, "protocolVersion");
-        if (v == null || !McpVersions.isLegacy(v)) {
-            throw new McpCallException("stdio MCP server negotiated an unsupported version");
-        }
-        write(JsonRpc.notification("notifications/initialized", null));
-        resolved = HttpMcpClient.Era.LEGACY;
+      }
+      throw new McpCallException("stdio MCP call timed out", null, true, e);
+    } catch (ExecutionException e) {
+      throw new McpCallException(
+          "stdio MCP server failed: " + e.getCause().getMessage(), null, false, e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new McpCallException("interrupted", null, false, e);
+    } finally {
+      pending.remove(id);
     }
+  }
 
-    private Map<String, Object> raw(String method, Map<String, Object> params, long timeoutMillis) throws McpCallException {
-        long id = ids.incrementAndGet();
-        CompletableFuture<Map<String, Object>> f = new CompletableFuture<>();
-        pending.put(id, f);
+  private void write(Map<String, Object> msg) throws McpCallException {
+    // Separate lock from the lifecycle monitor, so the reader thread can answer a server request
+    // while a caller holds the lifecycle lock during startup.
+    synchronized (writeLock) {
+      OutputStream out = stdin;
+      if (out == null) {
+        throw new McpCallException("stdio MCP server is not running");
+      }
+      try {
+        out.write((Json.write(msg) + "\n").getBytes(StandardCharsets.UTF_8));
+        out.flush();
+      } catch (IOException e) {
+        throw new McpCallException("stdio MCP server is not accepting input", null, false, e);
+      }
+    }
+  }
+
+  private void readLoop(Process p) {
+    JsonLimits limits = JsonLimits.DEFAULT.withMaxBytes(maxLineChars * 4);
+    try (Reader r = new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8)) {
+      StringBuilder line = new StringBuilder();
+      int c;
+      while ((c = r.read()) >= 0) {
+        if (c == '\n') {
+          handleLine(line.toString().trim(), limits);
+          line.setLength(0);
+        } else if (line.length() < maxLineChars) {
+          line.append((char) c);
+        } else {
+          failAll(new IOException("stdio MCP line exceeds " + maxLineChars + " characters"));
+          p.destroyForcibly();
+          return;
+        }
+      }
+    } catch (IOException e) {
+      // stream closed
+    }
+    failAll(new IOException("stdio MCP server exited"));
+  }
+
+  private void handleLine(String line, JsonLimits limits) {
+    if (line.isEmpty()) {
+      return;
+    }
+    Map<String, Object> msg;
+    try {
+      msg = Json.parseObject(line.getBytes(StandardCharsets.UTF_8), limits);
+    } catch (JsonException e) {
+      LOG.log(System.Logger.Level.WARNING, "ignoring non-JSON line from stdio MCP server");
+      return;
+    }
+    if (msg.get("method") instanceof String m) {
+      if (msg.containsKey("id")) {
         try {
-            write(JsonRpc.request(id, method, params));
-            return f.get(Math.max(1, timeoutMillis), TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            // A timed-out server may still be executing the operation. Terminate the whole process tree
-            // before another call can reuse it; the next request starts a clean child.
-            synchronized (this) {
-                stopProcess();
-                resolved = null;
-            }
-            throw new McpCallException("stdio MCP call timed out", null, true, e);
-        } catch (ExecutionException e) {
-            throw new McpCallException("stdio MCP server failed: " + e.getCause().getMessage(), null, false, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new McpCallException("interrupted", null, false, e);
-        } finally {
-            pending.remove(id);
+          write(
+              JsonRpc.error(
+                  msg.get("id"),
+                  JsonRpc.METHOD_NOT_FOUND,
+                  "server-to-client request '"
+                      + m.toLowerCase(Locale.ROOT)
+                      + "' is not relayed by Aegis",
+                  null));
+        } catch (McpCallException ignored) {
+          // child is going away
         }
+      }
+      return;
     }
-
-    private void write(Map<String, Object> msg) throws McpCallException {
-        // Separate lock from the lifecycle monitor, so the reader thread can answer a server request
-        // while a caller holds the lifecycle lock during startup.
-        synchronized (writeLock) {
-            OutputStream out = stdin;
-            if (out == null) {
-                throw new McpCallException("stdio MCP server is not running");
-            }
-            try {
-                out.write((Json.write(msg) + "\n").getBytes(StandardCharsets.UTF_8));
-                out.flush();
-            } catch (IOException e) {
-                throw new McpCallException("stdio MCP server is not accepting input", null, false, e);
-            }
-        }
+    Long id = JsonValues.integral(msg.get("id"));
+    CompletableFuture<Map<String, Object>> f = id == null ? null : pending.get(id);
+    if (f != null) {
+      f.complete(msg);
     }
+  }
 
-    private void readLoop(Process p) {
-        JsonLimits limits = JsonLimits.DEFAULT.withMaxBytes(maxLineChars * 4);
-        try (Reader r = new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8)) {
-            StringBuilder line = new StringBuilder();
-            int c;
-            while ((c = r.read()) >= 0) {
-                if (c == '\n') {
-                    handleLine(line.toString().trim(), limits);
-                    line.setLength(0);
-                } else if (line.length() < maxLineChars) {
-                    line.append((char) c);
-                } else {
-                    failAll(new IOException("stdio MCP line exceeds " + maxLineChars + " characters"));
-                    p.destroyForcibly();
-                    return;
-                }
-            }
-        } catch (IOException e) {
-            // stream closed
-        }
-        failAll(new IOException("stdio MCP server exited"));
+  private void failAll(Exception e) {
+    for (CompletableFuture<Map<String, Object>> f : pending.values()) {
+      f.completeExceptionally(e);
     }
+  }
 
-    private void handleLine(String line, JsonLimits limits) {
-        if (line.isEmpty()) {
-            return;
-        }
-        Map<String, Object> msg;
-        try {
-            msg = Json.parseObject(line.getBytes(StandardCharsets.UTF_8), limits);
-        } catch (JsonException e) {
-            LOG.log(System.Logger.Level.WARNING, "ignoring non-JSON line from stdio MCP server");
-            return;
-        }
-        if (msg.get("method") instanceof String m) {
-            if (msg.containsKey("id")) {
+  private static void drain(InputStream err) {
+    byte[] buf = new byte[4096];
+    try (InputStream in = err) {
+      while (in.read(buf) >= 0) {
+        // discard; operators capture the child's stderr via the child's own logging
+      }
+    } catch (IOException ignored) {
+      // closed
+    }
+  }
+
+  private void stopProcess() {
+    if (process != null) {
+      Process p = process;
+      // Descendants first prevents a launcher or server from leaving helpers behind after timeout.
+      p.toHandle()
+          .descendants()
+          .forEach(
+              h -> {
                 try {
-                    write(JsonRpc.error(msg.get("id"), JsonRpc.METHOD_NOT_FOUND,
-                            "server-to-client request '" + m.toLowerCase(Locale.ROOT) + "' is not relayed by Aegis", null));
-                } catch (McpCallException ignored) {
-                    // child is going away
-                }
-            }
-            return;
-        }
-        Long id = JsonValues.integral(msg.get("id"));
-        CompletableFuture<Map<String, Object>> f = id == null ? null : pending.get(id);
-        if (f != null) {
-            f.complete(msg);
-        }
-    }
-
-    private void failAll(Exception e) {
-        for (CompletableFuture<Map<String, Object>> f : pending.values()) {
-            f.completeExceptionally(e);
-        }
-    }
-
-    private static void drain(InputStream err) {
-        byte[] buf = new byte[4096];
-        try (InputStream in = err) {
-            while (in.read(buf) >= 0) {
-                // discard; operators capture the child's stderr via the child's own logging
-            }
-        } catch (IOException ignored) {
-            // closed
-        }
-    }
-
-    private void stopProcess() {
-        if (process != null) {
-            Process p = process;
-            // Descendants first prevents a launcher or server from leaving helpers behind after timeout.
-            p.toHandle().descendants().forEach(h -> {
-                try {
-                    h.destroy();
+                  h.destroy();
                 } catch (RuntimeException ignored) {
-                    // best effort; forced pass follows
+                  // best effort; forced pass follows
                 }
-            });
-            p.destroy();
-            try {
-                if (!p.waitFor(2, TimeUnit.SECONDS)) {
-                    p.toHandle().descendants().forEach(h -> {
-                        try {
-                            h.destroyForcibly();
-                        } catch (RuntimeException ignored) {
-                            // process may already have exited
-                        }
-                    });
-                    p.destroyForcibly();
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                p.toHandle().descendants().forEach(h -> {
+              });
+      p.destroy();
+      try {
+        if (!p.waitFor(2, TimeUnit.SECONDS)) {
+          p.toHandle()
+              .descendants()
+              .forEach(
+                  h -> {
                     try {
-                        h.destroyForcibly();
+                      h.destroyForcibly();
                     } catch (RuntimeException ignored) {
-                        // process may already have exited
+                      // process may already have exited
                     }
-                });
-                p.destroyForcibly();
-            }
-            process = null;
-            stdin = null;
+                  });
+          p.destroyForcibly();
         }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        p.toHandle()
+            .descendants()
+            .forEach(
+                h -> {
+                  try {
+                    h.destroyForcibly();
+                  } catch (RuntimeException ignored) {
+                    // process may already have exited
+                  }
+                });
+        p.destroyForcibly();
+      }
+      process = null;
+      stdin = null;
     }
+  }
 
-    @Override
-    public synchronized void close() {
-        stopProcess();
-    }
+  @Override
+  public synchronized void close() {
+    stopProcess();
+  }
 }

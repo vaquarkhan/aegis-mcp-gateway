@@ -27,29 +27,31 @@ import java.util.List;
  */
 public final class StaticTokenIdentity implements IdentityResolver {
 
-    /** @param sha256Hex hex SHA-256 of the token */
-    public record Entry(String sha256Hex, CallerIdentity identity) {}
+  /**
+   * @param sha256Hex hex SHA-256 of the token
+   */
+  public record Entry(String sha256Hex, CallerIdentity identity) {}
 
-    private final List<Entry> entries;
+  private final List<Entry> entries;
 
-    public StaticTokenIdentity(List<Entry> entries) {
-        this.entries = List.copyOf(entries);
+  public StaticTokenIdentity(List<Entry> entries) {
+    this.entries = List.copyOf(entries);
+  }
+
+  @Override
+  public CallerIdentity resolve(McpHttpRequest request) {
+    String token = IdentityResolver.bearer(request);
+    if (token == null) {
+      return null;
     }
-
-    @Override
-    public CallerIdentity resolve(McpHttpRequest request) {
-        String token = IdentityResolver.bearer(request);
-        if (token == null) {
-            return null;
-        }
-        String digest = Digests.sha256Hex(token);
-        CallerIdentity match = null;
-        for (Entry e : entries) {
-            // Loop over all entries so timing does not reveal which entry matched.
-            if (Digests.constantTimeEquals(e.sha256Hex(), digest)) {
-                match = e.identity();
-            }
-        }
-        return match;
+    String digest = Digests.sha256Hex(token);
+    CallerIdentity match = null;
+    for (Entry e : entries) {
+      // Loop over all entries so timing does not reveal which entry matched.
+      if (Digests.constantTimeEquals(e.sha256Hex(), digest)) {
+        match = e.identity();
+      }
     }
+    return match;
+  }
 }

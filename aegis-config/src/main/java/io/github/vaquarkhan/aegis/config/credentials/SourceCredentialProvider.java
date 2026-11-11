@@ -20,27 +20,29 @@ import io.github.vaquarkhan.aegis.engine.spi.CredentialProvider;
 import java.util.Map;
 
 /**
- * Each source's credentials as configured: a token exchange for sources that declare
- * {@code credentials.type: token-exchange}, the static service credential for every other source.
+ * Each source's credentials as configured: a token exchange for sources that declare {@code
+ * credentials.type: token-exchange}, the static service credential for every other source.
  */
 public final class SourceCredentialProvider implements CredentialProvider {
 
-    private final StaticCredentialProvider statics;
-    private final Map<String, TokenExchangeCredentials> exchanges;
+  private final StaticCredentialProvider statics;
+  private final Map<String, TokenExchangeCredentials> exchanges;
 
-    public SourceCredentialProvider(StaticCredentialProvider statics, Map<String, TokenExchangeCredentials> exchanges) {
-        this.statics = statics;
-        this.exchanges = Map.copyOf(exchanges);
-    }
+  public SourceCredentialProvider(
+      StaticCredentialProvider statics, Map<String, TokenExchangeCredentials> exchanges) {
+    this.statics = statics;
+    this.exchanges = Map.copyOf(exchanges);
+  }
 
-    @Override
-    public Map<String, String> credentialsFor(String sourceId, CallerIdentity caller) throws Exception {
-        TokenExchangeCredentials x = exchanges.get(sourceId);
-        return x != null ? x.headers(caller) : statics.credentialsFor(sourceId, caller);
-    }
+  @Override
+  public Map<String, String> credentialsFor(String sourceId, CallerIdentity caller)
+      throws Exception {
+    TokenExchangeCredentials x = exchanges.get(sourceId);
+    return x != null ? x.headers(caller) : statics.credentialsFor(sourceId, caller);
+  }
 
-    @Override
-    public String toString() {
-        return "SourceCredentialProvider" + exchanges.keySet();
-    }
+  @Override
+  public String toString() {
+    return "SourceCredentialProvider" + exchanges.keySet();
+  }
 }

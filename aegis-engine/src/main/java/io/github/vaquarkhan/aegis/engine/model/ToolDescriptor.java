@@ -23,60 +23,60 @@ import java.util.Map;
  * untrusted, upstream-controlled half of a tool; the operator-controlled half (class, resources,
  * dry-run mode) lives in {@link GovernedTool}.
  *
- * @param name         tool name as exposed to clients
- * @param title        optional display title
- * @param description  description; this is the text the model reads, so it is covered by the digest
- * @param inputSchema  JSON Schema for arguments (object)
+ * @param name tool name as exposed to clients
+ * @param title optional display title
+ * @param description description; this is the text the model reads, so it is covered by the digest
+ * @param inputSchema JSON Schema for arguments (object)
  * @param outputSchema optional JSON Schema for structured output
- * @param annotations  optional MCP annotations (hints only, never trusted to lower authority)
+ * @param annotations optional MCP annotations (hints only, never trusted to lower authority)
  */
 public record ToolDescriptor(
-        String name,
-        String title,
-        String description,
-        Map<String, Object> inputSchema,
-        Map<String, Object> outputSchema,
-        Map<String, Object> annotations) {
+    String name,
+    String title,
+    String description,
+    Map<String, Object> inputSchema,
+    Map<String, Object> outputSchema,
+    Map<String, Object> annotations) {
 
-    public ToolDescriptor {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("tool name must be present");
-        }
-        description = description == null ? "" : description;
-        inputSchema = inputSchema == null ? Map.of("type", "object") : inputSchema;
+  public ToolDescriptor {
+    if (name == null || name.isBlank()) {
+      throw new IllegalArgumentException("tool name must be present");
     }
+    description = description == null ? "" : description;
+    inputSchema = inputSchema == null ? Map.of("type", "object") : inputSchema;
+  }
 
-    /**
-     * Digest over every field a model or client can observe. A rug-pull that changes only the
-     * description (the classic tool-poisoning move, OWASP MCP Top 10 MCP03) changes this digest.
-     */
-    public String definitionDigest() {
-        return Digests.canonicalSha256(toMcpMap());
-    }
+  /**
+   * Digest over every field a model or client can observe. A rug-pull that changes only the
+   * description (the classic tool-poisoning move, OWASP MCP Top 10 MCP03) changes this digest.
+   */
+  public String definitionDigest() {
+    return Digests.canonicalSha256(toMcpMap());
+  }
 
-    /** MCP wire form of the tool, fields omitted when absent. */
-    public Map<String, Object> toMcpMap() {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("name", name);
-        if (title != null) {
-            m.put("title", title);
-        }
-        m.put("description", description);
-        m.put("inputSchema", inputSchema);
-        if (outputSchema != null) {
-            m.put("outputSchema", outputSchema);
-        }
-        if (annotations != null && !annotations.isEmpty()) {
-            m.put("annotations", annotations);
-        }
-        return m;
+  /** MCP wire form of the tool, fields omitted when absent. */
+  public Map<String, Object> toMcpMap() {
+    Map<String, Object> m = new LinkedHashMap<>();
+    m.put("name", name);
+    if (title != null) {
+      m.put("title", title);
     }
+    m.put("description", description);
+    m.put("inputSchema", inputSchema);
+    if (outputSchema != null) {
+      m.put("outputSchema", outputSchema);
+    }
+    if (annotations != null && !annotations.isEmpty()) {
+      m.put("annotations", annotations);
+    }
+    return m;
+  }
 
-    public ToolDescriptor withName(String newName) {
-        return new ToolDescriptor(newName, title, description, inputSchema, outputSchema, annotations);
-    }
+  public ToolDescriptor withName(String newName) {
+    return new ToolDescriptor(newName, title, description, inputSchema, outputSchema, annotations);
+  }
 
-    public ToolDescriptor withInputSchema(Map<String, Object> schema) {
-        return new ToolDescriptor(name, title, description, schema, outputSchema, annotations);
-    }
+  public ToolDescriptor withInputSchema(Map<String, Object> schema) {
+    return new ToolDescriptor(name, title, description, schema, outputSchema, annotations);
+  }
 }

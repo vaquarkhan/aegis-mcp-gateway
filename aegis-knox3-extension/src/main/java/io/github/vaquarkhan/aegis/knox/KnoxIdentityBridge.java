@@ -33,78 +33,83 @@ import org.apache.knox.gateway.security.SubjectUtils;
  * credential.
  *
  * <p>Mapping (Knox 3.0.0 gateway-spi types):
+ *
  * <ul>
- *   <li>actor = {@code PrimaryPrincipal} (who authenticated)</li>
- *   <li>effectiveSubject = {@link SubjectUtils#getEffectivePrincipalName} (the {@code ImpersonatedPrincipal}
- *       set by identity assertion, else the primary)</li>
- *   <li>groups = every {@link GroupPrincipal}</li>
- *   <li>actorChain = {@code sub} of each entry of {@link ActorChainPrincipal#getActorChain()} when a
- *       token-exchange provider set it. This mapping is our reading of the 3.0.0 interface and is
- *       listed for confirmation by Knox maintainers in docs/KNOX-EXTENSION.md.</li>
+ *   <li>actor = {@code PrimaryPrincipal} (who authenticated)
+ *   <li>effectiveSubject = {@link SubjectUtils#getEffectivePrincipalName} (the {@code
+ *       ImpersonatedPrincipal} set by identity assertion, else the primary)
+ *   <li>groups = every {@link GroupPrincipal}
+ *   <li>actorChain = {@code sub} of each entry of {@link ActorChainPrincipal#getActorChain()} when
+ *       a token-exchange provider set it. This mapping is our reading of the 3.0.0 interface and is
+ *       listed for confirmation by Knox maintainers in docs/KNOX-EXTENSION.md.
  * </ul>
  */
 public final class KnoxIdentityBridge {
 
-    private KnoxIdentityBridge() {}
+  private KnoxIdentityBridge() {}
 
-    /**
-     * Gateway-side subject revocation on the Knox path. Knox gives no token id or issue time, so a
-     * subject entry refuses every request for that subject, for the primary actor and for any actor in
-     * the delegation chain until the entry expires (revoke through POST .../admin/revocations/subject/{sub}
-     * with the Knox issuer). Registers the Knox issuer so such revocations are accepted.
-     *
-     * @return the caller, or null when the caller or one of its actors is revoked
-     */
-    public static CallerIdentity unlessRevoked(CallerIdentity caller,
-                                               io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations) {
-        if (caller == null || revocations == null) {
-            return caller;
-        }
-        revocations.registerIssuer(caller.issuer());
-        if (revocations.check(caller.issuer(), null, caller.effectiveSubject(), null) != null
-                || revocations.check(caller.issuer(), null, caller.actor(), null) != null) {
-            return null;
-        }
-        for (String actor : caller.actorChain()) {
-            if (revocations.check(caller.issuer(), null, actor, null) != null) {
-                return null;
-            }
-        }
-        return caller;
+  /**
+   * Gateway-side subject revocation on the Knox path. Knox gives no token id or issue time, so a
+   * subject entry refuses every request for that subject, for the primary actor and for any actor
+   * in the delegation chain until the entry expires (revoke through POST
+   * .../admin/revocations/subject/{sub} with the Knox issuer). Registers the Knox issuer so such
+   * revocations are accepted.
+   *
+   * @return the caller, or null when the caller or one of its actors is revoked
+   */
+  public static CallerIdentity unlessRevoked(
+      CallerIdentity caller,
+      io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations) {
+    if (caller == null || revocations == null) {
+      return caller;
     }
+    revocations.registerIssuer(caller.issuer());
+    if (revocations.check(caller.issuer(), null, caller.effectiveSubject(), null) != null
+        || revocations.check(caller.issuer(), null, caller.actor(), null) != null) {
+      return null;
+    }
+    for (String actor : caller.actorChain()) {
+      if (revocations.check(caller.issuer(), null, actor, null) != null) {
+        return null;
+      }
+    }
+    return caller;
+  }
 
-    /** @return the caller, or null when Knox established no authenticated subject */
-    public static CallerIdentity fromCurrentSubject(String topology) {
-        return fromSubject(SubjectUtils.getCurrentSubject(), topology);
-    }
+  /**
+   * @return the caller, or null when Knox established no authenticated subject
+   */
+  public static CallerIdentity fromCurrentSubject(String topology) {
+    return fromSubject(SubjectUtils.getCurrentSubject(), topology);
+  }
 
-    public static CallerIdentity fromSubject(Subject subject, String topology) {
-        if (subject == null) {
-            return null;
-        }
-        String primary = SubjectUtils.getPrimaryPrincipalName(subject);
-        if (primary == null || primary.isBlank()) {
-            return null;
-        }
-        String effective = SubjectUtils.getEffectivePrincipalName(subject);
-        Set<String> groups = new LinkedHashSet<>();
-        for (GroupPrincipal g : SubjectUtils.getGroupPrincipals(subject)) {
-            if (g.getName() != null) {
-                groups.add(g.getName());
-            }
-        }
-        List<String> chain = new ArrayList<>();
-        for (ActorChainPrincipal acp : subject.getPrincipals(ActorChainPrincipal.class)) {
-            List<Map<String, Object>> entries = acp.getActorChain();
-            if (entries != null) {
-                for (Map<String, Object> e : entries) {
-                    Object sub = e == null ? null : e.get("sub");
-                    if (sub instanceof String s && !s.isBlank()) {
-                        chain.add(s);
-                    }
-                }
-            }
-        }
-        return new CallerIdentity(primary, effective, groups, "knox:" + topology, "knox", chain);
+  public static CallerIdentity fromSubject(Subject subject, String topology) {
+    if (subject == null) {
+      return null;
     }
+    String primary = SubjectUtils.getPrimaryPrincipalName(subject);
+    if (primary == null || primary.isBlank()) {
+      return null;
+    }
+    String effective = SubjectUtils.getEffectivePrincipalName(subject);
+    Set<String> groups = new LinkedHashSet<>();
+    for (GroupPrincipal g : SubjectUtils.getGroupPrincipals(subject)) {
+      if (g.getName() != null) {
+        groups.add(g.getName());
+      }
+    }
+    List<String> chain = new ArrayList<>();
+    for (ActorChainPrincipal acp : subject.getPrincipals(ActorChainPrincipal.class)) {
+      List<Map<String, Object>> entries = acp.getActorChain();
+      if (entries != null) {
+        for (Map<String, Object> e : entries) {
+          Object sub = e == null ? null : e.get("sub");
+          if (sub instanceof String s && !s.isBlank()) {
+            chain.add(s);
+          }
+        }
+      }
+    }
+    return new CallerIdentity(primary, effective, groups, "knox:" + topology, "knox", chain);
+  }
 }
