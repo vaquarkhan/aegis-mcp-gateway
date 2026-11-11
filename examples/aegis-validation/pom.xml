@@ -35,6 +35,7 @@
   <properties>
     <flink.version>1.20.1</flink.version>
     <spark.version>4.0.1</spark.version>
+    <jetty.version>9.4.57.v20241219</jetty.version>
   </properties>
 
   <dependencies>
@@ -46,6 +47,12 @@
     </dependency>
 
     <!-- Required for BookKeeper Netty server transport -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-xml</artifactId>
+      <version>${jetty.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-transport</artifactId>

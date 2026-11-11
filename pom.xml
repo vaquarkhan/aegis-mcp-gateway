@@ -78,7 +78,7 @@
     <!-- Security Override Properties -->
     <jackson.version>2.18.11</jackson.version>
     <jetty.version>9.4.57.v20241219</jetty.version>
-    <netty.version>4.1.137.Final</netty.version>
+    <netty.version>4.2.14.Final</netty.version>
     <guava.version>33.4.1-jre</guava.version>
     <commons-beanutils.version>1.11.0</commons-beanutils.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>
