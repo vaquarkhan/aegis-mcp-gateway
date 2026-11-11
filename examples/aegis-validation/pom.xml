@@ -38,6 +38,19 @@
   </properties>
 
   <dependencies>
+    <!-- Required for Apache Ignite REST server initialization -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-io</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Required for BookKeeper Netty server transport -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>io.github.vaquarkhan.aegis</groupId>
       <artifactId>aegis-config</artifactId>
