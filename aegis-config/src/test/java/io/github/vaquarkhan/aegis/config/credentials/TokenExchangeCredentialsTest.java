@@ -36,6 +36,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Base64;
@@ -194,14 +195,26 @@ class TokenExchangeCredentialsTest {
         }
     }
 
-    private Map<String, Object> config(String credentials, String egress) {
-        return Json.parseObject("""
+    private String gatewayConfig(String egress) {
+        return """
                 {"audit":{"file":"audit.jsonl"},
                  "policy":{"rules":[{"id":"r","groups":["analysts"],"classes":["READ"]}]},
-                 "egress":%s,
-                 "sources":[{"id":"orders","type":"http","baseUrl":"%s","credentials":%s,
-                   "tools":[{"name":"list_orders","description":"List orders.","class":"READ",
-                     "request":{"method":"GET","path":"/orders"}}]}]}""".formatted(egress, base, credentials));
+                 "egress":%s}""".formatted(egress);
+    }
+
+    private String adopterConfig(String credentials) {
+        return """
+                {"sources":[{"id":"orders","type":"http","baseUrl":"%s","credentials":%s,
+                  "tools":[{"name":"list_orders","description":"List orders.","class":"READ",
+                    "request":{"method":"GET","path":"/orders"}}]}]}""".formatted(base, credentials);
+    }
+
+    private Gateway build(String credentials, String egress, BuildContext ctx) throws Exception {
+        Path fileG = dir.resolve("gateway.json");
+        Path fileA = dir.resolve("adopter.json");
+        Files.writeString(fileG, gatewayConfig(egress));
+        Files.writeString(fileA, adopterConfig(credentials));
+        return GatewayFactory.build(fileG, fileA, ctx, ctx, false);
     }
 
     @Test
@@ -210,7 +223,7 @@ class TokenExchangeCredentialsTest {
                 + "\"clientSecretEnv\":\"CSEC\",\"audience\":\"orders-api\"}";
         String egress = "{\"allowCidrs\":[\"127.0.0.0/8\"],\"schemes\":[\"http\"]}";
         BuildContext ctx = BuildContext.defaults(dir).withEnv(Map.of("CID", "aegis", "CSEC", "secret")::get);
-        try (Gateway g = GatewayFactory.build(config(creds, egress), ctx)) {
+        try (Gateway g = build(creds, egress, ctx)) {
             CallOutcome none = g.engine().call(ALICE, new ToolCall("1", "list_orders", Map.of(), Map.of(), ""));
             assertEquals(DenyCodes.BACKEND_ERROR, none.decision().code(), "no caller token: no backend call, no fallback");
             assertTrue(backendAuth.isEmpty());
@@ -223,24 +236,23 @@ class TokenExchangeCredentialsTest {
         String journal = java.nio.file.Files.readString(dir.resolve("audit.jsonl"));
         assertFalse(journal.contains("inbound-token-of-alice") || journal.contains(jwt("user-1")), "no token in the audit journal");
     }
-
     @Test
     void configurationIsCheckedAtStartup() {
         BuildContext ctx = BuildContext.defaults(dir).withEnv(Map.of("CID", "aegis", "CSEC", "secret")::get);
         String egress = "{\"allowCidrs\":[\"127.0.0.0/8\"],\"schemes\":[\"http\"]}";
         String noAudience = "{\"type\":\"token-exchange\",\"tokenEndpoint\":\"" + base + "/token\",\"clientIdEnv\":\"CID\",\"clientSecretEnv\":\"CSEC\"}";
-        assertTrue(assertThrows(ConfigException.class, () -> GatewayFactory.build(config(noAudience, egress), ctx))
+        assertTrue(assertThrows(ConfigException.class, () -> build(noAudience, egress, ctx))
                 .getMessage().contains("audience"));
         String offEgress = "{\"type\":\"token-exchange\",\"tokenEndpoint\":\"https://idp.elsewhere.example/token\","
                 + "\"clientIdEnv\":\"CID\",\"clientSecretEnv\":\"CSEC\",\"audience\":\"a\"}";
-        assertTrue(assertThrows(ConfigException.class, () -> GatewayFactory.build(config(offEgress, egress), ctx))
+        assertTrue(assertThrows(ConfigException.class, () -> build(offEgress, egress, ctx))
                 .getMessage().contains("tokenEndpoint is not allowed"));
         String missingSecret = "{\"type\":\"token-exchange\",\"tokenEndpoint\":\"" + base + "/token\",\"clientIdEnv\":\"CID\","
                 + "\"clientSecretEnv\":\"NOT_SET\",\"audience\":\"a\"}";
-        assertTrue(assertThrows(ConfigException.class, () -> GatewayFactory.build(config(missingSecret, egress), ctx))
+        assertTrue(assertThrows(ConfigException.class, () -> build(missingSecret, egress, ctx))
                 .getMessage().contains("NOT_SET"));
         String strayDiscovery = "{\"type\":\"bearer\",\"tokenEnv\":\"CID\",\"discovery\":{\"type\":\"none\"}}";
-        assertThrows(ConfigException.class, () -> GatewayFactory.build(config(strayDiscovery, egress), ctx),
+        assertThrows(ConfigException.class, () -> build(strayDiscovery, egress, ctx),
                 "discovery belongs to token-exchange only");
     }
 }
