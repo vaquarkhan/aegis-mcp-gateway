@@ -96,68 +96,75 @@ class GatewayFactoryTest {
         }
     }
 
-    private String yaml(String restUrl, String mcpUrl) {
+
+    private String adopterYaml(String restUrl, String mcpUri) {
         return """
-                gateway:
-                  name: test-gw
-                access:
-                  writeGroups: [operators]
-                  approverGroups: [approvers]
-                approval:
-                  keyEnv: AEGIS_SIGNING_KEY
-                policy:
-                  rules:
-                    - id: analysts-read
-                      groups: [analysts]
-                      classes: [READ]
-                    - id: operators-write
-                      groups: [operators]
-                      classes: [MUTATE, DESTRUCTIVE]
-                egress:
-                  allowCidrs: [127.0.0.0/8]
-                audit:
-                  file: audit/audit.jsonl
-                sources:
-                  - id: rest
-                    type: http
-                    baseUrl: %s
-                    credentials: {type: bearer, tokenEnv: REST_TOKEN}
-                    tools:
-                      - name: list_tables
-                        description: List tables in a namespace.
-                        class: READ
-                        inputSchema:
-                          type: object
-                          properties: {namespace: {type: string}, pageSize: {type: integer}}
-                          required: [namespace]
-                        request:
-                          method: GET
-                          path: /v1/namespaces/{namespace}/tables
-                          query: {pageSize: "{pageSize}"}
-                        response: {pointer: /items}
-                      - name: drop_table
-                        description: Drop a table.
-                        class: DESTRUCTIVE
-                        inputSchema:
-                          type: object
-                          properties: {namespace: {type: string}, table: {type: string}}
-                          required: [namespace, table]
-                        request:
-                          method: DELETE
-                          path: /v1/namespaces/{namespace}/tables/{table}
-                          query: {purgeRequested: "true"}
-                        resources:
-                          - {type: "iceberg:table", pointers: [/namespace, /table]}
-                  - id: legacy-mcp
-                    type: mcp
-                    url: %s
-                    namePrefix: "kafka_"
-                    tools:
-                      list_topics: {class: READ}
-                      delete_topic:
-                        class: READ
-                        resources: [{type: "kafka:topic", pointer: /topic}]
-                """.formatted(restUrl, mcpUrl);
+        sources:
+          - id: rest
+            type: http
+            baseUrl: %s
+            credentials: {type: bearer, tokenEnv: REST_TOKEN}
+            tools:
+              - name: list_tables
+                description: List tables in a namespace.
+                class: READ
+                inputSchema:
+                  type: object
+                  properties: {namespace: {type: string}, pageSize: {type: integer}}
+                  required: [namespace]
+                request:
+                  method: GET
+                  path: /v1/namespaces/{namespace}/tables
+                  query: {pageSize: "{pageSize}"}
+                response: {pointer: /items}
+              - name: drop_table
+                description: Drop a table.
+                class: DESTRUCTIVE
+                inputSchema:
+                  type: object
+                  properties: {namespace: {type: string}, table: {type: string}}
+                  required: [namespace, table]
+                request:
+                  method: DELETE
+                  path: /v1/namespaces/{namespace}/tables/{table}
+                  query: {purgeRequested: "true"}
+                resources:
+                  - {type: "iceberg:table", pointers: [/namespace, /table]}
+
+          - id: legacy-mcp
+            type: mcp
+            url: %s
+            namePrefix: "kafka_"
+            tools:
+              list_topics: {class: READ}
+              delete_topic:
+                class: READ
+                resources: [{type: "kafka:topic", pointer: /topic}]
+        """.formatted(restUrl, mcpUri);
+    }
+
+    private String gatewayYaml() {
+        return """
+        gateway:
+          name: test-gw
+        access:
+          writeGroups: [operators]
+          approverGroups: [approvers]
+        approval:
+          keyEnv: AEGIS_SIGNING_KEY
+        policy:
+          rules:
+            - id: analysts-read
+              groups: [analysts]
+              classes: [READ]
+            - id: operators-write
+              groups: [operators]
+              classes: [MUTATE, DESTRUCTIVE]
+        egress:
+          allowCidrs: [127.0.0.0/8]
+        audit:
+          file: audit/audit.jsonl
+        """;
     }
 
     @Test
@@ -172,9 +179,13 @@ class GatewayFactoryTest {
             // Hints may only raise authority, so it must end up DESTRUCTIVE.
             mcp.annotate("delete_topic", ann);
 
-            Path cfg = dir.resolve("aegis.yaml");
-            Files.writeString(cfg, yaml(rest.url(), mcp.uri().toString()));
-            try (Gateway g = GatewayFactory.build(cfg, ctx())) {
+            Path cfg_g = dir.resolve("aegis.yaml");
+            Files.writeString(cfg_g, gatewayYaml());
+            Path cfg_a = dir.resolve("adopter.yaml");
+            Files.writeString(cfg_a, adopterYaml(rest.url(), mcp.uri().toString()));
+            BuildContext ctx_g = BuildContext.defaults(cfg_g.getParent()).withEnv(ENV::get);
+            BuildContext ctx_a = BuildContext.defaults(cfg_a.getParent()).withEnv(ENV::get);
+            try (Gateway g = GatewayFactory.build(cfg_g, cfg_a, ctx_g, ctx_a, false)) {
                 CallOutcome list = g.engine().call(ALICE, new ToolCall("1", "list_tables",
                         Map.of("namespace", "sales db", "pageSize", 10L), Map.of(), ""));
                 assertTrue(list.allowed(), list.decision().toString());
@@ -470,5 +481,39 @@ class GatewayFactoryTest {
         // The placeholder name is still discovered, so startup still requires it in inputSchema.required.
         assertEquals(List.of("path"), HttpToolExecutor.pathPlaceholders("/webhdfs/v1/{path/}"));
         assertEquals(List.of("a", "b"), HttpToolExecutor.pathPlaceholders("/x/{a}/y/{b/}"));
+    }
+    @Test
+    void dualAndSingleFileOverloadsValidateInputsAndLoadCleanly() throws Exception {
+        Map<String, Object> gw = Json.parseObject("""
+                {"policy":{"rules":[{"id":"r","groups":["analysts"],"classes":["READ"]}]},
+                 "audit":{"file":"dual-overloads.jsonl"}}""");
+        Map<String, Object> adopter = Json.parseObject("""
+                {"sources":[{"id":"s","type":"http","baseUrl":"http://127.0.0.1:1",
+                  "tools":[{"name":"ping","description":"d","class":"READ"}]}]}""");
+
+        // 1. 4-arg Map overload
+        try (Gateway g = GatewayFactory.build(gw, ctx(), adopter, ctx())) {
+            assertEquals(1, g.engine().listTools(ALICE).size());
+        }
+
+        // 2. Null adopter file fails fast
+        Path gwFile = Files.writeString(dir.resolve("gw-only.json"), Json.write(gw));
+        assertTrue(assertThrows(ConfigException.class,
+                () -> GatewayFactory.build(gwFile, null, ctx(), ctx(), true))
+                .getMessage().contains("adopter config file"));
+
+        // 3. Empty sources with checkSourceInputs = true fails fast
+        Path emptyAdopterFile = Files.writeString(dir.resolve("empty-adopter.json"), "{\"sources\":[]}");
+        assertTrue(assertThrows(ConfigException.class,
+                () -> GatewayFactory.build(gwFile, emptyAdopterFile, ctx(), ctx(), true))
+                .getMessage().contains("at least one tool source"));
+
+        // 4. Single-file Path overload (backward compatibility)
+        Map<String, Object> combined = new java.util.LinkedHashMap<>(gw);
+        combined.putAll(adopter);
+        Path combinedFile = Files.writeString(dir.resolve("combined.json"), Json.write(combined));
+        try (Gateway g = GatewayFactory.build(combinedFile, ctx())) {
+            assertEquals(1, g.engine().listTools(ALICE).size());
+        }
     }
 }

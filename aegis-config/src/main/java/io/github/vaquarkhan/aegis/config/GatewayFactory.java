@@ -84,24 +84,14 @@ import io.github.vaquarkhan.aegis.mcp.client.StdioMcpClient;
 import io.github.vaquarkhan.aegis.mcp.server.McpServerHandler;
 import io.github.vaquarkhan.aegis.mcp.server.ServerOptions;
 import io.github.vaquarkhan.aegis.mcp.server.SessionRegistry;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -117,31 +107,84 @@ public final class GatewayFactory {
     private static final System.Logger LOG = System.getLogger(GatewayFactory.class.getName());
     private static final Pattern ID = Pattern.compile("[a-z0-9][a-z0-9_-]{0,63}");
     private static final Pattern SHA256 = Pattern.compile("sha256:[0-9a-f]{64}");
-    /** RFC 6749 section 3.3 scope-token: NQCHAR is %x21 / %x23-5B / %x5D-7E, the same rule as route scopes. */
+    /**
+     * RFC 6749 section 3.3 scope-token: NQCHAR is %x21 / %x23-5B / %x5D-7E, the same rule as route scopes.
+     */
     private static final Pattern ACTION_SCOPE = Pattern.compile("[\\x21\\x23-\\x5B\\x5D-\\x7E]+");
-    /** Built-in hook type: an out-of-process control reached over HTTP, no Java required. */
+    /**
+     * Built-in hook type: an out-of-process control reached over HTTP, no Java required.
+     */
     private static final String REMOTE_HOOK = "remote";
-    /** Built-in hook type: refuses a statement argument that is not a single read-only SQL statement. */
+    /**
+     * Built-in hook type: refuses a statement argument that is not a single read-only SQL statement.
+     */
     private static final String SQL_READONLY_HOOK = "sql-readonly";
     private static final Set<String> BUILT_IN_HOOKS = Set.of(REMOTE_HOOK, SQL_READONLY_HOOK);
     public static final Set<String> HOST_SECTIONS = Set.of("host", "knox");
 
-    private GatewayFactory() {}
-
-    public static Gateway build(Path file, BuildContext ctx) throws Exception {
-        Path base = file.toAbsolutePath().getParent();
-        BuildContext c = new BuildContext(ctx.env(), base, ctx.clock(), ctx.resolver(), ctx.extraHooks(),
-                ctx.extraAuditSink(), ctx.credentialOverride(), ctx.stateStore());
-        return build(ConfigLoader.load(file), c);
+    private GatewayFactory() {
     }
 
-    public static Gateway build(Map<String, Object> raw, BuildContext callerContext) throws Exception {
-        ConfigNode root = new ConfigNode("config", raw);
+    public static Gateway build(Path baseConfig, BuildContext ctx) throws Exception {
+        Objects.requireNonNull(baseConfig, "baseConfig must not be null");
+        Objects.requireNonNull(ctx, "ctx must not be null");
+        Path base = baseConfig.toAbsolutePath().getParent();
+        BuildContext c = new BuildContext(
+                ctx.env(), base, ctx.clock(), ctx.resolver(), ctx.extraHooks(),
+                ctx.extraAuditSink(), ctx.credentialOverride(), ctx.stateStore()
+        );
+        Map<String, Object> raw = ConfigLoader.load(baseConfig);
+        return build(raw, c, raw, c, false);
+    }
+    public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1) throws Exception {
+        return build(raw1, callerContext1, raw1, callerContext1, false);
+    }
+
+
+    public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1,
+                                Map<String, Object> raw2, BuildContext callerContext2) throws Exception {
+        return build(raw1, callerContext1, raw2, callerContext2, true);
+    }
+
+
+    public static Gateway build(Path file1, Path file2, BuildContext ctx1, BuildContext ctx2, boolean checkSourceInputs) throws Exception {
+        Objects.requireNonNull(file1, "file1 (baseConfig) must not be null");
+        Objects.requireNonNull(ctx1, "ctx1 must not be null");
+        if (file2 == null) {
+            throw new ConfigException("adopter config file (file2) is required and cannot be null");
+        }
+        Path base_g = file1.toAbsolutePath().getParent();
+        BuildContext c_g = new BuildContext(
+                ctx1.env(), base_g, ctx1.clock(), ctx1.resolver(), ctx1.extraHooks(),
+                ctx1.extraAuditSink(), ctx1.credentialOverride(), ctx1.stateStore()
+        );
+
+        Map<String, Object> raw1 = ConfigLoader.load(file1);
+
+        BuildContext c_a = c_g;
+
+
+        Path base_a = file2.toAbsolutePath().getParent();
+        BuildContext baseCtx2 = (ctx2 != null) ? ctx2 : ctx1;
+        c_a = new BuildContext(
+                baseCtx2.env(), base_a, baseCtx2.clock(), baseCtx2.resolver(), baseCtx2.extraHooks(),
+                baseCtx2.extraAuditSink(), baseCtx2.credentialOverride(), baseCtx2.stateStore()
+        );
+
+        Map<String, Object> raw2 = ConfigLoader.load(file2);
+
+
+        return build(raw1, c_g, raw2, c_a, checkSourceInputs);
+    }
+
+    public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1, Map<String, Object> raw2, BuildContext callerContext2, boolean checkSourceInputs) throws Exception {
+        ConfigNode root = new ConfigNode("config", raw1);
+        ConfigNode root_adopters = new ConfigNode("config", raw2);
         Map<String, Object> hostSections = new LinkedHashMap<>();
         for (String h : HOST_SECTIONS) {
             root.skip(h);
-            if (raw.get(h) != null) {
-                hostSections.put(h, raw.get(h));
+            if (raw1.get(h) != null) {
+                hostSections.put(h, raw1.get(h));
             }
         }
 
@@ -153,17 +196,17 @@ public final class GatewayFactory {
         // is limited to provider JARs hash-verified from completeControl.artifacts (role plugin).
         ConfigNode completeControlNode = root.child("completeControl");
         boolean completeControl = completeControlNode.bool("enabled", false);
-        requirePluginDigest(completeControlNode, callerContext);
-        requirePluginDigest(completeControlNode, callerContext);
-        requirePluginDigest(completeControlNode, callerContext);
+        requirePluginDigest(completeControlNode, callerContext1);
+        requirePluginDigest(completeControlNode, callerContext1);
+        requirePluginDigest(completeControlNode, callerContext1);
         List<ArtifactAdmission.Verified> pluginArtifacts = ArtifactAdmission.verify(completeControlNode,
-                callerContext.baseDir());
+                callerContext1.baseDir());
         // HANDLE_ONLY results retained (redacted, take-once) for release outside the model; 0 = not retained.
         long handleRetention = completeControlNode.integer("handleRetentionSeconds", 0);
         if (handleRetention < 0 || handleRetention > 86_400) {
             throw completeControlNode.error("handleRetentionSeconds", "must be between 0 (off) and 86400");
         }
-        final BuildContext ctx = secrets(root.child("secrets"), raw, callerContext, pluginArtifacts, completeControl)
+        final BuildContext ctx = secrets(root.child("secrets"), raw1, callerContext1, pluginArtifacts, completeControl)
                 .withFreshEgressBinding();
 
         // Read here (before root.finish validates unknown keys); the key is used when the store is built.
@@ -222,10 +265,10 @@ public final class GatewayFactory {
         // The trust anchor comes from the host, never from this file: whoever can edit the configuration
         // cannot remove the requirement or swap the key. It is read from the caller's own lookup (the
         // process environment), not from the secrets source the configuration selects.
-        Path requiredReviewKey = requiredCatalogKey(callerContext);
+        Path requiredReviewKey = requiredCatalogKey(callerContext1);
         // Deployment admission key: the admission verifier signs each remote source's attestation. Host
         // anchored like the review key (environment or JVM property, never the configuration file).
-        java.security.PublicKey attestationKey = requiredAttestationKey(callerContext);
+        java.security.PublicKey attestationKey = requiredAttestationKey(callerContext1);
         if (completeControl && requiredReviewKey == null) {
             throw new ConfigException("config.completeControl.enabled requires host-side " + REQUIRED_CATALOG_KEY
                     + " (or the equivalent JVM property); configuration must not be able to remove or replace its trust anchor");
@@ -300,7 +343,7 @@ public final class GatewayFactory {
         // ---- sources first (their hosts join the egress allow list)
         List<SourceBuild> sources = new ArrayList<>();
         Set<String> ids = new LinkedHashSet<>();
-        for (ConfigNode s : root.children("sources")) {
+        for (ConfigNode s : root_adopters.children("sources")) {
             SignedServerCatalog.Server record = null;
             if (serverCatalog != null) {
                 String sid = s.requiredString("id");
@@ -333,7 +376,7 @@ public final class GatewayFactory {
             }
             sources.add(sb);
         }
-        if (sources.isEmpty()) {
+        if (sources.isEmpty() && (checkSourceInputs || serverCatalog != null)) {
             throw new ConfigException(serverCatalog == null ? "config.sources must list at least one tool source"
                     : "config.sources has no source that the signed server catalog lets start");
         }
@@ -748,7 +791,20 @@ public final class GatewayFactory {
         }
 
         try {
+            if ((raw2 == null || raw1 == raw2) && root.has("sources")) {
+                root.skip("sources"); // Marks the key as consumed on root
+            }
             root.finish(); // unknown keys anywhere are fatal
+            if (raw2 != null) {
+                if (raw1 == raw2) {
+                    for (String k : raw2.keySet()) {
+                        if (!"sources".equals(k)) {
+                            root_adopters.skip(k);
+                        }
+                    }
+                }
+                root_adopters.finish();
+            }
             // Rollback protection: a signed document older than one this gateway already accepted is
             // refused. Durable state (derby-local, postgres) keeps the record across restarts.
             for (PendingSerial p : serials) {
@@ -839,7 +895,7 @@ public final class GatewayFactory {
         }
         ContentGovernor content = contentBindings.isEmpty() ? null
                 : new ContentGovernor(settings, contentBindings, pdp, state, sink, creds, breakers, integrity, contentScreen,
-                        new ContentGovernor.Options(acceptNew, failOnSourceError, checkArgumentUrls), ctx.clock(), catalogEvents);
+                new ContentGovernor.Options(acceptNew, failOnSourceError, checkArgumentUrls), ctx.clock(), catalogEvents);
         try {
             catalog.load();
             if (content != null) {
@@ -909,7 +965,8 @@ public final class GatewayFactory {
             case "env" -> {
                 return ctx;
             }
-            case "file" -> resolver = new FileSecretProvider(ctx.baseDir().resolve(settings.requiredString("directory")));
+            case "file" ->
+                    resolver = new FileSecretProvider(ctx.baseDir().resolve(settings.requiredString("directory")));
             case "vault" -> {
                 URI address = endpoint(settings, "address");
                 EgressGuard vaultGuard = preliminaryEgress(raw, ctx);
@@ -983,31 +1040,47 @@ public final class GatewayFactory {
 
     // ================================================================= sources
 
-    /** Per-tool governance settings from configuration. */
-    private record ToolSettings(ToolClass toolClass, List<ResourceRule> resources, String dryRunMode, String dryRunArgument,
-                                String previewTool, Set<String> allowedGroups, Set<String> actionScopes, long timeoutMillis,
+    /**
+     * Per-tool governance settings from configuration.
+     */
+    private record ToolSettings(ToolClass toolClass, List<ResourceRule> resources, String dryRunMode,
+                                String dryRunArgument,
+                                String previewTool, Set<String> allowedGroups, Set<String> actionScopes,
+                                long timeoutMillis,
                                 Map<String, Object> inputSchema, ExecutionContract executionContract,
-                                OutputPolicy outputPolicy) {}
+                                OutputPolicy outputPolicy) {
+    }
 
-    /** A verified signed document whose serial still has to be checked against the state store. */
-    private record PendingSerial(String kind, long serial, String path) {}
+    /**
+     * A verified signed document whose serial still has to be checked against the state store.
+     */
+    private record PendingSerial(String kind, long serial, String path) {
+    }
 
     private static final class SourceBuild {
         String id;
         String namePrefix;
         ToolClass defaultClass;
         boolean hideUnlisted;
-        /** {@code strictProperties: true}: undeclared argument properties are refused whatever upstream says. */
+        /**
+         * {@code strictProperties: true}: undeclared argument properties are refused whatever upstream says.
+         */
         boolean strictProperties;
-        /** Fail startup unless every exposed tool has a non-free-form execution and output contract. */
+        /**
+         * Fail startup unless every exposed tool has a non-free-form execution and output contract.
+         */
         boolean completeControl;
         boolean quarantined;
         String evidence;
-        /** Exposed names pinned by this source's signed server-catalog record; null without a catalog. */
+        /**
+         * Exposed names pinned by this source's signed server-catalog record; null without a catalog.
+         */
         Set<String> signedNames;
         long timeoutMillis;
         StaticCredentialProvider.Spec credentials;
-        /** Per-caller credentials by RFC 8693 exchange; null when the source uses a static credential. */
+        /**
+         * Per-caller credentials by RFC 8693 exchange; null when the source uses a static credential.
+         */
         io.github.vaquarkhan.aegis.config.credentials.TokenExchangeCredentials exchange;
         ToolSource source;
         List<URI> declaredEndpoints = new ArrayList<>();
@@ -1019,7 +1092,9 @@ public final class GatewayFactory {
         ContentSource contentSource;
         java.util.function.Supplier<Map<String, String>> discovery;
 
-        /** Filled on demand by {@link #executorsOfSource()}; see that method for why it is lazy. */
+        /**
+         * Filled on demand by {@link #executorsOfSource()}; see that method for why it is lazy.
+         */
         private Map<String, ToolExecutor> sourceExecutors;
 
         /**
@@ -1205,16 +1280,20 @@ public final class GatewayFactory {
         return subject;
     }
 
-    /** The exact bytes a deployment admission verifier signs for one source. */
+    /**
+     * The exact bytes a deployment admission verifier signs for one source.
+     */
     public static byte[] attestationStatement(String sourceId, String subjectDigest, String evidenceDigest, String verifier,
                                               String validUntil) {
         return ("aegis-deployment-attestation-v1\n" + sourceId + "\n" + subjectDigest + "\n" + evidenceDigest + "\n"
                 + verifier + "\n" + validUntil + "\n").getBytes(StandardCharsets.UTF_8);
     }
 
-    /** Every executable/script path in a complete-control stdio argv must be immutable and admitted. */
+    /**
+     * Every executable/script path in a complete-control stdio argv must be immutable and admitted.
+     */
     private static void requireCommandArtifacts(ConfigNode source, List<String> command, List<String> prefix,
-            Path workingDirectory, Path baseDir, List<ArtifactAdmission.Verified> admitted) {
+                                                Path workingDirectory, Path baseDir, List<ArtifactAdmission.Verified> admitted) {
         Set<Path> verified = new java.util.HashSet<>();
         for (ArtifactAdmission.Verified a : admitted) {
             verified.add(a.path());
@@ -1598,7 +1677,9 @@ public final class GatewayFactory {
                 execution, outputPolicy);
     }
 
-    /** Exact RFC 6749 scope tokens, configured by the operator for one governed tool action. */
+    /**
+     * Exact RFC 6749 scope tokens, configured by the operator for one governed tool action.
+     */
     private static Set<String> actionScopes(ConfigNode t) {
         Set<String> scopes = new TreeSet<>(t.strings("actionScopes"));
         for (String scope : scopes) {
@@ -1637,7 +1718,8 @@ public final class GatewayFactory {
         StaticCredentialProvider.Kind kind = choice(c, "type", "none", StaticCredentialProvider.Kind.class);
         return switch (kind) {
             case NONE -> new StaticCredentialProvider.Spec(kind, null, null, null, null);
-            case BEARER -> new StaticCredentialProvider.Spec(kind, null, requireEnv(ctx, c.requiredString("tokenEnv"), c.path() + ".tokenEnv"), null, null);
+            case BEARER ->
+                    new StaticCredentialProvider.Spec(kind, null, requireEnv(ctx, c.requiredString("tokenEnv"), c.path() + ".tokenEnv"), null, null);
             case BASIC -> new StaticCredentialProvider.Spec(kind, null, null,
                     requireEnv(ctx, c.requiredString("usernameEnv"), c.path() + ".usernameEnv"),
                     requireEnv(ctx, c.requiredString("passwordEnv"), c.path() + ".passwordEnv"));
@@ -1721,9 +1803,11 @@ public final class GatewayFactory {
                         Duration.ofMillis(s.integer("timeoutMs", 2000)), null, proxy));
     }
 
-    /** The observers, in order. Both are optional and both are read-only: neither can change a decision. */
+    /**
+     * The observers, in order. Both are optional and both are read-only: neither can change a decision.
+     */
     private static List<io.github.vaquarkhan.aegis.engine.spi.DecisionListener> listeners(DecisionMetrics metrics,
-                                                                                         OtlpSpanExporter tracer) {
+                                                                                          OtlpSpanExporter tracer) {
         List<io.github.vaquarkhan.aegis.engine.spi.DecisionListener> out = new ArrayList<>();
         if (metrics != null) {
             out.add(metrics);
@@ -1805,7 +1889,9 @@ public final class GatewayFactory {
      */
     public static final String REQUIRED_PLUGIN_DIGEST = "AEGIS_REQUIRE_PLUGIN_DIGEST";
 
-    /** Decodes a 32-byte AES-256 key from 64 hex characters or base64 (standard or URL). */
+    /**
+     * Decodes a 32-byte AES-256 key from 64 hex characters or base64 (standard or URL).
+     */
     private static byte[] decodeAes256(String value, ConfigNode where) {
         String v = value.strip();
         byte[] key;
@@ -1849,7 +1935,9 @@ public final class GatewayFactory {
         }
     }
 
-    /** JVM system property alternative to {@link #REQUIRED_CATALOG_KEY}, for hosts such as Knox. */
+    /**
+     * JVM system property alternative to {@link #REQUIRED_CATALOG_KEY}, for hosts such as Knox.
+     */
     public static final String REQUIRED_CATALOG_KEY_PROPERTY = "aegis.requireServerCatalogKey";
 
     private static Path requiredCatalogKey(BuildContext host) {
@@ -1929,7 +2017,7 @@ public final class GatewayFactory {
      * class; calling {@code get()} is deliberately after this check.
      */
     private static <T> Optional<T> provider(Class<T> spi, String type, java.util.function.Function<T, String> typeOf,
-            List<ArtifactAdmission.Verified> admitted, boolean requireAdmittedCodeSource) {
+                                            List<ArtifactAdmission.Verified> admitted, boolean requireAdmittedCodeSource) {
         java.util.Iterator<ServiceLoader.Provider<T>> it = ServiceLoader.load(spi).stream().iterator();
         while (it.hasNext()) {
             try {

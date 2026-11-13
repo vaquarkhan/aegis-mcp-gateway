@@ -121,30 +121,43 @@ class HttpSourcesAndWiringTest {
         backend.stop(0);
     }
 
-    String config(String credentials, String extra) {
+    String gatewayConfig(String extra) {
         return """
-                {"policy": {"rules": [{"id": "all", "groups": ["users"]}]},
-                 "access": {"writeGroups": ["users"]},
-                 "approval": {"requiredFor": []},
-                 "vrp": {"enabled": false},
-                 "egress": {"allowCidrs": ["127.0.0.0/8"]},
-                 "audit": {"file": "a.jsonl"}%s,
-                 "sources": [{"id": "api", "type": "http", "baseUrl": "http://127.0.0.1:%d", "credentials": %s,
-                   "tools": [
-                     {"name": "items", "description": "Items.", "class": "READ", "request": {"path": "/items"}, "response": {"pointer": "/items"}},
-                     {"name": "echo", "description": "Echo.", "class": "MUTATE",
-                      "inputSchema": {"type": "object", "properties": {"count": {"type": "integer"}, "tag": {"type": "string"}}},
-                      "request": {"method": "POST", "path": "/echo", "query": {"tag": "{tag}", "fixed": "1"},
-                                  "body": {"n": "{count}", "all": "{*}", "literal": "x"}}},
-                     {"name": "text", "description": "Text.", "class": "READ", "request": {"path": "/text"}},
-                     {"name": "missing", "description": "Missing.", "class": "READ", "request": {"path": "/missing"}},
-                     {"name": "boom", "description": "Boom.", "class": "READ", "request": {"path": "/boom"}},
-                     {"name": "badjson", "description": "Bad.", "class": "READ", "request": {"path": "/badjson"}}]}]}
-                """.formatted(extra, port, credentials);
+            {"policy": {"rules": [{"id": "all", "groups": ["users"]}]},
+             "access": {"writeGroups": ["users"]},
+             "approval": {"requiredFor": []},
+             "vrp": {"enabled": false},
+             "egress": {"allowCidrs": ["127.0.0.0/8"]},
+             "audit": {"file": "a.jsonl"}%s}
+            """.formatted(extra);
+    }
+
+    String adopterConfig(String credentials) {
+        return """
+            {"sources": [{"id": "api", "type": "http", "baseUrl": "http://127.0.0.1:%d", "credentials": %s,
+               "tools": [
+                 {"name": "items", "description": "Items.", "class": "READ", "request": {"path": "/items"}, "response": {"pointer": "/items"}},
+                 {"name": "echo", "description": "Echo.", "class": "MUTATE",
+                  "inputSchema": {"type": "object", "properties": {"count": {"type": "integer"}, "tag": {"type": "string"}}},
+                  "request": {"method": "POST", "path": "/echo", "query": {"tag": "{tag}", "fixed": "1"},
+                              "body": {"n": "{count}", "all": "{*}", "literal": "x"}}},
+                 {"name": "text", "description": "Text.", "class": "READ", "request": {"path": "/text"}},
+                 {"name": "missing", "description": "Missing.", "class": "READ", "request": {"path": "/missing"}},
+                 {"name": "boom", "description": "Boom.", "class": "READ", "request": {"path": "/boom"}},
+                 {"name": "badjson", "description": "Bad.", "class": "READ", "request": {"path": "/badjson"}}]}]}
+            """.formatted(port, credentials);
     }
 
     Gateway build(String json) throws Exception {
         return GatewayFactory.build(Json.parseObject(json), BuildContext.defaults(dir).withEnv(ENV::get));
+    }
+    Gateway build(String gatewayJson, String adopterJson) throws Exception {
+        Path fileG = dir.resolve("gateway.json");
+        Path fileA = dir.resolve("adopter.json");
+        Files.writeString(fileG, gatewayJson);
+        Files.writeString(fileA, adopterJson);
+        BuildContext ctx = BuildContext.defaults(dir).withEnv(ENV::get);
+        return GatewayFactory.build(fileG, fileA, ctx, ctx, false);
     }
 
     static String out(CallOutcome o) {
@@ -153,7 +166,7 @@ class HttpSourcesAndWiringTest {
 
     @Test
     void httpToolsRenderTemplatesCredentialsAndMapResponses() throws Exception {
-        try (Gateway g = build(config("{\"type\": \"basic\", \"usernameEnv\": \"SVC_USER\", \"passwordEnv\": \"SVC_PASS\"}", ""))) {
+        try (Gateway g = build(gatewayConfig(""), adopterConfig("{\"type\": \"basic\", \"usernameEnv\": \"SVC_USER\", \"passwordEnv\": \"SVC_PASS\"}"))) {
             CallOutcome items = g.engine().call(ANA, new ToolCall("1", "items", Map.of(), Map.of(), ""));
             assertTrue(items.allowed() && out(items).contains("\"id\":1") && !out(items).contains("AKIA"), out(items));
 
@@ -212,24 +225,25 @@ class HttpSourcesAndWiringTest {
 
     @Test
     void invalidResponseStatusWiringFailsStartup() {
-        String base = config("{\"type\": \"none\"}", "");
-        String missingEquals = base.replace("\"response\": {\"pointer\": \"/items\"}",
+        String baseGateway = gatewayConfig("");
+        String baseAdopter = adopterConfig("{\"type\": \"none\"}");
+        String missingEquals = baseAdopter.replace("\"response\": {\"pointer\": \"/items\"}",
                 "\"response\": {\"status\": {\"pointer\": \"/status\"}}");
-        String nonInteger = base.replace("\"response\": {\"pointer\": \"/items\"}",
+        String nonInteger = baseAdopter.replace("\"response\": {\"pointer\": \"/items\"}",
                 "\"response\": {\"status\": {\"pointer\": \"/status\", \"equals\": \"200\"}}");
-        String malformedPointer = base.replace("\"response\": {\"pointer\": \"/items\"}",
+        String malformedPointer = baseAdopter.replace("\"response\": {\"pointer\": \"/items\"}",
                 "\"response\": {\"status\": {\"pointer\": \"status\", \"equals\": 200}}");
-        for (String broken : List.of(missingEquals, nonInteger, malformedPointer)) {
-            assertThrows(Exception.class, () -> build(broken));
+        for (String brokenAdopter : List.of(missingEquals, nonInteger, malformedPointer)) {
+            assertThrows(Exception.class, () -> build(baseGateway, brokenAdopter));
         }
     }
 
     @Test
     void bearerAndHeaderCredentials() throws Exception {
-        try (Gateway g = build(config("{\"type\": \"bearer\", \"tokenEnv\": \"SVC_TOKEN\"}", ""))) {
+        try (Gateway g = build(gatewayConfig(""), adopterConfig("{\"type\": \"bearer\", \"tokenEnv\": \"SVC_TOKEN\"}"))) {
             assertTrue(out(g.engine().call(ANA, new ToolCall("1", "echo", Map.of(), Map.of(), ""))).contains("Bearer svc-token-123"));
         }
-        try (Gateway g = build(config("{\"type\": \"header\", \"header\": \"X-Api-Key\", \"valueEnv\": \"SVC_KEY\"}", ""))) {
+        try (Gateway g = build(gatewayConfig(""), adopterConfig("{\"type\": \"header\", \"header\": \"X-Api-Key\", \"valueEnv\": \"SVC_KEY\"}"))) {
             assertTrue(out(g.engine().call(ANA, new ToolCall("1", "echo", Map.of(), Map.of(), ""))).contains("key-9"));
         }
     }
@@ -238,7 +252,13 @@ class HttpSourcesAndWiringTest {
     void extraAuditSinkIsTeedAndFailsClosed() throws Exception {
         InMemoryAuditSink extra = new InMemoryAuditSink();
         BuildContext ctx = new BuildContext(ENV::get, dir, null, null, null, extra, null, null);
-        try (Gateway g = GatewayFactory.build(Json.parseObject(config("{\"type\": \"none\"}", "")), ctx)) {
+
+        Path fileG = dir.resolve("gateway.json");
+        Path fileA = dir.resolve("adopter.json");
+        Files.writeString(fileG, gatewayConfig(""));
+        Files.writeString(fileA, adopterConfig("{\"type\": \"none\"}"));
+
+        try (Gateway g = GatewayFactory.build(fileG, fileA, ctx, ctx, false)) {
             assertTrue(g.engine().call(ANA, new ToolCall("1", "items", Map.of(), Map.of(), "")).allowed());
             assertEquals(2, extra.records().size(), "intent and result reach the second sink too");
             extra.setFailing(true);
@@ -249,21 +269,28 @@ class HttpSourcesAndWiringTest {
     @Test
     void optionalWiring() throws Exception {
         String extra = ", \"metrics\": {\"enabled\": false}, \"catalog\": {\"mode\": \"REQUIRE_PINS\", \"refreshSeconds\": 3600}";
-        try (Gateway g = build(config("{\"type\": \"none\"}", extra))) {
+        try (Gateway g = build(gatewayConfig(extra), adopterConfig("{\"type\": \"none\"}"))) {
             assertNull(g.metrics());
             assertEquals(DenyCodes.CATALOG_INTEGRITY, g.engine().call(ANA, new ToolCall("1", "items", Map.of(), Map.of(), "")).decision().code(),
                     "REQUIRE_PINS without pins quarantines every tool");
         }
-        Path file = dir.resolve("aegis.json");
-        Files.writeString(file, config("{\"type\": \"none\"}", ""));
-        try (Gateway g = GatewayFactory.build(file, BuildContext.defaults(dir).withEnv(ENV::get))) {
+
+        Path fileG = dir.resolve("gateway.json");
+        Path fileA = dir.resolve("adopter.json");
+        Files.writeString(fileG, gatewayConfig(""));
+        Files.writeString(fileA, adopterConfig("{\"type\": \"none\"}"));
+        BuildContext ctx = BuildContext.defaults(dir).withEnv(ENV::get);
+
+        try (Gateway g = GatewayFactory.build(fileG, fileA, ctx, ctx, false)) {
             assertTrue(g.engine().call(ANA, new ToolCall("1", "items", Map.of(), Map.of(), "")).allowed());
         }
     }
 
     @Test
     void invalidWiringFailsStartup() {
-        String base = config("{\"type\": \"none\"}", "");
+        String baseGateway = gatewayConfig("");
+        String baseAdopter = adopterConfig("{\"type\": \"none\"}");
+
         for (String[] swap : new String[][] {
                 {"\"type\": \"http\"", "\"type\": \"no-such-plugin\""},
                 {"\"baseUrl\": \"http://127.0.0.1:" + port + "\"", "\"baseUrl\": \"ftp://127.0.0.1:" + port + "\""},
@@ -272,30 +299,44 @@ class HttpSourcesAndWiringTest {
                 {"\"audit\": {\"file\": \"a.jsonl\"}", "\"audit\": {\"file\": \"a.jsonl\"}, \"hooks\": [{\"type\": \"no-such-hook\"}]"},
                 {"\"audit\": {\"file\": \"a.jsonl\"}", "\"audit\": {\"file\": \"a.jsonl\"}, \"policy2\": {}"},
                 {"\"credentials\": {\"type\": \"none\"}", "\"credentials\": {\"type\": \"bearer\", \"tokenEnv\": \"UNSET\"}"}}) {
-            assertTrue(base.contains(swap[0]), swap[0]);
-            String broken = base.replace(swap[0], swap[1]);
-            assertThrows(Exception.class, () -> build(broken), swap[1]).getMessage();
+
+            assertTrue(baseGateway.contains(swap[0]) || baseAdopter.contains(swap[0]), swap[0]);
+
+            String brokenGateway = baseGateway.replace(swap[0], swap[1]);
+            String brokenAdopter = baseAdopter.replace(swap[0], swap[1]);
+
+            assertThrows(Exception.class, () -> build(brokenGateway, brokenAdopter), swap[1]).getMessage();
         }
-        String mcpStdio = """
-                {"policy": {"rules": [{"id": "all", "groups": ["users"]}]}, "audit": {"file": "b.jsonl"},
-                 "sources": [{"id": "m", "type": "mcp", "transport": "stdio"}]}""";
-        assertTrue(assertThrows(ConfigException.class, () -> build(mcpStdio)).getMessage().contains("command"));
-        String badTransport = mcpStdio.replace("\"stdio\"", "\"carrier-pigeon\"");
-        assertTrue(assertThrows(ConfigException.class, () -> build(badTransport)).getMessage().contains("transport"));
-        String opa = """
-                {"policy": {"opa": {"url": "http://127.0.0.1:1/v1/data/aegis/allow", "tokenEnv": "UNSET"}}, "audit": {"file": "c.jsonl"},
-                 "sources": [{"id": "s", "type": "http", "baseUrl": "http://127.0.0.1:1", "tools": [{"name": "t", "description": "d", "class": "READ"}]}]}""";
-        assertTrue(assertThrows(ConfigException.class, () -> build(opa)).getMessage().contains("UNSET"));
-        assertTrue(assertThrows(ConfigException.class, () -> build(base.replace("\"sources\": [", "\"sources\": [], \"x\": [")))
-                .getMessage().contains("source"));
-        assertThrows(Exception.class, () -> build(List.of(base).get(0).replace("\"class\": \"READ\", \"request\": {\"path\": \"/items\"}",
+        String mcpGateway = """
+        {"policy": {"rules": [{"id": "all", "groups": ["users"]}]}, "audit": {"file": "b.jsonl"}}""";
+        String mcpAdopter = """
+        {"sources": [{"id": "m", "type": "mcp", "transport": "stdio"}]}""";
+        assertTrue(assertThrows(ConfigException.class, () -> build(mcpGateway, mcpAdopter)).getMessage().contains("command"));
+
+        String badTransportAdopter = mcpAdopter.replace("\"stdio\"", "\"carrier-pigeon\"");
+        assertTrue(assertThrows(ConfigException.class, () -> build(mcpGateway, badTransportAdopter)).getMessage().contains("transport"));
+
+        String opaGateway = """
+        {"policy": {"opa": {"url": "http://127.0.0.1:1/v1/data/aegis/allow", "tokenEnv": "UNSET"}}, "audit": {"file": "c.jsonl"}}""";
+        String opaAdopter = """
+        {"sources": [{"id": "s", "type": "http", "baseUrl": "http://127.0.0.1:1", "tools": [{"name": "t", "description": "d", "class": "READ"}]}]}""";
+        assertTrue(assertThrows(ConfigException.class, () -> build(opaGateway, opaAdopter)).getMessage().contains("UNSET"));
+
+
+
+        assertTrue(assertThrows(ConfigException.class, () -> build(baseGateway, baseAdopter.replace("\"sources\": [", "\"sources\": [], \"x\": [")))
+                .getMessage().contains("unknown key(s) [x]"));
+
+        assertThrows(Exception.class, () -> build(baseGateway, List.of(baseAdopter).get(0).replace("\"class\": \"READ\", \"request\": {\"path\": \"/items\"}",
                 "\"class\": \"SOMETIMES\", \"request\": {\"path\": \"/items\"}")));
     }
 
     /** Values that used to fall back silently, or fail without a key path, now stop startup with one. */
     @Test
     void enumeratedValuesAndPolicyEndpointsAreValidatedWithTheirKeyPath() throws Exception {
-        String base = config("{\"type\": \"none\"}", "");
+        String baseGateway = gatewayConfig("");
+        String baseAdopter = adopterConfig("{\"type\": \"none\"}");
+
         String[][] cases = {
                 // a typo must not quietly mean EXPOSE
                 {"\"id\": \"api\"", "\"id\": \"api\", \"unlistedTools\": \"HIDDEN\"", "unlistedTools must be EXPOSE or HIDE"},
@@ -315,18 +356,21 @@ class HttpSourcesAndWiringTest {
                 {"\"rules\": [{\"id\": \"all\", \"groups\": [\"users\"]}]",
                         "\"rules\": [{\"id\": \"all\", \"groups\": [\"users\"]}], \"opa\": {\"url\": \"file:///etc/opa\"}",
                         "policy.opa.url must be an absolute http(s) URL"}};
+
         for (String[] c : cases) {
-            assertTrue(base.contains(c[0]), c[0]);
-            String broken = base.replace(c[0], c[1]);
-            ConfigException e = assertThrows(ConfigException.class, () -> build(broken), c[1]);
+            assertTrue(baseGateway.contains(c[0]) || baseAdopter.contains(c[0]), c[0]);
+            String brokenGateway = baseGateway.replace(c[0], c[1]);
+            String brokenAdopter = baseAdopter.replace(c[0], c[1]);
+            ConfigException e = assertThrows(ConfigException.class, () -> build(brokenGateway, brokenAdopter), c[1]);
             assertTrue(e.getMessage().contains(c[2]), c[2] + " expected, got: " + e.getMessage());
         }
-        // A policy endpoint the operator did allow is accepted, and the accepted names still parse.
-        String allowedOpa = base.replace("\"rules\": [{\"id\": \"all\", \"groups\": [\"users\"]}]",
-                        "\"rules\": [{\"id\": \"all\", \"groups\": [\"users\"]}], \"opa\": {\"url\": \"http://127.0.0.1:"
-                                + port + "/v1/data/aegis/allow\"}")
-                .replace("\"id\": \"api\"", "\"id\": \"api\", \"unlistedTools\": \"hide\"");
-        try (Gateway g = build(allowedOpa)) {
+
+        String allowedOpaGateway = baseGateway.replace("\"rules\": [{\"id\": \"all\", \"groups\": [\"users\"]}]",
+                "\"rules\": [{\"id\": \"all\", \"groups\": [\"users\"]}], \"opa\": {\"url\": \"http://127.0.0.1:"
+                        + port + "/v1/data/aegis/allow\"}");
+        String allowedOpaAdopter = baseAdopter.replace("\"id\": \"api\"", "\"id\": \"api\", \"unlistedTools\": \"hide\"");
+
+        try (Gateway g = build(allowedOpaGateway, allowedOpaAdopter)) {
             assertTrue(g.engine() != null);
         }
     }

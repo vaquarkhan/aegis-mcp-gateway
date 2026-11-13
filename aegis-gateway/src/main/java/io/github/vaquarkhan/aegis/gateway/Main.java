@@ -22,6 +22,7 @@ import io.github.vaquarkhan.aegis.engine.audit.AuditCheckpointVerifier;
 import io.github.vaquarkhan.aegis.engine.audit.AuditChainVerifier;
 import io.github.vaquarkhan.aegis.engine.model.Digests;
 import io.github.vaquarkhan.aegis.security.perimeter.OwnServerSecuritySettings;
+
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -47,12 +48,15 @@ import java.util.function.Function;
  */
 public final class Main {
 
-    /** Exit codes: 0 ok, 1 audit chain broken, 2 usage or configuration error. */
+    /**
+     * Exit codes: 0 ok, 1 audit chain broken, 2 usage or configuration error.
+     */
     static final int OK = 0;
     static final int BROKEN = 1;
     static final int USAGE = 2;
 
-    private Main() {}
+    private Main() {
+    }
 
     public static void main(String[] args) throws Exception {
         int code = run(args, System.in, System.out, System.err, System::getenv, true);
@@ -68,19 +72,28 @@ public final class Main {
      */
     static int run(String[] args, InputStream in, PrintStream out, PrintStream err, Function<String, String> env,
                    boolean serve) throws Exception {
-        String config = null;
+        String gateway_config = null;
+        String adopter_config = null;
         boolean stdio = false;
         String verifyAudit = null;
         String checkpoints = null;
         String requireCatalogKey = null;
         for (int i = 0; i < args.length; i++) {
+
             switch (args[i]) {
-                case "--config" -> {
+                case "--gateway-config" -> {
                     if (i + 1 >= args.length) {
-                        err.println("--config needs a file");
+                        err.println("--gateway-config needs a file");
                         return USAGE;
                     }
-                    config = args[++i];
+                    gateway_config = args[++i];
+                }
+                case "--adopter-config" -> {
+                    if (i + 1 >= args.length) {
+                        err.println("--adopter-config needs a file");
+                        return USAGE;
+                    }
+                    adopter_config = args[++i];
                 }
                 case "--stdio" -> stdio = true;
                 case "--require-server-catalog" -> {
@@ -108,7 +121,8 @@ public final class Main {
                     String[] rest = java.util.Arrays.copyOfRange(args, i + 1, args.length);
                     return CatalogManifestCommands.run(args[i], rest, out, err);
                 }
-                case "--server-catalog-create", "--server-catalog-verify", "--break-glass-create", "--break-glass-verify" -> {
+                case "--server-catalog-create", "--server-catalog-verify", "--break-glass-create",
+                     "--break-glass-verify" -> {
                     String[] rest = java.util.Arrays.copyOfRange(args, i + 1, args.length);
                     return ServerCatalogCommands.run(args[i], rest, out, err, Clock.systemUTC());
                 }
@@ -138,7 +152,7 @@ public final class Main {
             return USAGE;
         }
         if (verifyAudit != null) {
-            if (config != null || stdio) {
+            if (adopter_config != null || gateway_config != null || stdio) {
                 err.println("--verify-audit runs on its own, without --config or --stdio");
                 return USAGE;
             }
@@ -152,26 +166,26 @@ public final class Main {
                     + (r.ok() ? "" : " error=" + r.error()));
             return r.ok() ? OK : BROKEN;
         }
-        if (config == null) {
-            err.println("usage: --config <aegis.yaml|aegis.json> [--stdio] [--require-server-catalog <review.pub>]"
-                    + " | --verify-audit <file> [--checkpoints <file>]"
-                    + " | --hash-token | --manifest-keygen|--manifest-create|--manifest-sign|--manifest-verify ..."
-                    + " | --server-catalog-create|--server-catalog-verify|--break-glass-create|--break-glass-verify ..."
-                    + " | --openapi-draft <openapi.yaml> <draft.yaml> [--source-id <id>] [--base-url <url>]"
-                    + " | --policy-test <aegis.yaml> <cases.json>");
+        if (gateway_config == null || adopter_config == null) {
+            err.println("usage: Aegis Gateway requires both --gateway-config <file> and --adopter-config <file>");
+            err.println("   or: --verify-audit <file> [--checkpoints <file>] | --hash-token | ...");
             return USAGE;
         }
+
+
         AegisServer.applyServerTimeLimits(); // before any JDK HTTP server class initialises
-        Path cfg = Path.of(config).toAbsolutePath();
+
+        Path cfg_g = Path.of(gateway_config).toAbsolutePath();
+        Path cfg_a = Path.of(adopter_config).toAbsolutePath();
         // --require-server-catalog takes precedence over AEGIS_REQUIRE_SERVER_CATALOG_KEY; both come from
         // the host (command line or process environment), never from the configuration file.
         final String pinnedKey = requireCatalogKey;
         Function<String, String> hostEnv = pinnedKey == null ? env
                 : name -> GatewayFactory.REQUIRED_CATALOG_KEY.equals(name) ? pinnedKey : env.apply(name);
-        Gateway gateway = GatewayFactory.build(cfg, BuildContext.defaults(cfg.getParent()).withEnv(hostEnv));
+        Gateway gateway = GatewayFactory.build(cfg_g, cfg_a, BuildContext.defaults(cfg_g.getParent()).withEnv(hostEnv), BuildContext.defaults(cfg_a.getParent()).withEnv(hostEnv),true);
         OwnServerSecuritySettings settings;
         try {
-            settings = OwnServerSecuritySettings.parse(gateway.hostSection("host"), cfg.getParent(), gateway.secrets(),
+            settings = OwnServerSecuritySettings.parse(gateway.hostSection("host"), cfg_g.getParent(), gateway.secrets(),
                     Clock.systemUTC());
         } catch (RuntimeException e) {
             gateway.close();
