@@ -118,14 +118,24 @@ class OpenApiDraftTest {
         Files.writeString(f, SPEC, StandardCharsets.UTF_8);
         return OpenApiDraft.read(f);
     }
+    private Gateway buildDraft(Map<String, Object> combined) throws Exception {
+        Map<String, Object> gateway = new java.util.LinkedHashMap<>(combined);
+        Object sources = gateway.remove("sources");
+        Map<String, Object> adopter = Map.of("sources", sources != null ? sources : List.of());
+
+        Path fileG = dir.resolve("gateway.json");
+        Path fileA = dir.resolve("adopter.json");
+        Files.writeString(fileG, Json.write(gateway), StandardCharsets.UTF_8);
+        Files.writeString(fileA, Json.write(adopter), StandardCharsets.UTF_8);
+        BuildContext ctx = BuildContext.defaults(dir);
+        return GatewayFactory.build(fileG, fileA, ctx, ctx, true);
+    }
 
     @Test
     void everyToolIsDestructiveAndThePolicyDeniesEveryone() throws Exception {
         OpenApiDraft.Draft d = OpenApiDraft.generate(spec(), new OpenApiDraft.Options("orders", null));
         assertEquals(3, d.tools(), d.yaml());
-        Path cfg = dir.resolve("draft.yaml");
-        Files.writeString(cfg, d.yaml(), StandardCharsets.UTF_8);
-        try (Gateway g = GatewayFactory.build(cfg, BuildContext.defaults(dir))) {
+        try (Gateway g = buildDraft(ConfigLoader.parseYaml(d.yaml(), "draft"))) {
             List<ToolCatalog.Entry> entries = g.engine().catalog().entries();
             assertEquals(3, entries.size());
             for (ToolCatalog.Entry e : entries) {
@@ -140,7 +150,7 @@ class OpenApiDraftTest {
         // Even after an operator grants write and destructive access, the deny-all rule still holds.
         Map<String, Object> granted = new java.util.LinkedHashMap<>(ConfigLoader.parseYaml(d.yaml(), "draft"));
         granted.put("access", Map.of("writeGroups", List.of("admins"), "destructiveGroups", List.of("admins")));
-        try (Gateway g = GatewayFactory.build(granted, BuildContext.defaults(dir))) {
+        try (Gateway g = buildDraft(granted)) {
             CallOutcome o = g.engine().call(CallerIdentity.of("u", Set.of("admins"), "idp", "jwt"),
                     new ToolCall("1", "orders_get_order", Map.of("orderId", "a1"), Map.of(), ""));
             assertEquals(DenyCodes.POLICY_DENIED, o.decision().code(), o.decision().reason());
@@ -236,7 +246,7 @@ class OpenApiDraftTest {
         assertEquals(List.of("id"), idSchema.get("required"), "undeclared path parameter added as required");
         Path out = dir.resolve("q.yaml");
         Files.writeString(out, d.yaml(), StandardCharsets.UTF_8);
-        try (Gateway g = GatewayFactory.build(out, BuildContext.defaults(dir))) {
+        try (Gateway g = buildDraft(cfg)) {
             assertEquals(3, g.engine().catalog().entries().size());
         }
     }

@@ -787,7 +787,14 @@ public final class GatewayFactory {
                 root.skip("sources"); // Marks the key as consumed on root
             }
             root.finish(); // unknown keys anywhere are fatal
-            if (raw2 != null && raw2 != raw1) {
+            if (raw2 != null) {
+                if (raw1 == raw2) {
+                    for (String k : raw2.keySet()) {
+                        if (!"sources".equals(k)) {
+                            root_adopters.skip(k);
+                        }
+                    }
+                }
                 root_adopters.finish();
             }
             // Rollback protection: a signed document older than one this gateway already accepted is

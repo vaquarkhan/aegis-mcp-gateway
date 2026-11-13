@@ -183,8 +183,8 @@ class GatewayFactoryTest {
             Files.writeString(cfg_g, gatewayYaml());
             Path cfg_a = dir.resolve("adopter.yaml");
             Files.writeString(cfg_a, adopterYaml(rest.url(), mcp.uri().toString()));
-            BuildContext ctx_g = BuildContext.defaults(cfg_g.getParent());
-            BuildContext ctx_a = BuildContext.defaults(cfg_a.getParent());
+            BuildContext ctx_g = BuildContext.defaults(cfg_g.getParent()).withEnv(ENV::get);
+            BuildContext ctx_a = BuildContext.defaults(cfg_a.getParent()).withEnv(ENV::get);
             try (Gateway g = GatewayFactory.build(cfg_g, cfg_a, ctx_g, ctx_a, false)) {
                 CallOutcome list = g.engine().call(ALICE, new ToolCall("1", "list_tables",
                         Map.of("namespace", "sales db", "pageSize", 10L), Map.of(), ""));
