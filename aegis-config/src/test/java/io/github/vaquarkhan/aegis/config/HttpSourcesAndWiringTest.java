@@ -307,7 +307,6 @@ class HttpSourcesAndWiringTest {
 
             assertThrows(Exception.class, () -> build(brokenGateway, brokenAdopter), swap[1]).getMessage();
         }
-        // 1. Split mcpStdio into gateway and adopter
         String mcpGateway = """
         {"policy": {"rules": [{"id": "all", "groups": ["users"]}]}, "audit": {"file": "b.jsonl"}}""";
         String mcpAdopter = """
@@ -324,8 +323,9 @@ class HttpSourcesAndWiringTest {
         assertTrue(assertThrows(ConfigException.class, () -> build(opaGateway, opaAdopter)).getMessage().contains("UNSET"));
 
 
+
         assertTrue(assertThrows(ConfigException.class, () -> build(baseGateway, baseAdopter.replace("\"sources\": [", "\"sources\": [], \"x\": [")))
-                .getMessage().contains("source"));
+                .getMessage().contains("unknown key(s) [x]"));
 
         assertThrows(Exception.class, () -> build(baseGateway, List.of(baseAdopter).get(0).replace("\"class\": \"READ\", \"request\": {\"path\": \"/items\"}",
                 "\"class\": \"SOMETIMES\", \"request\": {\"path\": \"/items\"}")));

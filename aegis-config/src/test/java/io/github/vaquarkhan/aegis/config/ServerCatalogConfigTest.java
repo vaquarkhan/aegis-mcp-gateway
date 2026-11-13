@@ -110,7 +110,7 @@ class ServerCatalogConfigTest {
         Path fileA = dir.resolve("adopter.json");
         Files.writeString(fileG, Json.write(gatewayConfig(catalog, serverCatalog)));
         Files.writeString(fileA, Json.write(adopterConfig(sources)));
-        return GatewayFactory.build(fileG, fileA, ctx, ctx, false);
+        return GatewayFactory.build(fileG, fileA, ctx, ctx, true);
     }
     @BeforeEach
     void discoverDigestsAndKeys() throws Exception {
