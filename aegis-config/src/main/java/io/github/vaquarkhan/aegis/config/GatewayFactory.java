@@ -126,7 +126,15 @@ public final class GatewayFactory {
     }
 
     public static Gateway build(Path baseConfig, BuildContext ctx) throws Exception {
-        return build(baseConfig, baseConfig, ctx, ctx, false);
+        Objects.requireNonNull(baseConfig, "baseConfig must not be null");
+        Objects.requireNonNull(ctx, "ctx must not be null");
+        Path base = baseConfig.toAbsolutePath().getParent();
+        BuildContext c = new BuildContext(
+                ctx.env(), base, ctx.clock(), ctx.resolver(), ctx.extraHooks(),
+                ctx.extraAuditSink(), ctx.credentialOverride(), ctx.stateStore()
+        );
+        Map<String, Object> raw = ConfigLoader.load(baseConfig);
+        return build(raw, c, raw, c, false);
     }
     public static Gateway build(Map<String, Object> raw1, BuildContext callerContext1) throws Exception {
         return build(raw1, callerContext1, raw1, callerContext1, false);
@@ -368,7 +376,7 @@ public final class GatewayFactory {
             }
             sources.add(sb);
         }
-        if (sources.isEmpty() && checkSourceInputs) {
+        if (sources.isEmpty() && (checkSourceInputs || serverCatalog != null)) {
             throw new ConfigException(serverCatalog == null ? "config.sources must list at least one tool source"
                     : "config.sources has no source that the signed server catalog lets start");
         }

@@ -482,4 +482,38 @@ class GatewayFactoryTest {
         assertEquals(List.of("path"), HttpToolExecutor.pathPlaceholders("/webhdfs/v1/{path/}"));
         assertEquals(List.of("a", "b"), HttpToolExecutor.pathPlaceholders("/x/{a}/y/{b/}"));
     }
+    @Test
+    void dualAndSingleFileOverloadsValidateInputsAndLoadCleanly() throws Exception {
+        Map<String, Object> gw = Json.parseObject("""
+                {"policy":{"rules":[{"id":"r","groups":["analysts"],"classes":["READ"]}]},
+                 "audit":{"file":"dual-overloads.jsonl"}}""");
+        Map<String, Object> adopter = Json.parseObject("""
+                {"sources":[{"id":"s","type":"http","baseUrl":"http://127.0.0.1:1",
+                  "tools":[{"name":"ping","description":"d","class":"READ"}]}]}""");
+
+        // 1. 4-arg Map overload
+        try (Gateway g = GatewayFactory.build(gw, ctx(), adopter, ctx())) {
+            assertEquals(1, g.engine().listTools(ALICE).size());
+        }
+
+        // 2. Null adopter file fails fast
+        Path gwFile = Files.writeString(dir.resolve("gw-only.json"), Json.write(gw));
+        assertTrue(assertThrows(ConfigException.class,
+                () -> GatewayFactory.build(gwFile, null, ctx(), ctx(), true))
+                .getMessage().contains("adopter config file"));
+
+        // 3. Empty sources with checkSourceInputs = true fails fast
+        Path emptyAdopterFile = Files.writeString(dir.resolve("empty-adopter.json"), "{\"sources\":[]}");
+        assertTrue(assertThrows(ConfigException.class,
+                () -> GatewayFactory.build(gwFile, emptyAdopterFile, ctx(), ctx(), true))
+                .getMessage().contains("at least one tool source"));
+
+        // 4. Single-file Path overload (backward compatibility)
+        Map<String, Object> combined = new java.util.LinkedHashMap<>(gw);
+        combined.putAll(adopter);
+        Path combinedFile = Files.writeString(dir.resolve("combined.json"), Json.write(combined));
+        try (Gateway g = GatewayFactory.build(combinedFile, ctx())) {
+            assertEquals(1, g.engine().listTools(ALICE).size());
+        }
+    }
 }

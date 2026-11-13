@@ -177,14 +177,20 @@ class ServerCatalogFlowTest {
     @Test
     void requireServerCatalogOnTheCommandLineRefusesAConfigurationWithoutIt() throws Exception {
         Path cfg = config("", "Ping.");
+        Map<String, Object> gwMap = new LinkedHashMap<>(Json.parseObject(Files.readString(cfg)));
+        Object sources = gwMap.remove("sources");
+        Path gwFile = Files.writeString(dir.resolve("gateway.json"), Json.write(gwMap));
+        Path adFile = Files.writeString(dir.resolve("adopter.json"), Json.write(Map.of("sources", sources)));
+
         Path priv = dir.resolve("pin.key");
         Path pub = dir.resolve("pin.pub");
         assertEquals(Main.OK, cli("--manifest-keygen", priv.toString(), pub.toString()).code());
         ConfigException e = assertThrows(ConfigException.class,
-                () -> cli("--config", cfg.toString(), "--require-server-catalog", pub.toString()));
+                () -> cli("--gateway-config", gwFile.toString(), "--adopter-config", adFile.toString(),
+                        "--require-server-catalog", pub.toString()));
         assertTrue(e.getMessage().contains("config.serverCatalog is required"), e.getMessage());
-        assertEquals(Main.USAGE, cli("--config", cfg.toString(), "--require-server-catalog").code(),
-                "the flag needs the key file");
+        assertEquals(Main.USAGE, cli("--gateway-config", gwFile.toString(), "--adopter-config", adFile.toString(),
+                "--require-server-catalog").code(), "the flag needs the key file");
     }
 
     @Test

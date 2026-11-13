@@ -51,6 +51,17 @@ class MainAndSettingsTest {
 
     record Run(int code, String out, String err) {}
 
+    Run runConfig(String stdin, Path cfg, String... extraArgs) throws Exception {
+        Map<String, Object> gwMap = new LinkedHashMap<>(Json.parseObject(Files.readString(cfg)));
+        Object sources = gwMap.remove("sources");
+        Path gw = Files.writeString(dir.resolve("gateway.json"), Json.write(gwMap));
+        Path ad = Files.writeString(dir.resolve("adopter.json"), Json.write(Map.of("sources", sources)));
+        List<String> args = new java.util.ArrayList<>(List.of(
+                "--gateway-config", gw.toString(),
+                "--adopter-config", ad.toString()));
+        args.addAll(List.of(extraArgs));
+        return run(stdin, args.toArray(new String[0]));
+    }
     Run run(String stdin, String... args) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -85,7 +96,8 @@ class MainAndSettingsTest {
     void commandLineModes() throws Exception {
         assertEquals(Main.USAGE, run("").code(), "no arguments");
         assertEquals(Main.USAGE, run("", "--bogus").code());
-        assertEquals(Main.USAGE, run("", "--config").code());
+        assertEquals(Main.USAGE, run("", "--gateway-config").code());
+        assertEquals(Main.USAGE, run("", "--adopter-config").code());
         assertEquals(Main.USAGE, run("", "--verify-audit").code());
         assertEquals(Main.USAGE, run("  ", "--hash-token").code());
         Run h = run("secret-token\n", "--hash-token");
@@ -94,12 +106,12 @@ class MainAndSettingsTest {
 
         // Start and stop the real server once (serve=false returns after start-up), which writes the journal.
         Path cfg = config(STATIC);
-        assertEquals(Main.OK, run("", "--config", cfg.toString()).code());
+        assertEquals(Main.OK, runConfig("",cfg).code());
 
         // stdio mode: one JSON-RPC line in, one line out, under the configured stdio identity.
         String line = Json.write(Map.of("jsonrpc", "2.0", "id", 1L, "method", "tools/call", "params", Map.of("name", "ping",
                 "_meta", Map.of("io.modelcontextprotocol/protocolVersion", "2026-07-28")))) + "\n";
-        Run s = run(line, "--config", cfg.toString(), "--stdio");
+        Run s = runConfig(line,  cfg, "--stdio");
         assertEquals(Main.OK, s.code(), s.err());
         assertTrue(s.out().contains("\"jsonrpc\":\"2.0\"") && s.out().contains("\"id\":1"), s.out());
 
@@ -114,7 +126,7 @@ class MainAndSettingsTest {
 
         Path noStdio = config("""
                 {"identity": {"type": "static", "static": {"tokens": [{"tokenEnv": "DEV_TOKEN", "actor": "dev", "groups": ["dev"]}]}}}""");
-        assertEquals(Main.USAGE, run("", "--config", noStdio.toString(), "--stdio").code());
+        assertEquals(Main.USAGE, runConfig("",  noStdio, "--stdio").code());
     }
 
     @Test
@@ -125,7 +137,7 @@ class MainAndSettingsTest {
                         + " \"everyRecords\": 1, \"everySeconds\": 0}}"));
         String line = Json.write(Map.of("jsonrpc", "2.0", "id", 1L, "method", "tools/call", "params", Map.of("name", "ping",
                 "_meta", Map.of("io.modelcontextprotocol/protocolVersion", "2026-07-28")))) + "\n";
-        Run s = run(line, "--config", cfg.toString(), "--stdio");
+        Run s = runConfig(line,  cfg, "--stdio");
         assertEquals(Main.OK, s.code(), s.err());
 
         Path journal = dir.resolve("audit.jsonl");
@@ -144,13 +156,13 @@ class MainAndSettingsTest {
         assertEquals(Main.BROKEN, bad.code(), bad.out());
         assertTrue(bad.out().contains("truncated or replaced"), bad.out());
         Exception refused = org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
-                () -> run("", "--config", cfg.toString()));
+                () -> runConfig("",  cfg));
         assertTrue(String.valueOf(refused.getCause()).contains("truncated or replaced")
                 || String.valueOf(refused.getMessage()).contains("audit journal"), String.valueOf(refused));
 
         assertEquals(Main.USAGE, run("", "--checkpoints", cps.toString()).code(), "--checkpoints needs --verify-audit");
         assertEquals(Main.USAGE, run("", "--verify-audit", journal.toString(), "--checkpoints").code());
-        assertEquals(Main.USAGE, run("", "--verify-audit", journal.toString(), "--config", cfg.toString()).code());
+        assertEquals(Main.USAGE, runConfig("", cfg, "--verify-audit", journal.toString()).code());
     }
 
     @Test
@@ -161,7 +173,7 @@ class MainAndSettingsTest {
             Path cfg = config(STATIC);
             Files.writeString(cfg, Files.readString(cfg).replace("\"audit\": {\"file\": \"audit.jsonl\"}",
                     "\"audit\": {\"file\": \"audit.jsonl\", \"checkpoint\": " + cp + "}"));
-            Exception e = org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () -> run("", "--config", cfg.toString()));
+            Exception e = org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () -> runConfig("",  cfg));
             assertTrue(String.valueOf(e.getMessage()).contains("audit.checkpoint"), cp + " -> " + e.getMessage());
         }
     }

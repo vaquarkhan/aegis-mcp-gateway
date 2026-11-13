@@ -147,11 +147,6 @@ public final class Main {
                 }
             }
         }
-        if (gateway_config == null || adopter_config == null) {
-            err.println("usage: Aegis Gateway requires both --gateway-config <file> and --adopter-config <file>");
-            err.println("   or: --verify-audit <file> [--checkpoints <file>] | --hash-token | ...");
-            return USAGE;
-        }
         if (checkpoints != null && verifyAudit == null) {
             err.println("--checkpoints is used with --verify-audit <file>");
             return USAGE;
@@ -171,15 +166,13 @@ public final class Main {
                     + (r.ok() ? "" : " error=" + r.error()));
             return r.ok() ? OK : BROKEN;
         }
-        if (adopter_config == null && gateway_config == null) {
-            err.println("usage: --config <aegis.yaml|aegis.json> [--stdio] [--require-server-catalog <review.pub>]"
-                    + " | --verify-audit <file> [--checkpoints <file>]"
-                    + " | --hash-token | --manifest-keygen|--manifest-create|--manifest-sign|--manifest-verify ..."
-                    + " | --server-catalog-create|--server-catalog-verify|--break-glass-create|--break-glass-verify ..."
-                    + " | --openapi-draft <openapi.yaml> <draft.yaml> [--source-id <id>] [--base-url <url>]"
-                    + " | --policy-test <aegis.yaml> <cases.json>");
+        if (gateway_config == null || adopter_config == null) {
+            err.println("usage: Aegis Gateway requires both --gateway-config <file> and --adopter-config <file>");
+            err.println("   or: --verify-audit <file> [--checkpoints <file>] | --hash-token | ...");
             return USAGE;
         }
+
+
         AegisServer.applyServerTimeLimits(); // before any JDK HTTP server class initialises
 
         Path cfg_g = Path.of(gateway_config).toAbsolutePath();

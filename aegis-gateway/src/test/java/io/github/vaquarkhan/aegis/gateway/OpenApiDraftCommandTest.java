@@ -70,9 +70,16 @@ class OpenApiDraftCommandTest {
         assertEquals(text, Files.readString(draft, StandardCharsets.UTF_8));
 
         // The written draft plus a front door (the draft leaves host to the operator) starts the gateway.
-        Files.writeString(draft, text + "\nhost:\n  identity: {type: jwt, jwt: {issuer: t, audience: t, algorithms: [HS256], hmacSecretEnv: DRAFT_TEST_HMAC}}\n"
-                + "  stdio: {actor: reviewer, groups: [reviewers]}\n", StandardCharsets.UTF_8);
-        Run start = cli("--config", draft.toString(), "--stdio");
+        String fullDraft = text + "\nhost:\n  identity: {type: jwt, jwt: {issuer: t, audience: t, algorithms: [HS256], hmacSecretEnv: DRAFT_TEST_HMAC}}\n"
+                + "  stdio: {actor: reviewer, groups: [reviewers]}\n";
+        Map<String, Object> gwMap = new java.util.LinkedHashMap<>(
+                io.github.vaquarkhan.aegis.config.ConfigLoader.parseYaml(fullDraft, "draft"));
+        Object sources = gwMap.remove("sources");
+        Path gwFile = Files.writeString(dir.resolve("gateway.json"),
+                io.github.vaquarkhan.aegis.engine.json.Json.write(gwMap), StandardCharsets.UTF_8);
+        Path adFile = Files.writeString(dir.resolve("adopter.json"),
+                io.github.vaquarkhan.aegis.engine.json.Json.write(Map.of("sources", sources)), StandardCharsets.UTF_8);
+        Run start = cli("--gateway-config", gwFile.toString(), "--adopter-config", adFile.toString(), "--stdio");
         assertEquals(Main.OK, start.code(), start.err());
     }
 
