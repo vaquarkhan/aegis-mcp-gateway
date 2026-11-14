@@ -24,6 +24,7 @@ outputs in each one are copied from a recorded run; the files they use are in
 
 | Tutorial | Engines | Front doors | IDE setup and prompts | Start here if you... |
 | --- | --- | --- | --- | --- |
+| [Platform MCP series (Parts 1–3)](tutorials/platform-mcp/README.md) | Kafka 3.9.1, Flink 1.20.1, Iceberg 1.10.1, Spark 4.0.1 behind one gateway | own host; Part 3 on AWS (Cognito) | Cursor, Kiro, VS Code, Claude Desktop, Gemini CLI | want one story across four engines, approvals, audit, and a cloud replay |
 | [Spark and Iceberg from your IDE](TUTORIAL-SPARK-ICEBERG.md) | Spark 4.0.1 (Spark Connect) with Iceberg 1.10.1 tables on a REST catalog | own host and Knox 3.0.0 | VS Code, Kiro, Cursor, Claude Desktop, MCP Python SDK | want the complete developer path: tiny dataset, IDE agent, governed change, both flavors |
 | [Spark and Spark Connect](TUTORIAL-SPARK-AND-SPARK-CONNECT.md) | Spark 4.0.1: monitoring REST API and Spark Connect | own host | scripted client | run Spark jobs and SQL through an agent |
 | [Iceberg REST catalog](TUTORIAL-ICEBERG.md) | Iceberg 1.10.1 `RESTCatalogServer` | own host | scripted client | govern catalog operations: namespaces, properties, drops |

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+  Licensed under the Apache License, Version 2.0 (the "License").
+  http://www.apache.org/licenses/LICENSE-2.0
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 560" font-family="Segoe UI, Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="b" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#0b4055"/></marker>
+    <marker id="bg" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#16806e"/></marker>
+  </defs>
+  <rect x="0" y="0" width="1100" height="560" fill="#ffffff"/>
+  <text x="40" y="42" font-size="22" font-weight="800" fill="#09243a">What you will build</text>
+  <text x="40" y="66" font-size="13.5" fill="#50707c">One Aegis gateway in front of four real Apache engines wired as one streaming lakehouse.</text>
+
+  <!-- TOP: the data pipeline -->
+  <rect x="40" y="92" width="190" height="62" rx="11" fill="#eef3ff" stroke="#4f6bd6" stroke-width="1.5"/>
+  <text x="58" y="120" font-size="14.5" font-weight="700" fill="#2a3f8f">Kafka</text>
+  <text x="58" y="140" font-size="11.5" fill="#50707c">orders topic</text>
+
+  <rect x="300" y="92" width="200" height="62" rx="11" fill="#eef3ff" stroke="#4f6bd6" stroke-width="1.5"/>
+  <text x="318" y="120" font-size="14.5" font-weight="700" fill="#2a3f8f">Flink</text>
+  <text x="318" y="140" font-size="11.5" fill="#50707c">streaming ingest</text>
+
+  <rect x="570" y="92" width="200" height="62" rx="11" fill="#f6ead6" stroke="#bb7600" stroke-width="1.5"/>
+  <text x="588" y="120" font-size="14.5" font-weight="700" fill="#8a5600">Iceberg BRONZE</text>
+  <text x="588" y="140" font-size="11.5" fill="#50707c">raw landing</text>
+
+  <line x1="230" y1="123" x2="296" y2="123" stroke="#0b4055" stroke-width="2.5" marker-end="url(#b)"/>
+  <line x1="500" y1="123" x2="566" y2="123" stroke="#0b4055" stroke-width="2.5" marker-end="url(#b)"/>
+
+  <rect x="820" y="80" width="240" height="88" rx="11" fill="#0b1220"/>
+  <text x="838" y="106" font-size="13.5" font-weight="700" fill="#9ae6b4">Spark refines</text>
+  <text x="838" y="128" font-size="12" fill="#bfe8df">BRONZE to SILVER to GOLD</text>
+  <text x="838" y="150" font-size="11" fill="#e6a7a7">restricted: finance_pnl, pii_customer</text>
+  <line x1="770" y1="123" x2="816" y2="123" stroke="#16806e" stroke-width="2.5" marker-end="url(#bg)"/>
+
+  <!-- MIDDLE: client -->
+  <rect x="380" y="214" width="340" height="56" rx="11" fill="#f3f8f7" stroke="#d5e0e2"/>
+  <text x="400" y="240" font-size="14.5" font-weight="700" fill="#09243a">IDE / agent / curl</text>
+  <text x="400" y="259" font-size="11.5" fill="#50707c">one MCP URL + a bearer token</text>
+  <line x1="550" y1="270" x2="550" y2="300" stroke="#0b4055" stroke-width="2.5" marker-end="url(#b)"/>
+
+  <!-- GATEWAY -->
+  <rect x="330" y="300" width="440" height="66" rx="12" fill="#09243a"/>
+  <text x="352" y="330" font-size="16" font-weight="800" fill="#ffffff">Aegis gateway</text>
+  <text x="352" y="352" font-size="12.5" fill="#8fe6df">http://127.0.0.1:18080/mcp   (fail-closed, decides every call)</text>
+
+  <!-- fan-out to four engines -->
+  <line x1="420" y1="366" x2="170" y2="452" stroke="#16806e" stroke-width="2.2" marker-end="url(#bg)"/>
+  <line x1="490" y1="366" x2="420" y2="452" stroke="#16806e" stroke-width="2.2" marker-end="url(#bg)"/>
+  <line x1="610" y1="366" x2="670" y2="452" stroke="#16806e" stroke-width="2.2" marker-end="url(#bg)"/>
+  <line x1="680" y1="366" x2="920" y2="452" stroke="#16806e" stroke-width="2.2" marker-end="url(#bg)"/>
+
+  <rect x="80"  y="456" width="190" height="60" rx="10" fill="#ffffff" stroke="#4f6bd6" stroke-width="1.5"/>
+  <text x="100" y="483" font-size="14" font-weight="700" fill="#2a3f8f">Kafka 3.9.1</text>
+  <text x="100" y="502" font-size="11" fill="#50707c">broker + Connect</text>
+
+  <rect x="330" y="456" width="190" height="60" rx="10" fill="#ffffff" stroke="#4f6bd6" stroke-width="1.5"/>
+  <text x="350" y="483" font-size="14" font-weight="700" fill="#2a3f8f">Flink 1.20.1</text>
+  <text x="350" y="502" font-size="11" fill="#50707c">JobManager REST</text>
+
+  <rect x="580" y="456" width="190" height="60" rx="10" fill="#ffffff" stroke="#4f6bd6" stroke-width="1.5"/>
+  <text x="600" y="483" font-size="14" font-weight="700" fill="#2a3f8f">Iceberg 1.10.1</text>
+  <text x="600" y="502" font-size="11" fill="#50707c">REST catalog</text>
+
+  <rect x="830" y="456" width="190" height="60" rx="10" fill="#ffffff" stroke="#4f6bd6" stroke-width="1.5"/>
+  <text x="850" y="483" font-size="14" font-weight="700" fill="#2a3f8f">Spark 4.0.1</text>
+  <text x="850" y="502" font-size="11" fill="#50707c">UI + Master REST</text>
+</svg>
