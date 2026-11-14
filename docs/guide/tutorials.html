@@ -27,6 +27,7 @@
     <a class="brand" href="../index.html">Aegis <span>Gateway 2.0</span></a>
     <nav>
       <a href="#start">Start here</a>
+      <a href="#platform-series">Platform MCP series</a>
       <a href="#deep">Deep-dive walkthroughs</a>
       <a href="#projects">One per verified project</a>
       <a href="#pending">Projects without a tutorial</a>
@@ -45,17 +46,31 @@
       <h1>Run real Apache software, with an agent governed by Aegis.</h1>
       <p class="lead">Every tutorial puts Aegis between an IDE agent and one piece of real Apache software on a single machine. Start with the Hello World guide for the shape of the setup, then pick a deep-dive walkthrough or the project you already operate. New reviewers should read the security guide first.</p>
       <div class="actions">
-        <a class="button primary" href="hello-world.html">Start Hello World</a>
+        <a class="button primary" href="../tutorials/platform-mcp/README.html">Platform MCP series</a>
+        <a class="button" href="hello-world.html">Start Hello World</a>
         <a class="button" href="../TUTORIALS.html">Rendered tutorial index</a>
         <a class="button" href="security.html">Security guide</a>
       </div>
     </header>
+
+    <section id="platform-series">
+      <p class="eyebrow">FEATURED SERIES</p>
+      <h2>Govern an AI agent across a streaming lakehouse.</h2>
+      <p>One Aegis MCP gateway in front of real Kafka, Flink, Iceberg, and Spark. Part 1 stands the platform up and proves least privilege from your IDE. Part 2 walks the governance file, dry-run, and independent approval. Part 3 runs the same gateway on AWS with Cognito and Terraform. Runnable companion: <a href="https://github.com/vaquarkhan/aegis-platform-mcp-tutorial">aegis-platform-mcp-tutorial</a>.</p>
+      <div class="cards">
+        <article><h3><a href="../tutorials/platform-mcp/README.html">Series index</a></h3><p>Dataset, use case, build notes, and links to all three parts. Start here if you want the full platform story in one place.</p></article>
+        <article><h3><a href="../tutorials/platform-mcp/part1/DZONE-ARTICLE-PART1.html">Part 1 — Stand it up</a></h3><p>The incident, MCP risk, local build, tokens, Cursor / Kiro / VS Code / Claude / Gemini, and the first allow and deny calls.</p></article>
+        <article><h3><a href="../tutorials/platform-mcp/part2/DZONE-ARTICLE-PART2.html">Part 2 — Governance proof</a></h3><p>How each engine starts, <code>aegis.yaml</code> rule by rule, hard deny on finance, dry-run receipt, independent approval, audit verify.</p></article>
+        <article><h3><a href="../tutorials/platform-mcp/part3/DZONE-ARTICLE-PART3.html">Part 3 — Same gateway on AWS</a></h3><p>SSM-only EC2, Cognito JWT identity, S3 evidence, modular Terraform, and teardown.</p></article>
+      </div>
+    </section>
 
     <section id="deep">
       <p class="eyebrow">DEEP DIVES</p>
       <h2>Complete walkthroughs, step by step.</h2>
       <p>These carry the full developer path: a tiny dataset or workload, an IDE agent, a governed change, and the same run through both front doors where noted.</p>
       <div class="cards">
+        <article><h3><a href="../tutorials/platform-mcp/README.html">Platform MCP (Kafka + Flink + Iceberg + Spark)</a></h3><p>Three-part series: one gateway, four real engines, IDE agents, approvals, and an AWS replay. Featured above.</p></article>
         <article><h3><a href="../TUTORIAL-SPARK-ICEBERG.html">Spark and Iceberg from your IDE</a></h3><p>Spark 4.0.1 over Spark Connect with Iceberg 1.10.1 tables on a REST catalog. Own host and Knox 3.0.0, with VS Code, Kiro, Cursor, Claude Desktop and the MCP Python SDK. The complete developer path.</p></article>
         <article><h3><a href="../TUTORIAL-SPARK-AND-SPARK-CONNECT.html">Spark and Spark Connect</a></h3><p>Spark 4.0.1 monitoring REST API and Spark Connect through a scripted client. Run Spark jobs and SQL through an agent.</p></article>
         <article><h3><a href="../TUTORIAL-ICEBERG.html">Iceberg REST catalog</a></h3><p>The Iceberg 1.10.1 RESTCatalogServer with resource scopes, approvals and destructive-operation receipts over namespaces, properties and drops.</p></article>

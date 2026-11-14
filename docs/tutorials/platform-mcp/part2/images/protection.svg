@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+  Licensed under the Apache License, Version 2.0 (the "License").
+  http://www.apache.org/licenses/LICENSE-2.0
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" font-family="Segoe UI, Arial, Helvetica, sans-serif">
+  <rect x="0" y="0" width="1200" height="640" fill="#ffffff"/>
+  <text x="40" y="44" font-size="24" font-weight="800" fill="#09243a">Without Aegis vs with Aegis: the same agent call, two outcomes</text>
+  <text x="40" y="70" font-size="14" fill="#50707c">Plain MCP servers reach engines with one shared credential and no per-call decision. Aegis decides every call.</text>
+
+  <!-- column headers -->
+  <rect x="40"  y="92" width="555" height="40" rx="8" fill="#f7dede" stroke="#b23b3b"/>
+  <text x="60" y="118" font-size="16" font-weight="800" fill="#b23b3b">Without Aegis (agent straight to the engine)</text>
+  <rect x="610" y="92" width="550" height="40" rx="8" fill="#ddf3ee" stroke="#16806e"/>
+  <text x="630" y="118" font-size="16" font-weight="800" fill="#0c5f52">Through Aegis (validated in the real run)</text>
+
+  <g font-size="13.5">
+    <!-- row 1 -->
+    <rect x="40"  y="144" width="555" height="68" rx="9" fill="#fdf2f2" stroke="#e3b3b3"/>
+    <text x="58" y="168" font-weight="700" fill="#8a2b2b">Analyst reads the finance P&amp;L</text>
+    <text x="58" y="190" fill="#50707c">GET /namespaces/restricted/tables returns it</text>
+    <text x="58" y="206" fill="#b23b3b">sensitive data leaks to any caller</text>
+    <rect x="610" y="144" width="550" height="68" rx="9" fill="#f1faf7" stroke="#9fd6c7"/>
+    <text x="628" y="168" font-weight="700" fill="#0c5f52">SCOPE_DENIED</text>
+    <text x="628" y="190" fill="#50707c">analyst scope is gold.* only; restricted is out of scope</text>
+
+    <!-- row 2 -->
+    <rect x="40"  y="222" width="555" height="68" rx="9" fill="#fdf2f2" stroke="#e3b3b3"/>
+    <text x="58" y="246" font-weight="700" fill="#8a2b2b">Drop restricted.finance_pnl</text>
+    <text x="58" y="268" fill="#50707c">DELETE ...?purgeRequested=true deletes + purges files</text>
+    <text x="58" y="284" fill="#b23b3b">irreversible data loss, one call</text>
+    <rect x="610" y="222" width="550" height="68" rx="9" fill="#f1faf7" stroke="#9fd6c7"/>
+    <text x="628" y="246" font-weight="700" fill="#0c5f52">POLICY_DENIED (never-drop-restricted)</text>
+    <text x="628" y="268" fill="#50707c">a DENY rule beats any allow or approval</text>
+
+    <!-- row 3 -->
+    <rect x="40"  y="300" width="555" height="68" rx="9" fill="#fdf2f2" stroke="#e3b3b3"/>
+    <text x="58" y="324" font-weight="700" fill="#8a2b2b">Cancel the streaming ingest job</text>
+    <text x="58" y="346" fill="#50707c">PATCH /jobs/{id}?mode=cancel stops it immediately</text>
+    <text x="58" y="362" fill="#b23b3b">no second opinion, no record</text>
+    <rect x="610" y="300" width="550" height="68" rx="9" fill="#f1faf7" stroke="#9fd6c7"/>
+    <text x="628" y="324" font-weight="700" fill="#0c5f52">APPROVAL_REQUIRED, then single-use approval</text>
+    <text x="628" y="346" fill="#50707c">dry-run receipt + independent approver; replay refused</text>
+
+    <!-- row 4 -->
+    <rect x="40"  y="378" width="555" height="68" rx="9" fill="#fdf2f2" stroke="#e3b3b3"/>
+    <text x="58" y="402" font-weight="700" fill="#8a2b2b">Call with no identity</text>
+    <text x="58" y="424" fill="#50707c">the engine has no idea who is asking</text>
+    <text x="58" y="440" fill="#b23b3b">anonymous access to everything</text>
+    <rect x="610" y="378" width="550" height="68" rx="9" fill="#f1faf7" stroke="#9fd6c7"/>
+    <text x="628" y="402" font-weight="700" fill="#0c5f52">POLICY_DENIED (default deny)</text>
+    <text x="628" y="424" fill="#50707c">no groups match any rule</text>
+
+    <!-- row 5 -->
+    <rect x="40"  y="456" width="555" height="68" rx="9" fill="#fdf2f2" stroke="#e3b3b3"/>
+    <text x="58" y="480" font-weight="700" fill="#8a2b2b">Poisoned URL to cloud metadata</text>
+    <text x="58" y="502" fill="#50707c">tool follows the URL; backend token flows through</text>
+    <text x="58" y="518" fill="#b23b3b">SSRF + credential theft</text>
+    <rect x="610" y="456" width="550" height="68" rx="9" fill="#f1faf7" stroke="#9fd6c7"/>
+    <text x="628" y="480" font-weight="700" fill="#0c5f52">EGRESS blocked; scoped gateway credential</text>
+    <text x="628" y="502" fill="#50707c">egress pinned to allowed CIDRs; no token passthrough</text>
+  </g>
+
+  <rect x="40" y="546" width="1120" height="60" rx="10" fill="#09243a"/>
+  <text x="60" y="572" font-size="13.5" font-weight="700" fill="#8fe6df">What Aegis protects, on every call</text>
+  <text x="60" y="594" font-size="12.5" fill="#eafffd">identity to actor  .  tool class (READ/MUTATE/DESTRUCTIVE)  .  resource scope  .  deny-overrides policy  .  independent single-use approval  .  pinned egress  .  hash-chained audit</text>
+</svg>
