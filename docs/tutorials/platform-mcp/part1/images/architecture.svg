@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+  Licensed under the Apache License, Version 2.0 (the "License").
+  http://www.apache.org/licenses/LICENSE-2.0
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 840" font-family="Segoe UI, Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#0b4055"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#16806e"/>
+    </marker>
+    <marker id="arrowR" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#b23b3b"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1320" height="840" fill="#ffffff"/>
+  <text x="40" y="44" font-size="26" font-weight="800" fill="#09243a">Aegis MCP gateway: one governed route to a streaming lakehouse</text>
+  <text x="40" y="70" font-size="15" fill="#50707c">Kafka + Flink + Iceberg (medallion) + Spark, behind one gateway. Every tools/call is decided before it reaches an engine.</text>
+
+  <!-- ============ LEFT: agent + personas ============ -->
+  <rect x="40" y="110" width="250" height="360" rx="14" fill="#f3f8f7" stroke="#d5e0e2"/>
+  <text x="60" y="138" font-size="16" font-weight="800" fill="#09243a">AI agent / IDE</text>
+  <text x="60" y="160" font-size="12.5" fill="#50707c">Cursor, Kiro, Claude, mcp.ps1</text>
+  <text x="60" y="178" font-size="12.5" fill="#50707c">one MCP URL + a bearer token</text>
+
+  <rect x="60" y="196" width="210" height="52" rx="9" fill="#ffffff" stroke="#16806e" stroke-width="1.5"/>
+  <text x="74" y="222" font-size="14" font-weight="700" fill="#0c5f52">ana  (reader)</text>
+  <text x="74" y="240" font-size="11.5" fill="#50707c">platform-readers: gold marts only</text>
+
+  <rect x="60" y="256" width="210" height="52" rx="9" fill="#ffffff" stroke="#0b4055" stroke-width="1.5"/>
+  <text x="74" y="282" font-size="14" font-weight="700" fill="#0b4055">eve  (operator)</text>
+  <text x="74" y="300" font-size="11.5" fill="#50707c">platform-operators: all engines</text>
+
+  <rect x="60" y="316" width="210" height="52" rx="9" fill="#ffffff" stroke="#bb7600" stroke-width="1.5"/>
+  <text x="74" y="342" font-size="14" font-weight="700" fill="#8a5600">bob  (approver)</text>
+  <text x="74" y="360" font-size="11.5" fill="#50707c">platform-approvers: signs off</text>
+
+  <rect x="60" y="376" width="210" height="52" rx="9" fill="#ffffff" stroke="#b23b3b" stroke-width="1.5"/>
+  <text x="74" y="402" font-size="14" font-weight="700" fill="#b23b3b">outsider</text>
+  <text x="74" y="420" font-size="11.5" fill="#50707c">no groups: refused everywhere</text>
+
+  <text x="60" y="452" font-size="11.5" fill="#50707c">tokens in run/keys/tokens.json</text>
+
+  <!-- arrow agent -> gateway -->
+  <line x1="290" y1="290" x2="360" y2="290" stroke="#0b4055" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="298" y="282" font-size="11" fill="#50707c">tools/call</text>
+
+  <!-- ============ CENTER: gateway pipeline ============ -->
+  <rect x="360" y="110" width="330" height="520" rx="16" fill="#09243a"/>
+  <text x="380" y="140" font-size="18" font-weight="800" fill="#ffffff">Aegis MCP gateway</text>
+  <text x="380" y="160" font-size="12" fill="#8fe6df">http://127.0.0.1:18080/mcp  (fail-closed)</text>
+
+  <g font-size="13" fill="#eafffd">
+    <rect x="380" y="176" width="290" height="40" rx="8" fill="#0b4055"/>
+    <text x="396" y="201" font-weight="700">1  Authenticate</text><text x="560" y="201" fill="#bfe3df" font-size="11.5">token to actor</text>
+    <rect x="380" y="222" width="290" height="40" rx="8" fill="#0b4055"/>
+    <text x="396" y="247" font-weight="700">2  Classify</text><text x="520" y="247" fill="#bfe3df" font-size="11.5">READ / MUTATE / DESTRUCTIVE</text>
+    <rect x="380" y="268" width="290" height="40" rx="8" fill="#0b4055"/>
+    <text x="396" y="293" font-weight="700">3  Policy + scope</text><text x="560" y="293" fill="#bfe3df" font-size="11.5">deny wins</text>
+    <rect x="380" y="314" width="290" height="40" rx="8" fill="#0b4055"/>
+    <text x="396" y="339" font-weight="700">4  Egress</text><text x="520" y="339" fill="#bfe3df" font-size="11.5">loopback CIDRs only</text>
+    <rect x="380" y="360" width="290" height="40" rx="8" fill="#0b4055"/>
+    <text x="396" y="385" font-weight="700">5  Approval + dry-run</text><text x="585" y="385" fill="#bfe3df" font-size="11.5">destructive</text>
+    <rect x="380" y="406" width="290" height="40" rx="8" fill="#0b4055"/>
+    <text x="396" y="431" font-weight="700">6  Forward to engine</text><text x="590" y="431" fill="#bfe3df" font-size="11.5">if allowed</text>
+  </g>
+
+  <rect x="380" y="458" width="290" height="60" rx="8" fill="#16806e"/>
+  <text x="396" y="483" font-size="13" font-weight="700" fill="#ffffff">Hash-chained audit journal</text>
+  <text x="396" y="503" font-size="11.5" fill="#d7f5ee">run/audit/aegis-platform.jsonl  (tamper-evident)</text>
+
+  <rect x="380" y="528" width="290" height="86" rx="8" fill="#0b1220"/>
+  <text x="396" y="551" font-size="12.5" font-weight="700" fill="#67e8f9">Decisions seen in the real run</text>
+  <text x="396" y="571" font-size="11" fill="#9fe0d8">ALLOWED - operator reads all engines</text>
+  <text x="396" y="588" font-size="11" fill="#e6a7a7">SCOPE_DENIED - analyst reads bronze</text>
+  <text x="396" y="605" font-size="11" fill="#e6a7a7">POLICY_DENIED - drop restricted / outsider</text>
+
+  <!-- gateway -> engines arrow -->
+  <line x1="690" y1="300" x2="760" y2="300" stroke="#16806e" stroke-width="2.5" marker-end="url(#arrowG)"/>
+
+  <!-- ============ RIGHT: engines + medallion ============ -->
+  <rect x="760" y="110" width="520" height="300" rx="16" fill="#f3f8f7" stroke="#d5e0e2"/>
+  <text x="782" y="138" font-size="16" font-weight="800" fill="#09243a">Four real Apache engines (loopback)</text>
+
+  <rect x="782" y="156" width="230" height="52" rx="9" fill="#ffffff" stroke="#0b4055"/>
+  <text x="796" y="180" font-size="13.5" font-weight="700" fill="#0b4055">Kafka 3.9.1</text>
+  <text x="796" y="198" font-size="11" fill="#50707c">broker :19092 - Connect :18083</text>
+
+  <rect x="1028" y="156" width="230" height="52" rx="9" fill="#ffffff" stroke="#0b4055"/>
+  <text x="1042" y="180" font-size="13.5" font-weight="700" fill="#0b4055">Flink 1.20.1</text>
+  <text x="1042" y="198" font-size="11" fill="#50707c">JobManager REST :18081</text>
+
+  <rect x="782" y="216" width="230" height="52" rx="9" fill="#ffffff" stroke="#0b4055"/>
+  <text x="796" y="240" font-size="13.5" font-weight="700" fill="#0b4055">Spark 4.0.1</text>
+  <text x="796" y="258" font-size="11" fill="#50707c">app UI :14040 - Master :16066</text>
+
+  <rect x="1028" y="216" width="230" height="52" rx="9" fill="#ffffff" stroke="#0b4055"/>
+  <text x="1042" y="240" font-size="13.5" font-weight="700" fill="#0b4055">Iceberg 1.10.1</text>
+  <text x="1042" y="258" font-size="11" fill="#50707c">REST catalog :18181</text>
+
+  <text x="782" y="296" font-size="13" font-weight="800" fill="#09243a">Iceberg medallion lake</text>
+  <rect x="782" y="306" width="118" height="44" rx="8" fill="#f6ead6" stroke="#bb7600"/>
+  <text x="794" y="326" font-size="12.5" font-weight="700" fill="#8a5600">bronze</text>
+  <text x="794" y="342" font-size="10" fill="#50707c">raw landing</text>
+  <rect x="908" y="306" width="118" height="44" rx="8" fill="#e8eef0" stroke="#5b6b77"/>
+  <text x="920" y="326" font-size="12.5" font-weight="700" fill="#3a4a54">silver</text>
+  <text x="920" y="342" font-size="10" fill="#50707c">conformed</text>
+  <rect x="1034" y="306" width="104" height="44" rx="8" fill="#ddf3ee" stroke="#16806e"/>
+  <text x="1046" y="326" font-size="12.5" font-weight="700" fill="#0c5f52">gold</text>
+  <text x="1046" y="342" font-size="10" fill="#50707c">analyst-safe</text>
+  <rect x="1146" y="306" width="112" height="44" rx="8" fill="#f7dede" stroke="#b23b3b"/>
+  <text x="1158" y="326" font-size="12.5" font-weight="700" fill="#b23b3b">restricted</text>
+  <text x="1158" y="342" font-size="10" fill="#50707c">no drop</text>
+
+  <text x="782" y="372" font-size="11" fill="#16806e">analyst reads gold</text>
+  <text x="980" y="372" font-size="11" fill="#b23b3b">bronze / silver / restricted: SCOPE_DENIED for analyst</text>
+
+  <!-- ============ BOTTOM: data pipeline ============ -->
+  <rect x="760" y="430" width="520" height="200" rx="16" fill="#0b1220"/>
+  <text x="782" y="458" font-size="15" font-weight="800" fill="#ffffff">The data pipeline (what an agent operates)</text>
+
+  <rect x="782" y="476" width="150" height="48" rx="9" fill="#172554" stroke="#818cf8"/>
+  <text x="794" y="500" font-size="12.5" font-weight="700" fill="#c7d2fe">Kafka orders</text>
+  <text x="794" y="516" font-size="10.5" fill="#9fb3e0">raw event stream</text>
+
+  <rect x="968" y="476" width="150" height="48" rx="9" fill="#172554" stroke="#818cf8"/>
+  <text x="980" y="500" font-size="12.5" font-weight="700" fill="#c7d2fe">Flink job</text>
+  <text x="980" y="516" font-size="10.5" fill="#9fb3e0">streaming ingest</text>
+
+  <rect x="1154" y="476" width="104" height="48" rx="9" fill="#3a2e12" stroke="#bb7600"/>
+  <text x="1166" y="500" font-size="12.5" font-weight="700" fill="#f0c58a">bronze</text>
+  <text x="1166" y="516" font-size="10.5" fill="#d9b887">Iceberg</text>
+
+  <line x1="932" y1="500" x2="962" y2="500" stroke="#67e8f9" stroke-width="2.5" marker-end="url(#arrowG)"/>
+  <line x1="1118" y1="500" x2="1148" y2="500" stroke="#67e8f9" stroke-width="2.5" marker-end="url(#arrowG)"/>
+
+  <rect x="782" y="548" width="476" height="62" rx="9" fill="#13203a" stroke="#2b3d5f"/>
+  <text x="798" y="572" font-size="12.5" font-weight="700" fill="#9ae6b4">Spark refinement</text>
+  <text x="798" y="592" font-size="11.5" fill="#bfe8df">bronze  to  silver  to  gold   (the medallion build; kill driver is governed)</text>
+
+  <text x="40" y="700" font-size="13" font-weight="800" fill="#09243a">Without the gateway</text>
+  <text x="40" y="722" font-size="12" fill="#b23b3b">Direct to each engine, the same agent call drops restricted tables, cancels the job, or exfiltrates PII. No identity, no approval, no record.</text>
+  <text x="40" y="744" font-size="12" fill="#16806e">Through Aegis, every one of those calls meets a decision you can inspect, reproduce, and verify in the audit journal.</text>
+</svg>

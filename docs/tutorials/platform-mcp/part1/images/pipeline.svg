@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+  Licensed under the Apache License, Version 2.0 (the "License").
+  http://www.apache.org/licenses/LICENSE-2.0
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" font-family="Segoe UI, Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="12" markerHeight="12" refX="9" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#0b4055"/></marker>
+  </defs>
+  <rect x="0" y="0" width="1200" height="560" fill="#ffffff"/>
+  <text x="40" y="44" font-size="24" font-weight="800" fill="#09243a">The streaming medallion pipeline</text>
+  <text x="40" y="70" font-size="14" fill="#50707c">One agent can operate every stage over MCP. Each stage has a governed tool; destructive ones need approval.</text>
+
+  <!-- Stage boxes -->
+  <rect x="40"  y="110" width="200" height="90" rx="12" fill="#eef3ff" stroke="#4f6bd6" stroke-width="1.5"/>
+  <text x="60" y="140" font-size="16" font-weight="800" fill="#2a3f8f">Kafka 3.9.1</text>
+  <text x="60" y="162" font-size="12.5" fill="#50707c">topic: orders</text>
+  <text x="60" y="181" font-size="12.5" fill="#50707c">connector: orders-file-source</text>
+
+  <rect x="300" y="110" width="200" height="90" rx="12" fill="#eef3ff" stroke="#4f6bd6" stroke-width="1.5"/>
+  <text x="320" y="140" font-size="16" font-weight="800" fill="#2a3f8f">Flink 1.20.1</text>
+  <text x="320" y="162" font-size="12.5" fill="#50707c">streaming ingest job</text>
+  <text x="320" y="181" font-size="12.5" fill="#50707c">writes to bronze</text>
+
+  <rect x="560" y="110" width="200" height="90" rx="12" fill="#f6ead6" stroke="#bb7600" stroke-width="1.5"/>
+  <text x="580" y="140" font-size="16" font-weight="800" fill="#8a5600">Iceberg BRONZE</text>
+  <text x="580" y="162" font-size="12.5" fill="#50707c">orders_raw, clickstream_raw</text>
+  <text x="580" y="181" font-size="12.5" fill="#50707c">payments_raw  (raw landing)</text>
+
+  <rect x="820" y="110" width="200" height="90" rx="12" fill="#eef3ff" stroke="#4f6bd6" stroke-width="1.5"/>
+  <text x="840" y="140" font-size="16" font-weight="800" fill="#2a3f8f">Spark 4.0.1</text>
+  <text x="840" y="162" font-size="12.5" fill="#50707c">medallion refinement</text>
+  <text x="840" y="181" font-size="12.5" fill="#50707c">bronze to silver to gold</text>
+
+  <!-- arrows across stages -->
+  <line x1="240" y1="155" x2="296" y2="155" stroke="#0b4055" stroke-width="2.5" marker-end="url(#a)"/>
+  <line x1="500" y1="155" x2="556" y2="155" stroke="#0b4055" stroke-width="2.5" marker-end="url(#a)"/>
+  <line x1="760" y1="155" x2="816" y2="155" stroke="#0b4055" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <!-- refined layers row -->
+  <rect x="560" y="250" width="150" height="70" rx="10" fill="#e8eef0" stroke="#5b6b77"/>
+  <text x="578" y="280" font-size="14" font-weight="700" fill="#3a4a54">silver</text>
+  <text x="578" y="300" font-size="11.5" fill="#50707c">orders, customers</text>
+
+  <rect x="735" y="250" width="150" height="70" rx="10" fill="#ddf3ee" stroke="#16806e"/>
+  <text x="753" y="280" font-size="14" font-weight="700" fill="#0c5f52">gold</text>
+  <text x="753" y="300" font-size="11.5" fill="#50707c">daily_revenue, ltv</text>
+
+  <rect x="910" y="250" width="180" height="70" rx="10" fill="#f7dede" stroke="#b23b3b"/>
+  <text x="928" y="280" font-size="14" font-weight="700" fill="#b23b3b">restricted</text>
+  <text x="928" y="300" font-size="11.5" fill="#50707c">finance_pnl, pii_customer</text>
+
+  <line x1="900" y1="200" x2="650" y2="246" stroke="#5b6b77" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="900" y1="200" x2="800" y2="246" stroke="#16806e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="915" y="230" font-size="11.5" fill="#50707c">Spark builds silver and gold</text>
+
+  <!-- governed tools band -->
+  <rect x="40" y="360" width="1050" height="160" rx="14" fill="#09243a"/>
+  <text x="62" y="390" font-size="15" font-weight="800" fill="#ffffff">The governed MCP tool at each stage</text>
+
+  <g font-size="12.5">
+    <rect x="62" y="404" width="236" height="96" rx="9" fill="#0b4055"/>
+    <text x="78" y="428" fill="#8fe6df" font-weight="700">Kafka</text>
+    <text x="78" y="450" fill="#eafffd">kafka_list_topics  (READ)</text>
+    <text x="78" y="470" fill="#eafffd">connect_pause_connector (MUTATE)</text>
+    <text x="78" y="490" fill="#bfe3df">internal __* topics: DENY</text>
+
+    <rect x="310" y="404" width="236" height="96" rx="9" fill="#0b4055"/>
+    <text x="326" y="428" fill="#8fe6df" font-weight="700">Flink</text>
+    <text x="326" y="450" fill="#eafffd">flink_list_jobs  (READ)</text>
+    <text x="326" y="470" fill="#eafffd">flink_cancel_job (DESTRUCTIVE)</text>
+    <text x="326" y="490" fill="#f0c58a">needs dry-run + approval</text>
+
+    <rect x="558" y="404" width="236" height="96" rx="9" fill="#0b4055"/>
+    <text x="574" y="428" fill="#8fe6df" font-weight="700">Iceberg</text>
+    <text x="574" y="450" fill="#eafffd">iceberg_list_tables (READ)</text>
+    <text x="574" y="470" fill="#eafffd">iceberg_drop_table (DESTRUCTIVE)</text>
+    <text x="574" y="490" fill="#e6a7a7">restricted.*: DENY (no drop)</text>
+
+    <rect x="806" y="404" width="262" height="96" rx="9" fill="#0b4055"/>
+    <text x="822" y="428" fill="#8fe6df" font-weight="700">Spark</text>
+    <text x="822" y="450" fill="#eafffd">spark_list_applications (READ)</text>
+    <text x="822" y="470" fill="#eafffd">spark_kill_submission (DESTRUCTIVE)</text>
+    <text x="822" y="490" fill="#f0c58a">needs dry-run + approval</text>
+  </g>
+</svg>
