@@ -16,7 +16,7 @@
 
 # Tutorial: Apache SkyWalking with Aegis, from your IDE, with and without Knox
 
-Built by `tools/build-project-tutorials.py` using retained evidence from the real run of `SkyWalkingFrontDoorsTest` on 2026-11-09 (2 tests, 0 failures, 0 skipped: the own-host door and the Knox 3.0.0 door). The retained files in [`examples/adopters/skywalking/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/examples/adopters/skywalking) provide the scenario's tools, people, outcomes, test count, and date. The generator synthesizes the shared build, runner, endpoint, IDE, audit, and cleanup commands; choose ports, paths, and keys for your environment.
+Built by `tools/build-project-tutorials.py` using retained evidence from the real run of `SkyWalkingFrontDoorsTest` on 2026-11-16 (2 tests, 0 failures, 0 skipped: the own-host door and the Knox 3.0.0 door). The retained files in [`examples/adopters/skywalking/`](https://github.com/vaquarkhan/aegis-mcp-gateway/tree/{{ site.github.source.branch }}/examples/adopters/skywalking) provide the scenario's tools, people, outcomes, test count, and date. The generator synthesizes the shared build, runner, endpoint, IDE, audit, and cleanup commands; choose ports, paths, and keys for your environment.
 
 ## Contents
 
@@ -96,14 +96,16 @@ docker \
   --name \
   aegis-val-skywalking \
   -p \
-  127.0.0.1:38671:12800 \
+  127.0.0.1:35365:12800 \
   -e \
   SW_STORAGE=h2 \
+  -e \
+  TZ=UTC \
   apache/skywalking-oap-server:9.7.0
 ```
 
 
-The data the scenario works on (topics, tables, queues, jobs) is created by the test's `@BeforeAll` method against the engine's own API, outside Aegis; see the test source.
+When a scenario needs data (topics, tables, queues, jobs), the test's `@BeforeAll` method creates it against the engine's own API, outside Aegis; a scenario that reads an empty engine says so in its transcript note. See the test source.
 
 ## 5. Flavor A: without Knox
 
@@ -134,7 +136,7 @@ curl -s http://127.0.0.1:${AEGIS_PORT}/mcp \
   -H "Authorization: Bearer $AEGIS_VALIDATION_TOKEN_READER" \
   -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
   -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/call' -H 'Mcp-Name: skywalking_list_services' \
-  -d '{"method":"tools/call","id":1,"jsonrpc":"2.0","params":{"name":"skywalking_list_services","arguments":{"start":"2026-11-09 2246","end":"2026-11-09 2251"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"skywalking_list_services","arguments":{"start":"2026-11-15 1744","end":"2026-11-15 1749"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
 Approvals use the admin API on the same door: `POST <admin>/approvals/<id>/approve` as an approver, then `GET <admin>/approvals/<id>` as the requester returns the single-use token. A call carries Aegis controls in `params._meta`: `io.github.vaquarkhan.aegis/dryRun`, `.../approvalToken` and `.../dryRunReceipt`.
@@ -190,7 +192,7 @@ curl -sS --cacert "$KNOX_CA_CERT" https://localhost:${KNOX_PORT}/gateway/aegis-s
   --user "$KNOX_USER" \
   -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
   -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/call' -H 'Mcp-Name: skywalking_list_services' \
-  -d '{"method":"tools/call","id":1,"jsonrpc":"2.0","params":{"name":"skywalking_list_services","arguments":{"start":"2026-11-09 2246","end":"2026-11-09 2251"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"skywalking_list_services","arguments":{"start":"2026-11-15 1744","end":"2026-11-15 1749"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
 Approvals use the admin API on the same door: `POST <admin>/approvals/<id>/approve` as an approver, then `GET <admin>/approvals/<id>` as the requester returns the single-use token. A call carries Aegis controls in `params._meta`: `io.github.vaquarkhan.aegis/dryRun`, `.../approvalToken` and `.../dryRunReceipt`.
@@ -236,9 +238,9 @@ Ask the assistant in plain language; it picks the tool. What Aegis answered for 
 
 | Prompt | Tool | Class | What Aegis answered, by person |
 | --- | --- | --- | --- |
-| Use aegis-skywalking to list services with start `2026-11-09 2246`, end `2026-11-09 2251` | `skywalking_list_services` | `READ` | `guest`, read by READER: `ALLOWED`; `admin`, same read by an outsider: `DENIED:POLICY_DENIED:step3` |
-| Use aegis-skywalking to show service instances with end `2026-11-09 2251`, start `2026-11-09 2246`, service `aegis-validation` | `skywalking_service_instances` | `READ` | `guest`, read by READER: `ALLOWED`; `admin`, same read by an outsider: `DENIED:POLICY_DENIED:step3` |
-| Use aegis-skywalking to query traces with end `2026-11-09 2251`, start `2026-11-09 2246`, service `aegis-validation` | `skywalking_query_traces` | `READ` | `guest`, read by READER: `ALLOWED`; `admin`, same read by an outsider: `DENIED:POLICY_DENIED:step3` |
+| Use aegis-skywalking to list services with start `2026-11-15 1744`, end `2026-11-15 1749` | `skywalking_list_services` | `READ` | `guest`, read by READER: `ALLOWED`; `admin`, same read by an outsider: `DENIED:POLICY_DENIED:step3` |
+| Use aegis-skywalking to show service instances with service `aegis-validation`, start `2026-11-15 1744`, end `2026-11-15 1749` | `skywalking_service_instances` | `READ` | `guest`, read by READER: `ALLOWED`; `admin`, same read by an outsider: `DENIED:POLICY_DENIED:step3` |
+| Use aegis-skywalking to query traces with service `aegis-validation`, start `2026-11-15 1744`, end `2026-11-15 1749` | `skywalking_query_traces` | `READ` | `guest`, read by READER: `ALLOWED`; `admin`, same read by an outsider: `DENIED:POLICY_DENIED:step3` |
 
 ## 9. What the run showed
 
@@ -246,23 +248,23 @@ Ask the assistant in plain language; it picks the tool. What Aegis answered for 
 
 | # | Step | Caller | Request | Result |
 | --- | --- | --- | --- | --- |
-| 1 | read by READER | `guest` | `tools/call skywalking_list_services {"start":"2026-11-09 2246","end":"2026-11-09 2251"}` | HTTP 200, `ALLOWED` |
-| 2 | same read by an outsider | `admin` | `tools/call skywalking_list_services {"start":"2026-11-09 2246","end":"2026-11-09 2251"}` | HTTP 200, `DENIED:POLICY_DENIED:step3` |
-| 3 | read by READER | `guest` | `tools/call skywalking_service_instances {"end":"2026-11-09 2251","start":"2026-11-09 2246","service":"aegis-validation"}` | HTTP 200, `ALLOWED` |
-| 4 | same read by an outsider | `admin` | `tools/call skywalking_service_instances {"end":"2026-11-09 2251","start":"2026-11-09 2246","service":"aegis-validation"}` | HTTP 200, `DENIED:POLICY_DENIED:step3` |
-| 5 | read by READER | `guest` | `tools/call skywalking_query_traces {"end":"2026-11-09 2251","start":"2026-11-09 2246","service":"aegis-validation"}` | HTTP 200, `ALLOWED` |
-| 6 | same read by an outsider | `admin` | `tools/call skywalking_query_traces {"end":"2026-11-09 2251","start":"2026-11-09 2246","service":"aegis-validation"}` | HTTP 200, `DENIED:POLICY_DENIED:step3` |
+| 1 | read by READER | `guest` | `tools/call skywalking_list_services {"start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 200, `ALLOWED` |
+| 2 | same read by an outsider | `admin` | `tools/call skywalking_list_services {"start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 200, `DENIED:POLICY_DENIED:step3` |
+| 3 | read by READER | `guest` | `tools/call skywalking_service_instances {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 200, `ALLOWED` |
+| 4 | same read by an outsider | `admin` | `tools/call skywalking_service_instances {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 200, `DENIED:POLICY_DENIED:step3` |
+| 5 | read by READER | `guest` | `tools/call skywalking_query_traces {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 200, `ALLOWED` |
+| 6 | same read by an outsider | `admin` | `tools/call skywalking_query_traces {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 200, `DENIED:POLICY_DENIED:step3` |
 
 ### With Knox
 
 | # | Step | Caller | Request | Result |
 | --- | --- | --- | --- | --- |
-| 1 | read by READER | `guest` | `tools/call skywalking_list_services {"start":"2026-11-09 2246","end":"2026-11-09 2251"}` | HTTP 200, `ALLOWED` |
-| 2 | same read by an outsider | `admin` | `tools/call skywalking_list_services {"start":"2026-11-09 2246","end":"2026-11-09 2251"}` | HTTP 403 |
-| 3 | read by READER | `guest` | `tools/call skywalking_service_instances {"end":"2026-11-09 2251","start":"2026-11-09 2246","service":"aegis-validation"}` | HTTP 200, `ALLOWED` |
-| 4 | same read by an outsider | `admin` | `tools/call skywalking_service_instances {"end":"2026-11-09 2251","start":"2026-11-09 2246","service":"aegis-validation"}` | HTTP 403 |
-| 5 | read by READER | `guest` | `tools/call skywalking_query_traces {"end":"2026-11-09 2251","start":"2026-11-09 2246","service":"aegis-validation"}` | HTTP 200, `ALLOWED` |
-| 6 | same read by an outsider | `admin` | `tools/call skywalking_query_traces {"end":"2026-11-09 2251","start":"2026-11-09 2246","service":"aegis-validation"}` | HTTP 403 |
+| 1 | read by READER | `guest` | `tools/call skywalking_list_services {"start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 200, `ALLOWED` |
+| 2 | same read by an outsider | `admin` | `tools/call skywalking_list_services {"start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 403 |
+| 3 | read by READER | `guest` | `tools/call skywalking_service_instances {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 200, `ALLOWED` |
+| 4 | same read by an outsider | `admin` | `tools/call skywalking_service_instances {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 403 |
+| 5 | read by READER | `guest` | `tools/call skywalking_query_traces {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 200, `ALLOWED` |
+| 6 | same read by an outsider | `admin` | `tools/call skywalking_query_traces {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"}` | HTTP 403 |
 
 Full requests and responses: [own host](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/skywalking/results/own-host-transcript.log), [Knox](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/skywalking/results/knox-transcript.log).
 

@@ -15,19 +15,28 @@
  */
 package io.github.vaquarkhan.aegis.validation;
 
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.github.vaquarkhan.aegis.engine.audit.AuditChainVerifier;
+import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.validation.frontdoor.AdopterScenario;
 import io.github.vaquarkhan.aegis.validation.frontdoor.DockerContainer;
 import io.github.vaquarkhan.aegis.validation.frontdoor.FrontDoor;
 import io.github.vaquarkhan.aegis.validation.frontdoor.GovernedFlow;
 import io.github.vaquarkhan.aegis.validation.frontdoor.JavaServer;
+import io.github.vaquarkhan.aegis.validation.frontdoor.McpReply;
 import io.github.vaquarkhan.aegis.validation.frontdoor.Persona;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +69,7 @@ class SkyWalkingFrontDoorsTest {
         port = JavaServer.freePort();
         Path log = Path.of("target", "skywalking-oap", "docker.log").toAbsolutePath();
         oap = DockerContainer.start("aegis-val-skywalking", IMAGE,
-                List.of("-p", "127.0.0.1:" + port + ":12800", "-e", "SW_STORAGE=h2"),
+                List.of("-p", "127.0.0.1:" + port + ":12800", "-e", "SW_STORAGE=h2", "-e", "TZ=UTC"),
                 log);
         oap.awaitReady(() -> {
             HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(URI.create(base() + "/graphql"))
@@ -68,7 +77,13 @@ class SkyWalkingFrontDoorsTest {
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{\"query\":\"{ version }\"}"))
                     .build(), HttpResponse.BodyHandlers.ofString());
-            return r.statusCode() == 200 && r.body().contains("version");
+            if (r.statusCode() != 200 || r.body().isBlank() || r.body().charAt(0) != '{') {
+                return false;
+            }
+            Map<String, Object> body = Json.parseObject(r.body());
+            return body.get("errors") == null
+                    && body.get("data") instanceof Map<?, ?> data
+                    && data.get("version") instanceof String v && !v.isBlank();
         }, Duration.ofMinutes(4), "SkyWalking OAP GraphQL");
     }
 
@@ -82,8 +97,8 @@ class SkyWalkingFrontDoorsTest {
     @ParameterizedTest(name = "skywalking through {0}")
     @ValueSource(strings = {FrontDoor.OWN_HOST, FrontDoor.KNOX})
     void governsARealSkyWalkingOap(String door) throws Exception {
-        LocalDateTime end = LocalDateTime.now();
-        LocalDateTime start = end.minusMinutes(5);
+        ZonedDateTime end = ZonedDateTime.now(ZoneOffset.UTC);
+        ZonedDateTime start = end.minusMinutes(5);
         String startWindow = start.format(WINDOW);
         String endWindow = end.format(WINDOW);
         // Fresh OAP has no services; a dummy id still returns empty GraphQL data payloads.
@@ -99,16 +114,58 @@ class SkyWalkingFrontDoorsTest {
                 Map.of());
 
         try (FrontDoor d = FrontDoor.open(door, scenario, dir)) {
-            d.note(IMAGE + " (SW_STORAGE=h2) GraphQL on " + base()
-                    + "; read-only window " + startWindow + ".." + endWindow);
-            GovernedFlow.read(d, "skywalking_list_services",
+            d.note(IMAGE + " (SW_STORAGE=h2, TZ=UTC) GraphQL on " + base()
+                    + "; read-only window " + startWindow + ".." + endWindow
+                    + " UTC. Fresh OAP with no reporting agents: every query returns an empty list, so this run "
+                    + "proves schema and variable compatibility, not non-empty service, instance or trace mapping.");
+            McpReply services = GovernedFlow.read(d, "skywalking_list_services",
                     Map.of("start", startWindow, "end", endWindow), "getAllServices");
-            GovernedFlow.read(d, "skywalking_service_instances",
+            assertGraphQlList(services, "getAllServices");
+
+            McpReply instances = GovernedFlow.read(d, "skywalking_service_instances",
                     Map.of("service", service, "start", startWindow, "end", endWindow),
                     "getServiceInstances");
-            GovernedFlow.read(d, "skywalking_query_traces",
+            assertGraphQlList(instances, "getServiceInstances");
+
+            McpReply traces = GovernedFlow.read(d, "skywalking_query_traces",
                     Map.of("service", service, "start", startWindow, "end", endWindow), "traces");
+            assertGraphQlList(traces, "queryBasicTraces", "traces");
         }
+
+        Path journal = Path.of(System.getProperty("aegis.results.dir", "target/adopter-results"),
+                "skywalking", door + "-audit.jsonl");
+        assertTrue(Files.isRegularFile(journal), "audit journal was not kept: " + journal);
+        AuditChainVerifier.Report report = AuditChainVerifier.verify(journal);
+        assertTrue(report.ok(), door + " audit chain: " + report.error());
+        assertTrue(report.records() >= 6, door + " journal should hold 3 intents + 3 results or more, has " + report.records());
+    }
+
+    /**
+     * The backend answered with GraphQL data, not a GraphQL error. OAP returns HTTP 200 for both, so the
+     * structured content must be checked: no "errors", and the named path under "data" is a list.
+     */
+    @SuppressWarnings("unchecked")
+    private static void assertGraphQlList(McpReply reply, String... dataPath) {
+        Map<String, Object> root = Json.parseObject(reply.body());
+        assertInstanceOf(Map.class, root.get("result"), reply.body());
+        Map<String, Object> result = (Map<String, Object>) root.get("result");
+        assertInstanceOf(Map.class, result.get("structuredContent"),
+                "the http source returns the GraphQL body as structuredContent: " + reply.body());
+        Map<String, Object> gql = (Map<String, Object>) result.get("structuredContent");
+
+        Object errors = gql.get("errors");
+        assertTrue(errors == null || (errors instanceof List<?> l && l.isEmpty()),
+                "OAP returned GraphQL errors: " + Json.write(errors));
+
+        assertInstanceOf(Map.class, gql.get("data"), "no GraphQL data object: " + reply.body());
+        Object node = gql.get("data");
+        for (String key : dataPath) {
+            assertInstanceOf(Map.class, node, "expected an object before '" + key + "' in " + reply.body());
+            node = ((Map<String, Object>) node).get(key);
+            assertNotNull(node, "data." + String.join(".", dataPath) + " is missing: " + reply.body());
+        }
+        assertInstanceOf(List.class, node,
+                "data." + String.join(".", dataPath) + " must be a list (empty is fine on a fresh OAP): " + reply.body());
     }
 
     private static String base() {

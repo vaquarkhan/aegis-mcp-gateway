@@ -55,3 +55,11 @@ The profile is read-only: SkyWalking OAP GraphQL has no mutations in this adapte
 | 4 | `admin` | the same read | denied | HTTP 403 |
 | 5 | `guest` | `skywalking_query_traces` | allowed; GraphQL `traces` payload | allowed |
 | 6 | `admin` | the same read | denied | HTTP 403 |
+
+## Limits of this run
+
+The OAP in this Keep has no reporting agents, and `aegis-validation` is a placeholder service id.
+Every governed read returned `[]`. The run therefore shows that SkyWalking 9.7.0 accepts the three
+GraphQL documents and their variables through both front doors, and that Aegis governs them. It does
+not show that a real service id resolves, that instance or trace fields map, or that the time window
+selects real telemetry. A Keep with seeded telemetry is follow-up work.

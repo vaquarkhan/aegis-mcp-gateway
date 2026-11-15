@@ -90,6 +90,13 @@ if [ "$keep" = "--keep" ]; then
       exit 1
     fi
   done
+  jar="$root/aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar"
+  for journal in own-host-audit.jsonl knox-audit.jsonl; do
+    if ! java -jar "$jar" --verify-audit "$from/$journal" >/dev/null; then
+      echo "refusing to keep $adopter: $journal does not verify. Retained files were not changed." >&2
+      exit 1
+    fi
+  done
   to="$here/$adopter/results"
   mkdir -p "$to"
   cp "$from"/*-transcript.log "$from"/*-audit.jsonl "$to"/

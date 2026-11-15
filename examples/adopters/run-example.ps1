@@ -123,6 +123,13 @@ if ($Keep) {
             throw "refusing to keep ${Adopter}: missing or empty $rel. Retained files were not changed."
         }
     }
+    $jar = Join-Path $root 'aegis-gateway\target\aegis-gateway-2.0.0-SNAPSHOT-all.jar'
+    foreach ($journal in 'own-host-audit.jsonl', 'knox-audit.jsonl') {
+        & java -jar $jar --verify-audit (Join-Path $from $journal) | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "refusing to keep ${Adopter}: $journal does not verify. Retained files were not changed."
+        }
+    }
     $to = Join-Path $PSScriptRoot "$Adopter\results"
     New-Item -ItemType Directory -Force $to | Out-Null
     Get-ChildItem $from -File | Where-Object { $_.Name -match '-(transcript\.log|audit\.jsonl)$' } |

@@ -98,6 +98,8 @@ configuration with no kept run:
 | Apache AsterixDB | [adapters/asterixdb/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/asterixdb/README.md) |
 | Apache Cassandra | [adapters/cassandra/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/cassandra/README.md) |
 | Apache Impala | [adapters/impala/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/impala/README.md) |
-| Apache Paimon | [adapters/paimon/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/paimon/README.md) | The status and blocker of each are in
+| Apache Paimon | [adapters/paimon/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/paimon/README.md) |
+
+The status and blocker of each are in
 [examples/adopters/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) and
 [evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.md).
