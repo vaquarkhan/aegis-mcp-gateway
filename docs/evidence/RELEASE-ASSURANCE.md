@@ -43,6 +43,64 @@ The `run-example` launchers invoke the examples reactor that owns the `real-engi
 
 ## Archive and legal-content inspection
 
+### Current binary packaging checks
+
+Issue [#31](https://github.com/vaquarkhan/aegis-mcp-gateway/issues/31) refers to the removed 0.1
+`mcp-gateway-dist` module. The current shaded artifacts are `aegis-gateway` (`all`),
+`aegis-knox3-extension` (`knox-bundle`), `examples/aegis-gateway-kafka` (`all`) and
+`examples/aegis-gateway-spark` (`all`).
+
+The build-only [aegis-build-tools plugin](../../aegis-build-tools/pom.xml) reads the resolved runtime
+JARs selected by each bundle's Shade `artifactSet`, not the aggregate SBOM or the provided/test
+classpath. During `prepare-package` it writes binary-specific legal files under `target/binary-legal`.
+Shade's `IncludeResourceTransformer` installs those files as `META-INF/LICENSE` and `META-INF/NOTICE`.
+Colliding top-level upstream legal resources are filtered only after their contents have been collected;
+nested license files remain in the archive. Signature files are excluded and service-provider merging
+is unchanged. No `ApacheLicenseResourceTransformer` discards non-Apache terms, and no notice transformer
+rewrites upstream paragraphs.
+
+The LICENSE starts with Aegis's Apache-2.0 text and identifies the exact third-party runtime coordinates,
+license expressions and package names, followed by full upstream license texts. The NOTICE starts with
+Aegis's source attribution and appends upstream notices verbatim, including their original line endings.
+The [version-pinned component review](../../tools/binary-legal/components.txt) supplies missing legal
+texts and notes for upstream-shaded/native components. [Supplement sources](../../tools/binary-legal/sources.txt)
+record their origin; these files are legal texts, not copied implementation code. Builds do not download
+licenses. A new runtime version or missing supplement fails the build until its review is updated.
+
+| Bundle | Third-party runtime content |
+| --- | --- |
+| Stock gateway | SnakeYAML 2.4; Derby/derbyshared 10.16.1.1; pgJDBC 42.7.12, including its OnGres components |
+| Knox bundle | pgJDBC 42.7.12 and its OnGres components; the Knox host stack is provided, not bundled |
+| Kafka example | Stock gateway content plus Kafka clients 3.9.1, zstd-jni 1.5.6-4, lz4-java 1.8.0, snappy-java 1.1.10.5 and SLF4J 1.7.36 |
+| Spark example | Stock gateway content plus Spark Connect 4.0.1 and its resolved Scala, Jackson, Log4j, ICU, Kryo and other runtime dependencies; the exact list is in the generated LICENSE |
+
+Jetty, Logback, Jakarta Servlet, Nimbus JOSE and the MCP Java SDK mentioned by the original issue
+are not in these distributions; no license election for them is needed. SLF4J is MIT, pgJDBC/OnGres
+are BSD-2-Clause, and native Zstandard uses its BSD option. Snappy also carries Bitshuffle's MIT
+license and the GCC runtime exception reported by its upstream NOTICE. The Spark client is already
+shaded upstream: [its embedded-component record](../../tools/binary-legal/spark-connect.txt) documents
+the original and relocated namespaces and supplements lost Arrow, Netty, gRPC and other legal texts.
+Do not mistake the Checker Framework compiler's GPL license for the MIT-licensed `checker-qual`
+annotations that Spark embeds.
+
+Release-candidate command (from the repository root):
+
+```powershell
+mvn -B -Prelease clean verify
+```
+
+The ordinary `verify` phase, including existing CI jobs, checks the actual shaded archive: exactly one
+LICENSE and NOTICE, byte-for-byte equality with freshly assembled legal content, no stale signatures,
+and all selected third-party class entries present. Unit tests exercise legal-resource collisions,
+variant names, nested licenses, unknown versions, missing texts, overwritten notices and incorrect
+archive inventories. Source headers, normal tests, coverage and static analysis remain enabled.
+
+This is a packaging check, not a legal opinion or proof of source provenance. A source-header search
+found no copied third-party implementation identified by an upstream copyright/license header; it
+cannot establish the origin of unmarked or AI-assisted code. The source-match and human provenance
+review below remains a first-release gate. Do not change source copyright attribution without the
+recorded grant, and do not interpret the historical inspection below as evidence for a new candidate.
+
 The 2026-10-04 archive inspection:
 
 | Check | Result |

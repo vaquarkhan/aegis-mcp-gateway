@@ -1,0 +1,68 @@
+SPDX-License-Identifier: Apache-2.0
+https://www.apache.org/licenses/LICENSE-2.0
+
+Upstream-embedded components in
+org.apache.spark:spark-connect-client-jvm_2.13:4.0.1
+
+The coordinate list below comes from embedded Maven pom.properties and Spark
+4.0.1's published parent POM and source shade configuration. These are already
+inside Spark's input jar, not additional Aegis runtime dependencies.
+Apache-2.0 components use the full Apache license at the start of this file.
+The non-Apache license texts and inherited notices follow as separate sections.
+
+Original package -> package in the shipped archive:
+com.google.common -> org.sparkproject.connect.guava
+com.google (except common) -> org.sparkproject.com.google
+io.grpc -> org.sparkproject.io.grpc
+io.netty -> org.sparkproject.io.netty
+io.perfmark -> org.sparkproject.io.perfmark
+org.apache.arrow -> org.sparkproject.org.apache.arrow
+org.checkerframework -> org.sparkproject.org.checkerframework
+org.codehaus -> org.sparkproject.org.codehaus
+javax.annotation -> org.sparkproject.javax.annotation
+android.annotation -> org.sparkproject.android.annotation
+
+Apache-2.0:
+org.apache.spark:spark-connect-common_2.13:4.0.1
+org.apache.spark:spark-sql-api_2.13:4.0.1
+com.google.android:annotations:4.1.1.4
+com.google.api.grpc:proto-google-common-protos:2.41.0
+com.google.code.gson:gson:2.11.0
+com.google.code.findbugs:jsr305 (javax.annotation)
+com.google.flatbuffers:flatbuffers-java:24.3.25
+com.google.guava:guava:33.4.0-jre
+com.google.guava:failureaccess:1.0.2
+com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava
+com.google.errorprone:error_prone_annotations:2.36.0
+com.google.j2objc:j2objc-annotations:3.0.0
+io.grpc (gRPC Java 1.67.1)
+io.perfmark:perfmark-api
+io.netty:netty-codec-http2:4.1.118.Final
+io.netty:netty-common:4.1.118.Final
+io.netty:netty-buffer:4.1.118.Final
+io.netty:netty-transport:4.1.118.Final
+io.netty:netty-resolver:4.1.118.Final
+io.netty:netty-codec:4.1.118.Final
+io.netty:netty-handler:4.1.118.Final
+io.netty:netty-codec-http:4.1.118.Final
+io.netty:netty-handler-proxy:4.1.118.Final
+io.netty:netty-codec-socks:4.1.118.Final
+io.netty:netty-transport-native-unix-common:4.1.118.Final
+org.jctools:jctools-core:4.0.5 (Netty's internal shaded JCTools)
+org.apache.arrow:arrow-vector:18.1.0
+org.apache.arrow:arrow-format:18.1.0
+org.apache.arrow:arrow-memory-core:18.1.0
+org.apache.arrow:arrow-memory-netty:18.1.0
+org.apache.arrow:arrow-memory-netty-buffer-patch:18.1.0
+
+BSD-3-Clause:
+com.google.protobuf:protobuf-java:4.29.3 (com.google.protobuf)
+
+MIT:
+org.codehaus.mojo:animal-sniffer-annotations:1.24
+org.checkerframework:checker-qual:3.43.0 (annotations only, not the GPL checker)
+
+Netty includes derived code under additional MIT, BSD and public-domain terms.
+Its verbatim NOTICE describes the original components; the corresponding
+license texts for included derived code are reproduced below. Optional external
+dependencies mentioned by that upstream NOTICE are not thereby Aegis dependencies.

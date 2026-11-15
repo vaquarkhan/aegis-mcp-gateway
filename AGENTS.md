@@ -25,6 +25,7 @@ Run from the repository root.
 - Always build and run the relevant tests before opening a PR; the suite must stay green.
 
 ## Repository structure
+- `aegis-build-tools/` - build-only binary LICENSE/NOTICE assembly and verification; never a gateway dependency.
 - `aegis-engine/` - the governance chain, controls, audit and state; JDK only.
 - `aegis-mcp/` - MCP protocol for the 2025 and 2026-07-28 revisions, server handler, downstream clients.
 - `aegis-config/` - strict configuration, declarative HTTP tools, plugin loading.
