@@ -34,11 +34,11 @@ Paimon) contain `aegis/canonical.yaml`: an exact reference copy of the profile c
 `AdapterConfigsTest`, clearly labeled as not captured from a real-engine run. Tokens, approval receipts
 and credentials are not kept.
 
-At this point: **28 retained runs** (27 adopter profiles plus the Spark and Iceberg tutorial scenario) have real two-door evidence (including Docker-backed Airflow, CouchDB, Doris,
-Druid, Hadoop, HBase, Hive, NiFi, Pinot, Ranger, Storm, and Superset); **4 more** are profile/contract supported and still
-need a product Keep (see [adopter real-engine status](../../docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md)):
+At this point: **29 retained runs** (28 adopter profiles plus the Spark and Iceberg tutorial scenario) have real two-door evidence (including Docker-backed Airflow, CouchDB, Doris,
+Druid, Hadoop, HBase, Hive, NiFi, Pinot, Ranger, Storm, and Superset); **5 more** are profile/contract supported and still
+need a product Keep (Atlas, AsterixDB, Cassandra, Impala, Paimon; see [adopter real-engine status](../../docs/evidence/ADOPTER-REAL-ENGINE-STATUS.md)):
 Paimon and Cassandra are HTTP like other Docker Keeps; Impala still needs a coordinator; Atlas needs
-its full stack. Spark Connect does not substitute for Atlas, Cassandra, Paimon, or for Arrow Flight / Beam. Release-process items
+its full stack; AsterixDB needs a running cluster on its API port. Spark Connect does not substitute for Atlas, Cassandra, Paimon, or for Arrow Flight / Beam. Release-process items
 are tracked separately in [release assurance](../../docs/evidence/RELEASE-ASSURANCE.md#release-process-items);
 product work is in [docs/ROADMAP.md](../../docs/ROADMAP.md).
 

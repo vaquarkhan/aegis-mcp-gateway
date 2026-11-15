@@ -289,8 +289,9 @@ public final class RunRecord {
                 .append("## 1. The engine\n\n");
         Path engine = dir.resolve("how-to-run").resolve("engine.md");
         md.append(Files.exists(engine) ? Files.readString(engine) : "(not recorded)\n");
-        md.append("\nThe data the scenario works on (topics, tables, queues, jobs) is created by the test's `@BeforeAll` ")
-                .append("method against the engine's own API, outside Aegis; see the test source.\n\n");
+        md.append("\nWhen a scenario needs data (topics, tables, queues, jobs), the test's `@BeforeAll` method ")
+                .append("creates it against the engine's own API, outside Aegis; a scenario that reads an empty engine ")
+                .append("says so in its transcript note. See the test source.\n\n");
         for (String door : List.of(FrontDoor.OWN_HOST, FrontDoor.KNOX)) {
             Path section = dir.resolve("how-to-run").resolve(door + ".md");
             if (Files.exists(section)) {
