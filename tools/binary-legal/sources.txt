@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
+# Sources for upstream legal text supplements. No implementation source is copied.
+# Animal Sniffer: license comment only, without Java comment delimiters.
+# Checker Qual: copyright and MIT section only, as expressly applicable to checker-qual.
+# NOTICE-spark-connect concatenates the seven original META-INF/NOTICE files listed below.
+upstream/minlog-LICENSE|https://raw.githubusercontent.com/EsotericSoftware/minlog/minlog-1.3.0/license.txt
+upstream/paranamer-LICENSE|https://raw.githubusercontent.com/paul-hammant/paranamer/paranamer-parent-2.8/LICENSE.txt
+upstream/zstd-jni-LICENSE|https://raw.githubusercontent.com/luben/zstd-jni/76acf0fe88613c68ae1a8f4f0d8b2280f22a5f63/LICENSE
+upstream/lz4-LICENSE|https://raw.githubusercontent.com/lz4/lz4/d44371841a2f1728a3f36839fd4b7e872d0927d3/lib/LICENSE
+upstream/icu-LICENSE|https://raw.githubusercontent.com/unicode-org/icu/release-76-1/LICENSE
+upstream/antlr-LICENSE|https://raw.githubusercontent.com/antlr/antlr4/4.13.1/LICENSE.txt
+upstream/jline-LICENSE|https://raw.githubusercontent.com/jline/jline3/jline-3.27.1/LICENSE.txt
+upstream/slf4j-LICENSE|https://raw.githubusercontent.com/qos-ch/slf4j/v_1.7.36/LICENSE.txt
+upstream/NOTICE-snappy|https://raw.githubusercontent.com/xerial/snappy-java/08abfa4f85b3a39c5fe8fa2f43b482440bedb5a3/NOTICE
+upstream/kryo-LICENSE|https://raw.githubusercontent.com/EsotericSoftware/kryo/kryo-parent-4.0.3/license.txt
+upstream/reflectasm-LICENSE|https://raw.githubusercontent.com/EsotericSoftware/reflectasm/reflectasm-1.11.3/license.txt
+upstream/asm-LICENSE|https://gitlab.ow2.org/asm/asm/-/raw/ASM_9_7_1/LICENSE.txt
+upstream/zstd-LICENSE|https://raw.githubusercontent.com/luben/zstd-jni/v1.5.6-4/src/main/native/LICENSE
+upstream/snappy-COPYING|https://raw.githubusercontent.com/google/snappy/1.1.10/COPYING
+upstream/bitshuffle-LICENSE|https://raw.githubusercontent.com/kiyo-masui/bitshuffle/0.3.4/LICENSE
+upstream/gcc-COPYING3|https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-12.2.0/COPYING3
+upstream/gcc-COPYING.RUNTIME|https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-12.2.0/COPYING.RUNTIME
+upstream/protobuf-LICENSE|https://raw.githubusercontent.com/protocolbuffers/protobuf/v29.3/LICENSE
+upstream/animal-sniffer-LICENSE|https://repo.maven.apache.org/maven2/org/codehaus/mojo/animal-sniffer-annotations/1.24/animal-sniffer-annotations-1.24-sources.jar!org/codehaus/mojo/animal_sniffer/IgnoreJRERequirement.java
+upstream/checker-qual-LICENSE|https://raw.githubusercontent.com/typetools/checker-framework/checker-framework-3.43.0/LICENSE.txt
+upstream/NOTICE-grpc|https://raw.githubusercontent.com/grpc/grpc-java/v1.67.1/NOTICE.txt
+upstream/NOTICE-netty|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/NOTICE.txt
+upstream/NOTICE-harmony|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/NOTICE.harmony.txt
+upstream/netty-LICENSE.jsr166y|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.jsr166y.txt
+upstream/netty-LICENSE.base64|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.base64.txt
+upstream/netty-LICENSE.webbit|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.webbit.txt
+upstream/netty-LICENSE.slf4j|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.slf4j.txt
+upstream/netty-LICENSE.jbzip2|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.jbzip2.txt
+upstream/netty-LICENSE.libdivsufsort|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.libdivsufsort.txt
+upstream/netty-LICENSE.jfastlz|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.jfastlz.txt
+upstream/netty-LICENSE.protobuf|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.protobuf.txt
+upstream/netty-LICENSE.hyper-hpack|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.hyper-hpack.txt
+upstream/netty-LICENSE.nghttp2-hpack|https://raw.githubusercontent.com/netty/netty/netty-4.1.118.Final/license/LICENSE.nghttp2-hpack.txt
+upstream/NOTICE-spark-connect|https://repo.maven.apache.org/maven2/org/apache/arrow/arrow-vector/18.1.0/arrow-vector-18.1.0.jar!META-INF/NOTICE
+upstream/NOTICE-spark-connect|https://repo.maven.apache.org/maven2/org/apache/arrow/arrow-format/18.1.0/arrow-format-18.1.0.jar!META-INF/NOTICE
+upstream/NOTICE-spark-connect|https://repo.maven.apache.org/maven2/org/apache/arrow/arrow-memory-core/18.1.0/arrow-memory-core-18.1.0.jar!META-INF/NOTICE
+upstream/NOTICE-spark-connect|https://repo.maven.apache.org/maven2/org/apache/arrow/arrow-memory-netty/18.1.0/arrow-memory-netty-18.1.0.jar!META-INF/NOTICE
+upstream/NOTICE-spark-connect|https://repo.maven.apache.org/maven2/org/apache/arrow/arrow-memory-netty-buffer-patch/18.1.0/arrow-memory-netty-buffer-patch-18.1.0.jar!META-INF/NOTICE
+upstream/NOTICE-spark-connect|https://repo.maven.apache.org/maven2/org/apache/spark/spark-sql-api_2.13/4.0.1/spark-sql-api_2.13-4.0.1.jar!META-INF/NOTICE
+upstream/NOTICE-spark-connect|https://repo.maven.apache.org/maven2/org/apache/spark/spark-connect-common_2.13/4.0.1/spark-connect-common_2.13-4.0.1.jar!META-INF/NOTICE

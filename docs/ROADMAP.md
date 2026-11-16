@@ -119,7 +119,7 @@ The validation report records the runs already completed. This pass repeats them
 | PostgreSQL on the release candidate | Provider and two-gateway runs against the deployment you will ship |
 | OpenBao, Vault, and Keycloak on the release candidate | Secret-provider and token-exchange runs on the candidate build |
 | Source-match review | An external source-match scan with the raw results and a human disposition |
-| Distribution LICENSE and NOTICE | A reviewed distribution notice, including the Knox-provided `jsp-api` license metadata |
+| Distribution LICENSE and NOTICE | Human review of the [generated per-bundle legal files and native/pre-shaded supplements](evidence/RELEASE-ASSURANCE.md#current-binary-packaging-checks); Knox-provided metadata such as `jsp-api` is reviewed separately as host inventory, not bundled software |
 | Dependency advisory review | A recorded disposition for the Derby dependency and the Knox 3.0.0 host |
 
 ## Not planned

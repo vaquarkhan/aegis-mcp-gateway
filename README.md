@@ -87,3 +87,14 @@ Aegis ships **28 adopter profiles with retained real two-door runs** (own host, 
 ## Status
 
 `2.0.0-SNAPSHOT`, pre-release. No release has been published. Contributor, governance, security, provenance, and release rules are in [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md), [SECURITY.md](SECURITY.md), and [AGENTS.md](AGENTS.md).
+
+## Licenses and trademarks
+
+The source distribution is licensed under [Apache-2.0](LICENSE); [NOTICE](NOTICE) contains the
+project attribution. Shaded distributions carry their own `META-INF/LICENSE` and `META-INF/NOTICE`
+for bundled software. See the [distribution review](docs/evidence/RELEASE-ASSURANCE.md#archive-and-legal-content-inspection).
+
+Apache project names and logos mentioned in the adapter catalog and documentation are trademarks
+of The Apache Software Foundation. Other product names and logos are trademarks of their respective
+owners. References describe integration targets and do not imply endorsement by those projects or
+trademark owners.
