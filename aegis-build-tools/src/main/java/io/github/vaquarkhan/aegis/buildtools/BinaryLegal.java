@@ -139,8 +139,17 @@ final class BinaryLegal {
             checkDocument(jar, "META-INF/LICENSE", expected.license());
             checkDocument(jar, "META-INF/NOTICE", expected.notice());
             for (ZipEntry entry : jar.stream().toList()) {
-                if (entry.getName().matches("(?i)META-INF/[^/]+\\.(SF|DSA|RSA)")) {
-                    throw new IOException("Invalid shaded signature: " + entry.getName());
+                String name = entry.getName();
+                int slash = name.lastIndexOf('/');
+                String filename = name.substring(slash + 1).toLowerCase(Locale.ROOT);
+                if (!entry.isDirectory() && !name.equals("META-INF/LICENSE") && !name.equals("META-INF/NOTICE")
+                        && (slash < 0 || name.substring(0, slash).equalsIgnoreCase("META-INF"))
+                        && (filename.startsWith("licen") || filename.startsWith("notice"))
+                        && legalKind(name) != 0) {
+                    throw new IOException("Unexpected top-level legal resource: " + name);
+                }
+                if (name.matches("(?i)META-INF/[^/]+\\.(SF|DSA|RSA)")) {
+                    throw new IOException("Invalid shaded signature: " + name);
                 }
             }
             // A dependency tree is not an archive inventory: ensure the selected dependencies really shipped.

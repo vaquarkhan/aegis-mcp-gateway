@@ -114,6 +114,27 @@ class BinaryLegalTest {
     }
 
     @Test
+    void rejectsTopLevelLegalVariantsButAllowsNestedComponentLicenses() throws IOException {
+        var docs = new BinaryLegal.Documents("Project license", "Project notice");
+        Map<String, String> contents = new LinkedHashMap<>();
+        contents.put("META-INF/LICENSE", docs.license());
+        contents.put("META-INF/NOTICE", docs.notice());
+        contents.put("META-INF/licenses/example/LICENSE.txt", "Nested license");
+        contents.put("example/NOTICE.md", "Nested notice");
+        contents.put("META-INF/License.class", "class");
+        BinaryLegal.verify(jar("nested.jar", contents), docs, List.of());
+
+        for (String variant : List.of("LICENSE", "LICENSE.txt", "notice-md", "META-INF/NOTICE.md",
+                "META-INF/license", "meta-inf/NOTICE", "META-INF/LICENCE.txt")) {
+            contents.put(variant, "Stale legal text");
+            IOException error = assertThrows(IOException.class,
+                    () -> BinaryLegal.verify(jar("variant.jar", contents), docs, List.of()));
+            assertTrue(error.getMessage().contains(variant));
+            contents.remove(variant);
+        }
+    }
+
+    @Test
     void followsKnoxShadeIncludesRatherThanProvidedDependencyMetadata() throws IOException {
         Xpp3Dom set = new Xpp3Dom("artifactSet");
         Xpp3Dom includes = new Xpp3Dom("includes");

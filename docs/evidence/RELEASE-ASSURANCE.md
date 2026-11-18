@@ -97,8 +97,9 @@ example bundles through `mvn -B -f examples/pom.xml -Preal-engines -pl aegis-gat
 after installing the root reactor.
 
 The ordinary `verify` phase, including existing CI jobs, checks the actual shaded archive: exactly one
-LICENSE and NOTICE, byte-for-byte equality with freshly assembled legal content, no stale signatures,
-and all selected third-party class entries present. Unit tests exercise legal-resource collisions,
+LICENSE and NOTICE, byte-for-byte equality with freshly assembled legal content, no additional root or
+immediate `META-INF` LICENSE/NOTICE variants, no stale signatures, and all selected third-party class
+entries present. Nested component licenses remain allowed. Unit tests exercise legal-resource collisions,
 variant names, nested licenses, unknown versions, missing texts, overwritten notices and incorrect
 archive inventories. Source headers, normal tests, coverage and static analysis remain enabled.
 
