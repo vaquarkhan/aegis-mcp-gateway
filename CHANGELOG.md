@@ -17,6 +17,10 @@
 
 ## 2.0.0 (unreleased)
 
+- Source NOTICE now contains project attribution only; trademark guidance is in the README.
+  All four shaded bundles assemble binary-specific LICENSE/NOTICE files without resource collisions,
+  retain upstream and nested legal texts, and verify their legal content and dependency inventory
+  during `mvn verify`. Version-pinned reviews include native and pre-shaded components.
 - Hello World reports ready only after both the gateway and the inventory service answer, and the Bash
   launcher no longer needs `seq`. Generated Knox tutorials stop the demo LDAP process their shell started,
   and Kiro setup explains how to Base64-encode the local Knox demo credentials.
