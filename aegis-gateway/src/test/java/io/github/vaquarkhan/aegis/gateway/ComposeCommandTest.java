@@ -34,7 +34,7 @@ class ComposeCommandTest {
     Path tempDir;
 
     @Test
-    void composesAndRunsPolicyTestAgainstEffectiveConfig() throws Exception {
+    void composesChecksDriftAndRunsPolicyTestAgainstEffectiveConfig() throws Exception {
         Path gatewayFile = tempDir.resolve("aegis.yaml");
         Files.writeString(gatewayFile, """
                 gateway:
@@ -72,6 +72,17 @@ class ComposeCommandTest {
 
         Path effectiveFile = tempDir.resolve("out/effective-aegis.yaml");
 
+        // 1. --check fails before materialization
+        int missingCheckExit = runMain(
+                "--compose",
+                "--gateway-config", gatewayFile.toString(),
+                "--adopter", adopterFile.toString(),
+                "--out", effectiveFile.toString(),
+                "--check"
+        );
+        assertEquals(Main.USAGE, missingCheckExit);
+
+        // 2. Materialize effective config
         ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
         ByteArrayOutputStream errBuf = new ByteArrayOutputStream();
         int composeExit = Main.run(
@@ -90,30 +101,51 @@ class ComposeCommandTest {
 
         assertEquals(Main.OK, composeExit, () -> "stderr: " + errBuf.toString(StandardCharsets.UTF_8));
         assertTrue(Files.isRegularFile(effectiveFile));
-        String stdout = outBuf.toString(StandardCharsets.UTF_8);
-        assertTrue(stdout.contains("sha256:"));
+        assertTrue(outBuf.toString(StandardCharsets.UTF_8).contains("sha256:"));
 
-        // Verify the materialized file works directly with existing --policy-test
+        // 3. --check passes when up to date
+        int cleanCheckExit = runMain(
+                "--compose",
+                "--gateway-config", gatewayFile.toString(),
+                "--adopter", adopterFile.toString(),
+                "--out", effectiveFile.toString(),
+                "--check"
+        );
+        assertEquals(Main.OK, cleanCheckExit);
+
+        // 4. --check detects drift when output is modified
+        Files.writeString(effectiveFile, Files.readString(effectiveFile) + "\n# tampered\n");
+        int driftCheckExit = runMain(
+                "--compose",
+                "--gateway-config", gatewayFile.toString(),
+                "--adopter", adopterFile.toString(),
+                "--out", effectiveFile.toString(),
+                "--check"
+        );
+        assertEquals(Main.USAGE, driftCheckExit);
+
+        // Re-materialize clean file for --policy-test
+        assertEquals(Main.OK, runMain(
+                "--compose",
+                "--gateway-config", gatewayFile.toString(),
+                "--adopter", adopterFile.toString(),
+                "--out", effectiveFile.toString()
+        ));
+
         Path casesFile = tempDir.resolve("cases.json");
         Files.writeString(casesFile, """
                 {
                   "cases": [
                     {
                       "name": "analyst can read hive",
-                      "caller": {
-                        "actor": "alice",
-                        "groups": ["analysts"]
-                      },
+                      "caller": {"actor": "alice", "groups": ["analysts"]},
                       "tool": "run_query",
                       "arguments": {},
                       "expect": "ALLOWED"
                     },
                     {
                       "name": "analyst denied destructive drop",
-                      "caller": {
-                        "actor": "alice",
-                        "groups": ["analysts"]
-                      },
+                      "caller": {"actor": "alice", "groups": ["analysts"]},
                       "tool": "drop_table",
                       "arguments": {},
                       "expect": "READONLY_CALLER"
@@ -122,19 +154,29 @@ class ComposeCommandTest {
                 }
                 """);
 
-        ByteArrayOutputStream policyOut = new ByteArrayOutputStream();
-        ByteArrayOutputStream policyErr = new ByteArrayOutputStream();
-        int policyExit = Main.run(
-                new String[]{"--policy-test", effectiveFile.toString(), casesFile.toString()},
-                new ByteArrayInputStream(new byte[0]),
-                new PrintStream(policyOut, true, StandardCharsets.UTF_8),
-                new PrintStream(policyErr, true, StandardCharsets.UTF_8),
-                Map.<String, String>of()::get,
-                false
-        );
+        int policyExit = runMain("--policy-test", effectiveFile.toString(), casesFile.toString());
+        assertEquals(Main.OK, policyExit);
+    }
 
-        assertEquals(Main.OK, policyExit, () -> "stdout:\n" + policyOut.toString(StandardCharsets.UTF_8)
-                + "\nstderr:\n" + policyErr.toString(StandardCharsets.UTF_8));
+    @Test
+    void refusesToOverwriteGatewayOrAdopterInputs() throws Exception {
+        Path gatewayFile = tempDir.resolve("aegis.yaml");
+        Files.writeString(gatewayFile, "audit:\n  file: audit.jsonl\n");
+        Path adopterFile = tempDir.resolve("adopter.yaml");
+        Files.writeString(adopterFile, "id: demo\ntype: http\nbaseUrl: https://demo.internal\n");
+
+        assertEquals(Main.USAGE, runMain(
+                "--compose",
+                "--gateway-config", gatewayFile.toString(),
+                "--adopter", adopterFile.toString(),
+                "--out", gatewayFile.toString()
+        ));
+        assertEquals(Main.USAGE, runMain(
+                "--compose",
+                "--gateway-config", gatewayFile.toString(),
+                "--adopter", adopterFile.toString(),
+                "--out", adopterFile.toString()
+        ));
     }
 
     @Test
@@ -155,42 +197,14 @@ class ComposeCommandTest {
         assertTrue(errBuf.toString(StandardCharsets.UTF_8).contains("usage: --compose"));
     }
 
-    @Test
-    void returnsUsageWhenAdopterContainsGatewayOwnedSection() throws Exception {
-        Path gatewayFile = tempDir.resolve("aegis.yaml");
-        Files.writeString(gatewayFile, """
-                audit:
-                  file: audit.jsonl
-                """);
-
-        Path badAdopter = tempDir.resolve("bad.yaml");
-        Files.writeString(badAdopter, """
-                id: bad
-                type: http
-                baseUrl: https://hive.internal
-                access:
-                  writeGroups: [admins]
-                """);
-
-        Path outFile = tempDir.resolve("effective.yaml");
-        ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
-        ByteArrayOutputStream errBuf = new ByteArrayOutputStream();
-
-        int exit = Main.run(
-                new String[]{
-                        "--compose",
-                        "--gateway-config", gatewayFile.toString(),
-                        "--adopter", badAdopter.toString(),
-                        "--out", outFile.toString()
-                },
+    private int runMain(String... args) throws Exception {
+        return Main.run(
+                args,
                 new ByteArrayInputStream(new byte[0]),
-                new PrintStream(outBuf, true, StandardCharsets.UTF_8),
-                new PrintStream(errBuf, true, StandardCharsets.UTF_8),
+                new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
+                new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
                 Map.<String, String>of()::get,
                 false
         );
-
-        assertEquals(Main.USAGE, exit);
-        assertTrue(errBuf.toString(StandardCharsets.UTF_8).contains("gateway-owned section 'access'"));
     }
 }

@@ -33,10 +33,28 @@ import java.util.TreeMap;
  *
  * <p>Validates and merges a core gateway governance document ({@code aegis.yaml}) with one or more
  * backend-specific adopter documents ({@code adopters/<name>.yaml}), enforces strict field
- * ownership and collision rules, resolves relative paths against each document's directory of
- * origin, and materializes a deterministic single-file configuration for {@code --config}.
+ * ownership and collision rules, resolves schema-defined filesystem paths while preserving
+ * non-filesystem paths (such as HTTP {@code request.path} and Vault {@code secrets.settings.path}),
+ * and materializes a deterministic single-file configuration for {@code --config}.
  */
 public final class ConfigComposer {
+
+    private static final String APACHE_LICENSE_HEADER = """
+            # Licensed to the Apache Software Foundation (ASF) under one or more
+            # contributor license agreements.  See the NOTICE file distributed with
+            # this work for additional information regarding copyright ownership.
+            # The ASF licenses this file to You under the Apache License, Version 2.0
+            # (the "License"); you may not use this file except in compliance with
+            # the License.  You may obtain a copy of the License at
+            #
+            #     http://www.apache.org/licenses/LICENSE-2.0
+            #
+            # Unless required by applicable law or agreed to in writing, software
+            # distributed under the License is distributed on an "AS IS" BASIS,
+            # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+            # See the License for the specific language governing permissions and
+            # limitations under the License.
+            """;
 
     /** Top-level sections exclusively owned by the core gateway configuration. */
     public static final Set<String> GATEWAY_OWNED_KEYS = Set.of(
@@ -70,10 +88,15 @@ public final class ConfigComposer {
             "scopes", "hooks"
     );
 
-    /** Keys whose string values hold file/directory paths resolved relative to their file of origin. */
-    private static final Set<String> PATH_KEYS = Set.of(
+    /**
+     * Schema-defined filesystem path keys resolved relative to their file of origin (or rebased
+     * relative to {@code outputDir} when provided). Deliberately excludes {@code "path"} so HTTP
+     * {@code request.path} and Vault {@code secrets.settings.path} are preserved verbatim.
+     */
+    private static final Set<String> FILESYSTEM_PATH_KEYS = Set.of(
             "file", "signatureFile", "publicKeyFile", "keyFile", "pinFile",
-            "directory", "tokenFile", "caFile", "signingKeyFile", "workingDir", "path"
+            "directory", "tokenFile", "caFile", "signingKeyFile", "workingDir",
+            "keystoreFile", "truststoreFile", "clientPropertiesFile"
     );
 
     public record ComposedConfig(
@@ -83,6 +106,10 @@ public final class ConfigComposer {
     ) {}
 
     public ComposedConfig compose(Path gatewayFile, List<Path> adopterFiles) throws IOException {
+        return compose(gatewayFile, adopterFiles, null);
+    }
+
+    public ComposedConfig compose(Path gatewayFile, List<Path> adopterFiles, Path outputDir) throws IOException {
         if (gatewayFile == null || !Files.isRegularFile(gatewayFile)) {
             throw new ConfigException("gateway config file does not exist: " + gatewayFile);
         }
@@ -92,6 +119,7 @@ public final class ConfigComposer {
 
         Path normalizedGateway = gatewayFile.toAbsolutePath().normalize();
         Path gatewayBaseDir = normalizedGateway.getParent();
+        Path normalizedOutputDir = outputDir == null ? null : outputDir.toAbsolutePath().normalize();
         Map<String, Object> rawGateway = ConfigLoader.load(normalizedGateway);
 
         if (rawGateway.containsKey("sources")) {
@@ -101,15 +129,16 @@ public final class ConfigComposer {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> resolvedGateway =
-                (Map<String, Object>) resolvePaths(rawGateway, gatewayBaseDir);
+                (Map<String, Object>) resolvePaths(rawGateway, gatewayBaseDir, normalizedOutputDir);
 
         List<Object> composedSources = new ArrayList<>();
-        List<Object> composedScopes = copyList(resolvedGateway.get("scopes"));
-        List<Object> composedHooks = copyList(resolvedGateway.get("hooks"));
+        List<Object> composedScopes = extractMapList(resolvedGateway.get("scopes"), "scopes", normalizedGateway);
+        List<Object> composedHooks = extractMapList(resolvedGateway.get("hooks"), "hooks", normalizedGateway);
 
         Set<String> seenSourceIds = new LinkedHashSet<>();
         Set<String> seenExposedTools = new LinkedHashSet<>();
-        Set<String> seenHookNames = collectHookNames(composedHooks, normalizedGateway.toString());
+        Set<String> seenHookKeys = new LinkedHashSet<>();
+        recordHookCollisions(composedHooks, normalizedGateway, seenHookKeys);
 
         for (Path adopterFile : adopterFiles) {
             if (adopterFile == null || !Files.isRegularFile(adopterFile)) {
@@ -120,26 +149,20 @@ public final class ConfigComposer {
             Map<String, Object> rawAdopter = ConfigLoader.load(normalizedAdopter);
 
             validateAdopterSchema(rawAdopter, normalizedAdopter);
-            checkCollisions(rawAdopter, normalizedAdopter, seenSourceIds, seenExposedTools, seenHookNames);
+            checkCollisions(rawAdopter, normalizedAdopter, seenSourceIds, seenExposedTools, seenHookKeys);
 
             @SuppressWarnings("unchecked")
             Map<String, Object> resolvedAdopter =
-                    (Map<String, Object>) resolvePaths(rawAdopter, adopterBaseDir);
+                    (Map<String, Object>) resolvePaths(rawAdopter, adopterBaseDir, normalizedOutputDir);
 
-            // Lift adopter-declared scopes and hooks into top-level gateway collections
-            Object adopterScopes = resolvedAdopter.remove("scopes");
-            if (adopterScopes instanceof List<?> list) {
-                composedScopes.addAll(list);
-            }
-            Object adopterHooks = resolvedAdopter.remove("hooks");
-            if (adopterHooks instanceof List<?> list) {
-                for (Object h : list) {
-                    if (h instanceof Map<?, ?> hookMap) {
-                        composedHooks.add(bindHookToSource(hookMap, (String) resolvedAdopter.get("id"), normalizedAdopter));
-                    } else {
-                        composedHooks.add(h);
-                    }
-                }
+            // Lift adopter-declared scopes and hooks into top-level gateway collections (fail-closed)
+            List<Object> adopterScopes = extractMapList(resolvedAdopter.remove("scopes"), "scopes", normalizedAdopter);
+            composedScopes.addAll(adopterScopes);
+
+            List<Object> adopterHooks = extractMapList(resolvedAdopter.remove("hooks"), "hooks", normalizedAdopter);
+            String sourceId = (String) resolvedAdopter.get("id");
+            for (Object h : adopterHooks) {
+                composedHooks.add(bindHookToSource((Map<?, ?>) h, sourceId, normalizedAdopter));
             }
 
             composedSources.add(resolvedAdopter);
@@ -156,7 +179,7 @@ public final class ConfigComposer {
 
         String effectiveHash = Digests.canonicalSha256(effective);
         String yamlBody = renderCanonicalYaml(effective);
-        String header = "# Generated by Aegis ConfigComposer\n"
+        String header = APACHE_LICENSE_HEADER + "\n" + "# Generated by Aegis ConfigComposer\n"
                 + "# effectiveConfigHash: " + effectiveHash + "\n";
 
         return new ComposedConfig(Collections.unmodifiableMap(effective), header + yamlBody, effectiveHash);
@@ -184,7 +207,7 @@ public final class ConfigComposer {
             Path source,
             Set<String> seenSourceIds,
             Set<String> seenExposedTools,
-            Set<String> seenHookNames
+            Set<String> seenHookKeys
     ) {
         String sourceId = (String) adopter.get("id");
         if (!seenSourceIds.add(sourceId)) {
@@ -209,22 +232,37 @@ public final class ConfigComposer {
                 }
             }
         }
-        if (adopter.get("hooks") instanceof List<?> hooks) {
-            seenHookNames.addAll(collectHookNames(hooks, source.toString()));
+        List<Object> hooks = extractMapList(adopter.get("hooks"), "hooks", source);
+        recordHookCollisions(hooks, source, seenHookKeys);
+    }
+
+    private void recordHookCollisions(List<?> hooks, Path source, Set<String> seenHookKeys) {
+        for (Object item : hooks) {
+            Map<?, ?> hm = (Map<?, ?>) item;
+            String hookKey = hookCollisionKey(hm, source);
+            if (!seenHookKeys.add(hookKey)) {
+                throw new ConfigException(source + ": duplicate hook '" + hookKey + "'");
+            }
         }
     }
 
-    private Set<String> collectHookNames(List<?> hooks, String source) {
-        Set<String> names = new LinkedHashSet<>();
-        for (Object item : hooks) {
-            if (item instanceof Map<?, ?> hm && hm.get("settings") instanceof Map<?, ?> settings
-                    && settings.get("name") instanceof String name && !name.isBlank()) {
-                if (!names.add(name)) {
-                    throw new ConfigException(source + ": duplicate hook name '" + name + "'");
-                }
-            }
+    private String hookCollisionKey(Map<?, ?> hm, Path source) {
+        if (hm.get("id") instanceof String id && !id.isBlank()) {
+            return "id:" + id;
         }
-        return names;
+        if (hm.get("name") instanceof String name && !name.isBlank()) {
+            return "name:" + name;
+        }
+        if (hm.get("settings") instanceof Map<?, ?> settings
+                && settings.get("name") instanceof String settingsName && !settingsName.isBlank()) {
+            return "settings.name:" + settingsName;
+        }
+        if (hm.get("type") instanceof String type && !type.isBlank()) {
+            Object methods = hm.get("methods");
+            Object ops = hm.get("operations");
+            return "type:" + type + "|ops:" + ops + "|methods:" + methods;
+        }
+        throw new ConfigException(source + ": malformed hook entry missing 'type', 'id', or 'name'");
     }
 
     /** Ensures adopter-defined hooks are scoped to their own source unless explicitly set otherwise. */
@@ -242,29 +280,44 @@ public final class ConfigComposer {
                     throw new ConfigException(origin + ": adopter hook cannot target external source '" + s + "'");
                 }
             }
+        } else {
+            throw new ConfigException(origin + ": hook 'sources' must be a list");
         }
         return copy;
     }
 
-    private List<Object> copyList(Object val) {
-        return val instanceof List<?> list ? new ArrayList<>(list) : new ArrayList<>();
+    private List<Object> extractMapList(Object val, String fieldName, Path source) {
+        if (val == null) {
+            return new ArrayList<>();
+        }
+        if (!(val instanceof List<?> list)) {
+            throw new ConfigException(source + ": '" + fieldName + "' must be a list");
+        }
+        List<Object> out = new ArrayList<>(list.size());
+        for (int i = 0; i < list.size(); i++) {
+            Object item = list.get(i);
+            if (!(item instanceof Map<?, ?>)) {
+                throw new ConfigException(source + ": '" + fieldName + "[" + i + "]' must be a mapping");
+            }
+            out.add(item);
+        }
+        return out;
     }
 
-    private Object resolvePaths(Object node, Path baseDir) {
+    private Object resolvePaths(Object node, Path baseDir, Path outputDir) {
         if (node instanceof Map<?, ?> map) {
             Map<String, Object> sorted = new TreeMap<>();
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 String key = String.valueOf(entry.getKey());
                 Object val = entry.getValue();
-                if (val instanceof String strVal && PATH_KEYS.contains(key) && !strVal.isBlank() && baseDir != null) {
-                    Path p = Path.of(strVal);
-                    sorted.put(key, p.isAbsolute() ? p.normalize().toString() : baseDir.resolve(p).normalize().toString());
+                if (val instanceof String strVal && FILESYSTEM_PATH_KEYS.contains(key) && !strVal.isBlank() && baseDir != null) {
+                    sorted.put(key, resolveFilesystemPath(strVal, baseDir, outputDir));
                 } else if ("artifacts".equals(key) && val instanceof List<?> artifacts && baseDir != null) {
-                    sorted.put(key, resolveArtifactPaths(artifacts, baseDir));
+                    sorted.put(key, resolveArtifactPaths(artifacts, baseDir, outputDir));
                 } else if ("command".equals(key) && val instanceof List<?> cmd && baseDir != null) {
-                    sorted.put(key, resolveCommandPaths(cmd, baseDir));
+                    sorted.put(key, resolveCommandPaths(cmd, baseDir, outputDir));
                 } else {
-                    sorted.put(key, resolvePaths(val, baseDir));
+                    sorted.put(key, resolvePaths(val, baseDir, outputDir));
                 }
             }
             return sorted;
@@ -272,14 +325,36 @@ public final class ConfigComposer {
         if (node instanceof List<?> list) {
             List<Object> out = new ArrayList<>(list.size());
             for (Object item : list) {
-                out.add(resolvePaths(item, baseDir));
+                out.add(resolvePaths(item, baseDir, outputDir));
             }
             return out;
         }
         return node;
     }
 
-    private List<Object> resolveArtifactPaths(List<?> artifacts, Path baseDir) {
+    private String resolveFilesystemPath(String rawPath, Path baseDir, Path outputDir) {
+        if (hasUriScheme(rawPath)) {
+            return rawPath;
+        }
+        Path p = Path.of(rawPath);
+        if (p.isAbsolute()) {
+            return p.normalize().toString().replace('\\', '/');
+        }
+        Path resolved = baseDir.resolve(p).normalize();
+        if (outputDir != null && resolved.getRoot() != null
+                && java.util.Objects.equals(resolved.getRoot(), outputDir.getRoot())) {
+            String rel = outputDir.relativize(resolved).toString().replace('\\', '/');
+            return rel.isEmpty() ? "." : rel;
+        }
+        return resolved.toString().replace('\\', '/');
+    }
+
+    private boolean hasUriScheme(String value) {
+        int colon = value.indexOf(':');
+        return colon > 1 && value.startsWith("://", colon);
+    }
+
+    private List<Object> resolveArtifactPaths(List<?> artifacts, Path baseDir, Path outputDir) {
         List<Object> out = new ArrayList<>(artifacts.size());
         for (Object item : artifacts) {
             if (item instanceof Map<?, ?> m) {
@@ -288,25 +363,24 @@ public final class ConfigComposer {
                     String k = String.valueOf(e.getKey());
                     Object v = e.getValue();
                     if ("path".equals(k) && v instanceof String s && !s.isBlank()) {
-                        Path p = Path.of(s);
-                        copy.put(k, p.isAbsolute() ? p.normalize().toString() : baseDir.resolve(p).normalize().toString());
+                        copy.put(k, resolveFilesystemPath(s, baseDir, outputDir));
                     } else {
-                        copy.put(k, resolvePaths(v, baseDir));
+                        copy.put(k, resolvePaths(v, baseDir, outputDir));
                     }
                 }
                 out.add(copy);
             } else {
-                out.add(resolvePaths(item, baseDir));
+                out.add(resolvePaths(item, baseDir, outputDir));
             }
         }
         return out;
     }
 
-    private List<Object> resolveCommandPaths(List<?> cmd, Path baseDir) {
+    private List<Object> resolveCommandPaths(List<?> cmd, Path baseDir, Path outputDir) {
         List<Object> out = new ArrayList<>(cmd.size());
         for (Object item : cmd) {
             if (item instanceof String s && (s.startsWith("./") || s.startsWith("../"))) {
-                out.add(baseDir.resolve(s).normalize().toString());
+                out.add(resolveFilesystemPath(s, baseDir, outputDir));
             } else {
                 out.add(item);
             }
