@@ -127,6 +127,16 @@ class BinaryLegalTest {
         assertThrows(IOException.class, () -> BinaryLegalMojo.selected(set, "org.postgresql:postgresql"));
     }
 
+    @Test
+    void locatesInventoryFromExamplesReactorAndFailsWhenMissing() throws IOException {
+        Path examples = Files.createDirectories(root.resolve("examples"));
+        assertEquals(root, BinaryLegalMojo.findLegalRoot(root));
+        assertEquals(root, BinaryLegalMojo.findLegalRoot(examples));
+        Files.delete(root.resolve("tools/binary-legal/components.txt"));
+        IOException error = assertThrows(IOException.class, () -> BinaryLegalMojo.findLegalRoot(examples));
+        assertTrue(error.getMessage().contains("tools/binary-legal/components.txt"));
+    }
+
     private void review(String text) throws IOException {
         Files.writeString(root.resolve("tools/binary-legal/components.txt"), text);
     }

@@ -62,7 +62,7 @@ public final class BinaryLegalMojo extends AbstractMojo {
                 }
                 components.add(new BinaryLegal.Component(coordinate, artifact.getFile().toPath()));
             }
-            BinaryLegal.Documents documents = BinaryLegal.assemble(root.toPath(), components);
+            BinaryLegal.Documents documents = BinaryLegal.assemble(findLegalRoot(root.toPath()), components);
             if (verify) {
                 Xpp3Dom classifier = shade.getChild("shadedClassifierName");
                 if (classifier == null) throw new IOException("Missing shaded classifier");
@@ -79,6 +79,16 @@ public final class BinaryLegalMojo extends AbstractMojo {
         } catch (IOException e) {
             throw new MojoExecutionException("Binary legal metadata: " + e.getMessage(), e);
         }
+    }
+
+    static Path findLegalRoot(Path start) throws IOException {
+        Path directory = start.toAbsolutePath().normalize();
+        for (Path candidate = directory; candidate != null; candidate = candidate.getParent()) {
+            if (Files.isRegularFile(candidate.resolve("tools").resolve("binary-legal").resolve("components.txt"))) {
+                return candidate;
+            }
+        }
+        throw new IOException("Cannot find tools/binary-legal/components.txt in " + directory + " or its ancestors");
     }
 
     private Xpp3Dom shadeConfiguration() throws IOException {

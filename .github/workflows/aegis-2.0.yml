@@ -35,7 +35,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
       - name: Build, license-header check, tests, coverage gate
-        run: mvn -B verify
+        run: mvn -B install
+      - name: Verify example bundles from the examples reactor
+        run: mvn -B -f examples/pom.xml -Preal-engines -pl aegis-gateway-kafka,aegis-gateway-spark -am -DskipTests verify
       - name: Check generated tutorial and IDE assets are current
         run: python3 tools/build-project-tutorials.py --check
       # Iceberg REST and Kafka validation need running servers (AEGIS_ICEBERG_REST_URL, AEGIS_KAFKA_*);
