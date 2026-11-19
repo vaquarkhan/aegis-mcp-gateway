@@ -110,13 +110,14 @@ class HiveFrontDoorsTest {
     @ValueSource(strings = {FrontDoor.OWN_HOST, FrontDoor.KNOX})
     void governsRealHiveServer(String door) throws Exception {
         AdopterScenario scenario = AdopterScenario.of("hive",
-                AdopterScenario.canonical("adapters", "hive", "hive.yaml"),
-                yaml -> yaml.replace("jdbc:hive2://hiveserver2:10000/default", "jdbc:hive2://127.0.0.1:" + port + "/default")
-                        .replace("allowCidrs: [10.0.0.0/8]", "allowCidrs: [127.0.0.0/8]"),
-                Map.of(Persona.READER, List.of("hive-users"),
-                        Persona.OPERATOR, List.of("hive-operators"),
-                        Persona.APPROVER, List.of("hive-approvers")),
-                Map.of("HIVE_USER", USER, "HIVE_PASSWORD", PASSWORD))
+                        AdopterScenario.canonical("adapters", "hive", "hive.yaml"),
+                        yaml -> yaml.replace("jdbc:hive2://hiveserver2:10000/default", "jdbc:hive2://127.0.0.1:" + port + "/default")
+                                .replace("allowCidrs: [10.0.0.0/8]", "allowCidrs: [127.0.0.0/8]")
+                                .replaceAll("(?m)^(\\s*file:\\s*)\\.\\./\\S+\\s*$", "$1audit/aegis-hive.jsonl"),
+                        Map.of(Persona.READER, List.of("hive-users"),
+                                Persona.OPERATOR, List.of("hive-operators"),
+                                Persona.APPROVER, List.of("hive-approvers")),
+                        Map.of("HIVE_USER", USER, "HIVE_PASSWORD", PASSWORD))
                 .withKnoxPlugin(List.of(Path.of(System.getProperty("aegis.jdbc.pluginJar")),
                         Path.of(System.getProperty("aegis.hive.driverJar"))), List.of());
 
