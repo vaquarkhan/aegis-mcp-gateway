@@ -75,6 +75,9 @@ public final class Main {
         String requireCatalogKey = null;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
+                case "--compose" -> {
+                    return ComposeCommand.run(java.util.Arrays.copyOfRange(args, i + 1, args.length), out, err);
+                }
                 case "--config" -> {
                     if (i + 1 >= args.length) {
                         err.println("--config needs a file");

@@ -56,6 +56,14 @@ jobs:
           cache: maven
       - name: Build the gateway jar
         run: mvn -B -DskipTests -Djacoco.skip=true -pl aegis-gateway -am package
+      - name: Check composed Hive configuration is current
+        run: |
+          java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
+            --compose \
+            --gateway-config examples/adopters/hive/aegis/gateway.yaml \
+            --adopter examples/adopters/hive/aegis/adopter.yaml \
+            --out adopters/configurations/adapters/hive/hive.yaml \
+            --check
       - name: Reference hook unit tests
         working-directory: adopters/hooks
         run: python3 -m unittest -v test_hooks

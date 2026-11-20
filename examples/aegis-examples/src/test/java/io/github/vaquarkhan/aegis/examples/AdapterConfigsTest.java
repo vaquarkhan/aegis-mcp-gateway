@@ -376,6 +376,11 @@ class AdapterConfigsTest {
         // real DriverManager path is built; it connects only on a tool call, which this catalog test
         // never makes. The driver itself is exercised in the real-engine validation modules.
         yaml = yaml.replaceAll("(?m)^\\s*driverClass:.*\\R", "");
+        if ("hive".equals(a.engine())) {
+            yaml = yaml.replaceAll(
+                    "(?m)^(\\s*file:\\s*)\\.\\./\\S+\\s*$",
+                    "$1" + dir.resolve("aegis-hive.jsonl").toString().replace("\\", "/"));
+        }
         Path p = dir.resolve(a.engine() + ".yaml");
         Files.writeString(p, yaml);
         // Every credential env var the config names gets a value, read out of the file rather than listed
