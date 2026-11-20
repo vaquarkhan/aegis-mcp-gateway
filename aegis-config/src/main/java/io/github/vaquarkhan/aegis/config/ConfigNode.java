@@ -17,6 +17,8 @@ package io.github.vaquarkhan.aegis.config;
 
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -162,7 +164,7 @@ public final class ConfigNode {
         if (m == null) {
             throw error(key, "must be an object");
         }
-        Map<String, ConfigNode> out = new java.util.LinkedHashMap<>();
+        Map<String, ConfigNode> out = new LinkedHashMap<>();
         for (Map.Entry<String, Object> e : m.entrySet()) {
             if (!(e.getValue() instanceof Map)) {
                 throw error(key + "." + e.getKey(), "must be an object");
@@ -191,7 +193,7 @@ public final class ConfigNode {
         if (m == null) {
             throw error(key, "must be an object of strings");
         }
-        Map<String, String> out = new java.util.LinkedHashMap<>();
+        Map<String, String> out = new LinkedHashMap<>();
         for (Map.Entry<String, Object> e : m.entrySet()) {
             if (!(e.getValue() instanceof String s)) {
                 throw error(key + "." + e.getKey(), "must be a string");
@@ -203,7 +205,7 @@ public final class ConfigNode {
 
     /** Read-only view of this node's raw values, for digesting a reviewed block; marks nothing as read. */
     public Map<String, Object> values() {
-        return java.util.Collections.unmodifiableMap(map);
+        return Collections.unmodifiableMap(map);
     }
 
     /** Marks every key of this node as intentionally ignored (a block that is digested but never used). */

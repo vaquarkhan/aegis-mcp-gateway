@@ -22,6 +22,9 @@ import io.github.vaquarkhan.aegis.engine.model.Decision;
 import io.github.vaquarkhan.aegis.engine.model.Digests;
 import io.github.vaquarkhan.aegis.engine.model.ToolResult;
 import io.github.vaquarkhan.aegis.engine.spi.GovernanceHook;
+import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -88,7 +91,7 @@ public final class RemoteHook implements GovernanceHook {
     private final boolean includeResult;
     private final int maxResponseBytes;
     private final Set<Phase> phases;
-    private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
+    private final OutboundHttp http;
 
     public RemoteHook(String name, URI url, Duration timeout, Map<String, String> headers, boolean includeArguments,
                       boolean includeResult, int maxResponseBytes, Set<Phase> phases) {
@@ -98,7 +101,7 @@ public final class RemoteHook implements GovernanceHook {
     /** @param transport the gateway passes a pinned transport bound to the egress control (null = JDK client) */
     public RemoteHook(String name, URI url, Duration timeout, Map<String, String> headers, boolean includeArguments,
                       boolean includeResult, int maxResponseBytes, Set<Phase> phases,
-                      io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
+                      OutboundHttp transport) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("a remote hook needs a name");
         }
@@ -113,7 +116,7 @@ public final class RemoteHook implements GovernanceHook {
         this.includeResult = includeResult;
         this.maxResponseBytes = Math.min(Math.max(maxResponseBytes, 256), MAX_RESPONSE_BYTES);
         this.phases = phases == null || phases.isEmpty() ? Set.copyOf(EnumSet.of(Phase.BEFORE)) : Set.copyOf(phases);
-        this.http = transport != null ? transport : io.github.vaquarkhan.aegis.mcp.http.OutboundHttp.jdk(
+        this.http = transport != null ? transport : OutboundHttp.jdk(
                 HttpClient.newBuilder().connectTimeout(this.timeout).followRedirects(HttpClient.Redirect.NEVER).build());
     }
 
@@ -199,7 +202,7 @@ public final class RemoteHook implements GovernanceHook {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofByteArray(Json.writeBytes(body)));
         headers.forEach(b::header);
-        io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.Result resp =
+        BoundedHttp.Result resp =
                 http.send(b.build(), maxResponseBytes, timeout.toMillis());
         if (resp.status() != 200) {
             throw new HookDenied(null, "the hook endpoint returned HTTP " + resp.status());

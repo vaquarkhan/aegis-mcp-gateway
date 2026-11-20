@@ -18,9 +18,13 @@ package io.github.vaquarkhan.aegis.config.hooks;
 import io.github.vaquarkhan.aegis.engine.model.Decision;
 import io.github.vaquarkhan.aegis.engine.model.DenyCodes;
 import io.github.vaquarkhan.aegis.engine.spi.GovernanceHook;
+
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Refuses a statement argument that is not a single read-only SQL statement.
@@ -170,7 +174,7 @@ public final class SqlReadOnlyHook implements GovernanceHook {
         this.maxChars = maxChars <= 0 ? 8192 : maxChars;
         Set<String> upper = null;
         if (allowedFunctions != null) {
-            upper = new java.util.HashSet<>();
+            upper = new HashSet<>();
             for (String f : allowedFunctions) {
                 upper.add(f.toUpperCase(Locale.ROOT));
             }
@@ -256,7 +260,7 @@ public final class SqlReadOnlyHook implements GovernanceHook {
         }
         if (!READING_FIRST_KEYWORDS.contains(tokens.get(0))) {
             return "it starts with '" + tokens.get(0) + "', and a read-only statement must start with one of "
-                    + new java.util.TreeSet<>(READING_FIRST_KEYWORDS);
+                    + new TreeSet<>(READING_FIRST_KEYWORDS);
         }
         for (String t : tokens) {
             if (WRITING_KEYWORDS.contains(t)) {
@@ -282,7 +286,7 @@ public final class SqlReadOnlyHook implements GovernanceHook {
      * name such as {@code pg_catalog.pg_sleep(} reports its last segment, which is what the lists hold.
      */
     static List<String> calledFunctions(String bare) {
-        List<String> out = new java.util.ArrayList<>();
+        List<String> out = new ArrayList<>();
         int n = bare.length();
         int i = 0;
         while (i < n) {
@@ -343,7 +347,7 @@ public final class SqlReadOnlyHook implements GovernanceHook {
     }
 
     private static List<String> statements(String bare) {
-        List<String> statements = new java.util.ArrayList<>();
+        List<String> statements = new ArrayList<>();
         for (String part : bare.split(";", -1)) {
             if (!part.isBlank()) {
                 statements.add(part);
@@ -452,7 +456,7 @@ public final class SqlReadOnlyHook implements GovernanceHook {
 
     /** Upper-case word tokens, in order. */
     static List<String> tokens(String sql) {
-        List<String> out = new java.util.ArrayList<>();
+        List<String> out = new ArrayList<>();
         StringBuilder w = new StringBuilder();
         for (int i = 0; i <= sql.length(); i++) {
             char c = i < sql.length() ? sql.charAt(i) : ' ';

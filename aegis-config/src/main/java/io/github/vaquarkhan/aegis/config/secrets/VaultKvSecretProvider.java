@@ -37,6 +37,7 @@ import java.security.cert.CertificateFactory;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
 import javax.net.ssl.SSLContext;
@@ -182,7 +183,7 @@ public final class VaultKvSecretProvider implements Function<String, String> {
     }
 
     /** Key names only, for diagnostics; never the values. */
-    public java.util.Set<String> names() {
+    public Set<String> names() {
         return values.keySet();
     }
 
