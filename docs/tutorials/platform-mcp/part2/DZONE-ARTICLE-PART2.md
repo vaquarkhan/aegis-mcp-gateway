@@ -39,7 +39,10 @@ If Part 1 is still running, do not start anything in "How Flink, Spark, Kafka, a
 
 From Part 1: Aegis is a small gateway that speaks MCP to the agent and the engines' normal APIs on the other side. On every `tools/call` it authenticates the token to an actor, classifies the tool as READ, MUTATE, or DESTRUCTIVE, checks the target against the caller's scope, evaluates deny-overrides policy, requires an independent approval for destructive actions, pins egress, forwards to the engine only if allowed, and writes the decision to a hash-chained audit log. It fails closed. You already saw an analyst allowed on `gold` and denied with `SCOPE_DENIED` on `bronze` and `restricted`, and an outsider (a known token with empty groups) denied with `POLICY_DENIED`. Now the internals and the big payoff.
 
-If you came straight to Part 2, the five safe client templates are under [`../part1/code/ide`](../part1/code/ide/README.md): Cursor, Kiro, VS Code Copilot, Claude Desktop, and Gemini CLI. They all reach the same gateway and policy. The client changes; the evidence below does not.
+If you came straight to Part 2, the five safe client templates are under
+[`articles/part1/code/ide`](https://github.com/vaquarkhan/aegis-platform-mcp-tutorial/tree/main/articles/part1/code/ide)
+in the companion tutorial repo: Cursor, Kiro, VS Code Copilot, Claude Desktop, and Gemini CLI. They all
+reach the same gateway and policy. The client changes; the evidence below does not.
 
 ## How Flink, Spark, Kafka, and Iceberg are started
 
