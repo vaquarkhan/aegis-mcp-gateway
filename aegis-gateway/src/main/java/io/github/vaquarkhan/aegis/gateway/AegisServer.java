@@ -18,8 +18,12 @@ package io.github.vaquarkhan.aegis.gateway;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsExchange;
+import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 import io.github.vaquarkhan.aegis.config.Gateway;
+import io.github.vaquarkhan.aegis.engine.spi.ScopeChallenge;
+import io.github.vaquarkhan.aegis.engine.spi.SubjectToken;
 import io.github.vaquarkhan.aegis.security.identity.JwtVerifier;
 import io.github.vaquarkhan.aegis.security.perimeter.ClientAddressLimiter;
 import io.github.vaquarkhan.aegis.security.perimeter.OwnServerPerimeter;
@@ -33,16 +37,27 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 
 /**
  * The gateway's own front door on the JDK's built-in HTTP(S) server. It adapts HTTP exchanges to the
@@ -105,7 +120,7 @@ public final class AegisServer implements AutoCloseable {
                 }, (r, executor) -> {
                     LOG.log(System.Logger.Level.WARNING, "HTTP worker pool saturated (" + threads + " workers, "
                             + threads * 8 + " queued); refusing a connection");
-                    throw new java.util.concurrent.RejectedExecutionException("aegis worker pool saturated");
+                    throw new RejectedExecutionException("aegis worker pool saturated");
                 });
     }
 
@@ -138,7 +153,7 @@ public final class AegisServer implements AutoCloseable {
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             kmf.init(ks, settings.keystorePassword());
             ssl = SSLContext.getInstance("TLS");
-            javax.net.ssl.TrustManager[] clientTrust = settings.requireClientCert()
+            TrustManager[] clientTrust = settings.requireClientCert()
                     ? clientTrustManagers(settings.clientCaFile()) : null;
             ssl.init(kmf.getKeyManagers(), clientTrust, null);
         }
@@ -204,8 +219,8 @@ public final class AegisServer implements AutoCloseable {
         boolean needClientAuth = settings.requireClientCert();
         https.setHttpsConfigurator(new HttpsConfigurator(ssl) {
             @Override
-            public void configure(com.sun.net.httpserver.HttpsParameters params) {
-                javax.net.ssl.SSLParameters p = getSSLContext().getDefaultSSLParameters();
+            public void configure(HttpsParameters params) {
+                SSLParameters p = getSSLContext().getDefaultSSLParameters();
                 // Mutual TLS: a client without a certificate that chains to clientCaFile fails the handshake.
                 p.setNeedClientAuth(needClientAuth);
                 params.setSSLParameters(p);
@@ -245,7 +260,7 @@ public final class AegisServer implements AutoCloseable {
      * answering 429 with Retry-After.
      */
     private String preAuth(HttpExchange ex) throws IOException {
-        java.net.InetSocketAddress remote = ex.getRemoteAddress();
+        InetSocketAddress remote = ex.getRemoteAddress();
         String client = limiter.clientAddress(remote == null ? null : remote.getAddress(),
                 ex.getRequestHeaders().get("X-Forwarded-For"));
         ClientAddressLimiter.Refusal r = limiter.beforeAuthentication(client, System.currentTimeMillis());
@@ -291,7 +306,7 @@ public final class AegisServer implements AutoCloseable {
             } catch (RuntimeException e) {
                 LOG.log(System.Logger.Level.ERROR, what + " failed", e);
                 if (ex.getResponseCode() == -1) {
-                    byte[] body = "{\"error\":\"internal error\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                    byte[] body = "{\"error\":\"internal error\"}".getBytes(StandardCharsets.UTF_8);
                     ex.getResponseHeaders().set("Content-Type", "application/json");
                     ex.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
                     ex.sendResponseHeaders(500, body.length);
@@ -333,7 +348,7 @@ public final class AegisServer implements AutoCloseable {
         // Authenticate and admit the route before consuming an untrusted request body. The body is
         // not needed for JWT/static authentication, so unauthenticated traffic cannot make this host
         // buffer up to maxRequestBytes before the perimeter rejects it.
-        List<java.security.cert.X509Certificate> peer = verifiedPeerChain(ex);
+        List<X509Certificate> peer = verifiedPeerChain(ex);
         OwnServerPerimeter.Admission admission = perimeter.admit(
                 admin ? OwnServerPerimeter.RouteGroup.ADMIN : OwnServerPerimeter.RouteGroup.MCP,
                 new McpHttpRequest(ex.getRequestMethod(), rel, headers, new byte[0], peer));
@@ -355,10 +370,10 @@ public final class AegisServer implements AutoCloseable {
         McpHttpResponse resp;
         // A verified JWT is offered to credential providers for RFC 8693 exchange during this request
         // only. Static tokens are gateway-local secrets, not identity-provider tokens, so they are not.
-        io.github.vaquarkhan.aegis.engine.spi.SubjectToken.Scope subject =
-                io.github.vaquarkhan.aegis.engine.spi.SubjectToken.bind(admin ? null : verifiedJwt(caller, ex));
-        io.github.vaquarkhan.aegis.engine.spi.ScopeChallenge.Scope stepUp =
-                io.github.vaquarkhan.aegis.engine.spi.ScopeChallenge.open();
+        SubjectToken.Scope subject =
+                SubjectToken.bind(admin ? null : verifiedJwt(caller, ex));
+        ScopeChallenge.Scope stepUp =
+                ScopeChallenge.open();
         try {
             resp = admin ? gateway.admin().handle(req, caller) : gateway.mcp().handleHttp(req, caller);
             resp = stepUp(resp, caller, admin, stepUp.required());
@@ -403,39 +418,39 @@ public final class AegisServer implements AutoCloseable {
      * The client chain the TLS handshake verified against {@code host.tls.clientCaFile}. Only read when
      * client authentication is required, so the chain is always one the trust managers accepted.
      */
-    private List<java.security.cert.X509Certificate> verifiedPeerChain(HttpExchange ex) {
-        if (!settings.requireClientCert() || !(ex instanceof com.sun.net.httpserver.HttpsExchange https)) {
+    private List<X509Certificate> verifiedPeerChain(HttpExchange ex) {
+        if (!settings.requireClientCert() || !(ex instanceof HttpsExchange https)) {
             return List.of();
         }
         try {
-            List<java.security.cert.X509Certificate> chain = new java.util.ArrayList<>();
-            for (java.security.cert.Certificate c : https.getSSLSession().getPeerCertificates()) {
-                if (c instanceof java.security.cert.X509Certificate x) {
+            List<X509Certificate> chain = new ArrayList<>();
+            for (Certificate c : https.getSSLSession().getPeerCertificates()) {
+                if (c instanceof X509Certificate x) {
                     chain.add(x);
                 }
             }
             return chain;
-        } catch (javax.net.ssl.SSLPeerUnverifiedException none) {
+        } catch (SSLPeerUnverifiedException none) {
             return List.of();
         }
     }
 
     /** Trust managers for client certificates: only the PEM bundle in {@code clientCaFile}, not the JDK defaults. */
-    private static javax.net.ssl.TrustManager[] clientTrustManagers(java.nio.file.Path caFile) throws Exception {
-        java.security.cert.CertificateFactory cf = java.security.cert.CertificateFactory.getInstance("X.509");
+    private static TrustManager[] clientTrustManagers(Path caFile) throws Exception {
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
         KeyStore trust = KeyStore.getInstance(KeyStore.getDefaultType());
         trust.load(null, null);
         int i = 0;
         try (InputStream in = Files.newInputStream(caFile)) {
-            for (java.security.cert.Certificate c : cf.generateCertificates(in)) {
+            for (Certificate c : cf.generateCertificates(in)) {
                 trust.setCertificateEntry("client-ca-" + i++, c);
             }
         }
         if (i == 0) {
             throw new IllegalArgumentException("host.tls.clientCaFile " + caFile + " holds no certificate");
         }
-        javax.net.ssl.TrustManagerFactory tmf = javax.net.ssl.TrustManagerFactory.getInstance(
-                javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm());
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(
+                TrustManagerFactory.getDefaultAlgorithm());
         tmf.init(trust);
         return tmf.getTrustManagers();
     }
@@ -463,7 +478,7 @@ public final class AegisServer implements AutoCloseable {
                 write(ex, McpHttpResponse.json(404, Map.of("error", "not found")));
                 return;
             }
-            byte[] body = settings.oauth().json().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] body = settings.oauth().json().getBytes(StandardCharsets.UTF_8);
             ex.getResponseHeaders().set("Content-Type", "application/json");
             ex.getResponseHeaders().set("Cache-Control", "public, max-age=3600");
             ex.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
@@ -497,7 +512,7 @@ public final class AegisServer implements AutoCloseable {
                     admission.headers()));
             return;
         }
-        byte[] body = gateway.metrics().renderPrometheus().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] body = gateway.metrics().renderPrometheus().getBytes(StandardCharsets.UTF_8);
         ex.getResponseHeaders().set("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
         ex.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
         ex.sendResponseHeaders(200, body.length);

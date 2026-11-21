@@ -27,6 +27,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
 
@@ -105,18 +106,18 @@ public final class Main {
                     checkpoints = args[++i];
                 }
                 case "--manifest-keygen", "--manifest-create", "--manifest-sign", "--manifest-verify" -> {
-                    String[] rest = java.util.Arrays.copyOfRange(args, i + 1, args.length);
+                    String[] rest = Arrays.copyOfRange(args, i + 1, args.length);
                     return CatalogManifestCommands.run(args[i], rest, out, err);
                 }
                 case "--server-catalog-create", "--server-catalog-verify", "--break-glass-create", "--break-glass-verify" -> {
-                    String[] rest = java.util.Arrays.copyOfRange(args, i + 1, args.length);
+                    String[] rest = Arrays.copyOfRange(args, i + 1, args.length);
                     return ServerCatalogCommands.run(args[i], rest, out, err, Clock.systemUTC());
                 }
                 case "--openapi-draft" -> {
-                    return OpenApiDraftCommand.run(java.util.Arrays.copyOfRange(args, i + 1, args.length), out, err);
+                    return OpenApiDraftCommand.run(Arrays.copyOfRange(args, i + 1, args.length), out, err);
                 }
                 case "--policy-test" -> {
-                    return PolicyTestCommand.run(java.util.Arrays.copyOfRange(args, i + 1, args.length), out, err, env);
+                    return PolicyTestCommand.run(Arrays.copyOfRange(args, i + 1, args.length), out, err, env);
                 }
                 case "--hash-token" -> {
                     String t = new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
