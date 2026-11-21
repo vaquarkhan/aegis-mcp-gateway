@@ -35,6 +35,7 @@ import io.github.vaquarkhan.aegis.engine.model.Digests;
 import io.github.vaquarkhan.aegis.engine.model.RoundTrip;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.model.TraceContext;
+import io.github.vaquarkhan.aegis.engine.observe.Listeners;
 import io.github.vaquarkhan.aegis.engine.spi.DecisionListener;
 import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
 import io.github.vaquarkhan.aegis.engine.spi.ContentSource;
@@ -1091,7 +1092,7 @@ public final class ContentGovernor {
                 t.binding == null ? "" : t.binding.settings().sourceId(), d.allowed() ? DenyCodes.ALLOWED : d.code(), d.step(),
                 reachedBackend, clock.millis() - t.startMillis,
                 new DecisionListener.Span(t.tc.spanId(), t.tc.parentSpanId(), t.startMillis));
-        io.github.vaquarkhan.aegis.engine.observe.Listeners.notify(settings.listeners(), e);
+        Listeners.notify(settings.listeners(), e);
     }
 
     private Outcome internal(Trace t, RuntimeException e) {

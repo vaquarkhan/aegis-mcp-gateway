@@ -17,8 +17,11 @@ package io.github.vaquarkhan.aegis.engine.catalog;
 
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
+import io.github.vaquarkhan.aegis.engine.model.Digests;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -94,7 +97,7 @@ public final class CatalogIntegrity {
             pinned = learned.get(toolName);
         }
         if (pinned != null) {
-            return io.github.vaquarkhan.aegis.engine.model.Digests.constantTimeEquals(pinned, digest) ? Verdict.MATCH : Verdict.MISMATCH;
+            return Digests.constantTimeEquals(pinned, digest) ? Verdict.MATCH : Verdict.MISMATCH;
         }
         if (mode == Mode.REQUIRE_PINS || !firstSightAllowed) {
             return Verdict.UNPINNED;
@@ -141,7 +144,7 @@ public final class CatalogIntegrity {
                     Files.move(tmp, pinFile, StandardCopyOption.REPLACE_EXISTING);
                 }
                 return;
-            } catch (java.nio.file.AccessDeniedException e) {
+            } catch (AccessDeniedException e) {
                 last = e;
                 try {
                     Thread.sleep(20L * (attempt + 1));

@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.engine.control;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -66,26 +68,26 @@ public final class InjectionScreen {
      * {@code \u0456} to Latin {@code i}, so "\u0456gnore" passed the phrase list unchanged. This table
      * is the common Cyrillic and Greek subset of the Unicode TR39 confusables for Latin letters.
      */
-    static final java.util.Map<Character, Character> CONFUSABLES = java.util.Map.ofEntries(
-            java.util.Map.entry('\u0430', 'a'), java.util.Map.entry('\u0435', 'e'), java.util.Map.entry('\u043e', 'o'),
-            java.util.Map.entry('\u0440', 'p'), java.util.Map.entry('\u0441', 'c'), java.util.Map.entry('\u0443', 'y'),
-            java.util.Map.entry('\u0445', 'x'), java.util.Map.entry('\u0456', 'i'), java.util.Map.entry('\u0458', 'j'),
-            java.util.Map.entry('\u0455', 's'), java.util.Map.entry('\u04bb', 'h'), java.util.Map.entry('\u0501', 'd'),
-            java.util.Map.entry('\u051b', 'q'), java.util.Map.entry('\u051d', 'w'), java.util.Map.entry('\u0261', 'g'),
-            java.util.Map.entry('\u0433', 'r'), java.util.Map.entry('\u043a', 'k'), java.util.Map.entry('\u043c', 'm'),
-            java.util.Map.entry('\u0442', 't'), java.util.Map.entry('\u0432', 'b'), java.util.Map.entry('\u043d', 'h'),
-            java.util.Map.entry('\u03b1', 'a'), java.util.Map.entry('\u03bf', 'o'), java.util.Map.entry('\u03c1', 'p'),
-            java.util.Map.entry('\u03b9', 'i'), java.util.Map.entry('\u03ba', 'k'), java.util.Map.entry('\u03bd', 'v'),
-            java.util.Map.entry('\u03c5', 'u'), java.util.Map.entry('\u03c4', 't'), java.util.Map.entry('\u03b5', 'e'),
-            java.util.Map.entry('\u03b3', 'y'), java.util.Map.entry('\u0131', 'i'), java.util.Map.entry('\u0237', 'j'),
-            java.util.Map.entry('\u1e9f', 'd'), java.util.Map.entry('\u0251', 'a'), java.util.Map.entry('\u01c0', 'l'),
-            java.util.Map.entry('\u0196', 'l'), java.util.Map.entry('\u2113', 'l'), java.util.Map.entry('\u217c', 'l'),
+    static final Map<Character, Character> CONFUSABLES = Map.ofEntries(
+            Map.entry('\u0430', 'a'), Map.entry('\u0435', 'e'), Map.entry('\u043e', 'o'),
+            Map.entry('\u0440', 'p'), Map.entry('\u0441', 'c'), Map.entry('\u0443', 'y'),
+            Map.entry('\u0445', 'x'), Map.entry('\u0456', 'i'), Map.entry('\u0458', 'j'),
+            Map.entry('\u0455', 's'), Map.entry('\u04bb', 'h'), Map.entry('\u0501', 'd'),
+            Map.entry('\u051b', 'q'), Map.entry('\u051d', 'w'), Map.entry('\u0261', 'g'),
+            Map.entry('\u0433', 'r'), Map.entry('\u043a', 'k'), Map.entry('\u043c', 'm'),
+            Map.entry('\u0442', 't'), Map.entry('\u0432', 'b'), Map.entry('\u043d', 'h'),
+            Map.entry('\u03b1', 'a'), Map.entry('\u03bf', 'o'), Map.entry('\u03c1', 'p'),
+            Map.entry('\u03b9', 'i'), Map.entry('\u03ba', 'k'), Map.entry('\u03bd', 'v'),
+            Map.entry('\u03c5', 'u'), Map.entry('\u03c4', 't'), Map.entry('\u03b5', 'e'),
+            Map.entry('\u03b3', 'y'), Map.entry('\u0131', 'i'), Map.entry('\u0237', 'j'),
+            Map.entry('\u1e9f', 'd'), Map.entry('\u0251', 'a'), Map.entry('\u01c0', 'l'),
+            Map.entry('\u0196', 'l'), Map.entry('\u2113', 'l'), Map.entry('\u217c', 'l'),
             // P-6: broader cross-script set (more Cyrillic, Greek lunate forms, Armenian, IPA).
-            java.util.Map.entry('\u0475', 'v'), java.util.Map.entry('\u0461', 'w'), java.util.Map.entry('\u04ab', 'c'),
-            java.util.Map.entry('\u0451', 'e'), java.util.Map.entry('\u0450', 'e'), java.util.Map.entry('\u04bd', 'e'),
-            java.util.Map.entry('\u03f2', 'c'), java.util.Map.entry('\u03f3', 'j'),
-            java.util.Map.entry('\u0585', 'o'), java.util.Map.entry('\u0578', 'n'), java.util.Map.entry('\u057d', 'u'),
-            java.util.Map.entry('\u0269', 'i'), java.util.Map.entry('\u0275', 'o'), java.util.Map.entry('\u027e', 'r'));
+            Map.entry('\u0475', 'v'), Map.entry('\u0461', 'w'), Map.entry('\u04ab', 'c'),
+            Map.entry('\u0451', 'e'), Map.entry('\u0450', 'e'), Map.entry('\u04bd', 'e'),
+            Map.entry('\u03f2', 'c'), Map.entry('\u03f3', 'j'),
+            Map.entry('\u0585', 'o'), Map.entry('\u0578', 'n'), Map.entry('\u057d', 'u'),
+            Map.entry('\u0269', 'i'), Map.entry('\u0275', 'o'), Map.entry('\u027e', 'r'));
 
     /** Only the base64 branch is bounded to this prefix; phrase matching covers the whole string. */
     private static final int MAX_SCREENED_CHARS = 64 * 1024;
@@ -215,7 +217,7 @@ public final class InjectionScreen {
             return StandardCharsets.UTF_8.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)
                     .onUnmappableCharacter(CodingErrorAction.REPORT)
-                    .decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+                    .decode(ByteBuffer.wrap(bytes)).toString();
         } catch (CharacterCodingException e) {
             return null;
         }

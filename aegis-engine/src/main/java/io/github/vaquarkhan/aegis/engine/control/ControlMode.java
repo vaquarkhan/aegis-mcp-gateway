@@ -15,6 +15,8 @@
  */
 package io.github.vaquarkhan.aegis.engine.control;
 
+import java.util.Locale;
+
 /**
  * Enforcement mode for heuristic controls. Deterministic controls (exposure, scope, policy,
  * approval, egress, VRP) are always enforcing and have no mode.
@@ -28,6 +30,6 @@ public enum ControlMode {
     OFF;
 
     public static ControlMode parse(String s) {
-        return valueOf(s.trim().toUpperCase(java.util.Locale.ROOT));
+        return valueOf(s.trim().toUpperCase(Locale.ROOT));
     }
 }

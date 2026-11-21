@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -338,7 +339,7 @@ public final class OutputGuard {
         String out = s.length() > MAX_REGEX_INPUT ? s.substring(0, MAX_REGEX_INPUT) : s;
         out = redactPem(out, count);
         for (Pattern p : redactions) {
-            java.util.regex.Matcher m = p.matcher(out);
+            Matcher m = p.matcher(out);
             StringBuilder sb = new StringBuilder();
             boolean any = false;
             while (m.find()) {
@@ -352,7 +353,7 @@ public final class OutputGuard {
             }
         }
         if (redactHighEntropy) {
-            java.util.regex.Matcher m = HIGH_ENTROPY_TOKEN.matcher(out);
+            Matcher m = HIGH_ENTROPY_TOKEN.matcher(out);
             StringBuilder sb = new StringBuilder();
             boolean any = false;
             while (m.find()) {

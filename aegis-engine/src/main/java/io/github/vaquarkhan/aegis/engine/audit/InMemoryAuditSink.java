@@ -16,6 +16,8 @@
 package io.github.vaquarkhan.aegis.engine.audit;
 
 import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +35,7 @@ public final class InMemoryAuditSink implements AuditSink {
     @Override
     public synchronized void append(Map<String, Object> record) throws Exception {
         if (failing) {
-            throw new java.io.IOException("audit sink unavailable (simulated)");
+            throw new IOException("audit sink unavailable (simulated)");
         }
         records.add(Map.copyOf(record));
     }

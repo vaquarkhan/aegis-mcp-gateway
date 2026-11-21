@@ -20,8 +20,16 @@ import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.spi.StateStore;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -49,8 +57,8 @@ public final class ResultHandleStore {
     private final Clock clock;
     private final Duration ttl;
     private final int maxBytes;
-    private final javax.crypto.SecretKey key;
-    private final java.security.SecureRandom random;
+    private final SecretKey key;
+    private final SecureRandom random;
 
     public ResultHandleStore(StateStore store, Clock clock, Duration ttl, int maxBytes) {
         this(store, clock, ttl, maxBytes, null);
@@ -62,7 +70,7 @@ public final class ResultHandleStore {
      *            read it) never sees the redacted result in clear. The key is held only in memory; losing
      *            it only loses retained handles, which are short-lived by design.
      */
-    public ResultHandleStore(StateStore store, Clock clock, Duration ttl, int maxBytes, javax.crypto.SecretKey key) {
+    public ResultHandleStore(StateStore store, Clock clock, Duration ttl, int maxBytes, SecretKey key) {
         if (store == null) {
             throw new IllegalArgumentException("a state store is required");
         }
@@ -77,7 +85,7 @@ public final class ResultHandleStore {
         this.ttl = ttl;
         this.maxBytes = maxBytes <= 0 ? 1 << 20 : maxBytes;
         this.key = key;
-        this.random = key == null ? null : new java.security.SecureRandom();
+        this.random = key == null ? null : new SecureRandom();
     }
 
     public boolean encrypted() {
@@ -91,14 +99,14 @@ public final class ResultHandleStore {
         try {
             byte[] nonce = new byte[GCM_NONCE_BYTES];
             random.nextBytes(nonce);
-            javax.crypto.Cipher c = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
-            c.init(javax.crypto.Cipher.ENCRYPT_MODE, key, new javax.crypto.spec.GCMParameterSpec(GCM_TAG_BITS, nonce));
-            byte[] ct = c.doFinal(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+            c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_BITS, nonce));
+            byte[] ct = c.doFinal(json.getBytes(StandardCharsets.UTF_8));
             byte[] out = new byte[nonce.length + ct.length];
             System.arraycopy(nonce, 0, out, 0, nonce.length);
             System.arraycopy(ct, 0, out, nonce.length, ct.length);
-            return ENC + java.util.Base64.getEncoder().encodeToString(out);
-        } catch (java.security.GeneralSecurityException e) {
+            return ENC + Base64.getEncoder().encodeToString(out);
+        } catch (GeneralSecurityException e) {
             throw new IllegalStateException("could not encrypt a retained result handle", e);
         }
     }
@@ -111,16 +119,16 @@ public final class ResultHandleStore {
             throw new IllegalStateException("a retained handle is encrypted but no handle encryption key is configured");
         }
         try {
-            byte[] blob = java.util.Base64.getDecoder().decode(stored.substring(ENC.length()));
+            byte[] blob = Base64.getDecoder().decode(stored.substring(ENC.length()));
             if (blob.length <= GCM_NONCE_BYTES) {
                 throw new IllegalStateException("truncated encrypted handle");
             }
-            javax.crypto.Cipher c = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
-            c.init(javax.crypto.Cipher.DECRYPT_MODE, key,
-                    new javax.crypto.spec.GCMParameterSpec(GCM_TAG_BITS, blob, 0, GCM_NONCE_BYTES));
+            Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+            c.init(Cipher.DECRYPT_MODE, key,
+                    new GCMParameterSpec(GCM_TAG_BITS, blob, 0, GCM_NONCE_BYTES));
             byte[] pt = c.doFinal(blob, GCM_NONCE_BYTES, blob.length - GCM_NONCE_BYTES);
-            return new String(pt, java.nio.charset.StandardCharsets.UTF_8);
-        } catch (java.security.GeneralSecurityException e) {
+            return new String(pt, StandardCharsets.UTF_8);
+        } catch (GeneralSecurityException e) {
             throw new IllegalStateException("could not decrypt a retained result handle (wrong key or tampered store)", e);
         }
     }
@@ -154,7 +162,7 @@ public final class ResultHandleStore {
             return Optional.empty();
         }
         return store.get(PREFIX + handle).map(stored -> JsonValues.string(Json.parseObject(
-                decode(stored).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                decode(stored).getBytes(StandardCharsets.UTF_8),
                 JsonLimits.DEFAULT.withMaxBytes(maxBytes + 1024)), "producer"));
     }
 
@@ -164,7 +172,7 @@ public final class ResultHandleStore {
             return Optional.empty();
         }
         return store.take(PREFIX + handle).map(stored -> {
-            Map<String, Object> rec = Json.parseObject(decode(stored).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+            Map<String, Object> rec = Json.parseObject(decode(stored).getBytes(StandardCharsets.UTF_8),
                     JsonLimits.DEFAULT.withMaxBytes(maxBytes + 1024));
             return new Entry(handle, JsonValues.string(rec, "tool"), JsonValues.string(rec, "requestId"),
                     JsonValues.string(rec, "producer"), JsonValues.object(rec, "body"));

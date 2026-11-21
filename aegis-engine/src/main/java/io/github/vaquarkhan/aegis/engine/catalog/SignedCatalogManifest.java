@@ -29,9 +29,11 @@ import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.SignatureException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -144,7 +146,7 @@ public final class SignedCatalogManifest {
 
     /** As {@link #create(Map, String)} with a signed {@code serial} (0 omits it). */
     public static byte[] create(Map<String, String> pins, String gatewayName, long serial) {
-        Map<String, Object> m = new java.util.LinkedHashMap<>();
+        Map<String, Object> m = new LinkedHashMap<>();
         m.put("version", 1L);
         if (serial > 0) {
             m.put("serial", serial);
@@ -188,7 +190,7 @@ public final class SignedCatalogManifest {
             s.initVerify(key);
             s.update(body);
             return s.verify(sig);
-        } catch (java.security.SignatureException malformed) {
+        } catch (SignatureException malformed) {
             return false;
         } catch (GeneralSecurityException e) {
             throw new IOException("could not verify the catalog manifest: " + e.getMessage(), e);

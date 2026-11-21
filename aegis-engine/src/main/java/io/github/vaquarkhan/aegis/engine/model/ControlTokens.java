@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.engine.model;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -85,7 +86,7 @@ public record ControlTokens(String approvalToken, boolean dryRun, String dryRunR
         String receipt = pick(receiptMeta, receiptArg, "dryRunReceipt");
         // Unmodifiable view, not Map.copyOf: JSON null argument values are legal and must be preserved.
         return new Split(new ControlTokens(approval, Boolean.TRUE.equals(dry), receipt),
-                java.util.Collections.unmodifiableMap(backend));
+                Collections.unmodifiableMap(backend));
     }
 
     private static <T> T pick(T meta, T arg, String what) {

@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.engine.audit;
 
+import io.github.vaquarkhan.aegis.engine.catalog.SignedCatalogManifest;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonException;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
@@ -24,6 +25,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.PublicKey;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
@@ -60,7 +63,7 @@ public final class AuditCheckpointVerifier {
      * @param signingKey when non-null every checkpoint line must carry a valid Ed25519 {@code signature}
      *                   by this key over its canonical JSON without the signature field
      */
-    public static Report verify(Path journal, Path checkpointFile, java.security.PublicKey signingKey) throws IOException {
+    public static Report verify(Path journal, Path checkpointFile, PublicKey signingKey) throws IOException {
         TreeMap<Long, String> expected = new TreeMap<>();
         long lines = 0;
         String journalName = HashChainFileAuditSink.fileName(journal);
@@ -76,9 +79,9 @@ public final class AuditCheckpointVerifier {
                     return new Report(0, null, lines, lastSeq, "checkpoint " + lines + ": " + e.getMessage());
                 }
                 if (signingKey != null) {
-                    cp = new java.util.LinkedHashMap<>(cp); // the parser's map is read-only
+                    cp = new LinkedHashMap<>(cp); // the parser's map is read-only
                     Object sig = cp.remove("signature");
-                    if (!(sig instanceof String s) || !io.github.vaquarkhan.aegis.engine.catalog.SignedCatalogManifest
+                    if (!(sig instanceof String s) || !SignedCatalogManifest
                             .verifySignature(Json.canonical(cp).getBytes(StandardCharsets.UTF_8), s, signingKey)) {
                         return new Report(0, null, lines, lastSeq, "checkpoint " + lines
                                 + " has no valid signature by the checkpoint signing key; the checkpoint file was rewritten");

@@ -17,10 +17,12 @@ package io.github.vaquarkhan.aegis.engine.catalog;
 
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import io.github.vaquarkhan.aegis.engine.model.ControlTokens;
+import io.github.vaquarkhan.aegis.engine.model.Digests;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.model.ToolDescriptor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -111,14 +113,14 @@ public record GovernedTool(
         if (!outputPolicy.equals(OutputPolicy.PASS_THROUGH)) {
             policy.put("outputPolicy", outputPolicy.toMap());
         }
-        return policy.isEmpty() ? null : io.github.vaquarkhan.aegis.engine.model.Digests.canonicalSha256(policy);
+        return policy.isEmpty() ? null : Digests.canonicalSha256(policy);
     }
 
     /** Definition digest used by approval/receipt binding, including trusted operator policy when present. */
     public String bindingDigest(String upstreamDefinitionDigest) {
         String policy = policyDigest();
         return policy == null ? upstreamDefinitionDigest
-                : io.github.vaquarkhan.aegis.engine.model.Digests.canonicalSha256(
+                : Digests.canonicalSha256(
                         Map.of("upstreamDefinition", upstreamDefinitionDigest, "operatorPolicy", policy));
     }
 
@@ -167,7 +169,7 @@ public record GovernedTool(
         if (ops == null) {
             return props == null ? Set.of() : props.keySet();
         }
-        Set<String> all = new java.util.LinkedHashSet<>(ops.keySet());
+        Set<String> all = new LinkedHashSet<>(ops.keySet());
         if (props != null) {
             all.addAll(props.keySet());
         }

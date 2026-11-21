@@ -21,6 +21,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Gateway-side bearer token revocation, kept in the governance {@link StateStore} so every replica
@@ -44,7 +46,7 @@ public final class TokenRevocations {
 
     private final StateStore store;
     private final Clock clock;
-    private final java.util.Set<String> issuers = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final Set<String> issuers = ConcurrentHashMap.newKeySet();
 
     public TokenRevocations(StateStore store, Clock clock) {
         if (store == null) {

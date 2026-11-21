@@ -19,6 +19,7 @@ import io.github.vaquarkhan.aegis.engine.json.Json;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.security.PublicKey;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -110,7 +111,7 @@ public final class SignedServerCatalog {
     }
 
     /** Verifies the catalog against immutable key material already read by the caller. */
-    public static Loaded loadWithSerial(Path catalog, Path signature, java.security.PublicKey publicKey, String gatewayName)
+    public static Loaded loadWithSerial(Path catalog, Path signature, PublicKey publicKey, String gatewayName)
             throws IOException {
         String what = "server catalog";
         Map<String, Object> m = SignedCatalogManifest.verifiedObject(what, catalog, signature, publicKey,

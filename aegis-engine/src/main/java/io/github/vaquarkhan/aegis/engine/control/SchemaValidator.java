@@ -17,8 +17,11 @@ package io.github.vaquarkhan.aegis.engine.control;
 
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import java.math.BigDecimal;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -191,7 +194,7 @@ public final class SchemaValidator {
         }
         String decoded;
         try {
-            decoded = java.net.URLDecoder.decode(fragment.replace("+", "%2B"), java.nio.charset.StandardCharsets.UTF_8);
+            decoded = URLDecoder.decode(fragment.replace("+", "%2B"), StandardCharsets.UTF_8);
         } catch (IllegalArgumentException e) {
             return null;
         }
@@ -274,7 +277,7 @@ public final class SchemaValidator {
         if (isNumber(a) && isNumber(b)) {
             return toDecimal(a).compareTo(toDecimal(b)) == 0;
         }
-        return java.util.Objects.equals(a, b);
+        return Objects.equals(a, b);
     }
 
     private static String where(String path) {
