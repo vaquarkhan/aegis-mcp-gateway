@@ -23,6 +23,7 @@ import io.github.vaquarkhan.aegis.mcp.http.McpHttpResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -107,7 +108,7 @@ public class AegisMcpResource {
         if (caller() == null) {
             return json(McpHttpResponse.json(401, Map.of("error", "authentication required")));
         }
-        return Response.ok(h.gateway().metrics().renderPrometheus().getBytes(java.nio.charset.StandardCharsets.UTF_8))
+        return Response.ok(h.gateway().metrics().renderPrometheus().getBytes(StandardCharsets.UTF_8))
                 .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
                 .header("X-Content-Type-Options", "nosniff").build();
     }

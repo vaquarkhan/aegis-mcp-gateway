@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.engine.audit;
 
+import io.github.vaquarkhan.aegis.engine.catalog.SignedCatalogManifest;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.model.Digests;
@@ -229,7 +230,7 @@ public final class HashChainFileAuditSink implements AuditSink {
         cp.put("head", prev);
         cp.put("reason", reason);
         if (checkpoints.signingKey() != null) {
-            cp.put("signature", io.github.vaquarkhan.aegis.engine.catalog.SignedCatalogManifest.sign(
+            cp.put("signature", SignedCatalogManifest.sign(
                     Json.canonical(cp).getBytes(StandardCharsets.UTF_8), checkpoints.signingKey()));
         }
         ByteBuffer buf = ByteBuffer.wrap((Json.canonical(cp) + "\n").getBytes(StandardCharsets.UTF_8));

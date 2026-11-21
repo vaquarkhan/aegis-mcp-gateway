@@ -29,6 +29,7 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -141,7 +142,7 @@ final class PolicyTestCommand {
         if (!(raw.get("sources") instanceof List<?> sources) || sources.isEmpty()) {
             throw new IOException("configuration needs at least one declarative http source for --policy-test");
         }
-        List<Object> offlineSources = new java.util.ArrayList<>();
+        List<Object> offlineSources = new ArrayList<>();
         for (Object source : sources) {
             if (!(source instanceof Map<?, ?> map)) {
                 throw new IOException("configuration has an invalid source for --policy-test");

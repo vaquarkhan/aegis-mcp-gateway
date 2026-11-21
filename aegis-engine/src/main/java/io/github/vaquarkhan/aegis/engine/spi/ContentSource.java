@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.engine.spi;
 
+import io.github.vaquarkhan.aegis.engine.model.RoundTrip;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor.ExecutionException;
 import java.net.URI;
 import java.util.List;
@@ -43,14 +44,14 @@ public interface ContentSource {
      * @param roundTrip     MCP 2026-07-28 multi round-trip retry data to forward (never null)
      */
     record Request(Map<String, String> credentials, long timeoutMillis, String traceparent,
-                   io.github.vaquarkhan.aegis.engine.model.RoundTrip roundTrip) {
+                   RoundTrip roundTrip) {
         public Request(Map<String, String> credentials, long timeoutMillis, String traceparent) {
-            this(credentials, timeoutMillis, traceparent, io.github.vaquarkhan.aegis.engine.model.RoundTrip.NONE);
+            this(credentials, timeoutMillis, traceparent, RoundTrip.NONE);
         }
 
         public Request {
             credentials = credentials == null ? Map.of() : Map.copyOf(credentials);
-            roundTrip = roundTrip == null ? io.github.vaquarkhan.aegis.engine.model.RoundTrip.NONE : roundTrip;
+            roundTrip = roundTrip == null ? RoundTrip.NONE : roundTrip;
         }
     }
 

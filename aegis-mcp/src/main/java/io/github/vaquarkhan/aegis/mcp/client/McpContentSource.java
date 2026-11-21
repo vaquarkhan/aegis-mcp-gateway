@@ -18,6 +18,8 @@ package io.github.vaquarkhan.aegis.mcp.client;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import io.github.vaquarkhan.aegis.engine.spi.ContentSource;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor.ExecutionException;
+import io.github.vaquarkhan.aegis.mcp.protocol.McpVersions;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -98,7 +100,7 @@ public final class McpContentSource implements ContentSource {
             headers.put("traceparent", request.traceparent());
         }
         if (!request.roundTrip().clientCapabilities().isEmpty()) {
-            meta.put(io.github.vaquarkhan.aegis.mcp.protocol.McpVersions.META_CLIENT_CAPABILITIES,
+            meta.put(McpVersions.META_CLIENT_CAPABILITIES,
                     request.roundTrip().clientCapabilities());
         }
         if (!meta.isEmpty()) {

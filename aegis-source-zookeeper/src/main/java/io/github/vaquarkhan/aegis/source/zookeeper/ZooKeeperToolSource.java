@@ -23,10 +23,12 @@ import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -300,13 +302,13 @@ public final class ZooKeeperToolSource implements ToolSource {
     private Map<String, Object> renderData(byte[] data) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("dataBytes", (long) data.length);
-        byte[] bounded = data.length <= maxDataBytes ? data : java.util.Arrays.copyOf(data, maxDataBytes);
+        byte[] bounded = data.length <= maxDataBytes ? data : Arrays.copyOf(data, maxDataBytes);
         out.put("dataTruncated", data.length > maxDataBytes);
         try {
             var decoder = StandardCharsets.UTF_8.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)
                     .onUnmappableCharacter(CodingErrorAction.REPORT);
-            out.put("data", decoder.decode(java.nio.ByteBuffer.wrap(bounded)).toString());
+            out.put("data", decoder.decode(ByteBuffer.wrap(bounded)).toString());
             out.put("encoding", "utf-8");
         } catch (CharacterCodingException e) {
             out.put("data", Base64.getEncoder().encodeToString(bounded));

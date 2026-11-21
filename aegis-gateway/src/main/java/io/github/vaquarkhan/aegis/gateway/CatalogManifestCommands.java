@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -130,7 +131,7 @@ final class CatalogManifestCommands {
      * @return the remaining arguments and the serial (0 when absent), or null when the value is invalid
      */
     static SerialArgs serialOption(String[] a) {
-        List<String> rest = new java.util.ArrayList<>();
+        List<String> rest = new ArrayList<>();
         long serial = 0;
         for (int i = 0; i < a.length; i++) {
             if (!"--serial".equals(a[i])) {

@@ -20,15 +20,25 @@ import io.github.vaquarkhan.aegis.engine.GovernanceEngine;
 import io.github.vaquarkhan.aegis.engine.approval.ApprovalService;
 import io.github.vaquarkhan.aegis.engine.catalog.ToolCatalog;
 import io.github.vaquarkhan.aegis.engine.content.ContentGovernor;
+import io.github.vaquarkhan.aegis.engine.control.ResultHandleStore;
 import io.github.vaquarkhan.aegis.engine.control.TokenRevocations;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
+import io.github.vaquarkhan.aegis.engine.model.Digests;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpResponse;
+
+import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 /**
  * Human-facing governance API, mounted by each host under its own path
@@ -60,9 +70,9 @@ public final class AdminApi {
     private final Set<String> allowedOrigins;
     private final Set<String> revokerGroups;
     private final TokenRevocations revocations;
-    private final java.time.Duration revocationRetention;
+    private final Duration revocationRetention;
     private final Set<String> resultReleaseGroups;
-    private final java.time.Clock clock;
+    private final Clock clock;
 
     public AdminApi(GovernanceEngine engine, Set<String> approverGroups, Set<String> allowedOrigins) {
         this(engine, null, approverGroups, Set.of(), null, allowedOrigins);
@@ -84,8 +94,8 @@ public final class AdminApi {
 
     /** @param clock the gateway clock (O-13); null uses the system clock */
     public AdminApi(GovernanceEngine engine, ContentGovernor content, Set<String> approverGroups,
-            Set<String> auditVerifierGroups, AuditVerifier auditVerifier, Set<String> allowedOrigins, java.time.Clock clock) {
-        this.clock = clock == null ? java.time.Clock.systemUTC() : clock;
+            Set<String> auditVerifierGroups, AuditVerifier auditVerifier, Set<String> allowedOrigins, Clock clock) {
+        this.clock = clock == null ? Clock.systemUTC() : clock;
         this.engine = engine;
         this.content = content;
         this.approverGroups = Set.copyOf(approverGroups);
@@ -94,15 +104,15 @@ public final class AdminApi {
         this.allowedOrigins = allowedOrigins == null ? Set.of() : Set.copyOf(allowedOrigins);
         this.revokerGroups = Set.of();
         this.revocations = null;
-        this.revocationRetention = java.time.Duration.ofHours(24);
+        this.revocationRetention = Duration.ofHours(24);
         this.resultReleaseGroups = Set.of();
     }
 
-    private AdminApi(AdminApi base, Set<String> revokerGroups, TokenRevocations revocations, java.time.Duration retention) {
+    private AdminApi(AdminApi base, Set<String> revokerGroups, TokenRevocations revocations, Duration retention) {
         this(base, revokerGroups, revocations, retention, base.resultReleaseGroups);
     }
 
-    private AdminApi(AdminApi base, Set<String> revokerGroups, TokenRevocations revocations, java.time.Duration retention,
+    private AdminApi(AdminApi base, Set<String> revokerGroups, TokenRevocations revocations, Duration retention,
                      Set<String> resultReleaseGroups) {
         this.clock = base.clock;
         this.engine = base.engine;
@@ -114,7 +124,7 @@ public final class AdminApi {
         this.revokerGroups = revokerGroups == null ? Set.of() : Set.copyOf(revokerGroups);
         this.revocations = revocations;
         this.revocationRetention = retention == null || retention.isNegative() || retention.isZero()
-                ? java.time.Duration.ofHours(24) : retention;
+                ? Duration.ofHours(24) : retention;
         this.resultReleaseGroups = resultReleaseGroups == null ? Set.of() : Set.copyOf(resultReleaseGroups);
     }
 
@@ -141,7 +151,7 @@ public final class AdminApi {
      * another. An empty {@code revokerGroups} disables the routes (403): revocation is never open
      * to every authenticated caller.
      */
-    public AdminApi withRevocations(Set<String> revokerGroups, TokenRevocations revocations, java.time.Duration retention) {
+    public AdminApi withRevocations(Set<String> revokerGroups, TokenRevocations revocations, Duration retention) {
         return new AdminApi(this, revokerGroups, revocations, retention);
     }
 
@@ -175,14 +185,14 @@ public final class AdminApi {
                 try {
                     return auditVerifier.verify() ? McpHttpResponse.json(200, Map.of("verified", true))
                             : McpHttpResponse.json(409, Map.of("verified", false));
-                } catch (java.io.IOException e) {
+                } catch (IOException e) {
                     // The endpoint intentionally withholds the configured file name and verifier diagnostics.
                     return McpHttpResponse.json(503, Map.of("error", "audit verification unavailable"));
                 }
             }
             if (parts.length >= 3 && "revocations".equals(parts[0]) && revocations != null && "POST".equals(req.method())
                     && ("subject".equals(parts[1]) || "token".equals(parts[1]))) {
-                return revoke(req, caller, parts[1], String.join("/", java.util.Arrays.copyOfRange(parts, 2, parts.length)));
+                return revoke(req, caller, parts[1], String.join("/", Arrays.copyOfRange(parts, 2, parts.length)));
             }
             if (parts.length == 3 && "results".equals(parts[0]) && "release".equals(parts[2]) && "POST".equals(req.method())
                     && engine.resultHandles() != null) {
@@ -293,12 +303,12 @@ public final class AdminApi {
             }
             return McpHttpResponse.json(403, Map.of("error", "the identity that produced this handle cannot release it"));
         }
-        java.util.Optional<io.github.vaquarkhan.aegis.engine.control.ResultHandleStore.Entry> taken =
+        Optional<ResultHandleStore.Entry> taken =
                 engine.resultHandles().take(handle);
         if (taken.isEmpty()) {
             return McpHttpResponse.json(404, Map.of("error", "unknown, expired or already released handle"));
         }
-        io.github.vaquarkhan.aegis.engine.control.ResultHandleStore.Entry e = taken.get();
+        ResultHandleStore.Entry e = taken.get();
         details.put("tool", e.tool());
         details.put("requestId", e.requestId());
         try {
@@ -348,7 +358,7 @@ public final class AdminApi {
         details.put("issuer", issuer);
         // The value is journaled as a digest: a token id or subject is an identifier, not an audit secret,
         // but the digest is enough to correlate with the identity provider and keeps the journal minimal.
-        details.put("valueDigest", io.github.vaquarkhan.aegis.engine.model.Digests.sha256Hex(value));
+        details.put("valueDigest", Digests.sha256Hex(value));
         try {
             engine.journalAdministrative("TOKEN_REVOKE_INTENT", caller, details);
         } catch (Exception e) {
@@ -356,7 +366,7 @@ public final class AdminApi {
         }
         try {
             if ("subject".equals(kind)) {
-                java.time.Instant cutoff = revocations.revokeSubject(issuer, value, revocationRetention);
+                Instant cutoff = revocations.revokeSubject(issuer, value, revocationRetention);
                 details.put("issuedAtOrBefore", cutoff.toString());
             } else {
                 revocations.revokeToken(issuer, value, clock.instant().plus(revocationRetention));
@@ -378,7 +388,7 @@ public final class AdminApi {
      * change is made. If the journal cannot record the intent, the definition stays quarantined.
      */
     private McpHttpResponse acceptDefinition(String event, CallerIdentity caller, Map<String, Object> details,
-                                             java.util.concurrent.Callable<Boolean> accept, String conflict) throws Exception {
+                                             Callable<Boolean> accept, String conflict) throws Exception {
         if (!caller.actorChain().isEmpty()
                 || !ApprovalService.identityKey(caller.actor()).equals(ApprovalService.identityKey(caller.effectiveSubject()))) {
             Map<String, Object> refused = new LinkedHashMap<>(details);

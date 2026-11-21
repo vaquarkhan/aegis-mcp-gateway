@@ -24,6 +24,7 @@ import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,7 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.config.ConfigResource;
+import org.apache.kafka.common.errors.ApiException;
 
 /**
  * Apache Kafka topics through the Kafka {@link Admin} client, for clusters without a REST layer.
@@ -137,7 +139,7 @@ public final class KafkaAdminToolSource implements ToolSource {
                 } catch (ExecutionException e) {
                     Throwable c = e.getCause() == null ? e : e.getCause();
                     // Kafka ApiExceptions (TopicExists, UnknownTopic, InvalidPartitions...) are caller errors.
-                    if (c instanceof org.apache.kafka.common.errors.ApiException) {
+                    if (c instanceof ApiException) {
                         return ToolResult.text("Kafka rejected the request: " + c.getClass().getSimpleName() + ": " + c.getMessage(), true);
                     }
                     throw new ToolExecutor.ExecutionException("Kafka admin call failed: " + c.getClass().getSimpleName(), false, c);
@@ -161,7 +163,7 @@ public final class KafkaAdminToolSource implements ToolSource {
         String clusterId = result.clusterId().get(timeout, TimeUnit.MILLISECONDS);
         Node controller = result.controller().get(timeout, TimeUnit.MILLISECONDS);
         List<Map<String, Object>> nodes = new ArrayList<>();
-        for (Node node : result.nodes().get(timeout, TimeUnit.MILLISECONDS).stream().sorted(java.util.Comparator.comparingInt(Node::id)).toList()) {
+        for (Node node : result.nodes().get(timeout, TimeUnit.MILLISECONDS).stream().sorted(Comparator.comparingInt(Node::id)).toList()) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", (long) node.id());
             item.put("host", node.host());
@@ -192,7 +194,7 @@ public final class KafkaAdminToolSource implements ToolSource {
         ConfigResource resource = new ConfigResource(ConfigResource.Type.TOPIC, topic);
         Config config = admin().describeConfigs(List.of(resource)).all().get(timeout, TimeUnit.MILLISECONDS).get(resource);
         List<Map<String, Object>> entries = new ArrayList<>();
-        for (ConfigEntry entry : config.entries().stream().sorted(java.util.Comparator.comparing(ConfigEntry::name)).toList()) {
+        for (ConfigEntry entry : config.entries().stream().sorted(Comparator.comparing(ConfigEntry::name)).toList()) {
             Map<String, Object> value = new LinkedHashMap<>();
             value.put("name", entry.name());
             value.put("value", entry.isSensitive() ? "<redacted>" : entry.value());

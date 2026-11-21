@@ -17,6 +17,8 @@ package io.github.vaquarkhan.aegis.state.derby;
 
 import io.github.vaquarkhan.aegis.engine.spi.HighWaterStateStore;
 import io.github.vaquarkhan.aegis.engine.spi.StateStore;
+
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -25,6 +27,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -60,7 +63,7 @@ public final class DerbyStateStore implements HighWaterStateStore, AutoCloseable
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             throw new SQLException("cannot create Derby state parent directory", e);
         }
         // Derby's error-log setting is JVM-wide. Set it for every open because tests and embedding hosts
@@ -309,7 +312,7 @@ public final class DerbyStateStore implements HighWaterStateStore, AutoCloseable
 
     private static void expires(PreparedStatement statement, int index, Instant expiresAt) throws SQLException {
         if (expiresAt == null) {
-            statement.setNull(index, java.sql.Types.BIGINT);
+            statement.setNull(index, Types.BIGINT);
         } else {
             statement.setLong(index, expiresAt.toEpochMilli());
         }

@@ -17,6 +17,7 @@ package io.github.vaquarkhan.aegis.config;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -25,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
@@ -49,7 +51,7 @@ public final class ArtifactAdmission {
         Set<Path> unique = new TreeSet<>();
         for (ConfigNode item : source.children("artifacts")) {
             String value = item.requiredString("path");
-            String expected = item.requiredString("sha256").toLowerCase(java.util.Locale.ROOT);
+            String expected = item.requiredString("sha256").toLowerCase(Locale.ROOT);
             String role = item.string("role", "server");
             if (!SHA256.matcher(expected).matches()) {
                 throw item.error("sha256", "must be 64 lower-case hex characters, optionally prefixed by sha256:");
@@ -71,8 +73,8 @@ public final class ArtifactAdmission {
                     throw item.error("path", "duplicates another admitted artifact: " + real);
                 }
                 String actual = sha256(real);
-                if (!MessageDigest.isEqual(expected.getBytes(java.nio.charset.StandardCharsets.US_ASCII),
-                        actual.getBytes(java.nio.charset.StandardCharsets.US_ASCII))) {
+                if (!MessageDigest.isEqual(expected.getBytes(StandardCharsets.US_ASCII),
+                        actual.getBytes(StandardCharsets.US_ASCII))) {
                     throw item.error("sha256", "does not match " + path + " (actual " + actual + ")");
                 }
                 out.add(new Verified(real, actual, role));

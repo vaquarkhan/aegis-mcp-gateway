@@ -15,10 +15,19 @@
  */
 package io.github.vaquarkhan.aegis.config;
 
+import io.github.vaquarkhan.aegis.config.credentials.SourceCredentialProvider;
 import io.github.vaquarkhan.aegis.config.credentials.StaticCredentialProvider;
+import io.github.vaquarkhan.aegis.config.credentials.TokenExchangeCredentials;
 import io.github.vaquarkhan.aegis.config.hooks.RemoteHook;
 import io.github.vaquarkhan.aegis.config.hooks.SqlReadOnlyHook;
 import io.github.vaquarkhan.aegis.config.http.HttpToolExecutor;
+import io.github.vaquarkhan.aegis.config.spi.AuditSinkFactory;
+import io.github.vaquarkhan.aegis.engine.control.ResultHandleStore;
+import io.github.vaquarkhan.aegis.engine.json.Json;
+import io.github.vaquarkhan.aegis.engine.model.Digests;
+import io.github.vaquarkhan.aegis.engine.spi.DecisionListener;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
+import io.github.vaquarkhan.aegis.mcp.http.PinnedHttp;
 import io.github.vaquarkhan.aegis.observability.otlp.OtlpSpanExporter;
 import io.github.vaquarkhan.aegis.config.http.HttpToolSource;
 import io.github.vaquarkhan.aegis.config.http.HttpToolSpec;
@@ -84,20 +93,38 @@ import io.github.vaquarkhan.aegis.mcp.client.StdioMcpClient;
 import io.github.vaquarkhan.aegis.mcp.server.McpServerHandler;
 import io.github.vaquarkhan.aegis.mcp.server.ServerOptions;
 import io.github.vaquarkhan.aegis.mcp.server.SessionRegistry;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.security.CodeSource;
+import java.security.MessageDigest;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.HexFormat;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
@@ -105,6 +132,9 @@ import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 /**
@@ -167,12 +197,12 @@ public final class GatewayFactory {
                 .withFreshEgressBinding();
 
         // Read here (before root.finish validates unknown keys); the key is used when the store is built.
-        javax.crypto.SecretKey handleEncryptionKey = null;
+        SecretKey handleEncryptionKey = null;
         if (handleRetention > 0 && completeControlNode.has("handleEncryptionKeyEnv")) {
             byte[] handleKeyBytes = decodeAes256(requireEnv(ctx,
                     completeControlNode.requiredString("handleEncryptionKeyEnv"),
                     "config.completeControl.handleEncryptionKeyEnv"), completeControlNode);
-            handleEncryptionKey = new javax.crypto.spec.SecretKeySpec(handleKeyBytes, "AES");
+            handleEncryptionKey = new SecretKeySpec(handleKeyBytes, "AES");
         }
 
         ConfigNode gw = root.child("gateway");
@@ -225,7 +255,7 @@ public final class GatewayFactory {
         Path requiredReviewKey = requiredCatalogKey(callerContext);
         // Deployment admission key: the admission verifier signs each remote source's attestation. Host
         // anchored like the review key (environment or JVM property, never the configuration file).
-        java.security.PublicKey attestationKey = requiredAttestationKey(callerContext);
+        PublicKey attestationKey = requiredAttestationKey(callerContext);
         if (completeControl && requiredReviewKey == null) {
             throw new ConfigException("config.completeControl.enabled requires host-side " + REQUIRED_CATALOG_KEY
                     + " (or the equivalent JVM property); configuration must not be able to remove or replace its trust anchor");
@@ -242,19 +272,19 @@ public final class GatewayFactory {
         if (root.has("serverCatalog")) {
             ConfigNode sc = root.child("serverCatalog");
             Path catalogPublicKey = ctx.baseDir().resolve(sc.requiredString("publicKeyFile"));
-            java.security.PublicKey catalogVerificationKey;
+            PublicKey catalogVerificationKey;
             try {
                 catalogVerificationKey = SignedCatalogManifest.readPublicKey(catalogPublicKey);
                 if (requiredReviewKey != null) {
-                    java.security.PublicKey anchoredKey = SignedCatalogManifest.readPublicKey(requiredReviewKey);
-                    if (!java.util.Arrays.equals(anchoredKey.getEncoded(), catalogVerificationKey.getEncoded())) {
+                    PublicKey anchoredKey = SignedCatalogManifest.readPublicKey(requiredReviewKey);
+                    if (!Arrays.equals(anchoredKey.getEncoded(), catalogVerificationKey.getEncoded())) {
                         throw sc.error("publicKeyFile", "is not the review key named by " + REQUIRED_CATALOG_KEY);
                     }
                     // Verify with the key loaded from the host anchor, not a second read of a
                     // configuration-controlled pathname after comparing it (no key-swap TOCTOU).
                     catalogVerificationKey = anchoredKey;
                 }
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 throw new ConfigException(sc.path() + ": cannot read the review key required by "
                         + REQUIRED_CATALOG_KEY + ": " + e.getMessage(), e);
             }
@@ -264,7 +294,7 @@ public final class GatewayFactory {
                         catalogVerificationKey, gatewayName);
                 serverCatalog = loaded.servers();
                 serials.add(new PendingSerial(SignedServerCatalog.KIND, loaded.serial(), sc.path() + ".file"));
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 throw new ConfigException(sc.path() + ": " + e.getMessage(), e);
             }
             if (sc.has("breakGlass")) {
@@ -274,14 +304,14 @@ public final class GatewayFactory {
                 try {
                     // The incident key is held apart from the review key: one person with one key must
                     // not be able to both review servers in and use the emergency path.
-                    if (java.util.Arrays.equals(SignedCatalogManifest.readPublicKey(bgPublicKey).getEncoded(),
+                    if (Arrays.equals(SignedCatalogManifest.readPublicKey(bgPublicKey).getEncoded(),
                             catalogVerificationKey.getEncoded())) {
                         throw bg.error("publicKeyFile", "must be a different key from serverCatalog.publicKeyFile");
                     }
                     order = BreakGlassContainment.load(ctx.baseDir().resolve(bg.requiredString("file")),
                             ctx.baseDir().resolve(bg.string("signatureFile", bg.requiredString("file") + ".sig")),
                             bgPublicKey, gatewayName, ctx.clock().instant());
-                } catch (java.io.IOException e) {
+                } catch (IOException e) {
                     throw new ConfigException(bg.path() + ": " + e.getMessage(), e);
                 }
                 serials.add(new PendingSerial(BreakGlassContainment.KIND, order.serial(), bg.path() + ".file"));
@@ -353,7 +383,7 @@ public final class GatewayFactory {
         }
         // O-8 A: optional forward proxy. Every pinned transport tunnels through it with HTTP CONNECT; the
         // proxy host itself must be on the allow list, and the target is still checked by the egress control.
-        io.github.vaquarkhan.aegis.mcp.http.PinnedHttp.Proxy egressProxy = null;
+        PinnedHttp.Proxy egressProxy = null;
         if (egress.has("proxy")) {
             ConfigNode px = egress.child("proxy");
             String proxyHost = px.requiredString("host");
@@ -370,10 +400,10 @@ public final class GatewayFactory {
             } else if (px.has("usernameEnv") || px.has("passwordEnv")) {
                 String user = requireEnv(ctx, px.requiredString("usernameEnv"), px.path() + ".usernameEnv");
                 String pass = requireEnv(ctx, px.requiredString("passwordEnv"), px.path() + ".passwordEnv");
-                credential = "Basic " + java.util.Base64.getEncoder().encodeToString(
+                credential = "Basic " + Base64.getEncoder().encodeToString(
                         (user + ":" + pass).getBytes(StandardCharsets.UTF_8));
             }
-            egressProxy = new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp.Proxy(proxyHost, (int) proxyPort, credential);
+            egressProxy = new PinnedHttp.Proxy(proxyHost, (int) proxyPort, credential);
         }
         EgressGuard egressGuard = new EgressGuard(allowHosts, egress.strings("allowCidrs"), schemes, ctx.resolver());
         // Every gateway-built outbound transport (MCP and HTTP sources, token exchange, providers that
@@ -419,7 +449,7 @@ public final class GatewayFactory {
             }
             Duration opaTimeout = Duration.ofMillis(opa.integer("timeoutMs", 2000));
             pdps.add(new OpaPolicy(opaUrl, opaTimeout, opa.bool("includeArguments", false), h,
-                    new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp(egressGuard::pin, opaTimeout, null, egressProxy)));
+                    new PinnedHttp(egressGuard::pin, opaTimeout, null, egressProxy)));
         }
         if (pdps.isEmpty()) {
             throw new ConfigException("config.policy needs at least one rule or an opa endpoint (default is deny-all)");
@@ -541,9 +571,9 @@ public final class GatewayFactory {
         List<AuditSink> extraSinks = new ArrayList<>();
         for (ConfigNode sinkNode : audit.children("sinks")) {
             String sinkType = sinkNode.requiredString("type");
-            io.github.vaquarkhan.aegis.config.spi.AuditSinkFactory f = provider(
-                    io.github.vaquarkhan.aegis.config.spi.AuditSinkFactory.class, sinkType,
-                    io.github.vaquarkhan.aegis.config.spi.AuditSinkFactory::type, pluginArtifacts, completeControl)
+            AuditSinkFactory f = provider(
+                    AuditSinkFactory.class, sinkType,
+                    AuditSinkFactory::type, pluginArtifacts, completeControl)
                     .orElseThrow(() -> new ConfigException(sinkNode.path() + ".type unknown or unadmitted audit sink type '"
                             + sinkType + "' (add an AuditSinkFactory provider jar)"));
             AuditSink created = f.create(sinkNode.child("settings"), ctx);
@@ -569,14 +599,14 @@ public final class GatewayFactory {
             if (cpPath.equals(ctx.baseDir().resolve(auditFile).toAbsolutePath().normalize())) {
                 throw cpNode.error("file", "must not be the audit journal itself");
             }
-            java.security.PrivateKey cpKey = null;
+            PrivateKey cpKey = null;
             String cpKeyFile = cpNode.string("signingKeyFile", null);
             if (cpKeyFile != null) {
                 // O-11 C: each exported head is signed, so a rewritten journal plus a regenerated checkpoint
                 // file cannot carry valid signatures without this key (kept off the journal host).
                 try {
                     cpKey = SignedCatalogManifest.readPrivateKey(ctx.baseDir().resolve(cpKeyFile));
-                } catch (java.io.IOException e) {
+                } catch (IOException e) {
                     throw cpNode.error("signingKeyFile", "cannot be read as an Ed25519 private key: " + e.getMessage());
                 }
             }
@@ -598,7 +628,7 @@ public final class GatewayFactory {
                         publicKeyFile, gatewayName);
                 signed = loaded.pins();
                 serials.add(new PendingSerial(SignedCatalogManifest.SERIAL_KIND, loaded.serial(), mf.path() + ".file"));
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 throw new ConfigException(mf.path() + ": " + e.getMessage(), e);
             }
             for (Map.Entry<String, String> e : signed.entrySet()) {
@@ -620,7 +650,7 @@ public final class GatewayFactory {
             if (pinFile != null) {
                 throw cat.error("pinFile", "must not be set when serverCatalog is configured (pins come from the signed catalog)");
             }
-            Set<String> signedKeys = new java.util.HashSet<>();
+            Set<String> signedKeys = new HashSet<>();
             for (SourceBuild sb : sources) {
                 for (Map.Entry<String, String> e : serverCatalog.get(sb.id).pins().entrySet()) {
                     signedKeys.add(e.getKey());
@@ -670,12 +700,12 @@ public final class GatewayFactory {
         // open a connection to anything.
         // The exporter starts a thread, so it is only constructed after the whole document validated.
         ConfigNode otlp = root.child("tracing").child("otlp");
-        java.util.function.Supplier<OtlpSpanExporter> tracerFactory = null;
+        Supplier<OtlpSpanExporter> tracerFactory = null;
         if (otlp.has("endpoint")) {
             URI otlpUrl;
             try {
                 otlpUrl = new URI(otlp.requiredString("endpoint"));
-            } catch (java.net.URISyntaxException e) {
+            } catch (URISyntaxException e) {
                 throw otlp.error("endpoint", "must be a URI, for example http://collector:4318/v1/traces");
             }
             String why = egressGuard.check(otlpUrl);
@@ -692,8 +722,8 @@ public final class GatewayFactory {
             int otlpQueue = (int) otlp.integer("maxQueue", 2048);
             int otlpBatch = (int) otlp.integer("batchSize", 128);
             long otlpFlush = otlp.integer("flushMs", 2000);
-            io.github.vaquarkhan.aegis.mcp.http.PinnedHttp otlpTransport =
-                    new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp(egressGuard::pin, otlpTimeout, null, egressProxy);
+            PinnedHttp otlpTransport =
+                    new PinnedHttp(egressGuard::pin, otlpTimeout, null, egressProxy);
             tracerFactory = () -> new OtlpSpanExporter(otlpUrl, otlpTimeout, otlpHeaders, otlpService, otlpQueue,
                     otlpBatch, otlpFlush, otlpTransport);
         }
@@ -754,7 +784,7 @@ public final class GatewayFactory {
             for (PendingSerial p : serials) {
                 try {
                     SignedSerial.accept(state, p.kind(), gatewayName, p.serial(), p.path());
-                } catch (java.io.IOException e) {
+                } catch (IOException e) {
                     throw new ConfigException(e.getMessage(), e);
                 }
             }
@@ -767,7 +797,7 @@ public final class GatewayFactory {
         HashChainFileAuditSink auditJournal;
         try {
             auditJournal = new HashChainFileAuditSink(ctx.baseDir().resolve(auditFile), auditFsync, auditCheckpoints);
-        } catch (java.io.IOException | RuntimeException e) {
+        } catch (IOException | RuntimeException e) {
             closeStateAfterFailedBuild(stateResource, new ConfigException("the audit journal could not be opened", e));
             throw e;
         }
@@ -792,14 +822,14 @@ public final class GatewayFactory {
                 specs.put(sb.id, sb.credentials);
             }
             StaticCredentialProvider statics = new StaticCredentialProvider(specs);
-            Map<String, io.github.vaquarkhan.aegis.config.credentials.TokenExchangeCredentials> exchanges = new LinkedHashMap<>();
+            Map<String, TokenExchangeCredentials> exchanges = new LinkedHashMap<>();
             for (SourceBuild sb : sources) {
                 if (sb.exchange != null) {
                     exchanges.put(sb.id, sb.exchange);
                 }
             }
             creds = exchanges.isEmpty() ? statics
-                    : new io.github.vaquarkhan.aegis.config.credentials.SourceCredentialProvider(statics, exchanges);
+                    : new SourceCredentialProvider(statics, exchanges);
         }
         List<ToolSource> toolSources = new ArrayList<>();
         Map<String, SourceBuild> byId = new LinkedHashMap<>();
@@ -807,7 +837,7 @@ public final class GatewayFactory {
             toolSources.add(sb.source);
             byId.put(sb.id, sb);
         }
-        java.util.function.Consumer<Map<String, Object>> catalogEvents = e -> {
+        Consumer<Map<String, Object>> catalogEvents = e -> {
             Map<String, Object> rec = new LinkedHashMap<>(e);
             rec.put("ts", ctx.clock().instant().toString());
             rec.put("gateway", gatewayName);
@@ -828,7 +858,7 @@ public final class GatewayFactory {
                 breakers, ctx.clock(), checkArgumentUrls);
         if (handleRetention > 0) {
             // P-8: optional AES-256 key (read early, above) so retained bodies are encrypted at rest.
-            engine.enableResultHandles(new io.github.vaquarkhan.aegis.engine.control.ResultHandleStore(state, ctx.clock(),
+            engine.enableResultHandles(new ResultHandleStore(state, ctx.clock(),
                     Duration.ofSeconds(handleRetention), outputGuard.maxBytes(), handleEncryptionKey));
         }
         List<ContentGovernor.Binding> contentBindings = new ArrayList<>();
@@ -859,7 +889,7 @@ public final class GatewayFactory {
         // O-2 B: say at startup which write tools still hand raw backend text to the model.
         for (ToolCatalog.Entry e : catalog.entries()) {
             if (e.tool().toolClass() != ToolClass.READ
-                    && e.tool().outputPolicy().mode() == io.github.vaquarkhan.aegis.engine.catalog.OutputPolicy.Mode.PASS_THROUGH) {
+                    && e.tool().outputPolicy().mode() == OutputPolicy.Mode.PASS_THROUGH) {
                 LOG.log(System.Logger.Level.WARNING, "tool '" + e.tool().exposedName() + "' (" + e.tool().toolClass()
                         + ") returns backend output PASS_THROUGH; set outputPolicy STRUCTURED_ALLOWLIST or HANDLE_ONLY"
                         + " so a hostile result cannot steer the model after a write");
@@ -904,7 +934,7 @@ public final class GatewayFactory {
                                         List<ArtifactAdmission.Verified> pluginArtifacts, boolean completeControl) throws Exception {
         String source = s.string("source", "env").trim().toLowerCase(Locale.ROOT);
         ConfigNode settings = s.child("settings");
-        java.util.function.Function<String, String> resolver;
+        Function<String, String> resolver;
         switch (source) {
             case "env" -> {
                 return ctx;
@@ -931,7 +961,7 @@ public final class GatewayFactory {
                             settings.requiredString("path"), token, settings.string("namespace", null),
                             ca == null ? null : ctx.baseDir().resolve(ca), Duration.ofMillis(settings.integer("timeoutMs", 5000)),
                             vaultGuard::pin);
-                } catch (java.io.IOException e) {
+                } catch (IOException e) {
                     // Fail closed: no gateway starts without the secrets it was configured to read.
                     throw new ConfigException(settings.path() + ": could not read secrets from " + address
                             + " (" + e.getClass().getSimpleName() + ")", e);
@@ -1008,7 +1038,7 @@ public final class GatewayFactory {
         long timeoutMillis;
         StaticCredentialProvider.Spec credentials;
         /** Per-caller credentials by RFC 8693 exchange; null when the source uses a static credential. */
-        io.github.vaquarkhan.aegis.config.credentials.TokenExchangeCredentials exchange;
+        TokenExchangeCredentials exchange;
         ToolSource source;
         List<URI> declaredEndpoints = new ArrayList<>();
         List<ArtifactAdmission.Verified> admittedArtifacts = List.of();
@@ -1017,7 +1047,7 @@ public final class GatewayFactory {
         Map<String, ToolExecutor> executorsByName = new LinkedHashMap<>();
         ContentSettings content;
         ContentSource contentSource;
-        java.util.function.Supplier<Map<String, String>> discovery;
+        Supplier<Map<String, String>> discovery;
 
         /** Filled on demand by {@link #executorsOfSource()}; see that method for why it is lazy. */
         private Map<String, ToolExecutor> sourceExecutors;
@@ -1076,7 +1106,7 @@ public final class GatewayFactory {
                     case "ARGUMENT" -> {
                         // The preview flag must be something the backend actually receives and understands;
                         // otherwise a "dry run" would be the real call with an ignored extra argument.
-                        java.util.Map<String, Object> props = io.github.vaquarkhan.aegis.engine.json.JsonValues.object(
+                        Map<String, Object> props = JsonValues.object(
                                 st.descriptor().inputSchema(), "properties");
                         if (props == null || !props.containsKey(s.dryRunArgument())) {
                             throw new ConfigException("source " + id + " tool " + upstream + ": dryRun.argument '"
@@ -1157,7 +1187,7 @@ public final class GatewayFactory {
      * for signing only after checking the actual image/workload digest.
      */
     private static String deploymentAttestation(ConfigNode source, BuildContext ctx, boolean completeControl,
-                                                java.security.PublicKey attestationKey) {
+                                                PublicKey attestationKey) {
         boolean present = source.has("deploymentAttestation");
         ConfigNode a = source.child("deploymentAttestation");
         if (!present) {
@@ -1176,10 +1206,10 @@ public final class GatewayFactory {
         if (!verifier.matches("[A-Za-z0-9][A-Za-z0-9._:/@-]{0,255}")) {
             throw a.error("verifier", "must be a 1..256 character identity");
         }
-        java.time.Instant expires;
+        Instant expires;
         try {
-            expires = java.time.Instant.parse(expiresText);
-        } catch (java.time.format.DateTimeParseException e) {
+            expires = Instant.parse(expiresText);
+        } catch (DateTimeParseException e) {
             throw a.error("validUntil", "must be an RFC 3339 instant");
         }
         if (!expires.isAfter(ctx.clock().instant())) {
@@ -1198,7 +1228,7 @@ public final class GatewayFactory {
                 if (!SignedCatalogManifest.verifySignature(statement, signature, attestationKey)) {
                     throw a.error("signature", "does not verify with the admission key named by " + REQUIRED_ATTESTATION_KEY);
                 }
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 throw a.error("signature", "could not be verified: " + e.getMessage());
             }
         }
@@ -1215,7 +1245,7 @@ public final class GatewayFactory {
     /** Every executable/script path in a complete-control stdio argv must be immutable and admitted. */
     private static void requireCommandArtifacts(ConfigNode source, List<String> command, List<String> prefix,
             Path workingDirectory, Path baseDir, List<ArtifactAdmission.Verified> admitted) {
-        Set<Path> verified = new java.util.HashSet<>();
+        Set<Path> verified = new HashSet<>();
         for (ArtifactAdmission.Verified a : admitted) {
             verified.add(a.path());
         }
@@ -1259,12 +1289,12 @@ public final class GatewayFactory {
         }
         Path candidate = raw.isAbsolute() ? raw.normalize() : baseDir.resolve(raw).normalize();
         try {
-            Path real = candidate.toRealPath(java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            Path real = candidate.toRealPath(LinkOption.NOFOLLOW_LINKS);
             if (!verified.contains(real)) {
                 throw source.error("artifacts", "must include " + role + " " + candidate
                         + " with its SHA-256 before complete-control stdio launch");
             }
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             throw source.error("command", "cannot resolve " + role + " " + candidate + " (" + e.getMessage() + ")");
         }
     }
@@ -1275,11 +1305,11 @@ public final class GatewayFactory {
      * block, such as its URL, command, credentials reference, tool settings or trust state, changes it.
      */
     public static String sourceDigest(Map<String, Object> sourceBlock) {
-        return io.github.vaquarkhan.aegis.engine.model.Digests.canonicalSha256(sourceBlock);
+        return Digests.canonicalSha256(sourceBlock);
     }
 
     private static SourceBuild source(ConfigNode s, BuildContext ctx, boolean completeControl,
-                                      java.security.PublicKey attestationKey) throws Exception {
+                                      PublicKey attestationKey) throws Exception {
         SourceBuild sb = new SourceBuild();
         sb.completeControl = completeControl;
         sb.id = s.requiredString("id");
@@ -1332,7 +1362,7 @@ public final class GatewayFactory {
             sb.credentials = credentials(credentialNode, ctx);
         }
         // Discovery (tools/list) uses the source's own service credentials, never a caller token.
-        java.util.function.Supplier<Map<String, String>> discovery = () -> StaticCredentialProvider.headersFor(sb.credentials);
+        Supplier<Map<String, String>> discovery = () -> StaticCredentialProvider.headersFor(sb.credentials);
         switch (type) {
             case "mcp" -> {
                 for (Map.Entry<String, ConfigNode> e : s.childMap("tools").entrySet()) {
@@ -1397,7 +1427,7 @@ public final class GatewayFactory {
                 if (completeControl && sb.deploymentSubjectDigest == null) {
                     throw s.error("deploymentAttestation", "is required for a remote HTTP source in complete control");
                 }
-                io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http = ctx.outbound(Duration.ofSeconds(5));
+                OutboundHttp http = ctx.outbound(Duration.ofSeconds(5));
                 List<ToolSource.SourcedTool> tools = new ArrayList<>();
                 Map<String, String> templates = new LinkedHashMap<>();
                 for (ConfigNode t : s.children("tools")) {
@@ -1437,7 +1467,7 @@ public final class GatewayFactory {
                             pointer == null ? null : JsonPointer.parse(pointer), statusCheck,
                             (int) resp.integer("maxBytes", 1 << 20));
                     HttpToolExecutor exec = HttpToolExecutor.over(baseUrl, spec, http);
-                    String bodyText = spec.body() == null ? "" : io.github.vaquarkhan.aegis.engine.json.Json.write(spec.body());
+                    String bodyText = spec.body() == null ? "" : Json.write(spec.body());
                     templates.put(name, path + " " + String.join(" ", spec.query().values())
                             + " " + (bodyText.contains("{*}") ? "{" + "*ALL*" + "}" : bodyText));
                     ToolSettings ts = toolSettings(t, true);
@@ -1613,7 +1643,7 @@ public final class GatewayFactory {
      * {@code credentials: {type: token-exchange, tokenEndpoint, clientIdEnv, clientSecretEnv, audience,
      * resource, scope, timeoutMs, checkSubject, discovery: {...static credential...}}}.
      */
-    private static io.github.vaquarkhan.aegis.config.credentials.TokenExchangeCredentials tokenExchange(
+    private static TokenExchangeCredentials tokenExchange(
             ConfigNode c, String sourceId, BuildContext ctx) {
         URI endpoint = endpoint(c, "tokenEndpoint");
         String audience = c.string("audience", null);
@@ -1625,8 +1655,8 @@ public final class GatewayFactory {
         if (timeout < 100 || timeout > 60_000) {
             throw c.error("timeoutMs", "must be between 100 and 60000");
         }
-        return new io.github.vaquarkhan.aegis.config.credentials.TokenExchangeCredentials(sourceId,
-                new io.github.vaquarkhan.aegis.config.credentials.TokenExchangeCredentials.Settings(endpoint,
+        return new TokenExchangeCredentials(sourceId,
+                new TokenExchangeCredentials.Settings(endpoint,
                         requireEnv(ctx, c.requiredString("clientIdEnv"), c.path() + ".clientIdEnv"),
                         requireEnv(ctx, c.requiredString("clientSecretEnv"), c.path() + ".clientSecretEnv"),
                         audience, resource, c.string("scope", null), Duration.ofMillis(timeout), c.bool("checkSubject", true)),
@@ -1686,15 +1716,15 @@ public final class GatewayFactory {
      * Builds the built-in {@code remote} hook. The endpoint is checked against the egress allow list
      * here, at startup, and refused if it is not allowed, so an operator is told at once that a
      * control they configured would send governance data somewhere the egress policy does not
-     * permit. Every later call also goes through {@link io.github.vaquarkhan.aegis.mcp.http.PinnedHttp}:
+     * permit. Every later call also goes through {@link PinnedHttp}:
      * the host is re-checked and the socket connects only to the checked answers.
      */
     private static GovernanceHook remoteHook(BuildContext ctx, ConfigNode s, EgressGuard egressGuard,
-                                             io.github.vaquarkhan.aegis.mcp.http.PinnedHttp.Proxy proxy) {
+                                             PinnedHttp.Proxy proxy) {
         URI url;
         try {
             url = new URI(s.requiredString("url"));
-        } catch (java.net.URISyntaxException e) {
+        } catch (URISyntaxException e) {
             throw s.error("url", "must be a URI");
         }
         String why = egressGuard.check(url);
@@ -1717,14 +1747,14 @@ public final class GatewayFactory {
         return new RemoteHook(s.string("name", "remote"), url, Duration.ofMillis(s.integer("timeoutMs", 2000)), headers,
                 s.bool("includeArguments", false), s.bool("includeResult", false),
                 (int) s.integer("maxResponseBytes", 8192), phases,
-                new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp(egressGuard::pin,
+                new PinnedHttp(egressGuard::pin,
                         Duration.ofMillis(s.integer("timeoutMs", 2000)), null, proxy));
     }
 
     /** The observers, in order. Both are optional and both are read-only: neither can change a decision. */
-    private static List<io.github.vaquarkhan.aegis.engine.spi.DecisionListener> listeners(DecisionMetrics metrics,
-                                                                                         OtlpSpanExporter tracer) {
-        List<io.github.vaquarkhan.aegis.engine.spi.DecisionListener> out = new ArrayList<>();
+    private static List<DecisionListener> listeners(DecisionMetrics metrics,
+                                                    OtlpSpanExporter tracer) {
+        List<DecisionListener> out = new ArrayList<>();
         if (metrics != null) {
             out.add(metrics);
         }
@@ -1777,7 +1807,7 @@ public final class GatewayFactory {
      */
     public static final String REQUIRED_ATTESTATION_KEY = "AEGIS_REQUIRE_ATTESTATION_KEY";
 
-    private static java.security.PublicKey requiredAttestationKey(BuildContext host) {
+    private static PublicKey requiredAttestationKey(BuildContext host) {
         String v = host.env().apply(REQUIRED_ATTESTATION_KEY);
         if (v == null || v.isBlank()) {
             v = System.getProperty("aegis.requireAttestationKey");
@@ -1791,7 +1821,7 @@ public final class GatewayFactory {
         }
         try {
             return SignedCatalogManifest.readPublicKey(p);
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             throw new ConfigException(REQUIRED_ATTESTATION_KEY + ": cannot read the admission public key: " + e.getMessage(), e);
         }
     }
@@ -1810,11 +1840,11 @@ public final class GatewayFactory {
         String v = value.strip();
         byte[] key;
         if (v.matches("[0-9a-fA-F]{64}")) {
-            key = java.util.HexFormat.of().parseHex(v);
+            key = HexFormat.of().parseHex(v);
         } else {
             try {
                 key = (v.indexOf('-') >= 0 || v.indexOf('_') >= 0)
-                        ? java.util.Base64.getUrlDecoder().decode(v) : java.util.Base64.getDecoder().decode(v);
+                        ? Base64.getUrlDecoder().decode(v) : Base64.getDecoder().decode(v);
             } catch (IllegalArgumentException e) {
                 throw where.error("handleEncryptionKeyEnv", "must be 64 hex characters or base64 for a 32-byte AES-256 key");
             }
@@ -1843,7 +1873,7 @@ public final class GatewayFactory {
         if (!expected.startsWith("sha256:")) {
             expected = "sha256:" + expected;
         }
-        if (!java.security.MessageDigest.isEqual(actual.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8))) {
+        if (!MessageDigest.isEqual(actual.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8))) {
             throw completeControlNode.error("artifacts", "differs from the plugin list anchored by " + REQUIRED_PLUGIN_DIGEST
                     + " (this list is " + actual + ")");
         }
@@ -1918,7 +1948,7 @@ public final class GatewayFactory {
      * admin source without kafka-clients) is skipped with a warning instead of breaking every other
      * source; it only matters if configuration actually asks for that type.
      */
-    private static <T> Optional<T> provider(Class<T> spi, String type, java.util.function.Function<T, String> typeOf) {
+    private static <T> Optional<T> provider(Class<T> spi, String type, Function<T, String> typeOf) {
         return provider(spi, type, typeOf, List.of(), false);
     }
 
@@ -1928,9 +1958,9 @@ public final class GatewayFactory {
      * were hash-verified from the signed source block. {@code Provider.type()} does not initialize the
      * class; calling {@code get()} is deliberately after this check.
      */
-    private static <T> Optional<T> provider(Class<T> spi, String type, java.util.function.Function<T, String> typeOf,
+    private static <T> Optional<T> provider(Class<T> spi, String type, Function<T, String> typeOf,
             List<ArtifactAdmission.Verified> admitted, boolean requireAdmittedCodeSource) {
-        java.util.Iterator<ServiceLoader.Provider<T>> it = ServiceLoader.load(spi).stream().iterator();
+        Iterator<ServiceLoader.Provider<T>> it = ServiceLoader.load(spi).stream().iterator();
         while (it.hasNext()) {
             try {
                 ServiceLoader.Provider<T> candidate = it.next();
@@ -1943,7 +1973,7 @@ public final class GatewayFactory {
                 if (type.equals(typeOf.apply(p))) {
                     return Optional.of(p);
                 }
-            } catch (java.util.ServiceConfigurationError | LinkageError e) {
+            } catch (ServiceConfigurationError | LinkageError e) {
                 LOG.log(System.Logger.Level.WARNING, "skipping unloadable " + spi.getSimpleName() + " provider: " + e);
             }
         }
@@ -1952,11 +1982,11 @@ public final class GatewayFactory {
 
     private static boolean codeSourceAdmitted(Class<?> provider, List<ArtifactAdmission.Verified> admitted) {
         try {
-            java.security.CodeSource source = provider.getProtectionDomain().getCodeSource();
+            CodeSource source = provider.getProtectionDomain().getCodeSource();
             if (source == null || source.getLocation() == null || !"file".equalsIgnoreCase(source.getLocation().getProtocol())) {
                 return false;
             }
-            Path actual = Path.of(source.getLocation().toURI()).toRealPath(java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            Path actual = Path.of(source.getLocation().toURI()).toRealPath(LinkOption.NOFOLLOW_LINKS);
             for (ArtifactAdmission.Verified artifact : admitted) {
                 if (artifact.path().equals(actual) && "plugin".equalsIgnoreCase(artifact.role())) {
                     return true;

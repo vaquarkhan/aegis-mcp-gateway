@@ -18,8 +18,14 @@ package io.github.vaquarkhan.aegis.config;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonException;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
+
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,7 +48,7 @@ public final class ConfigLoader {
         Path fileName = file.getFileName();
         String name = fileName == null ? "" : fileName.toString().toLowerCase(Locale.ROOT);
         if (name.endsWith(".yaml") || name.endsWith(".yml")) {
-            return parseYaml(new String(bytes, java.nio.charset.StandardCharsets.UTF_8), file.toString());
+            return parseYaml(new String(bytes, StandardCharsets.UTF_8), file.toString());
         }
         try {
             return Json.parseObject(bytes, JsonLimits.CONFIG);
@@ -78,7 +84,7 @@ public final class ConfigLoader {
         if (v instanceof Integer || v instanceof Long || v instanceof Short || v instanceof Byte) {
             return ((Number) v).longValue();
         }
-        if (v instanceof java.math.BigInteger bi) {
+        if (v instanceof BigInteger bi) {
             return bi.bitLength() < 64 ? bi.longValue() : new BigDecimal(bi);
         }
         if (v instanceof Double || v instanceof Float) {
@@ -108,13 +114,13 @@ public final class ConfigLoader {
     /** Isolated so the class only links against snakeyaml when YAML is actually used. */
     private static final class YamlSupport {
         static Object load(String text) {
-            org.yaml.snakeyaml.LoaderOptions opts = new org.yaml.snakeyaml.LoaderOptions();
+            LoaderOptions opts = new LoaderOptions();
             opts.setAllowDuplicateKeys(false);
             opts.setMaxAliasesForCollections(20);
             opts.setAllowRecursiveKeys(false);
             opts.setNestingDepthLimit(64);
             opts.setCodePointLimit(8 * 1024 * 1024);
-            org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml(new org.yaml.snakeyaml.constructor.SafeConstructor(opts));
+            Yaml yaml = new Yaml(new SafeConstructor(opts));
             try {
                 return yaml.load(text);
             } catch (RuntimeException e) {

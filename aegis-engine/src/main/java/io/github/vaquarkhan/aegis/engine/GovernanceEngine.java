@@ -30,28 +30,34 @@ import io.github.vaquarkhan.aegis.engine.control.OutputGuard;
 import io.github.vaquarkhan.aegis.engine.control.ResultHandleStore;
 import io.github.vaquarkhan.aegis.engine.control.SchemaValidator;
 import io.github.vaquarkhan.aegis.engine.control.ScopeRule;
+import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.model.Action;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.ControlTokens;
 import io.github.vaquarkhan.aegis.engine.model.Decision;
 import io.github.vaquarkhan.aegis.engine.model.DenyCodes;
 import io.github.vaquarkhan.aegis.engine.model.Digests;
+import io.github.vaquarkhan.aegis.engine.model.RoundTrip;
 import io.github.vaquarkhan.aegis.engine.model.ToolCall;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.model.ToolResult;
 import io.github.vaquarkhan.aegis.engine.model.TraceContext;
+import io.github.vaquarkhan.aegis.engine.observe.Listeners;
 import io.github.vaquarkhan.aegis.engine.spi.DecisionListener;
 import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
 import io.github.vaquarkhan.aegis.engine.spi.CredentialProvider;
 import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.GovernanceHook;
 import io.github.vaquarkhan.aegis.engine.spi.PolicyDecisionPoint;
+import io.github.vaquarkhan.aegis.engine.spi.ScopeChallenge;
 import io.github.vaquarkhan.aegis.engine.spi.StateStore;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -305,7 +311,7 @@ public final class GovernanceEngine implements AutoCloseable {
             List<String> missingScopes = action.requiredActionScopes().stream()
                     .filter(scope -> !caller.scopes().contains(scope)).toList();
             // Lets a front door that runs OAuth step-up name these scopes in its challenge.
-            io.github.vaquarkhan.aegis.engine.spi.ScopeChallenge.require(action.requiredActionScopes());
+            ScopeChallenge.require(action.requiredActionScopes());
             return Decision.deny(DenyCodes.SCOPE_DENIED, DenyCodes.STEP_SCOPE,
                     "caller lacks a required action scope", Map.of("requiredActionScopes", action.requiredActionScopes(),
                             "missingActionScopes", missingScopes));
@@ -497,7 +503,7 @@ public final class GovernanceEngine implements AutoCloseable {
         if (tokens.dryRun() && spec.mode() == DryRunSpec.Mode.ARGUMENT) {
             Map<String, Object> m = new LinkedHashMap<>(args);
             m.put(spec.argument(), Boolean.TRUE);
-            execArgs = java.util.Collections.unmodifiableMap(m);
+            execArgs = Collections.unmodifiableMap(m);
         }
         String upstream = previewTool && spec.previewToolName() != null ? spec.previewToolName() : tool.upstreamName();
         ExecutionContext ctx = new ExecutionContext(t.requestId, upstream, execArgs, caller, creds, tool.timeoutMillis(), tokens.dryRun(), t.tc.header(),
@@ -637,7 +643,7 @@ public final class GovernanceEngine implements AutoCloseable {
                 t.tool != null ? t.tool.exposedName() : safe(t.call.toolName()), "tool",
                 t.tool != null ? t.tool.toolClass().name() : "", t.tool != null ? t.tool.sourceId() : "",
                 d.allowed() ? DenyCodes.ALLOWED : d.code(), d.step(), reachedBackend, clock.millis() - t.startMillis, span);
-        io.github.vaquarkhan.aegis.engine.observe.Listeners.notify(settings.listeners(), e);
+        Listeners.notify(settings.listeners(), e);
     }
 
     /** @return null when exposed, else NOT_EXPOSED or READONLY_CALLER */
@@ -663,7 +669,7 @@ public final class GovernanceEngine implements AutoCloseable {
      * an envelope that also carries {@code inputResponses} and {@code requestState}, because the backend
      * receives those too and an approval must not bind less than what executes.
      */
-    static Object digestInput(Map<String, Object> args, io.github.vaquarkhan.aegis.engine.model.RoundTrip rt) {
+    static Object digestInput(Map<String, Object> args, RoundTrip rt) {
         if (rt == null || !rt.isRetry()) {
             return args;
         }
@@ -679,7 +685,7 @@ public final class GovernanceEngine implements AutoCloseable {
      * backend) and, after a dry run, the preview result, both passed through the output redaction
      * patterns and bounded. Without this an approver would be deciding on a digest.
      */
-    private Map<String, Object> approverEvidence(Map<String, Object> args, io.github.vaquarkhan.aegis.engine.model.RoundTrip rt,
+    private Map<String, Object> approverEvidence(Map<String, Object> args, RoundTrip rt,
                                                  ToolResult preview) {
         Map<String, Object> ev = new LinkedHashMap<>();
         ev.put("arguments", boundedEvidence(settings.outputGuard().redactAll(args == null ? Map.of() : args).value()));
@@ -696,13 +702,13 @@ public final class GovernanceEngine implements AutoCloseable {
     }
 
     private static Object boundedEvidence(Object redacted) {
-        String json = io.github.vaquarkhan.aegis.engine.json.Json.write(redacted);
-        if (json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= MAX_EVIDENCE_BYTES) {
+        String json = Json.write(redacted);
+        if (json.getBytes(StandardCharsets.UTF_8).length <= MAX_EVIDENCE_BYTES) {
             return redacted;
         }
-        byte[] b = json.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] b = json.getBytes(StandardCharsets.UTF_8);
         return Map.of("truncated", true, "bytes", (long) b.length,
-                "head", new String(b, 0, MAX_EVIDENCE_BYTES / 2, java.nio.charset.StandardCharsets.UTF_8));
+                "head", new String(b, 0, MAX_EVIDENCE_BYTES / 2, StandardCharsets.UTF_8));
     }
 
     private void auditBestEffort(Map<String, Object> rec) {

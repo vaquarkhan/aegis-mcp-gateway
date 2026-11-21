@@ -15,6 +15,8 @@
  */
 package io.github.vaquarkhan.aegis.engine.model;
 
+import java.util.Locale;
+
 /**
  * Authority level of a tool. Same names and ordering as Aegis 0.1 {@code core.spi.ToolClass}, so
  * audit records, dashboards and operator configuration stay compatible.
@@ -53,7 +55,7 @@ public enum ToolClass {
         if (s == null) {
             throw new IllegalArgumentException("tool class must not be null");
         }
-        return switch (s.trim().toUpperCase(java.util.Locale.ROOT)) {
+        return switch (s.trim().toUpperCase(Locale.ROOT)) {
             case "READ" -> READ;
             case "MUTATE" -> MUTATE;
             case "DESTRUCTIVE" -> DESTRUCTIVE;

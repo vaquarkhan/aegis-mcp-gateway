@@ -17,14 +17,22 @@ package io.github.vaquarkhan.aegis.config.openapi;
 
 import io.github.vaquarkhan.aegis.config.ConfigException;
 import io.github.vaquarkhan.aegis.engine.json.Json;
+import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
+
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -79,7 +87,7 @@ public final class OpenApiDraft {
         if (name.endsWith(".yaml") || name.endsWith(".yml")) {
             root = SpecYaml.load(text, file.toString());
         } else {
-            root = Json.parseObject(text.getBytes(StandardCharsets.UTF_8), io.github.vaquarkhan.aegis.engine.json.JsonLimits.CONFIG);
+            root = Json.parseObject(text.getBytes(StandardCharsets.UTF_8), JsonLimits.CONFIG);
         }
         Map<String, Object> m = JsonValues.asObject(root);
         if (m == null) {
@@ -413,7 +421,7 @@ public final class OpenApiDraft {
     private Object pointer(String ref) {
         Object node = spec;
         for (String raw : ref.substring(2).split("/", -1)) {
-            String key = java.net.URLDecoder.decode(raw.replace("+", "%2B"), StandardCharsets.UTF_8)
+            String key = URLDecoder.decode(raw.replace("+", "%2B"), StandardCharsets.UTF_8)
                     .replace("~1", "/").replace("~0", "~");
             if (node instanceof Map<?, ?> m) {
                 node = m.get(key);
@@ -634,13 +642,13 @@ public final class OpenApiDraft {
     /** Isolated so this class only links against snakeyaml when a YAML document is read. */
     private static final class SpecYaml {
         static Object load(String text, String source) {
-            org.yaml.snakeyaml.LoaderOptions opts = new org.yaml.snakeyaml.LoaderOptions();
+            LoaderOptions opts = new LoaderOptions();
             opts.setAllowDuplicateKeys(false);
             opts.setMaxAliasesForCollections(50);
             opts.setAllowRecursiveKeys(false);
             opts.setNestingDepthLimit(128);
             opts.setCodePointLimit(16 * 1024 * 1024);
-            org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml(new org.yaml.snakeyaml.constructor.SafeConstructor(opts));
+            Yaml yaml = new Yaml(new SafeConstructor(opts));
             try {
                 return normalise(yaml.load(text), 0);
             } catch (RuntimeException e) {
@@ -659,7 +667,7 @@ public final class OpenApiDraft {
             if (v instanceof Integer || v instanceof Long || v instanceof Short || v instanceof Byte) {
                 return ((Number) v).longValue();
             }
-            if (v instanceof java.math.BigInteger bi) {
+            if (v instanceof BigInteger bi) {
                 return bi.bitLength() < 64 ? bi.longValue() : new BigDecimal(bi);
             }
             if (v instanceof Double || v instanceof Float) {
@@ -680,7 +688,7 @@ public final class OpenApiDraft {
                 }
                 return out;
             }
-            if (v instanceof java.util.Date d) {
+            if (v instanceof Date d) {
                 return d.toInstant().toString();
             }
             if (v instanceof byte[]) {

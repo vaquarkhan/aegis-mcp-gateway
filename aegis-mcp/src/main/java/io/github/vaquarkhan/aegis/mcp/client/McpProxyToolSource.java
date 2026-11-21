@@ -22,8 +22,11 @@ import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import io.github.vaquarkhan.aegis.mcp.protocol.JsonRpc;
+import io.github.vaquarkhan.aegis.mcp.protocol.McpVersions;
+
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -104,19 +107,19 @@ public final class McpProxyToolSource implements ToolSource {
         public ToolResult execute(ExecutionContext ctx) throws ExecutionException {
             try {
                 // Trace context travels in _meta (every era and transport) and as the HTTP header.
-                Map<String, Object> params = new java.util.LinkedHashMap<>();
+                Map<String, Object> params = new LinkedHashMap<>();
                 params.put("name", ctx.upstreamToolName());
                 params.put("arguments", ctx.arguments());
-                Map<String, Object> meta = new java.util.LinkedHashMap<>();
+                Map<String, Object> meta = new LinkedHashMap<>();
                 meta.put("traceparent", ctx.traceparent());
                 if (!ctx.roundTrip().clientCapabilities().isEmpty()) {
                     // MRTR: tell a 2026 backend what the real client can answer (elicitation, sampling, roots).
-                    meta.put(io.github.vaquarkhan.aegis.mcp.protocol.McpVersions.META_CLIENT_CAPABILITIES,
+                    meta.put(McpVersions.META_CLIENT_CAPABILITIES,
                             ctx.roundTrip().clientCapabilities());
                 }
                 params.put("_meta", meta);
                 ctx.roundTrip().addTo(params);
-                Map<String, String> headers = new java.util.LinkedHashMap<>(ctx.credentials());
+                Map<String, String> headers = new LinkedHashMap<>(ctx.credentials());
                 headers.put("traceparent", ctx.traceparent());
                 return new ToolResult(client.call("tools/call", params, ctx.upstreamToolName(), headers, ctx.timeoutMillis()));
             } catch (McpClient.McpCallException e) {

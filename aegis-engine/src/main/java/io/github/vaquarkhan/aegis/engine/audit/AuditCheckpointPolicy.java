@@ -16,6 +16,7 @@
 package io.github.vaquarkhan.aegis.engine.audit;
 
 import java.nio.file.Path;
+import java.security.PrivateKey;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Objects;
@@ -36,7 +37,7 @@ import java.util.Objects;
  *                      vouch for a rewritten journal without this key
  */
 public record AuditCheckpointPolicy(Path file, long everyRecords, Duration every, Clock clock,
-                                    java.security.PrivateKey signingKey) {
+                                    PrivateKey signingKey) {
 
     public AuditCheckpointPolicy(Path file, long everyRecords, Duration every, Clock clock) {
         this(file, everyRecords, every, clock, null);

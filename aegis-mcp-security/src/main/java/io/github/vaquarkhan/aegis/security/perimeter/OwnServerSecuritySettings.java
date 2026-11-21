@@ -24,11 +24,17 @@ import io.github.vaquarkhan.aegis.security.identity.JwtVerifier;
 import io.github.vaquarkhan.aegis.security.identity.SpiffeIdentity;
 import io.github.vaquarkhan.aegis.security.identity.StaticTokenIdentity;
 import io.github.vaquarkhan.aegis.security.oauth.ProtectedResourceMetadata;
+
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -37,6 +43,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 /**
  * The {@code host:} section: listener, TLS and the gateway's own identity. Parsed strictly.
@@ -146,9 +153,9 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
      * keeps access to the route while gaining the tool (MCP authorization scope challenge). Only
      * RFC 6749 scope tokens (NQCHAR) are named, so no value can break out of the quoted string.
      */
-    public String insufficientScopeChallenge(OwnServerPerimeter.RouteGroup route, java.util.Collection<String> actionScopes) {
-        Set<String> scopes = new java.util.LinkedHashSet<>(requiredScopes(route));
-        for (String s : actionScopes == null ? java.util.List.<String>of() : actionScopes) {
+    public String insufficientScopeChallenge(OwnServerPerimeter.RouteGroup route, Collection<String> actionScopes) {
+        Set<String> scopes = new LinkedHashSet<>(requiredScopes(route));
+        for (String s : actionScopes == null ? List.<String>of() : actionScopes) {
             if (s != null && SCOPE_TOKEN.matcher(s).matches()) {
                 scopes.add(s);
             }
@@ -157,7 +164,7 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
         return oauth == null ? base : base + ", resource_metadata=\"" + oauth.metadataUrl() + "\"";
     }
 
-    private static final java.util.regex.Pattern SCOPE_TOKEN = java.util.regex.Pattern.compile("[\\x21\\x23-\\x5B\\x5D-\\x7E]+");
+    private static final Pattern SCOPE_TOKEN = Pattern.compile("[\\x21\\x23-\\x5B\\x5D-\\x7E]+");
 
     public static OwnServerSecuritySettings parse(Map<String, Object> section, Path baseDir, Function<String, String> env, Clock clock) {
         ConfigNode root = new ConfigNode("config.host", section);
@@ -207,7 +214,7 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
                 throw new ConfigException("config.host.tls.clientAuth: require needs tls.keystore (mutual TLS needs TLS)");
             }
             clientCaFile = baseDir.resolve(tls.requiredString("clientCaFile"));
-            if (!java.nio.file.Files.isRegularFile(clientCaFile)) {
+            if (!Files.isRegularFile(clientCaFile)) {
                 throw new ConfigException("config.host.tls.clientCaFile " + clientCaFile + " does not exist");
             }
         } else if (tls.has("clientCaFile")) {
@@ -424,8 +431,8 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
             return false;
         }
         try {
-            return java.net.InetAddress.getByName(h.replace("[", "").replace("]", "")).isLoopbackAddress();
-        } catch (java.net.UnknownHostException e) {
+            return InetAddress.getByName(h.replace("[", "").replace("]", "")).isLoopbackAddress();
+        } catch (UnknownHostException e) {
             return false;
         }
     }
@@ -439,7 +446,7 @@ public record OwnServerSecuritySettings(String host, int port, String mcpPath, S
             }
             out.add(scope);
         }
-        return java.util.Collections.unmodifiableSet(out);
+        return Collections.unmodifiableSet(out);
     }
 
     private static Set<String> upper(List<String> values) {

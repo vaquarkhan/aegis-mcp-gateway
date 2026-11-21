@@ -70,7 +70,7 @@ public final class HttpToolExecutor implements ToolExecutor {
 
     /**
      * Executor over an explicit transport. The gateway passes a
-     * {@link io.github.vaquarkhan.aegis.mcp.http.PinnedHttp}, so the backend call connects only to an
+     * {@link PinnedHttp}, so the backend call connects only to an
      * address the egress control approved in the same step (no DNS rebinding window).
      */
     public static HttpToolExecutor over(URI baseUrl, HttpToolSpec spec, OutboundHttp transport) {

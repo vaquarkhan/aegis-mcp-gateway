@@ -19,6 +19,7 @@ import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -60,7 +61,7 @@ public final class SessionRegistry {
         if (mine >= MAX_SESSIONS_PER_CALLER) {
             // Evict this caller's least recently used session rather than refusing a reconnect.
             sessions.values().stream().filter(s -> s.principalKey().equals(pk))
-                    .min(java.util.Comparator.comparingLong(Session::lastSeen))
+                    .min(Comparator.comparingLong(Session::lastSeen))
                     .ifPresent(s -> sessions.remove(s.id(), s));
         }
         if (sessions.size() >= maxSessions) {
@@ -69,7 +70,7 @@ public final class SessionRegistry {
             // refusing here instead would let a few hundred principals, each holding their 32 allowed
             // sessions, lock every other caller out with 503 until the idle TTL passes.
             sessions.values().stream()
-                    .min(java.util.Comparator.comparingLong(Session::lastSeen))
+                    .min(Comparator.comparingLong(Session::lastSeen))
                     .ifPresent(s -> sessions.remove(s.id(), s));
         }
         if (sessions.size() >= maxSessions) {

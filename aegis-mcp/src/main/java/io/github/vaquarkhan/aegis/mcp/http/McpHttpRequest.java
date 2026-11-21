@@ -15,6 +15,9 @@
  */
 package io.github.vaquarkhan.aegis.mcp.http;
 
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -32,7 +35,7 @@ import java.util.TreeMap;
  *                leaf first; empty when the connection had no verified client certificate
  */
 public record McpHttpRequest(String method, String path, Map<String, List<String>> headers, byte[] body,
-                             List<java.security.cert.X509Certificate> peerCertificates) {
+                             List<X509Certificate> peerCertificates) {
 
     /** A request without a verified TLS client certificate. */
     public McpHttpRequest(String method, String path, Map<String, List<String>> headers, byte[] body) {
@@ -48,14 +51,14 @@ public record McpHttpRequest(String method, String path, Map<String, List<String
             for (Map.Entry<String, List<String>> e : headers.entrySet()) {
                 if (e.getKey() != null) {
                     h.merge(e.getKey(), List.copyOf(e.getValue()), (a, b) -> {
-                        java.util.ArrayList<String> all = new java.util.ArrayList<>(a);
+                        ArrayList<String> all = new ArrayList<>(a);
                         all.addAll(b);
                         return List.copyOf(all);
                     });
                 }
             }
         }
-        headers = java.util.Collections.unmodifiableMap(h);
+        headers = Collections.unmodifiableMap(h);
         body = body == null ? new byte[0] : body;
     }
 

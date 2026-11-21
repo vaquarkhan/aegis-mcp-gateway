@@ -16,6 +16,9 @@
 package io.github.vaquarkhan.aegis.config.http;
 
 import io.github.vaquarkhan.aegis.engine.json.JsonPointer;
+
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -62,8 +65,8 @@ public record HttpToolSpec(
 
     public HttpToolSpec {
         // Insertion order is preserved (configuration order), so the rendered URL is deterministic.
-        query = query == null ? Map.of() : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(query));
-        headers = headers == null ? Map.of() : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(headers));
+        query = query == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(query));
+        headers = headers == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(headers));
         maxResponseBytes = maxResponseBytes <= 0 ? 1 << 20 : maxResponseBytes;
     }
 }

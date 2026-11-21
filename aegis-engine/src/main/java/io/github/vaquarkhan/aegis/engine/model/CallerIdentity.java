@@ -15,6 +15,8 @@
  */
 package io.github.vaquarkhan.aegis.engine.model;
 
+import io.github.vaquarkhan.aegis.engine.json.Json;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -84,7 +86,7 @@ public record CallerIdentity(
      * JSON array so a separator character inside a name cannot make two callers collide.
      */
     public String principalKey() {
-        return io.github.vaquarkhan.aegis.engine.json.Json.write(List.of(issuer, actor, effectiveSubject));
+        return Json.write(List.of(issuer, actor, effectiveSubject));
     }
 
     public boolean sameCaller(CallerIdentity other) {

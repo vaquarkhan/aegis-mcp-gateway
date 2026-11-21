@@ -15,7 +15,9 @@
  */
 package io.github.vaquarkhan.aegis.engine.model;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 
 /**
@@ -54,7 +56,7 @@ public record Action(String tool, ToolClass toolClass, String sourceId, List<Str
      * @param definitionDigest  the catalog digest of the tool definition in force, or empty
      */
     public String binding(String gatewayName, String definitionDigest) {
-        java.util.Map<String, Object> b = new java.util.LinkedHashMap<>();
+        Map<String, Object> b = new LinkedHashMap<>();
         b.put("gateway", gatewayName == null ? "" : gatewayName);
         b.put("tool", tool);
         b.put("class", toolClass == null ? "" : toolClass.name());

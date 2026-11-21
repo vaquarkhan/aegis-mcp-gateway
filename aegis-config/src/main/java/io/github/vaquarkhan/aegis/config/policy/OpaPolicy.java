@@ -21,6 +21,9 @@ import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import io.github.vaquarkhan.aegis.engine.model.Action;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.spi.PolicyDecisionPoint;
+import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -42,16 +45,16 @@ public final class OpaPolicy implements PolicyDecisionPoint {
     private final Duration timeout;
     private final boolean includeArguments;
     private final Map<String, String> headers;
-    private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
+    private final OutboundHttp http;
 
     public OpaPolicy(URI url, Duration timeout, boolean includeArguments, Map<String, String> headers) {
-        this(url, timeout, includeArguments, headers, io.github.vaquarkhan.aegis.mcp.http.OutboundHttp.jdk(
+        this(url, timeout, includeArguments, headers, OutboundHttp.jdk(
                 HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER).build()));
     }
 
     /** @param transport the gateway passes a pinned transport bound to the egress control */
     public OpaPolicy(URI url, Duration timeout, boolean includeArguments, Map<String, String> headers,
-                     io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
+                     OutboundHttp transport) {
         if (transport == null) {
             throw new IllegalArgumentException("an outbound transport is required");
         }
@@ -87,7 +90,7 @@ public final class OpaPolicy implements PolicyDecisionPoint {
                 .POST(HttpRequest.BodyPublishers.ofByteArray(Json.writeBytes(Map.of("input", input))));
         headers.forEach(b::header);
         // Total deadline covers the body too; a slow OPA cannot stall callers past the timeout.
-        io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.Result resp =
+        BoundedHttp.Result resp =
                 http.send(b.build(), 64 * 1024, timeout.toMillis());
         if (resp.status() != 200) {
             return Result.deny("OPA returned HTTP " + resp.status());

@@ -16,6 +16,9 @@
 package io.github.vaquarkhan.aegis.engine.spi;
 
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
+import io.github.vaquarkhan.aegis.engine.model.RoundTrip;
+import io.github.vaquarkhan.aegis.engine.model.TraceContext;
+
 import java.util.Map;
 
 /**
@@ -42,26 +45,26 @@ public record ExecutionContext(
         long timeoutMillis,
         boolean dryRun,
         String traceparent,
-        io.github.vaquarkhan.aegis.engine.model.RoundTrip roundTrip) {
+        RoundTrip roundTrip) {
 
     /** Context without multi round-trip data. */
     public ExecutionContext(String requestId, String upstreamToolName, Map<String, Object> arguments, CallerIdentity caller,
                             Map<String, String> credentials, long timeoutMillis, boolean dryRun, String traceparent) {
         this(requestId, upstreamToolName, arguments, caller, credentials, timeoutMillis, dryRun, traceparent,
-                io.github.vaquarkhan.aegis.engine.model.RoundTrip.NONE);
+                RoundTrip.NONE);
     }
 
     /** Context with a fresh root trace (for executors used outside the engine, e.g. tests). */
     public ExecutionContext(String requestId, String upstreamToolName, Map<String, Object> arguments, CallerIdentity caller,
                             Map<String, String> credentials, long timeoutMillis, boolean dryRun) {
         this(requestId, upstreamToolName, arguments, caller, credentials, timeoutMillis, dryRun,
-                io.github.vaquarkhan.aegis.engine.model.TraceContext.newRoot().header(),
-                io.github.vaquarkhan.aegis.engine.model.RoundTrip.NONE);
+                TraceContext.newRoot().header(),
+                RoundTrip.NONE);
     }
 
     public ExecutionContext {
-        traceparent = traceparent == null ? io.github.vaquarkhan.aegis.engine.model.TraceContext.newRoot().header() : traceparent;
-        roundTrip = roundTrip == null ? io.github.vaquarkhan.aegis.engine.model.RoundTrip.NONE : roundTrip;
+        traceparent = traceparent == null ? TraceContext.newRoot().header() : traceparent;
+        roundTrip = roundTrip == null ? RoundTrip.NONE : roundTrip;
         arguments = arguments == null ? Map.of() : arguments;
         credentials = credentials == null ? Map.of() : Map.copyOf(credentials);
     }

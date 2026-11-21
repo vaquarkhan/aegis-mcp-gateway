@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.config;
 
+import io.github.vaquarkhan.aegis.engine.control.TokenRevocations;
 import io.github.vaquarkhan.aegis.observability.otlp.OtlpSpanExporter;
 import io.github.vaquarkhan.aegis.engine.GovernanceEngine;
 import io.github.vaquarkhan.aegis.engine.observe.DecisionMetrics;
@@ -23,6 +24,7 @@ import io.github.vaquarkhan.aegis.mcp.server.McpServerHandler;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 /**
  * A fully built gateway: the governance engine plus the host-neutral MCP handler and admin API.
@@ -40,8 +42,8 @@ public final class Gateway implements AutoCloseable {
     private final OtlpSpanExporter tracer;
     private final AutoCloseable stateResource;
     private final AtomicBoolean closed = new AtomicBoolean();
-    private final java.util.function.Function<String, String> secrets;
-    private final io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations;
+    private final Function<String, String> secrets;
+    private final TokenRevocations revocations;
     private final boolean completeControl;
     private final boolean durableState;
 
@@ -49,20 +51,20 @@ public final class Gateway implements AutoCloseable {
      * The secret lookup selected by {@code secrets.source}; a host parses its own section with it so a
      * {@code tokenEnv} in {@code host} resolves from the same provider as the rest of the configuration.
      */
-    public java.util.function.Function<String, String> secrets() {
+    public Function<String, String> secrets() {
         return secrets;
     }
 
     Gateway(GovernanceEngine engine, McpServerHandler mcp, AdminApi admin, Map<String, Object> hostSections,
             ScheduledExecutorService refresher, DecisionMetrics metrics, OtlpSpanExporter tracer, AutoCloseable stateResource,
-            java.util.function.Function<String, String> secrets) {
+            Function<String, String> secrets) {
         this(engine, mcp, admin, hostSections, refresher, metrics, tracer, stateResource, secrets, null, false, false);
     }
 
     Gateway(GovernanceEngine engine, McpServerHandler mcp, AdminApi admin, Map<String, Object> hostSections,
             ScheduledExecutorService refresher, DecisionMetrics metrics, OtlpSpanExporter tracer, AutoCloseable stateResource,
-            java.util.function.Function<String, String> secrets,
-            io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations, boolean completeControl,
+            Function<String, String> secrets,
+            TokenRevocations revocations, boolean completeControl,
             boolean durableState) {
         this.revocations = revocations;
         this.durableState = durableState;
@@ -82,7 +84,7 @@ public final class Gateway implements AutoCloseable {
      * Bearer token revocation list kept in this gateway's governance state store (shared by every
      * replica that shares the store). The host binds it into its JWT verifier.
      */
-    public io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations() {
+    public TokenRevocations revocations() {
         return revocations;
     }
 

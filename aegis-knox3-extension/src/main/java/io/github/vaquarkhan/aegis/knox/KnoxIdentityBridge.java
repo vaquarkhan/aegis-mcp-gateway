@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.knox;
 
+import io.github.vaquarkhan.aegis.engine.control.TokenRevocations;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -56,7 +57,7 @@ public final class KnoxIdentityBridge {
      * @return the caller, or null when the caller or one of its actors is revoked
      */
     public static CallerIdentity unlessRevoked(CallerIdentity caller,
-                                               io.github.vaquarkhan.aegis.engine.control.TokenRevocations revocations) {
+                                               TokenRevocations revocations) {
         if (caller == null || revocations == null) {
             return caller;
         }
