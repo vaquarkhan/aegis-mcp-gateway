@@ -19,6 +19,7 @@ import io.github.vaquarkhan.aegis.engine.json.Json;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -54,7 +55,7 @@ public record ProtectedResourceMetadata(URI resource, List<String> authorization
                 || resource.getRawQuery() != null) {
             throw new IllegalArgumentException("resource must be an absolute URI without query or fragment");
         }
-        String scheme = resource.getScheme().toLowerCase(java.util.Locale.ROOT);
+        String scheme = resource.getScheme().toLowerCase(Locale.ROOT);
         if (!("https".equals(scheme) || ("http".equals(scheme) && isLoopback(resource.getHost())))) {
             // RFC 8707 / MCP: the resource identifier is an https URI; plain http only for local development.
             throw new IllegalArgumentException("resource must use https (http is allowed only for 127.0.0.1, ::1 or localhost)");
@@ -76,7 +77,7 @@ public record ProtectedResourceMetadata(URI resource, List<String> authorization
             // Clients open or fetch these URLs. Publishing javascript:, data:, file: or a plain-http
             // remote URL would hand every MCP client a dangerous target (MCP security best practices,
             // OAuth authorization URL validation and SSRF; RFC 8414 issuers are https).
-            String asScheme = u.getScheme().toLowerCase(java.util.Locale.ROOT);
+            String asScheme = u.getScheme().toLowerCase(Locale.ROOT);
             if (u.getHost() == null || !("https".equals(asScheme) || ("http".equals(asScheme) && isLoopback(u.getHost())))) {
                 throw new IllegalArgumentException("authorizationServers entries must be https issuer URIs"
                         + " (http is allowed only for 127.0.0.1, ::1 or localhost): " + as);
@@ -90,7 +91,7 @@ public record ProtectedResourceMetadata(URI resource, List<String> authorization
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("documentation must be an https URI");
             }
-            String ds = d.getScheme() == null ? "" : d.getScheme().toLowerCase(java.util.Locale.ROOT);
+            String ds = d.getScheme() == null ? "" : d.getScheme().toLowerCase(Locale.ROOT);
             if (d.getHost() == null || !("https".equals(ds) || ("http".equals(ds) && isLoopback(d.getHost())))) {
                 throw new IllegalArgumentException("documentation must be an https URI (a human opens it in a browser)");
             }

@@ -15,6 +15,7 @@
  */
 package io.github.vaquarkhan.aegis.mcp.protocol;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
@@ -55,7 +56,7 @@ public final class HeaderValues {
                 return StandardCharsets.UTF_8.newDecoder()
                         .onMalformedInput(CodingErrorAction.REPORT)
                         .onUnmappableCharacter(CodingErrorAction.REPORT)
-                        .decode(java.nio.ByteBuffer.wrap(raw)).toString();
+                        .decode(ByteBuffer.wrap(raw)).toString();
             } catch (IllegalArgumentException | CharacterCodingException e) {
                 return null;
             }

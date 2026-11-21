@@ -23,6 +23,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -342,7 +343,7 @@ public final class PostgresStateStore implements HighWaterStateStore, AutoClosea
 
     private static void nullableLong(PreparedStatement statement, int index, Long value) throws SQLException {
         if (value == null) {
-            statement.setNull(index, java.sql.Types.BIGINT);
+            statement.setNull(index, Types.BIGINT);
         } else {
             statement.setLong(index, value);
         }

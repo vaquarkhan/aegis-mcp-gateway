@@ -16,6 +16,7 @@
 package io.github.vaquarkhan.aegis.sparkconnect;
 
 import io.github.vaquarkhan.aegis.engine.json.Json;
+import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import io.github.vaquarkhan.aegis.engine.model.ToolDescriptor;
 import io.github.vaquarkhan.aegis.engine.model.ToolResult;
@@ -23,6 +24,7 @@ import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +33,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -40,6 +43,7 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.catalog.Database;
 import org.apache.spark.sql.catalog.Table;
+import org.apache.spark.sql.connect.SparkSession;
 import org.apache.spark.sql.types.StructField;
 
 /**
@@ -74,7 +78,7 @@ public final class SparkConnectToolSource implements ToolSource {
     private final String id;
     private final SparkConnectSettings settings;
     private final ExecutorService pool;
-    private org.apache.spark.sql.connect.SparkSession session;
+    private SparkSession session;
 
     public SparkConnectToolSource(String id, SparkConnectSettings settings) {
         this.id = id;
@@ -103,9 +107,9 @@ public final class SparkConnectToolSource implements ToolSource {
     }
 
     /** Lazily connects; the client reconnects by itself after transient failures. */
-    private synchronized org.apache.spark.sql.connect.SparkSession session() {
+    private synchronized SparkSession session() {
         if (session == null) {
-            session = org.apache.spark.sql.connect.SparkSession.builder().remote(settings.connectionString()).create();
+            session = SparkSession.builder().remote(settings.connectionString()).create();
         }
         return session;
     }
@@ -186,7 +190,7 @@ public final class SparkConnectToolSource implements ToolSource {
             Future<ToolResult> f;
             try {
                 f = pool.submit(() -> {
-                    org.apache.spark.sql.connect.SparkSession s = session();
+                    SparkSession s = session();
                     s.addTag(tag);
                     try {
                         return run(s, ctx.upstreamToolName(), a);
@@ -194,7 +198,7 @@ public final class SparkConnectToolSource implements ToolSource {
                         s.removeTag(tag);
                     }
                 });
-            } catch (java.util.concurrent.RejectedExecutionException e) {
+            } catch (RejectedExecutionException e) {
                 throw new ExecutionException("Spark Connect source is saturated", false, e);
             }
             try {
@@ -232,7 +236,7 @@ public final class SparkConnectToolSource implements ToolSource {
     }
 
     /** Scala methods declare {@code AnalysisException}; it is a {@link SparkThrowable}, handled by the caller. */
-    private ToolResult run(org.apache.spark.sql.connect.SparkSession s, String tool, Map<String, Object> a) throws Exception {
+    private ToolResult run(SparkSession s, String tool, Map<String, Object> a) throws Exception {
         switch (tool) {
             case "spark_list_databases": {
                 List<String> names = new ArrayList<>();
@@ -304,8 +308,8 @@ public final class SparkConnectToolSource implements ToolSource {
     private static ToolResult rows(Dataset<Row> df) {
         List<Object> rows = new ArrayList<>();
         for (String json : df.toJSON().collectAsList()) {
-            rows.add(Json.parse(json.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                    io.github.vaquarkhan.aegis.engine.json.JsonLimits.DEFAULT));
+            rows.add(Json.parse(json.getBytes(StandardCharsets.UTF_8),
+                    JsonLimits.DEFAULT));
         }
         return ToolResult.structured(rows.size() + " rows", Map.of("rows", rows));
     }

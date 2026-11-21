@@ -19,7 +19,10 @@ import io.github.vaquarkhan.aegis.config.BuildContext;
 import io.github.vaquarkhan.aegis.config.ConfigNode;
 import io.github.vaquarkhan.aegis.config.spi.ToolSourceFactory;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
+
 import java.net.URI;
+import java.time.Duration;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -50,7 +53,7 @@ public final class A2aToolSourceFactory implements ToolSourceFactory {
 
     @Override
     public ToolSource create(String id, ConfigNode settings) {
-        return create(id, settings, (io.github.vaquarkhan.aegis.mcp.http.OutboundHttp) null);
+        return create(id, settings, (OutboundHttp) null);
     }
 
     /**
@@ -60,10 +63,10 @@ public final class A2aToolSourceFactory implements ToolSourceFactory {
     @Override
     public ToolSource create(String id, ConfigNode settings, BuildContext context) {
         return create(id, settings, context == null ? null
-                : context.outbound(java.time.Duration.ofMillis(Math.min(settings.integer("cardTimeoutMs", 5_000), 5_000))));
+                : context.outbound(Duration.ofMillis(Math.min(settings.integer("cardTimeoutMs", 5_000), 5_000))));
     }
 
-    private ToolSource create(String id, ConfigNode settings, io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
+    private ToolSource create(String id, ConfigNode settings, OutboundHttp transport) {
         URI card = url(settings, "cardUrl", true);
         URI pinned = url(settings, "endpointUrl", false);
         String toolName = settings.string("toolName", id.replace('-', '_'));

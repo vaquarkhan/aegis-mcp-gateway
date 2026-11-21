@@ -22,6 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Pre-authentication limits for the gateway's own listener, applied per client address BEFORE the
@@ -79,7 +80,7 @@ public final class ClientAddressLimiter {
     private final Map<String, Window> requests = new ConcurrentHashMap<>();
     private final Map<String, Window> failures = new ConcurrentHashMap<>();
     private final Map<String, Long> lockedUntil = new ConcurrentHashMap<>();
-    private final java.util.concurrent.atomic.AtomicLong lastSweep = new java.util.concurrent.atomic.AtomicLong();
+    private final AtomicLong lastSweep = new AtomicLong();
 
     public ClientAddressLimiter(Settings settings) {
         this.settings = settings == null ? Settings.DEFAULT : settings;

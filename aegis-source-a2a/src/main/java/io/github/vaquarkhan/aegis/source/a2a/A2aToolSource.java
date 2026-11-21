@@ -25,6 +25,8 @@ import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -69,12 +71,12 @@ final class A2aToolSource implements ToolSource {
     private final int maxTextChars;
     private final int maxResponseBytes;
     private final long cardTimeoutMillis;
-    private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
+    private final OutboundHttp http;
 
     A2aToolSource(String id, URI cardUrl, URI pinnedEndpoint, String toolName, int maxTextChars,
                   int maxResponseBytes, long cardTimeoutMillis) {
         this(id, cardUrl, pinnedEndpoint, toolName, maxTextChars, maxResponseBytes, cardTimeoutMillis,
-                io.github.vaquarkhan.aegis.mcp.http.OutboundHttp.jdk(HttpClient.newBuilder()
+                OutboundHttp.jdk(HttpClient.newBuilder()
                         .connectTimeout(Duration.ofMillis(Math.min(cardTimeoutMillis, 5_000)))
                         .followRedirects(HttpClient.Redirect.NEVER).build()));
     }
@@ -85,7 +87,7 @@ final class A2aToolSource implements ToolSource {
      *                  step (the A2A DNS rebinding class, for example CVE-2026-77822 in another gateway)
      */
     A2aToolSource(String id, URI cardUrl, URI pinnedEndpoint, String toolName, int maxTextChars,
-                  int maxResponseBytes, long cardTimeoutMillis, io.github.vaquarkhan.aegis.mcp.http.OutboundHttp transport) {
+                  int maxResponseBytes, long cardTimeoutMillis, OutboundHttp transport) {
         this.id = id;
         this.cardUrl = cardUrl;
         this.pinnedEndpoint = pinnedEndpoint;

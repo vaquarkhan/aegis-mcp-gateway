@@ -19,6 +19,7 @@ import io.github.vaquarkhan.aegis.engine.CallOutcome;
 import io.github.vaquarkhan.aegis.engine.GovernanceEngine;
 import io.github.vaquarkhan.aegis.engine.content.ContentGovernor;
 import io.github.vaquarkhan.aegis.engine.model.Decision;
+import io.github.vaquarkhan.aegis.engine.model.RoundTrip;
 import io.github.vaquarkhan.aegis.engine.model.TraceContext;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonException;
@@ -503,16 +504,16 @@ public final class McpServerHandler {
     }
 
     /** MRTR retry fields; only 2026 clients can carry them. */
-    private static io.github.vaquarkhan.aegis.engine.model.RoundTrip roundTrip(Map<String, Object> params, Map<String, Object> meta,
+    private static RoundTrip roundTrip(Map<String, Object> params, Map<String, Object> meta,
                                                                          boolean modern) throws RpcError {
         if (!modern) {
             if (params.containsKey("inputResponses") || params.containsKey("requestState")) {
                 throw new RpcError(JsonRpc.INVALID_PARAMS, "inputResponses and requestState need MCP 2026-07-28", 400, null);
             }
-            return io.github.vaquarkhan.aegis.engine.model.RoundTrip.NONE;
+            return RoundTrip.NONE;
         }
         try {
-            return io.github.vaquarkhan.aegis.engine.model.RoundTrip.fromParams(params, meta);
+            return RoundTrip.fromParams(params, meta);
         } catch (IllegalArgumentException e) {
             throw new RpcError(JsonRpc.INVALID_PARAMS, e.getMessage(), 400, null);
         }

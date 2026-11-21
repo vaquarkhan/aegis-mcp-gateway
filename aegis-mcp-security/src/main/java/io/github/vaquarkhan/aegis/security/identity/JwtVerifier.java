@@ -15,20 +15,29 @@
  */
 package io.github.vaquarkhan.aegis.security.identity;
 
+import io.github.vaquarkhan.aegis.engine.control.EgressGuard;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonException;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import io.github.vaquarkhan.aegis.engine.control.TokenRevocations;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
+import io.github.vaquarkhan.aegis.mcp.http.BoundedHttp;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
+import io.github.vaquarkhan.aegis.mcp.http.OutboundHttp;
+import io.github.vaquarkhan.aegis.mcp.http.PinnedHttp;
+
+import java.io.IOException;
 import java.math.BigInteger;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.AlgorithmParameters;
 import java.security.KeyFactory;
+import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.spec.ECGenParameterSpec;
@@ -42,6 +51,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,20 +108,20 @@ public final class JwtVerifier implements IdentityResolver {
         }
 
         static boolean jwksTransportTrusted(URI u) {
-            String scheme = u.getScheme() == null ? "" : u.getScheme().toLowerCase(java.util.Locale.ROOT);
+            String scheme = u.getScheme() == null ? "" : u.getScheme().toLowerCase(Locale.ROOT);
             if ("https".equals(scheme)) {
                 return true;
             }
             if (!"http".equals(scheme) || u.getHost() == null) {
                 return false;
             }
-            String host = u.getHost().toLowerCase(java.util.Locale.ROOT);
+            String host = u.getHost().toLowerCase(Locale.ROOT);
             if ("localhost".equals(host) || "[::1]".equals(host) || "::1".equals(host)) {
                 return true;
             }
             try {
-                return java.net.InetAddress.getByName(host).isLoopbackAddress() && host.matches("[0-9a-fA-F:.\\[\\]]+");
-            } catch (java.net.UnknownHostException e) {
+                return InetAddress.getByName(host).isLoopbackAddress() && host.matches("[0-9a-fA-F:.\\[\\]]+");
+            } catch (UnknownHostException e) {
                 return false;
             }
         }
@@ -135,7 +145,7 @@ public final class JwtVerifier implements IdentityResolver {
 
     private final Settings s;
     private final Clock clock;
-    private final io.github.vaquarkhan.aegis.mcp.http.OutboundHttp http;
+    private final OutboundHttp http;
     private final TokenIdPolicy idPolicy;
     private volatile TokenRevocations revocations;
     private volatile Map<String, PublicKey> keys = Map.of();
@@ -159,18 +169,18 @@ public final class JwtVerifier implements IdentityResolver {
      * (plus the loopback ranges when the URI is loopback, which Settings permits for local testing), so
      * the identity provider's name is resolved once and the socket dials only those answers.
      */
-    private static io.github.vaquarkhan.aegis.mcp.http.OutboundHttp jwksTransport(URI jwks) {
+    private static OutboundHttp jwksTransport(URI jwks) {
         if (jwks == null || jwks.getHost() == null) {
             return (request, maxBytes, deadline) -> {
-                throw new java.io.IOException("no jwksUri configured");
+                throw new IOException("no jwksUri configured");
             };
         }
         // The pin is for the rebinding window only, not for address policy: the operator chose this IdP URL
         // and corporate identity providers commonly live on private addresses, so every address class is
         // accepted for this one host.
-        io.github.vaquarkhan.aegis.engine.control.EgressGuard guard = new io.github.vaquarkhan.aegis.engine.control.EgressGuard(
+        EgressGuard guard = new EgressGuard(
                 List.of(jwks.getHost()), List.of("0.0.0.0/0", "::/0"), Set.of("https", "http"), null);
-        return new io.github.vaquarkhan.aegis.mcp.http.PinnedHttp(guard::pin, Duration.ofSeconds(5), null);
+        return new PinnedHttp(guard::pin, Duration.ofSeconds(5), null);
     }
 
     /**
@@ -370,7 +380,7 @@ public final class JwtVerifier implements IdentityResolver {
                 case "HS256": {
                     Mac mac = Mac.getInstance("HmacSHA256");
                     mac.init(new SecretKeySpec(s.hmacSecret(), "HmacSHA256"));
-                    return java.security.MessageDigest.isEqual(mac.doFinal(input), sig);
+                    return MessageDigest.isEqual(mac.doFinal(input), sig);
                 }
                 case "RS256":
                 case "ES256": {
@@ -427,7 +437,7 @@ public final class JwtVerifier implements IdentityResolver {
         }
         lastRefreshAttempt = now;
         try {
-            io.github.vaquarkhan.aegis.mcp.http.BoundedHttp.Result r = http.send(
+            BoundedHttp.Result r = http.send(
                     HttpRequest.newBuilder(s.jwksUri()).timeout(Duration.ofSeconds(5)).GET().build(), 256 * 1024, 5_000);
             byte[] body = r.body();
             if (r.status() != 200) {
