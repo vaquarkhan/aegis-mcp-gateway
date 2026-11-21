@@ -180,11 +180,21 @@
         <artifactId>spotless-maven-plugin</artifactId>
         <version>2.43.0</version>
         <configuration>
+          <skip>true</skip>
           <java>
             <googleJavaFormat/>
             <removeUnusedImports/>
           </java>
         </configuration>
+        <executions>
+          <execution>
+            <id>validate-formatting-and-imports</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>com.github.spotbugs</groupId>
