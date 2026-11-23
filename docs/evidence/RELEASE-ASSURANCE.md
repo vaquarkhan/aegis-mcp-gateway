@@ -103,7 +103,9 @@ entries present. Nested component licenses remain allowed. Unit tests exercise l
 variant names, nested licenses, unknown versions, missing texts, overwritten notices and incorrect
 archive inventories. Source headers, normal tests, coverage and static analysis remain enabled.
 
-This is a packaging check, not a legal opinion or proof of source provenance. A source-header search
+This is a one-way packaging check: it does not identify the origin of every class, native library or
+resource in the shaded archive, or prove that every bundled item belongs to a reviewed dependency.
+It is not a legal opinion or proof of source provenance. A source-header search
 found no copied third-party implementation identified by an upstream copyright/license header; it
 cannot establish the origin of unmarked or AI-assisted code. The source-match and human provenance
 review below remains a first-release gate. Do not change source copyright attribution without the

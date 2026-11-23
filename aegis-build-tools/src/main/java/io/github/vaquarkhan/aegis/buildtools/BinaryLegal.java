@@ -97,7 +97,7 @@ final class BinaryLegal {
                                 + "!" + entry.getName());
                     }
                     append(kind == 2 ? notice : license,
-                            component.coordinate() + "!" + entry.getName(), text);
+                            kind == 2 ? component.coordinate() + "!" + entry.getName() : entry.getName(), text);
                     foundLicense |= kind == 1;
                 }
                 for (String supplement : review.supplements()) {
@@ -110,7 +110,8 @@ final class BinaryLegal {
                     Path filename = path.getFileName();
                     if (filename == null) throw new IOException("Invalid legal supplement: " + supplement);
                     boolean isNotice = filename.toString().startsWith("NOTICE");
-                    append(isNotice ? notice : license, component.coordinate() + " / " + supplement, text);
+                    append(isNotice ? notice : license,
+                            isNotice ? component.coordinate() + " / " + supplement : supplement, text);
                     foundLicense |= !isNotice;
                 }
                 if (!foundLicense && !"Apache-2.0".equals(review.license())) {

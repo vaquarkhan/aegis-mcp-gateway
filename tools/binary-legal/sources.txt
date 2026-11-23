@@ -4,6 +4,10 @@
 # Animal Sniffer: license comment only, without Java comment delimiters.
 # Checker Qual: copyright and MIT section only, as expressly applicable to checker-qual.
 # NOTICE-spark-connect concatenates the seven original META-INF/NOTICE files listed below.
+# spark-connect.txt is an Aegis-authored inventory based on the following published artifacts and shade configuration.
+spark-connect.txt|https://repo.maven.apache.org/maven2/org/apache/spark/spark-connect-client-jvm_2.13/4.0.1/spark-connect-client-jvm_2.13-4.0.1.jar
+spark-connect.txt|https://repo.maven.apache.org/maven2/org/apache/spark/spark-parent_2.13/4.0.1/spark-parent_2.13-4.0.1.pom
+spark-connect.txt|https://github.com/apache/spark/blob/v4.0.1/sql/connect/client/jvm/pom.xml
 upstream/minlog-LICENSE|https://raw.githubusercontent.com/EsotericSoftware/minlog/minlog-1.3.0/license.txt
 upstream/paranamer-LICENSE|https://raw.githubusercontent.com/paul-hammant/paranamer/paranamer-parent-2.8/LICENSE.txt
 upstream/zstd-jni-LICENSE|https://raw.githubusercontent.com/luben/zstd-jni/76acf0fe88613c68ae1a8f4f0d8b2280f22a5f63/LICENSE

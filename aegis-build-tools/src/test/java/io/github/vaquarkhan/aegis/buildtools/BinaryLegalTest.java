@@ -24,9 +24,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
@@ -156,6 +158,48 @@ class BinaryLegalTest {
         Files.delete(root.resolve("tools/binary-legal/components.txt"));
         IOException error = assertThrows(IOException.class, () -> BinaryLegalMojo.findLegalRoot(examples));
         assertTrue(error.getMessage().contains("tools/binary-legal/components.txt"));
+    }
+
+    @Test
+    void sourceLicenseDoesNotDuplicatePostgresqlBinarySection() throws IOException {
+        Path projectRoot = BinaryLegalMojo.findLegalRoot(Path.of("").toAbsolutePath());
+        String coordinate = "org.postgresql:postgresql:42.7.12";
+        Path dependency = jar("postgresql.jar", Map.of("META-INF/LICENSE", "Driver BSD text",
+                "META-INF/licenses/ongres/LICENSE", "OnGres BSD text"));
+        var docs = BinaryLegal.assemble(projectRoot, List.of(new BinaryLegal.Component(coordinate, dependency)));
+        assertEquals(1, docs.license().split(java.util.regex.Pattern.quote(coordinate), -1).length - 1);
+        assertTrue(docs.license().contains("Driver BSD text"));
+        assertTrue(docs.license().contains("OnGres BSD text"));
+        assertTrue(Files.readString(projectRoot.resolve("LICENSE")).stripTrailing()
+                .endsWith("limitations under the License."));
+    }
+
+    @Test
+    void committedSupplementsHaveSourcesAndSourceRecordsAreUsed() throws IOException {
+        Path projectRoot = BinaryLegalMojo.findLegalRoot(Path.of("").toAbsolutePath());
+        Path legal = projectRoot.resolve("tools/binary-legal");
+        Set<String> supplements = new HashSet<>();
+        for (var review : BinaryLegal.reviews(legal.resolve("components.txt")).values()) {
+            supplements.addAll(review.supplements());
+        }
+        Set<String> sources = new HashSet<>();
+        for (String line : Files.readAllLines(legal.resolve("sources.txt"), StandardCharsets.UTF_8)) {
+            if (line.isBlank() || line.startsWith("#")) continue;
+            String[] fields = line.split("\\|", -1);
+            assertEquals(2, fields.length, "Invalid source record: " + line);
+            assertFalse(fields[0].isBlank(), "Missing supplement in: " + line);
+            assertFalse(fields[1].isBlank(), "Missing source in: " + line);
+            sources.add(fields[0]);
+        }
+        for (String supplement : supplements) {
+            Path file = legal.resolve(supplement).normalize();
+            assertTrue(file.startsWith(legal) && Files.isRegularFile(file),
+                    "Missing or invalid supplement: " + supplement);
+            assertTrue(sources.contains(supplement), "Missing source record: " + supplement);
+        }
+        for (String source : sources) {
+            assertTrue(supplements.contains(source), "Unreferenced source record: " + source);
+        }
     }
 
     private void review(String text) throws IOException {

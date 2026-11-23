@@ -20,7 +20,8 @@
 - Source NOTICE now contains project attribution only; trademark guidance is in the README.
   All four shaded bundles assemble binary-specific LICENSE/NOTICE files without resource collisions,
   retain upstream and nested legal texts, and verify their legal content and dependency inventory
-  during `mvn verify`. Version-pinned reviews include native and pre-shaded components.
+  during `mvn verify`. The source LICENSE contains only Apache-2.0; pgJDBC and OnGres terms
+  appear in generated binary legal files. Version-pinned reviews include native and pre-shaded components.
 - Hello World reports ready only after both the gateway and the inventory service answer, and the Bash
   launcher no longer needs `seq`. Generated Knox tutorials stop the demo LDAP process their shell started,
   and Kiro setup explains how to Base64-encode the local Knox demo credentials.
