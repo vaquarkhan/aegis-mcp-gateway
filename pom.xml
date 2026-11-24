@@ -180,7 +180,6 @@
         <artifactId>spotless-maven-plugin</artifactId>
         <version>2.43.0</version>
         <configuration>
-          <skip>true</skip>
           <java>
             <googleJavaFormat/>
             <removeUnusedImports/>
