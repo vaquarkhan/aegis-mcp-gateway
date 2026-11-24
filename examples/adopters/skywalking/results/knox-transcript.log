@@ -1,0 +1,36 @@
+# skywalking through knox, 2026-11-15T17:50:09.438340183Z
+
+--- apache/skywalking-oap-server:9.7.0 (SW_STORAGE=h2, TZ=UTC) GraphQL on http://127.0.0.1:35365; read-only window 2026-11-15 1744..2026-11-15 1749 UTC. Fresh OAP with no reporting agents: every query returns an empty list, so this run proves schema and variable compatibility, not non-empty service, instance or trace mapping.
+
+=== read by READER | guest (READER) | tools/call skywalking_list_services {"start":"2026-11-15 1744","end":"2026-11-15 1749"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":1,"result":{"content":[{"text":"{\"data\":{\"getAllServices\":[]}}","type":"text"}],"structuredContent":{"data":{"getAllServices":[]}},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_b4c1af7c97430e3ebb9de3e7","traceId":"82ef1176a2eefd1da09dbd5f3415c027","executionKind":"UNKNOWN","outputMode":"PASS_THROUGH"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-skywalking"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call skywalking_list_services {"start":"2026-11-15 1744","end":"2026-11-15 1749"} | HTTP 403
+{
+"servlet":"aegis-skywalking-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-skywalking/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call skywalking_service_instances {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"{\"data\":{\"getServiceInstances\":[]}}","type":"text"}],"structuredContent":{"data":{"getServiceInstances":[]}},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_513c043966747d1f63912c0f","traceId":"d1e478fb94ab243b09cf030a1e303f71","executionKind":"UNKNOWN","outputMode":"PASS_THROUGH"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-skywalking"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call skywalking_service_instances {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"} | HTTP 403
+{
+"servlet":"aegis-skywalking-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-skywalking/aegis-mcp/v1/mcp",
+"status":"403"
+}
+
+=== read by READER | guest (READER) | tools/call skywalking_query_traces {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"} | HTTP 200 decision=ALLOWED
+{"jsonrpc":"2.0","id":5,"result":{"content":[{"text":"{\"data\":{\"queryBasicTraces\":{\"traces\":[]}}}","type":"text"}],"structuredContent":{"data":{"queryBasicTraces":{"traces":[]}}},"isError":false,"_meta":{"io.github.vaquarkhan.aegis/decision":{"outcome":"ALLOWED","requestId":"req_664cc952800ce63e37cf6899","traceId":"861dbf9d3c72e80a8bd4c9091a880509","executionKind":"UNKNOWN","outputMode":"PASS_THROUGH"},"io.modelcontextprotocol/serverInfo":{"version":"2.0.0-SNAPSHOT","name":"aegis-skywalking"}},"resultType":"complete"}}
+
+=== same read by an outsider | admin (OUTSIDER) | tools/call skywalking_query_traces {"service":"aegis-validation","start":"2026-11-15 1744","end":"2026-11-15 1749"} | HTTP 403
+{
+"servlet":"aegis-skywalking-knox-gateway-servlet",
+"message":"Forbidden",
+"url":"/gateway/aegis-skywalking/aegis-mcp/v1/mcp",
+"status":"403"
+}

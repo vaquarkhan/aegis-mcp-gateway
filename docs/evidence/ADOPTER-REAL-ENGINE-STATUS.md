@@ -3,7 +3,7 @@
   Licensed under the Apache License, Version 2.0
   https://www.apache.org/licenses/LICENSE-2.0
 -->
-# Adopter real-engine status (2026-10-05)
+# Adopter real-engine status (updated 2026-11-09)
 
 Companion to [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) and
 [CLAIMS-MATRIX.md](CLAIMS-MATRIX.md).
@@ -14,7 +14,7 @@ Every shipped profile has a governance configuration. A two-door run is a retain
 
 ## Retained two-door runs
 
-The inventory records **28 retained runs**: 27 adopter profiles marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md), plus the Spark and Iceberg tutorial scenario. The 27 profiles have generated IDE tutorials. A2A is a separate opt-in test and is not one of the 28 runs. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
+The inventory records **29 retained runs**: 28 adopter profiles marked **passed** in [`examples/adopters/README.md`](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md), plus the Spark and Iceberg tutorial scenario. The 28 profiles have generated IDE tutorials. A2A is a separate opt-in test and is not one of the 29 runs. The release-candidate repeat is on the [roadmap](../ROADMAP.md#next-release-candidate-evidence).
 
 | Adopter | Engine | Evidence |
 | --- | --- | --- |
@@ -39,6 +39,7 @@ The inventory records **28 retained runs**: 27 adopter profiles marked **passed*
 | **NiFi** | 1.28.1 Docker | `examples/adopters/nifi/results/` |
 | Pulsar | 4.0.13 | `examples/adopters/pulsar/results/` |
 | **Ranger** | 2.9.0 Admin and database Docker | `examples/adopters/ranger/results/` |
+| **SkyWalking** | 9.7.0 OAP Docker | `examples/adopters/skywalking/results/` |
 | Solr | 9.10.1 | `examples/adopters/solr/results/` |
 | Spark | 4.0.1 | `examples/adopters/spark/results/` |
 | Spark Connect | 4.0.1 (gRPC plugin) | `examples/adopters/spark-connect/results/` |

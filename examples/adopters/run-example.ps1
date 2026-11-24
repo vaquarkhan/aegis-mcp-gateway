@@ -57,6 +57,7 @@ $examples = @{
     'bookkeeper'    = @('aegis-validation', 'BookKeeperFrontDoorsTest')
     'pulsar'        = @('aegis-validation', 'PulsarFrontDoorsTest')   # needs AEGIS_PULSAR_HOME (pulsar/install-pulsar.ps1)
     'ranger'        = @('aegis-validation', 'RangerFrontDoorsTest')     # needs Docker (apache/ranger and apache/ranger-db)
+    'skywalking'    = @('aegis-validation', 'SkyWalkingFrontDoorsTest') # needs Docker (apache/skywalking-oap-server)
     'spark-connect' = @('aegis-validation-spark-connect', 'SparkConnectFrontDoorsTest')
     'spark-iceberg' = @('aegis-validation-spark-connect', 'SparkIcebergFrontDoorsTest')   # docs/TUTORIAL-SPARK-ICEBERG.md
 }
@@ -120,6 +121,13 @@ if ($Keep) {
         $path = Join-Path $from $rel
         if (-not (Test-Path $path) -or (Get-Item $path).Length -eq 0) {
             throw "refusing to keep ${Adopter}: missing or empty $rel. Retained files were not changed."
+        }
+    }
+    $jar = Join-Path $root 'aegis-gateway\target\aegis-gateway-2.0.0-SNAPSHOT-all.jar'
+    foreach ($journal in 'own-host-audit.jsonl', 'knox-audit.jsonl') {
+        & java -jar $jar --verify-audit (Join-Path $from $journal) | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "refusing to keep ${Adopter}: $journal does not verify. Retained files were not changed."
         }
     }
     $to = Join-Path $PSScriptRoot "$Adopter\results"

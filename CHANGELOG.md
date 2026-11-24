@@ -22,6 +22,11 @@
   retain upstream and nested legal texts, and verify their legal content and dependency inventory
   during `mvn verify`. The source LICENSE contains only Apache-2.0; pgJDBC and OnGres terms
   appear in generated binary legal files. Version-pinned reviews include native and pre-shaded components.
+- SkyWalking 9.7.0 now has a retained two-door run. `SkyWalkingFrontDoorsTest` starts the official
+  OAP image with H2 storage, governs the three GraphQL reads through the own host and Knox, and
+  asserts structured GraphQL data lists and the retained audit chains; the OAP has no reporting
+  agents, so the run proves schema and variable compatibility, not non-empty telemetry mapping.
+  The keep gate refuses to keep a run whose audit journals fail `--verify-audit`.
 - Hello World reports ready only after both the gateway and the inventory service answer, and the Bash
   launcher no longer needs `seq`. Generated Knox tutorials stop the demo LDAP process their shell started,
   and Kiro setup explains how to Base64-encode the local Knox demo credentials.

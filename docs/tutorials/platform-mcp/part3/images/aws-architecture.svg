@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+  Licensed under the Apache License, Version 2.0 (the "License").
+  http://www.apache.org/licenses/LICENSE-2.0
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 900" font-family="Segoe UI, Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#0b4055"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#16806e"/>
+    </marker>
+    <marker id="arrowO" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#bb7600"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1320" height="900" fill="#ffffff"/>
+  <text x="40" y="44" font-size="26" font-weight="800" fill="#09243a">Part 3: the same gateway on AWS, account ACCOUNT_ID, us-east-1</text>
+  <text x="40" y="70" font-size="15" fill="#50707c">One EC2 instance with no inbound rules. Identity from Cognito. Commands over Systems Manager. Evidence to S3. Rules unchanged.</text>
+
+  <!-- ============ LEFT: operator laptop ============ -->
+  <rect x="40" y="110" width="250" height="300" rx="14" fill="#f3f8f7" stroke="#d5e0e2"/>
+  <text x="60" y="138" font-size="16" font-weight="800" fill="#09243a">My laptop (AWS CLI)</text>
+  <text x="60" y="160" font-size="12.5" fill="#50707c">profile YOUR_PROFILE, PowerShell 5.1</text>
+  <rect x="60" y="178" width="210" height="46" rx="9" fill="#ffffff" stroke="#0b4055" stroke-width="1.5"/>
+  <text x="74" y="198" font-size="13" font-weight="700" fill="#0b4055">aws ssm send-command</text>
+  <text x="74" y="215" font-size="11.5" fill="#50707c">AWS-RunPowerShellScript</text>
+  <rect x="60" y="234" width="210" height="46" rx="9" fill="#ffffff" stroke="#bb7600" stroke-width="1.5"/>
+  <text x="74" y="254" font-size="13" font-weight="700" fill="#8a5600">aws cognito-idp</text>
+  <text x="74" y="271" font-size="11.5" fill="#50707c">create pool, groups, users, mint ID tokens</text>
+  <rect x="60" y="290" width="210" height="46" rx="9" fill="#ffffff" stroke="#16806e" stroke-width="1.5"/>
+  <text x="74" y="310" font-size="13" font-weight="700" fill="#0c5f52">aws s3 cp / sync</text>
+  <text x="74" y="327" font-size="11.5" fill="#50707c">bundle up, evidence down</text>
+  <rect x="60" y="346" width="210" height="46" rx="9" fill="#ffffff" stroke="#50707c" stroke-width="1.5"/>
+  <text x="74" y="366" font-size="13" font-weight="700" fill="#09243a">java -jar ... --verify-audit</text>
+  <text x="74" y="383" font-size="11.5" fill="#50707c">same jar, downloaded journal</text>
+
+  <!-- ============ CENTER: VPC + EC2 ============ -->
+  <rect x="340" y="110" width="620" height="640" rx="14" fill="#f7f9fb" stroke="#c9d6dc" stroke-dasharray="6 4"/>
+  <text x="360" y="138" font-size="15" font-weight="800" fill="#09243a">Default VPC vpc-DEFAULT, subnet subnet-DEFAULT</text>
+  <text x="360" y="158" font-size="12.5" fill="#b23b3b" font-weight="700">Security group sg-NOINBOUND: 0 inbound rules</text>
+
+  <rect x="360" y="176" width="580" height="556" rx="12" fill="#ffffff" stroke="#0b4055" stroke-width="1.8"/>
+  <text x="380" y="202" font-size="15" font-weight="800" fill="#0b4055">EC2 i-INSTANCE, t3.xlarge, Windows Server 2022, 80 GB gp3</text>
+  <text x="380" y="221" font-size="12" fill="#50707c">ami-WINDOWS2022, private IP 172.31.x.x, IMDSv2 required, instance profile aegis-part3-ec2</text>
+  <text x="380" y="239" font-size="12" fill="#50707c">C:\aegis\tools: Corretto 17.0.21, Maven 3.9.11, MinGit 2.47.1.  C:\aegis\src: both repos from the S3 bundle</text>
+
+  <!-- engines row -->
+  <rect x="380" y="256" width="130" height="120" rx="9" fill="#f3f8f7" stroke="#d5e0e2"/>
+  <text x="392" y="278" font-size="13" font-weight="700" fill="#09243a">Kafka 3.9.1</text>
+  <text x="392" y="296" font-size="11" fill="#50707c">kafka.Kafka KRaft</text>
+  <text x="392" y="311" font-size="11" fill="#50707c">broker :19092</text>
+  <text x="392" y="326" font-size="11" fill="#50707c">controller :19093</text>
+  <text x="392" y="341" font-size="11" fill="#50707c">Connect :18083</text>
+  <text x="392" y="356" font-size="11" fill="#50707c">topic orders</text>
+  <text x="392" y="371" font-size="11" fill="#50707c">pids 1920, 3168</text>
+
+  <rect x="522" y="256" width="130" height="120" rx="9" fill="#f3f8f7" stroke="#d5e0e2"/>
+  <text x="534" y="278" font-size="13" font-weight="700" fill="#09243a">Flink 1.20.1</text>
+  <text x="534" y="296" font-size="11" fill="#50707c">MiniCluster, 2 slots</text>
+  <text x="534" y="311" font-size="11" fill="#50707c">JobManager REST :18081</text>
+  <text x="534" y="326" font-size="11" fill="#50707c">1 streaming job</text>
+  <text x="534" y="341" font-size="11" fill="#50707c">endless -&gt; discard</text>
+  <text x="534" y="356" font-size="11" fill="#50707c">parallelism 1</text>
+  <text x="534" y="371" font-size="11" fill="#50707c">pid 820</text>
+
+  <rect x="664" y="256" width="130" height="120" rx="9" fill="#f3f8f7" stroke="#d5e0e2"/>
+  <text x="676" y="278" font-size="13" font-weight="700" fill="#09243a">Iceberg 1.10.1</text>
+  <text x="676" y="296" font-size="11" fill="#50707c">RESTCatalogServer</text>
+  <text x="676" y="311" font-size="11" fill="#50707c">REST :18181</text>
+  <text x="676" y="326" font-size="11" fill="#50707c">SQLite catalog.db</text>
+  <text x="676" y="341" font-size="11" fill="#50707c">InMemoryFileIO</text>
+  <text x="676" y="356" font-size="11" fill="#50707c">11 tables, 4 layers</text>
+  <text x="676" y="371" font-size="11" fill="#50707c">pid 5296</text>
+
+  <rect x="806" y="256" width="118" height="120" rx="9" fill="#f3f8f7" stroke="#d5e0e2"/>
+  <text x="818" y="278" font-size="13" font-weight="700" fill="#09243a">Spark 4.0.1</text>
+  <text x="818" y="296" font-size="11" fill="#50707c">Master REST :16066</text>
+  <text x="818" y="311" font-size="11" fill="#50707c">Master RPC :17077</text>
+  <text x="818" y="326" font-size="11" fill="#50707c">local[1] app UI :14040</text>
+  <text x="818" y="341" font-size="11" fill="#50707c">1 driver SUBMITTED</text>
+  <text x="818" y="356" font-size="11" fill="#50707c">count 1..5</text>
+  <text x="818" y="371" font-size="11" fill="#50707c">pid 5836</text>
+
+  <!-- gateways row -->
+  <rect x="380" y="400" width="262" height="130" rx="10" fill="#e8f3f1" stroke="#16806e" stroke-width="1.8"/>
+  <text x="394" y="424" font-size="14" font-weight="800" fill="#0c5f52">Aegis gateway A  :18080</text>
+  <text x="394" y="443" font-size="11.5" fill="#50707c">aegis.yaml, identity: static</text>
+  <text x="394" y="459" font-size="11.5" fill="#50707c">4 tokens from run\keys\tokens.json</text>
+  <text x="394" y="475" font-size="11.5" fill="#50707c">Parts 1 and 2 unchanged</text>
+  <text x="394" y="491" font-size="11.5" fill="#50707c">audit run\audit\aegis-platform.jsonl</text>
+  <text x="394" y="507" font-size="11.5" fill="#50707c">23 records, pid 3468</text>
+  <text x="394" y="523" font-size="11.5" fill="#50707c">tokens.json, Start-All.ps1 generated</text>
+
+  <rect x="662" y="400" width="262" height="130" rx="10" fill="#fff6e8" stroke="#bb7600" stroke-width="1.8"/>
+  <text x="676" y="424" font-size="14" font-weight="800" fill="#8a5600">Aegis gateway B  :18090</text>
+  <text x="676" y="443" font-size="11.5" fill="#50707c">aegis-aws.yaml, identity: jwt</text>
+  <text x="676" y="459" font-size="11.5" fill="#50707c">issuer cognito-idp .../us-east-1_POOLID</text>
+  <text x="676" y="475" font-size="11.5" fill="#50707c">groupsClaim cognito:groups</text>
+  <text x="676" y="491" font-size="11.5" fill="#50707c">subjectClaim cognito:username</text>
+  <text x="676" y="507" font-size="11.5" fill="#50707c">audit run\audit\aegis-platform-jwt.jsonl</text>
+  <text x="676" y="523" font-size="11.5" fill="#50707c">30 records, pid 1208</text>
+
+  <!-- gateway -> engines arrows -->
+  <line x1="511" y1="400" x2="445" y2="378" stroke="#16806e" stroke-width="1.6" marker-end="url(#arrowG)"/>
+  <line x1="540" y1="400" x2="587" y2="378" stroke="#16806e" stroke-width="1.6" marker-end="url(#arrowG)"/>
+  <line x1="580" y1="400" x2="729" y2="378" stroke="#16806e" stroke-width="1.6" marker-end="url(#arrowG)"/>
+  <line x1="620" y1="400" x2="865" y2="378" stroke="#16806e" stroke-width="1.6" marker-end="url(#arrowG)"/>
+  <line x1="700" y1="400" x2="600" y2="378" stroke="#bb7600" stroke-width="1.6" marker-end="url(#arrowO)"/>
+  <line x1="760" y1="400" x2="729" y2="378" stroke="#bb7600" stroke-width="1.6" marker-end="url(#arrowO)"/>
+  <line x1="820" y1="400" x2="865" y2="378" stroke="#bb7600" stroke-width="1.6" marker-end="url(#arrowO)"/>
+  <text x="396" y="392" font-size="10.5" fill="#50707c">same policy, scopes, deny rules, approval, egress 127.0.0.0/8 (+ cognito host for B)</text>
+
+  <!-- SSM agent + scripts -->
+  <rect x="380" y="552" width="544" height="72" rx="9" fill="#f7f7f7" stroke="#c9d6dc"/>
+  <text x="394" y="574" font-size="13" font-weight="700" fill="#09243a">SSM Agent runs the reader's scripts</text>
+  <text x="394" y="592" font-size="11.5" fill="#50707c">install.ps1 (Corretto, Maven, MinGit, bundle, mvn -Preal-engines install, 304 s)</text>
+  <text x="394" y="608" font-size="11.5" fill="#50707c">run-tutorial.ps1 (Start-All, mcp.ps1, Approve-Cancel)   jwt-gateway.ps1   upload-evidence.ps1</text>
+
+  <!-- data on disk -->
+  <rect x="380" y="640" width="544" height="78" rx="9" fill="#f7f7f7" stroke="#c9d6dc"/>
+  <text x="394" y="662" font-size="13" font-weight="700" fill="#09243a">Data on the instance disk, under C:\aegis\src\aegis-platform-mcp-tutorial\run\</text>
+  <text x="394" y="680" font-size="11.5" fill="#50707c">engine-kafka\engine-&lt;ts&gt;\kraft-logs (topic orders: order-1, order-2 via Connect from orders.txt)</text>
+  <text x="394" y="696" font-size="11.5" fill="#50707c">engine-iceberg\engine-&lt;ts&gt;\catalog.db (11 table definitions, no rows)   keys\tokens.json   audit\*.jsonl</text>
+  <text x="394" y="712" font-size="11.5" fill="#50707c">state.json (flink.jobId, spark.driver, kafka.connector, engine pids)</text>
+
+  <!-- ============ RIGHT: AWS services ============ -->
+  <rect x="1000" y="110" width="280" height="170" rx="14" fill="#fff6e8" stroke="#bb7600" stroke-width="1.5"/>
+  <text x="1018" y="138" font-size="16" font-weight="800" fill="#8a5600">Amazon Cognito</text>
+  <text x="1018" y="160" font-size="12" fill="#50707c">user pool us-east-1_POOLID</text>
+  <text x="1018" y="178" font-size="12" fill="#50707c">app client APP_CLIENT_ID</text>
+  <text x="1018" y="196" font-size="12" fill="#50707c">groups: platform-readers, -operators, -approvers</text>
+  <text x="1018" y="214" font-size="12" fill="#50707c">users: ana, eve, bob, outsider (no group)</text>
+  <text x="1018" y="232" font-size="12" fill="#50707c">RS256 ID tokens, aud = client id</text>
+  <text x="1018" y="250" font-size="12" fill="#50707c">JWKS: .../.well-known/jwks.json</text>
+  <text x="1018" y="268" font-size="12" fill="#50707c">fetched once by gateway B</text>
+
+  <rect x="1000" y="300" width="280" height="150" rx="14" fill="#f3f8f7" stroke="#16806e" stroke-width="1.5"/>
+  <text x="1018" y="328" font-size="16" font-weight="800" fill="#0c5f52">Amazon S3</text>
+  <text x="1018" y="350" font-size="12" fill="#50707c">aegis-evidence-ACCOUNT_ID</text>
+  <text x="1018" y="368" font-size="12" fill="#50707c">part3/aegis-part3-src.zip (in, 2.98 MB)</text>
+  <text x="1018" y="386" font-size="12" fill="#50707c">part3/evidence/20261113-204631/ (out)</text>
+  <text x="1018" y="404" font-size="12" fill="#50707c">journals + logs, SSE-AES256,</text>
+  <text x="1018" y="422" font-size="12" fill="#50707c">sha256 in object metadata</text>
+  <text x="1018" y="440" font-size="12" fill="#50707c">block public access on</text>
+
+  <rect x="1000" y="470" width="280" height="130" rx="14" fill="#f7f9fb" stroke="#0b4055" stroke-width="1.5"/>
+  <text x="1018" y="498" font-size="16" font-weight="800" fill="#0b4055">IAM + Systems Manager</text>
+  <text x="1018" y="520" font-size="12" fill="#50707c">role / instance profile aegis-part3-ec2</text>
+  <text x="1018" y="538" font-size="12" fill="#50707c">AmazonSSMManagedInstanceCore</text>
+  <text x="1018" y="556" font-size="12" fill="#50707c">s3:GetObject part3/*</text>
+  <text x="1018" y="574" font-size="12" fill="#50707c">s3:PutObject part3/evidence/*</text>
+  <text x="1018" y="592" font-size="12" fill="#50707c">no RDP, no SSH, no key pair</text>
+
+  <!-- ============ arrows laptop <-> aws ============ -->
+  <!-- routed around the VPC box: Cognito over the top, SSM and S3 under the bottom -->
+  <polyline points="290,257 315,257 315,92 1140,92 1140,110" fill="none" stroke="#bb7600" stroke-width="1.8" marker-end="url(#arrowO)"/>
+  <text x="640" y="88" font-size="10.5" fill="#8a5600">create pool, users, mint ID tokens</text>
+  <polyline points="290,201 315,201 315,760 1040,760 1040,600" fill="none" stroke="#0b4055" stroke-width="1.8" marker-end="url(#arrow)" stroke-dasharray="8 4"/>
+  <text x="620" y="756" font-size="10.5" fill="#0b4055">send-command, get-command-invocation</text>
+  <polyline points="290,313 322,313 322,765 1240,765 1240,450" fill="none" stroke="#16806e" stroke-width="1.8" marker-end="url(#arrowG)"/>
+  <!-- ssm -> instance -->
+  <line x1="1000" y1="580" x2="924" y2="588" stroke="#0b4055" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <!-- cognito -> gateway B (jwks) -->
+  <line x1="1000" y1="255" x2="924" y2="430" stroke="#bb7600" stroke-width="1.6" marker-end="url(#arrowO)"/>
+  <text x="930" y="300" font-size="10.5" fill="#8a5600" transform="rotate(-66 930 300)">JWKS</text>
+  <!-- instance -> s3 evidence -->
+  <line x1="924" y1="680" x2="1000" y2="430" stroke="#16806e" stroke-width="1.6" marker-end="url(#arrowG)"/>
+  <text x="975" y="560" font-size="10.5" fill="#0c5f52" transform="rotate(-73 975 560)">evidence</text>
+
+  <!-- ============ bottom: what was proven ============ -->
+  <rect x="40" y="780" width="1240" height="100" rx="12" fill="#ffffff" stroke="#d5e0e2"/>
+  <text x="60" y="806" font-size="14" font-weight="800" fill="#09243a">Proven with Cognito ID tokens on gateway B (same aegis.yaml rules as the laptop)</text>
+  <text x="60" y="828" font-size="12" fill="#50707c">random bearer: HTTP 401   |   ana: 14 read tools, gold ALLOWED, bronze SCOPE_DENIED   |   outsider: POLICY_DENIED   |   eve: 18 tools, drop finance_pnl POLICY_DENIED (never-drop-restricted)</text>
+  <text x="60" y="848" font-size="12" fill="#50707c">eve cancel: APPROVAL_REQUIRED   |   eve and ana approve: HTTP 403   |   bob approve: HTTP 200 decidedBy=bob, issuer = Cognito   |   cancel ALLOWED, replay refused, Flink CANCELED (1 task)</text>
+  <text x="60" y="868" font-size="12" fill="#50707c">journal verified on laptop: OK records=30 head=sha256:22326b7e...   one word changed in a copy: BROKEN record 3   |   all resources deleted after the run, evidence prefix kept</text>
+</svg>

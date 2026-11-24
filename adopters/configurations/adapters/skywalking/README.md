@@ -13,12 +13,15 @@ The SkyWalking OAP server exposes one GraphQL query endpoint (default port 12800
 
 ## Run it
 
-There is no kept run for this profile. SkyWalking is new in 2.0 and had no Aegis 0.1 adapter. There is no `examples/adopters/skywalking/HOW-TO-RUN.md` and no `adopters/tutorials/skywalking/ide/` folder to copy.
+A retained two-door run lives under [`examples/adopters/skywalking/`](../../../../examples/adopters/skywalking/). Use official `apache/skywalking-oap-server:9.7.0` with `SW_STORAGE=h2`, wait until `POST /graphql` with `{ version }` returns HTTP 200, then:
 
-`skywalking.yaml` is the profile the contract test loads. Its address is a placeholder hostname. Starting the gateway with this file does not start the product.
+```bash
+export AEGIS_KNOX_HOME=/path/to/knox-3.0.0
+./examples/adopters/run-example.sh skywalking --keep
+```
 
-See [Future roadmap: remaining target verification](../../../../docs/ROADMAP.md#future-roadmap-remaining-target-verification).
+`skywalking.yaml` is the profile the Keep loads. Its address is a placeholder hostname; the test substitutes the OAP address and egress CIDR.
 
 ## Evidence
 
-`AdapterConfigsTest` loads this profile against a local contract harness. That is not a two-door run against the product.
+`AdapterConfigsTest` loads this profile against a local contract harness. `SkyWalkingFrontDoorsTest` is the real-engine Keep through own-host and Knox.

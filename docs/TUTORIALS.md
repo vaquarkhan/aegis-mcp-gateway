@@ -24,6 +24,7 @@ outputs in each one are copied from a recorded run; the files they use are in
 
 | Tutorial | Engines | Front doors | IDE setup and prompts | Start here if you... |
 | --- | --- | --- | --- | --- |
+| [Platform MCP series (Parts 1–3)](tutorials/platform-mcp/README.md) | Kafka 3.9.1, Flink 1.20.1, Iceberg 1.10.1, Spark 4.0.1 behind one gateway | own host; Part 3 on AWS (Cognito) | Cursor, Kiro, VS Code, Claude Desktop, Gemini CLI | want one story across four engines, approvals, audit, and a cloud replay |
 | [Spark and Iceberg from your IDE](TUTORIAL-SPARK-ICEBERG.md) | Spark 4.0.1 (Spark Connect) with Iceberg 1.10.1 tables on a REST catalog | own host and Knox 3.0.0 | VS Code, Kiro, Cursor, Claude Desktop, MCP Python SDK | want the complete developer path: tiny dataset, IDE agent, governed change, both flavors |
 | [Spark and Spark Connect](TUTORIAL-SPARK-AND-SPARK-CONNECT.md) | Spark 4.0.1: monitoring REST API and Spark Connect | own host | scripted client | run Spark jobs and SQL through an agent |
 | [Iceberg REST catalog](TUTORIAL-ICEBERG.md) | Iceberg 1.10.1 `RESTCatalogServer` | own host | scripted client | govern catalog operations: namespaces, properties, drops |
@@ -37,8 +38,8 @@ results; the Spark and Iceberg tutorial's run is kept there as `spark-iceberg`.
 
 ## One tutorial per verified project, from your IDE, with and without Knox
 
-These twenty-seven are built by `tools/build-project-tutorials.py` from each project's retained run. All
-twenty-seven, plus Spark with Iceberg, have historical own-host and Knox Keep records, and
+These twenty-eight are built by `tools/build-project-tutorials.py` from each project's retained run. All
+twenty-eight, plus Spark with Iceberg, have historical own-host and Knox Keep records, and
 every kept audit journal verifies. Each tutorial has the engine command line, both flavors step by step,
 VS Code, Kiro and Cursor files in `adopters/tutorials/<project>/ide/`, prompts mapped to tools with what
 Aegis answered, and the full request table of that run. `python tools/build-project-tutorials.py --check`
@@ -70,6 +71,7 @@ OWASP MCP handling, S1 to S31) before walking a tutorial.
 | Apache Pinot 1.2.0 | [tutorials/pinot.md](tutorials/pinot.md) |
 | Apache Pulsar 4.0.13 | [tutorials/pulsar.md](tutorials/pulsar.md) |
 | Apache Ranger 2.9.0 | [tutorials/ranger.md](tutorials/ranger.md) |
+| Apache SkyWalking 9.7.0 | [tutorials/skywalking.md](tutorials/skywalking.md) |
 | Apache Solr 9.10.1 | [tutorials/solr.md](tutorials/solr.md) |
 | Apache Spark 4.0.1 | [tutorials/spark.md](tutorials/spark.md) |
 | Apache Spark Connect 4.0.1 | [tutorials/spark-connect.md](tutorials/spark-connect.md) |
@@ -83,7 +85,7 @@ IDEs themselves were not driven by a test.
 
 ## Projects without a tutorial
 
-Atlas, AsterixDB, Cassandra, Impala, Paimon and SkyWalking have a configuration profile that passes the
+Atlas, AsterixDB, Cassandra, Impala and Paimon have a configuration profile that passes the
 contract test, which proves route rendering and governance order, not that the product answers. None has
 a real run on record, so none has a tutorial.
 
@@ -98,6 +100,7 @@ configuration with no kept run:
 | Apache Cassandra | [adapters/cassandra/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/cassandra/README.md) |
 | Apache Impala | [adapters/impala/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/impala/README.md) |
 | Apache Paimon | [adapters/paimon/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/paimon/README.md) |
-| Apache SkyWalking | [adapters/skywalking/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/main/adopters/configurations/adapters/skywalking/README.md) | The status and blocker of each are in
+
+The status and blocker of each are in
 [examples/adopters/README.md](https://github.com/vaquarkhan/aegis-mcp-gateway/blob/{{ site.github.source.branch }}/examples/adopters/README.md) and
 [evidence/ADOPTER-REAL-ENGINE-STATUS.md](evidence/ADOPTER-REAL-ENGINE-STATUS.md).

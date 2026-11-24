@@ -43,6 +43,7 @@ case "$adopter" in
   bookkeeper)    module=aegis-validation;               test=BookKeeperFrontDoorsTest ;;
   pulsar)        module=aegis-validation;               test=PulsarFrontDoorsTest ;; # needs AEGIS_PULSAR_HOME
   ranger)        module=aegis-validation;               test=RangerFrontDoorsTest ;;   # needs Docker (apache/ranger)
+  skywalking)    module=aegis-validation;               test=SkyWalkingFrontDoorsTest ;; # needs Docker (apache/skywalking-oap-server)
   spark-connect) module=aegis-validation-spark-connect; test=SparkConnectFrontDoorsTest ;;
   spark-iceberg) module=aegis-validation-spark-connect; test=SparkIcebergFrontDoorsTest ;; # docs/TUTORIAL-SPARK-ICEBERG.md
   *) echo "no runnable example for '$adopter'" >&2; exit 2 ;;
@@ -86,6 +87,13 @@ if [ "$keep" = "--keep" ]; then
       aegis/own-host.yaml aegis/knox-aegis.yaml aegis/knox-topology.xml HOW-TO-RUN.md; do
     if [ ! -s "$from/$rel" ]; then
       echo "refusing to keep $adopter: missing or empty $rel. Retained files were not changed." >&2
+      exit 1
+    fi
+  done
+  jar="$root/aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar"
+  for journal in own-host-audit.jsonl knox-audit.jsonl; do
+    if ! java -jar "$jar" --verify-audit "$from/$journal" >/dev/null; then
+      echo "refusing to keep $adopter: $journal does not verify. Retained files were not changed." >&2
       exit 1
     fi
   done
