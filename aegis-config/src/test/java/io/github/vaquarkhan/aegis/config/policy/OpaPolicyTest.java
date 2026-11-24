@@ -35,40 +35,54 @@ import org.junit.jupiter.api.Test;
 
 class OpaPolicyTest {
 
-    @Test
-    void onlyAStrictBooleanTrueAllowsAndTheFullActionIsSent() throws Exception {
-        AtomicReference<String> reply = new AtomicReference<>();
-        AtomicReference<String> lastInput = new AtomicReference<>();
-        HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        s.createContext("/v1/data/aegis/allow", ex -> {
-            lastInput.set(new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            byte[] b = reply.get().getBytes(StandardCharsets.UTF_8);
-            ex.sendResponseHeaders(200, b.length);
-            try (OutputStream os = ex.getResponseBody()) {
-                os.write(b);
-            }
+  @Test
+  void onlyAStrictBooleanTrueAllowsAndTheFullActionIsSent() throws Exception {
+    AtomicReference<String> reply = new AtomicReference<>();
+    AtomicReference<String> lastInput = new AtomicReference<>();
+    HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    s.createContext(
+        "/v1/data/aegis/allow",
+        ex -> {
+          lastInput.set(new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+          byte[] b = reply.get().getBytes(StandardCharsets.UTF_8);
+          ex.sendResponseHeaders(200, b.length);
+          try (OutputStream os = ex.getResponseBody()) {
+            os.write(b);
+          }
         });
-        s.start();
-        try {
-            OpaPolicy p = new OpaPolicy(URI.create("http://127.0.0.1:" + s.getAddress().getPort() + "/v1/data/aegis/allow"),
-                    Duration.ofSeconds(2), false, Map.of());
-            CallerIdentity c = CallerIdentity.of("alice", Set.of("analysts"), "idp", "jwt");
-            Action a = new Action("drop_table", ToolClass.DESTRUCTIVE, "iceberg", List.of("iceberg:table:sales.orders"), "sha256:ab");
+    s.start();
+    try {
+      OpaPolicy p =
+          new OpaPolicy(
+              URI.create("http://127.0.0.1:" + s.getAddress().getPort() + "/v1/data/aegis/allow"),
+              Duration.ofSeconds(2),
+              false,
+              Map.of());
+      CallerIdentity c = CallerIdentity.of("alice", Set.of("analysts"), "idp", "jwt");
+      Action a =
+          new Action(
+              "drop_table",
+              ToolClass.DESTRUCTIVE,
+              "iceberg",
+              List.of("iceberg:table:sales.orders"),
+              "sha256:ab");
 
-            reply.set("{\"result\":true}");
-            assertTrue(p.decide(c, a, Map.of()).allow());
-            assertTrue(lastInput.get().contains("iceberg:table:sales.orders") && lastInput.get().contains("sha256:ab"),
-                    "resources and argument digest reach the policy");
-            reply.set("{\"result\":{\"allow\":true}}");
-            assertTrue(p.decide(c, a, Map.of()).allow());
-            reply.set("{\"result\":\"true\"}");
-            assertFalse(p.decide(c, a, Map.of()).allow(), "string \"true\" is not a boolean");
-            reply.set("{\"result\":{\"allow\":\"yes\",\"note\":\"allow\"}}");
-            assertFalse(p.decide(c, a, Map.of()).allow(), "no substring matching");
-            reply.set("{}");
-            assertFalse(p.decide(c, a, Map.of()).allow(), "undefined decision denies");
-        } finally {
-            s.stop(0);
-        }
+      reply.set("{\"result\":true}");
+      assertTrue(p.decide(c, a, Map.of()).allow());
+      assertTrue(
+          lastInput.get().contains("iceberg:table:sales.orders")
+              && lastInput.get().contains("sha256:ab"),
+          "resources and argument digest reach the policy");
+      reply.set("{\"result\":{\"allow\":true}}");
+      assertTrue(p.decide(c, a, Map.of()).allow());
+      reply.set("{\"result\":\"true\"}");
+      assertFalse(p.decide(c, a, Map.of()).allow(), "string \"true\" is not a boolean");
+      reply.set("{\"result\":{\"allow\":\"yes\",\"note\":\"allow\"}}");
+      assertFalse(p.decide(c, a, Map.of()).allow(), "no substring matching");
+      reply.set("{}");
+      assertFalse(p.decide(c, a, Map.of()).allow(), "undefined decision denies");
+    } finally {
+      s.stop(0);
     }
+  }
 }

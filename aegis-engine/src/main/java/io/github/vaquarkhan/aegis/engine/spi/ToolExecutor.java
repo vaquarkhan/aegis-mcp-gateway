@@ -27,64 +27,65 @@ import java.util.Map;
  */
 public interface ToolExecutor {
 
-    /**
-     * Network destinations this call will contact, derived from the backend arguments. The egress
-     * control checks every one BEFORE execution. Return an empty list for executors that make no
-     * network call from the gateway (for example a stdio subprocess started by the operator).
-     */
-    List<URI> egressTargets(Map<String, Object> backendArguments);
+  /**
+   * Network destinations this call will contact, derived from the backend arguments. The egress
+   * control checks every one BEFORE execution. Return an empty list for executors that make no
+   * network call from the gateway (for example a stdio subprocess started by the operator).
+   */
+  List<URI> egressTargets(Map<String, Object> backendArguments);
+
+  /**
+   * Executes the call. Must honour {@link ExecutionContext#timeoutMillis()} and must bound the size
+   * of anything it reads from the backend. An executor must distinguish an availability failure
+   * that warrants opening a shared circuit breaker from an application-level rejection of one
+   * otherwise healthy request.
+   *
+   * @throws ExecutionException for backend failures
+   */
+  ToolResult execute(ExecutionContext context) throws ExecutionException;
+
+  /**
+   * True only when this executor runs the tool named by {@link ExecutionContext#upstreamToolName()}
+   * (an MCP proxy does). Executors bound to one fixed operation must return false, so the same
+   * executor can never be reused as a "preview" that would actually run the real operation.
+   */
+  default boolean dispatchesByUpstreamName() {
+    return false;
+  }
+
+  /** Backend failure raised by an executor. The message must not contain secrets. */
+  final class ExecutionException extends Exception {
+    private static final long serialVersionUID = 1L;
+    private final boolean timeout;
+    private final boolean availabilityFailure;
 
     /**
-     * Executes the call. Must honour {@link ExecutionContext#timeoutMillis()} and must bound the
-     * size of anything it reads from the backend. An executor must distinguish an availability
-     * failure that warrants opening a shared circuit breaker from an application-level rejection
-     * of one otherwise healthy request.
-     *
-     * @throws ExecutionException for backend failures
+     * Creates a failure with an explicit breaker classification. Existing source executors use the
+     * compatibility constructor below, which conservatively treats failures as availability
+     * failures until the source can identify a request-specific rejection.
      */
-    ToolResult execute(ExecutionContext context) throws ExecutionException;
-
-    /**
-     * True only when this executor runs the tool named by {@link ExecutionContext#upstreamToolName()}
-     * (an MCP proxy does). Executors bound to one fixed operation must return false, so the same
-     * executor can never be reused as a "preview" that would actually run the real operation.
-     */
-    default boolean dispatchesByUpstreamName() {
-        return false;
+    public ExecutionException(
+        String message, boolean timeout, boolean availabilityFailure, Throwable cause) {
+      super(message, cause);
+      this.timeout = timeout;
+      this.availabilityFailure = availabilityFailure;
     }
 
-    /** Backend failure raised by an executor. The message must not contain secrets. */
-    final class ExecutionException extends Exception {
-        private static final long serialVersionUID = 1L;
-        private final boolean timeout;
-        private final boolean availabilityFailure;
-
-        /**
-         * Creates a failure with an explicit breaker classification. Existing source executors use
-         * the compatibility constructor below, which conservatively treats failures as availability
-         * failures until the source can identify a request-specific rejection.
-         */
-        public ExecutionException(String message, boolean timeout, boolean availabilityFailure, Throwable cause) {
-            super(message, cause);
-            this.timeout = timeout;
-            this.availabilityFailure = availabilityFailure;
-        }
-
-        public ExecutionException(String message, boolean timeout, Throwable cause) {
-            this(message, timeout, true, cause);
-        }
-
-        public ExecutionException(String message) {
-            this(message, false, true, null);
-        }
-
-        public boolean timeout() {
-            return timeout;
-        }
-
-        /** True only when the source's availability, not this request, should affect the breaker. */
-        public boolean availabilityFailure() {
-            return availabilityFailure;
-        }
+    public ExecutionException(String message, boolean timeout, Throwable cause) {
+      this(message, timeout, true, cause);
     }
+
+    public ExecutionException(String message) {
+      this(message, false, true, null);
+    }
+
+    public boolean timeout() {
+      return timeout;
+    }
+
+    /** True only when the source's availability, not this request, should affect the breaker. */
+    public boolean availabilityFailure() {
+      return availabilityFailure;
+    }
+  }
 }

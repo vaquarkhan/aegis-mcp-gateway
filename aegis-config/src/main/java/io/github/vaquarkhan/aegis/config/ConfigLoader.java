@@ -18,10 +18,6 @@ package io.github.vaquarkhan.aegis.config;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonException;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
-import org.yaml.snakeyaml.LoaderOptions;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.SafeConstructor;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -33,99 +29,109 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 /**
- * Loads a configuration file into the engine's JSON value model. JSON needs no extra library;
- * YAML uses snakeyaml if it is on the classpath (Apache Knox 3.0 ships snakeyaml 2.4) with the
- * safe constructor, duplicate keys rejected, and alias/nesting/size limits.
+ * Loads a configuration file into the engine's JSON value model. JSON needs no extra library; YAML
+ * uses snakeyaml if it is on the classpath (Apache Knox 3.0 ships snakeyaml 2.4) with the safe
+ * constructor, duplicate keys rejected, and alias/nesting/size limits.
  */
 public final class ConfigLoader {
 
-    private ConfigLoader() {}
+  private ConfigLoader() {}
 
-    public static Map<String, Object> load(Path file) throws IOException {
-        byte[] bytes = Files.readAllBytes(file);
-        Path fileName = file.getFileName();
-        String name = fileName == null ? "" : fileName.toString().toLowerCase(Locale.ROOT);
-        if (name.endsWith(".yaml") || name.endsWith(".yml")) {
-            return parseYaml(new String(bytes, StandardCharsets.UTF_8), file.toString());
-        }
-        try {
-            return Json.parseObject(bytes, JsonLimits.CONFIG);
-        } catch (JsonException e) {
-            throw new ConfigException(file + ": " + e.getMessage());
-        }
+  public static Map<String, Object> load(Path file) throws IOException {
+    byte[] bytes = Files.readAllBytes(file);
+    Path fileName = file.getFileName();
+    String name = fileName == null ? "" : fileName.toString().toLowerCase(Locale.ROOT);
+    if (name.endsWith(".yaml") || name.endsWith(".yml")) {
+      return parseYaml(new String(bytes, StandardCharsets.UTF_8), file.toString());
     }
+    try {
+      return Json.parseObject(bytes, JsonLimits.CONFIG);
+    } catch (JsonException e) {
+      throw new ConfigException(file + ": " + e.getMessage());
+    }
+  }
 
-    public static Map<String, Object> parseYaml(String text, String source) {
-        try {
-            Class.forName("org.yaml.snakeyaml.Yaml");
-        } catch (ClassNotFoundException e) {
-            throw new ConfigException(source + ": YAML configuration needs snakeyaml on the classpath; use JSON otherwise");
-        }
-        Object root = YamlSupport.load(text);
-        Object v = normalise(root, source, 0);
-        if (!(v instanceof Map)) {
-            throw new ConfigException(source + ": configuration root must be a mapping");
-        }
-        @SuppressWarnings("unchecked")
-        Map<String, Object> m = (Map<String, Object>) v;
-        return m;
+  public static Map<String, Object> parseYaml(String text, String source) {
+    try {
+      Class.forName("org.yaml.snakeyaml.Yaml");
+    } catch (ClassNotFoundException e) {
+      throw new ConfigException(
+          source + ": YAML configuration needs snakeyaml on the classpath; use JSON otherwise");
     }
+    Object root = YamlSupport.load(text);
+    Object v = normalise(root, source, 0);
+    if (!(v instanceof Map)) {
+      throw new ConfigException(source + ": configuration root must be a mapping");
+    }
+    @SuppressWarnings("unchecked")
+    Map<String, Object> m = (Map<String, Object>) v;
+    return m;
+  }
 
-    /** Converts snakeyaml values into the engine value model (Long/BigDecimal numbers, String keys). */
-    private static Object normalise(Object v, String source, int depth) {
-        if (depth > 64) {
-            throw new ConfigException(source + ": configuration nesting too deep");
-        }
-        if (v == null || v instanceof String || v instanceof Boolean) {
-            return v;
-        }
-        if (v instanceof Integer || v instanceof Long || v instanceof Short || v instanceof Byte) {
-            return ((Number) v).longValue();
-        }
-        if (v instanceof BigInteger bi) {
-            return bi.bitLength() < 64 ? bi.longValue() : new BigDecimal(bi);
-        }
-        if (v instanceof Double || v instanceof Float) {
-            return BigDecimal.valueOf(((Number) v).doubleValue());
-        }
-        if (v instanceof Map<?, ?> m) {
-            Map<String, Object> out = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> e : m.entrySet()) {
-                if (!(e.getKey() instanceof String k)) {
-                    throw new ConfigException(source + ": configuration keys must be strings (got " + e.getKey() + ")");
-                }
-                out.put(k, normalise(e.getValue(), source, depth + 1));
-            }
-            return out;
-        }
-        if (v instanceof List<?> l) {
-            List<Object> out = new ArrayList<>();
-            for (Object o : l) {
-                out.add(normalise(o, source, depth + 1));
-            }
-            return out;
-        }
-        throw new ConfigException(source + ": unsupported YAML value type " + v.getClass().getSimpleName()
-                + " (quote dates and other special scalars)");
+  /**
+   * Converts snakeyaml values into the engine value model (Long/BigDecimal numbers, String keys).
+   */
+  private static Object normalise(Object v, String source, int depth) {
+    if (depth > 64) {
+      throw new ConfigException(source + ": configuration nesting too deep");
     }
+    if (v == null || v instanceof String || v instanceof Boolean) {
+      return v;
+    }
+    if (v instanceof Integer || v instanceof Long || v instanceof Short || v instanceof Byte) {
+      return ((Number) v).longValue();
+    }
+    if (v instanceof BigInteger bi) {
+      return bi.bitLength() < 64 ? bi.longValue() : new BigDecimal(bi);
+    }
+    if (v instanceof Double || v instanceof Float) {
+      return BigDecimal.valueOf(((Number) v).doubleValue());
+    }
+    if (v instanceof Map<?, ?> m) {
+      Map<String, Object> out = new LinkedHashMap<>();
+      for (Map.Entry<?, ?> e : m.entrySet()) {
+        if (!(e.getKey() instanceof String k)) {
+          throw new ConfigException(
+              source + ": configuration keys must be strings (got " + e.getKey() + ")");
+        }
+        out.put(k, normalise(e.getValue(), source, depth + 1));
+      }
+      return out;
+    }
+    if (v instanceof List<?> l) {
+      List<Object> out = new ArrayList<>();
+      for (Object o : l) {
+        out.add(normalise(o, source, depth + 1));
+      }
+      return out;
+    }
+    throw new ConfigException(
+        source
+            + ": unsupported YAML value type "
+            + v.getClass().getSimpleName()
+            + " (quote dates and other special scalars)");
+  }
 
-    /** Isolated so the class only links against snakeyaml when YAML is actually used. */
-    private static final class YamlSupport {
-        static Object load(String text) {
-            LoaderOptions opts = new LoaderOptions();
-            opts.setAllowDuplicateKeys(false);
-            opts.setMaxAliasesForCollections(20);
-            opts.setAllowRecursiveKeys(false);
-            opts.setNestingDepthLimit(64);
-            opts.setCodePointLimit(8 * 1024 * 1024);
-            Yaml yaml = new Yaml(new SafeConstructor(opts));
-            try {
-                return yaml.load(text);
-            } catch (RuntimeException e) {
-                throw new ConfigException("invalid YAML: " + e.getMessage(), e);
-            }
-        }
+  /** Isolated so the class only links against snakeyaml when YAML is actually used. */
+  private static final class YamlSupport {
+    static Object load(String text) {
+      LoaderOptions opts = new LoaderOptions();
+      opts.setAllowDuplicateKeys(false);
+      opts.setMaxAliasesForCollections(20);
+      opts.setAllowRecursiveKeys(false);
+      opts.setNestingDepthLimit(64);
+      opts.setCodePointLimit(8 * 1024 * 1024);
+      Yaml yaml = new Yaml(new SafeConstructor(opts));
+      try {
+        return yaml.load(text);
+      } catch (RuntimeException e) {
+        throw new ConfigException("invalid YAML: " + e.getMessage(), e);
+      }
     }
+  }
 }

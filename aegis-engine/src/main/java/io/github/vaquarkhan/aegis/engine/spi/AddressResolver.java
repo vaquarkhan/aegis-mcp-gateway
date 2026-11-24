@@ -18,11 +18,13 @@ package io.github.vaquarkhan.aegis.engine.spi;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-/** DNS seam for the egress control, so tests can be deterministic and hosts can plug their resolver. */
+/**
+ * DNS seam for the egress control, so tests can be deterministic and hosts can plug their resolver.
+ */
 @FunctionalInterface
 public interface AddressResolver {
 
-    AddressResolver SYSTEM = InetAddress::getAllByName;
+  AddressResolver SYSTEM = InetAddress::getAllByName;
 
-    InetAddress[] resolveAll(String host) throws UnknownHostException;
+  InetAddress[] resolveAll(String host) throws UnknownHostException;
 }

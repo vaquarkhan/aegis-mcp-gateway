@@ -31,62 +31,96 @@ import org.junit.jupiter.api.io.TempDir;
 
 class ArtifactAdmissionTest {
 
-    @TempDir
-    Path dir;
+  @TempDir Path dir;
 
-    private static String digest(byte[] bytes) throws Exception {
-        return "sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
-    }
+  private static String digest(byte[] bytes) throws Exception {
+    return "sha256:" + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+  }
 
-    private ConfigNode source(Object artifacts) {
-        return new ConfigNode("config.sources[0]", Map.of("artifacts", artifacts));
-    }
+  private ConfigNode source(Object artifacts) {
+    return new ConfigNode("config.sources[0]", Map.of("artifacts", artifacts));
+  }
 
-    @Test
-    void matchingRegularFileIsVerifiedAndRelativePathIsResolvedFromConfig() throws Exception {
-        ConfigNode none = source(List.of());
-        assertTrue(ArtifactAdmission.verify(none, dir).isEmpty());
-        none.finish();
+  @Test
+  void matchingRegularFileIsVerifiedAndRelativePathIsResolvedFromConfig() throws Exception {
+    ConfigNode none = source(List.of());
+    assertTrue(ArtifactAdmission.verify(none, dir).isEmpty());
+    none.finish();
 
-        byte[] bytes = "reviewed-server".getBytes(StandardCharsets.UTF_8);
-        Files.write(dir.resolve("server.bin"), bytes);
-        ConfigNode source = source(List.of(Map.of("path", "server.bin", "sha256", digest(bytes), "role", "server")));
-        List<ArtifactAdmission.Verified> verified = ArtifactAdmission.verify(source, dir);
-        source.finish();
-        assertEquals(1, verified.size());
-        assertEquals(dir.resolve("server.bin").toRealPath(), verified.get(0).path());
-        assertEquals("server", verified.get(0).role());
-    }
+    byte[] bytes = "reviewed-server".getBytes(StandardCharsets.UTF_8);
+    Files.write(dir.resolve("server.bin"), bytes);
+    ConfigNode source =
+        source(List.of(Map.of("path", "server.bin", "sha256", digest(bytes), "role", "server")));
+    List<ArtifactAdmission.Verified> verified = ArtifactAdmission.verify(source, dir);
+    source.finish();
+    assertEquals(1, verified.size());
+    assertEquals(dir.resolve("server.bin").toRealPath(), verified.get(0).path());
+    assertEquals("server", verified.get(0).role());
+  }
 
-    @Test
-    void mismatchMissingDuplicateAndBadDigestFailClosed() throws Exception {
-        byte[] bytes = "reviewed-server".getBytes(StandardCharsets.UTF_8);
-        Files.write(dir.resolve("server.bin"), bytes);
-        ConfigException mismatch = assertThrows(ConfigException.class, () -> ArtifactAdmission.verify(source(List.of(
-                Map.of("path", "server.bin", "sha256", "sha256:" + "0".repeat(64)))), dir));
-        assertTrue(mismatch.getMessage().contains("does not match") && mismatch.getMessage().contains("actual sha256:"),
-                mismatch.getMessage());
+  @Test
+  void mismatchMissingDuplicateAndBadDigestFailClosed() throws Exception {
+    byte[] bytes = "reviewed-server".getBytes(StandardCharsets.UTF_8);
+    Files.write(dir.resolve("server.bin"), bytes);
+    ConfigException mismatch =
+        assertThrows(
+            ConfigException.class,
+            () ->
+                ArtifactAdmission.verify(
+                    source(
+                        List.of(
+                            Map.of("path", "server.bin", "sha256", "sha256:" + "0".repeat(64)))),
+                    dir));
+    assertTrue(
+        mismatch.getMessage().contains("does not match")
+            && mismatch.getMessage().contains("actual sha256:"),
+        mismatch.getMessage());
 
-        ConfigException missing = assertThrows(ConfigException.class, () -> ArtifactAdmission.verify(source(List.of(
-                Map.of("path", "missing.bin", "sha256", digest(bytes)))), dir));
-        assertTrue(missing.getMessage().contains("cannot be verified"), missing.getMessage());
+    ConfigException missing =
+        assertThrows(
+            ConfigException.class,
+            () ->
+                ArtifactAdmission.verify(
+                    source(List.of(Map.of("path", "missing.bin", "sha256", digest(bytes)))), dir));
+    assertTrue(missing.getMessage().contains("cannot be verified"), missing.getMessage());
 
-        ConfigException duplicate = assertThrows(ConfigException.class, () -> ArtifactAdmission.verify(source(List.of(
-                Map.of("path", "server.bin", "sha256", digest(bytes)),
-                Map.of("path", "server.bin", "sha256", digest(bytes)))), dir));
-        assertTrue(duplicate.getMessage().contains("duplicates"), duplicate.getMessage());
+    ConfigException duplicate =
+        assertThrows(
+            ConfigException.class,
+            () ->
+                ArtifactAdmission.verify(
+                    source(
+                        List.of(
+                            Map.of("path", "server.bin", "sha256", digest(bytes)),
+                            Map.of("path", "server.bin", "sha256", digest(bytes)))),
+                    dir));
+    assertTrue(duplicate.getMessage().contains("duplicates"), duplicate.getMessage());
 
-        ConfigException bad = assertThrows(ConfigException.class, () -> ArtifactAdmission.verify(source(List.of(
-                Map.of("path", "server.bin", "sha256", "md5:bad"))), dir));
-        assertTrue(bad.getMessage().contains("64 lower-case hex"), bad.getMessage());
+    ConfigException bad =
+        assertThrows(
+            ConfigException.class,
+            () ->
+                ArtifactAdmission.verify(
+                    source(List.of(Map.of("path", "server.bin", "sha256", "md5:bad"))), dir));
+    assertTrue(bad.getMessage().contains("64 lower-case hex"), bad.getMessage());
 
-        ConfigNode prefixless = source(List.of(Map.of("path", dir.resolve("server.bin").toString(),
-                "sha256", digest(bytes).substring("sha256:".length()))));
-        assertEquals("server", ArtifactAdmission.verify(prefixless, dir).get(0).role());
-        prefixless.finish();
+    ConfigNode prefixless =
+        source(
+            List.of(
+                Map.of(
+                    "path",
+                    dir.resolve("server.bin").toString(),
+                    "sha256",
+                    digest(bytes).substring("sha256:".length()))));
+    assertEquals("server", ArtifactAdmission.verify(prefixless, dir).get(0).role());
+    prefixless.finish();
 
-        ConfigException directory = assertThrows(ConfigException.class, () -> ArtifactAdmission.verify(source(List.of(
-                Map.of("path", dir.toString(), "sha256", digest(bytes)))), dir));
-        assertTrue(directory.getMessage().contains("regular file"), directory.getMessage());
-    }
+    ConfigException directory =
+        assertThrows(
+            ConfigException.class,
+            () ->
+                ArtifactAdmission.verify(
+                    source(List.of(Map.of("path", dir.toString(), "sha256", digest(bytes)))), dir));
+    assertTrue(directory.getMessage().contains("regular file"), directory.getMessage());
+  }
 }

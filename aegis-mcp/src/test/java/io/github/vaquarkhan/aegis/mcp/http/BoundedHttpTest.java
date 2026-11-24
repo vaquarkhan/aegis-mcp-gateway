@@ -30,32 +30,40 @@ import org.junit.jupiter.api.Test;
 
 class BoundedHttpTest {
 
-    @Test
-    void aBackendThatTricklesItsBodyHitsTheTotalDeadline() throws Exception {
-        HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        s.createContext("/slow", ex -> {
-            ex.sendResponseHeaders(200, 0); // headers now, body "forever"
-            try (OutputStream os = ex.getResponseBody()) {
-                for (int i = 0; i < 100; i++) {
-                    os.write('x');
-                    os.flush();
-                    Thread.sleep(200);
-                }
-            } catch (Exception ignored) {
-                // client went away
+  @Test
+  void aBackendThatTricklesItsBodyHitsTheTotalDeadline() throws Exception {
+    HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    s.createContext(
+        "/slow",
+        ex -> {
+          ex.sendResponseHeaders(200, 0); // headers now, body "forever"
+          try (OutputStream os = ex.getResponseBody()) {
+            for (int i = 0; i < 100; i++) {
+              os.write('x');
+              os.flush();
+              Thread.sleep(200);
             }
+          } catch (Exception ignored) {
+            // client went away
+          }
         });
-        s.start();
-        try {
-            HttpClient http = HttpClient.newHttpClient();
-            HttpRequest req = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + s.getAddress().getPort() + "/slow"))
-                    .timeout(Duration.ofSeconds(30)).GET().build();
-            long t0 = System.nanoTime();
-            assertThrows(HttpTimeoutException.class, () -> BoundedHttp.send(http, req, 1 << 20, 800));
-            long ms = (System.nanoTime() - t0) / 1_000_000;
-            assertTrue(ms < 5_000, "returned after " + ms + " ms; the header timeout alone would have waited ~20 s");
-        } finally {
-            s.stop(0);
-        }
+    s.start();
+    try {
+      HttpClient http = HttpClient.newHttpClient();
+      HttpRequest req =
+          HttpRequest.newBuilder(
+                  URI.create("http://127.0.0.1:" + s.getAddress().getPort() + "/slow"))
+              .timeout(Duration.ofSeconds(30))
+              .GET()
+              .build();
+      long t0 = System.nanoTime();
+      assertThrows(HttpTimeoutException.class, () -> BoundedHttp.send(http, req, 1 << 20, 800));
+      long ms = (System.nanoTime() - t0) / 1_000_000;
+      assertTrue(
+          ms < 5_000,
+          "returned after " + ms + " ms; the header timeout alone would have waited ~20 s");
+    } finally {
+      s.stop(0);
     }
+  }
 }

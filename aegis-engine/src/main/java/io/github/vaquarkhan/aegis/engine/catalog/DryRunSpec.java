@@ -23,36 +23,41 @@ import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
  * <ul>
  *   <li>{@link Mode#GATEWAY}: the full governance chain runs and nothing reaches the backend. The
  *       receipt proves this exact action passed preflight; it does not prove the backend would
- *       accept it. Works for every backend, which is why it is the default.</li>
- *   <li>{@link Mode#ARGUMENT}: the backend has a native preview flag (for example Kafka's
- *       {@code validateOnly}); the engine sets {@code argument} to {@code true} and executes.</li>
+ *       accept it. Works for every backend, which is why it is the default.
+ *   <li>{@link Mode#ARGUMENT}: the backend has a native preview flag (for example Kafka's {@code
+ *       validateOnly}); the engine sets {@code argument} to {@code true} and executes.
  *   <li>{@link Mode#TOOL}: the backend exposes a separate preview tool/endpoint, run with the same
- *       arguments through {@code previewExecutor}.</li>
+ *       arguments through {@code previewExecutor}.
  * </ul>
  */
-public record DryRunSpec(Mode mode, String argument, ToolExecutor previewExecutor, String previewToolName) {
+public record DryRunSpec(
+    Mode mode, String argument, ToolExecutor previewExecutor, String previewToolName) {
 
-    public enum Mode { GATEWAY, ARGUMENT, TOOL }
+  public enum Mode {
+    GATEWAY,
+    ARGUMENT,
+    TOOL
+  }
 
-    public static final DryRunSpec GATEWAY = new DryRunSpec(Mode.GATEWAY, null, null, null);
+  public static final DryRunSpec GATEWAY = new DryRunSpec(Mode.GATEWAY, null, null, null);
 
-    public DryRunSpec {
-        if (mode == null) {
-            throw new IllegalArgumentException("dry-run mode must be set");
-        }
-        if (mode == Mode.ARGUMENT && (argument == null || argument.isBlank())) {
-            throw new IllegalArgumentException("dry-run mode ARGUMENT needs the backend argument name");
-        }
-        if (mode == Mode.TOOL && previewExecutor == null) {
-            throw new IllegalArgumentException("dry-run mode TOOL needs a preview executor");
-        }
+  public DryRunSpec {
+    if (mode == null) {
+      throw new IllegalArgumentException("dry-run mode must be set");
     }
-
-    public static DryRunSpec argument(String name) {
-        return new DryRunSpec(Mode.ARGUMENT, name, null, null);
+    if (mode == Mode.ARGUMENT && (argument == null || argument.isBlank())) {
+      throw new IllegalArgumentException("dry-run mode ARGUMENT needs the backend argument name");
     }
-
-    public static DryRunSpec tool(ToolExecutor executor, String upstreamName) {
-        return new DryRunSpec(Mode.TOOL, null, executor, upstreamName);
+    if (mode == Mode.TOOL && previewExecutor == null) {
+      throw new IllegalArgumentException("dry-run mode TOOL needs a preview executor");
     }
+  }
+
+  public static DryRunSpec argument(String name) {
+    return new DryRunSpec(Mode.ARGUMENT, name, null, null);
+  }
+
+  public static DryRunSpec tool(ToolExecutor executor, String upstreamName) {
+    return new DryRunSpec(Mode.TOOL, null, executor, upstreamName);
+  }
 }

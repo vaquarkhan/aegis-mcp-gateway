@@ -37,57 +37,72 @@ import java.util.HexFormat;
  */
 public final class SignedSerial {
 
-    /** Largest serial: the largest integer every JSON implementation represents exactly. */
-    public static final long MAX = 9_007_199_254_740_991L;
+  /** Largest serial: the largest integer every JSON implementation represents exactly. */
+  public static final long MAX = 9_007_199_254_740_991L;
 
-    static final String PREFIX = "aegis:signed-serial:";
-    private SignedSerial() {}
+  static final String PREFIX = "aegis:signed-serial:";
 
-    /** Parses an optional {@code "serial"} value; 0 when absent. */
-    static long parse(String at, Object v) throws IOException {
-        if (v == null) {
-            return 0;
-        }
-        if (!(v instanceof Long n) || n < 1 || n > MAX) {
-            throw new IOException(at + ": \"serial\" must be a whole number from 1 to " + MAX);
-        }
-        return n;
+  private SignedSerial() {}
+
+  /** Parses an optional {@code "serial"} value; 0 when absent. */
+  static long parse(String at, Object v) throws IOException {
+    if (v == null) {
+      return 0;
     }
-
-    /**
-     * Checks {@code serial} against the highest serial this gateway accepted for {@code kind}, then
-     * records it. Fails closed: an unreadable record refuses the document.
-     *
-     * @param kind        document kind, for example {@link SignedServerCatalog#KIND}
-     * @param gatewayName the configured gateway name; each gateway keeps its own record
-     * @param serial      the document's serial, 0 when it has none
-     * @param what        the document as named in error messages
-     * @return the current highest accepted serial (0 when none)
-     * @throws IOException when the document is older than one already accepted
-     */
-    public static long accept(StateStore store, String kind, String gatewayName, long serial, String what) throws IOException {
-        if (serial < 0 || serial > MAX) {
-            throw new IOException(what + ": serial out of range");
-        }
-        if (!(store instanceof HighWaterStateStore highWater)) {
-            if (serial == 0) {
-                return 0;
-            }
-            throw new IOException(what + " carries serial " + serial + ", but the configured state provider does not"
-                    + " support the atomic high-water mark required for rollback protection");
-        }
-        String key = PREFIX + kind + ":" + HexFormat.of().formatHex(gatewayName.getBytes(StandardCharsets.UTF_8));
-        final long highest;
-        try {
-            highest = highWater.updateHighWaterMark(key, serial);
-        } catch (IllegalStateException e) {
-            throw new IOException("the state store holds an unreadable serial for " + what + "; refusing to start", e);
-        }
-        if (highest > serial) {
-            throw new IOException(what + (serial == 0 ? " has no serial" : " has serial " + serial)
-                    + ", but this gateway already accepted serial " + highest
-                    + "; sign a new version with a higher serial (an older signed file is not accepted again)");
-        }
-        return highest;
+    if (!(v instanceof Long n) || n < 1 || n > MAX) {
+      throw new IOException(at + ": \"serial\" must be a whole number from 1 to " + MAX);
     }
+    return n;
+  }
+
+  /**
+   * Checks {@code serial} against the highest serial this gateway accepted for {@code kind}, then
+   * records it. Fails closed: an unreadable record refuses the document.
+   *
+   * @param kind document kind, for example {@link SignedServerCatalog#KIND}
+   * @param gatewayName the configured gateway name; each gateway keeps its own record
+   * @param serial the document's serial, 0 when it has none
+   * @param what the document as named in error messages
+   * @return the current highest accepted serial (0 when none)
+   * @throws IOException when the document is older than one already accepted
+   */
+  public static long accept(
+      StateStore store, String kind, String gatewayName, long serial, String what)
+      throws IOException {
+    if (serial < 0 || serial > MAX) {
+      throw new IOException(what + ": serial out of range");
+    }
+    if (!(store instanceof HighWaterStateStore highWater)) {
+      if (serial == 0) {
+        return 0;
+      }
+      throw new IOException(
+          what
+              + " carries serial "
+              + serial
+              + ", but the configured state provider does not"
+              + " support the atomic high-water mark required for rollback protection");
+    }
+    String key =
+        PREFIX
+            + kind
+            + ":"
+            + HexFormat.of().formatHex(gatewayName.getBytes(StandardCharsets.UTF_8));
+    final long highest;
+    try {
+      highest = highWater.updateHighWaterMark(key, serial);
+    } catch (IllegalStateException e) {
+      throw new IOException(
+          "the state store holds an unreadable serial for " + what + "; refusing to start", e);
+    }
+    if (highest > serial) {
+      throw new IOException(
+          what
+              + (serial == 0 ? " has no serial" : " has serial " + serial)
+              + ", but this gateway already accepted serial "
+              + highest
+              + "; sign a new version with a higher serial (an older signed file is not accepted again)");
+    }
+    return highest;
+  }
 }

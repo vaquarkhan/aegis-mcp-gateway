@@ -34,59 +34,65 @@ import javax.crypto.spec.SecretKeySpec;
  */
 public final class SignedTokens {
 
-    private static final Base64.Encoder ENC = Base64.getUrlEncoder().withoutPadding();
-    private static final Base64.Decoder DEC = Base64.getUrlDecoder();
-    private static final JsonLimits TOKEN_LIMITS = JsonLimits.DEFAULT.withMaxBytes(8 * 1024).withMaxDepth(4);
+  private static final Base64.Encoder ENC = Base64.getUrlEncoder().withoutPadding();
+  private static final Base64.Decoder DEC = Base64.getUrlDecoder();
+  private static final JsonLimits TOKEN_LIMITS =
+      JsonLimits.DEFAULT.withMaxBytes(8 * 1024).withMaxDepth(4);
 
-    private final String type;
-    private final byte[] key;
+  private final String type;
+  private final byte[] key;
 
-    /**
-     * @param type      token type prefix, e.g. {@code aat1} (approval) or {@code vrp1} (receipt)
-     * @param masterKey at least 32 bytes of secret key material
-     */
-    public SignedTokens(String type, byte[] masterKey) {
-        if (masterKey == null || masterKey.length < 32) {
-            throw new IllegalArgumentException("signing key must be at least 32 bytes");
-        }
-        this.type = type;
-        this.key = hmac(masterKey, ("aegis-token-key:" + type).getBytes(StandardCharsets.UTF_8));
+  /**
+   * @param type token type prefix, e.g. {@code aat1} (approval) or {@code vrp1} (receipt)
+   * @param masterKey at least 32 bytes of secret key material
+   */
+  public SignedTokens(String type, byte[] masterKey) {
+    if (masterKey == null || masterKey.length < 32) {
+      throw new IllegalArgumentException("signing key must be at least 32 bytes");
     }
+    this.type = type;
+    this.key = hmac(masterKey, ("aegis-token-key:" + type).getBytes(StandardCharsets.UTF_8));
+  }
 
-    public String sign(Map<String, Object> payload) {
-        String body = ENC.encodeToString(Json.canonical(payload).getBytes(StandardCharsets.UTF_8));
-        String signingInput = type + "." + body;
-        return signingInput + "." + ENC.encodeToString(hmac(key, signingInput.getBytes(StandardCharsets.UTF_8)));
-    }
+  public String sign(Map<String, Object> payload) {
+    String body = ENC.encodeToString(Json.canonical(payload).getBytes(StandardCharsets.UTF_8));
+    String signingInput = type + "." + body;
+    return signingInput
+        + "."
+        + ENC.encodeToString(hmac(key, signingInput.getBytes(StandardCharsets.UTF_8)));
+  }
 
-    /** @return the payload when the token is well-formed, of this type, and the MAC verifies; else null */
-    public Map<String, Object> verify(String token) {
-        if (token == null || token.length() > 8 * 1024) {
-            return null;
-        }
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != 3 || !parts[0].equals(type)) {
-            return null;
-        }
-        String signingInput = parts[0] + "." + parts[1];
-        String expected = ENC.encodeToString(hmac(key, signingInput.getBytes(StandardCharsets.UTF_8)));
-        if (!Digests.constantTimeEquals(expected, parts[2])) {
-            return null;
-        }
-        try {
-            return Json.parseObject(DEC.decode(parts[1]), TOKEN_LIMITS);
-        } catch (IllegalArgumentException | JsonException e) {
-            return null;
-        }
+  /**
+   * @return the payload when the token is well-formed, of this type, and the MAC verifies; else
+   *     null
+   */
+  public Map<String, Object> verify(String token) {
+    if (token == null || token.length() > 8 * 1024) {
+      return null;
     }
+    String[] parts = token.split("\\.", -1);
+    if (parts.length != 3 || !parts[0].equals(type)) {
+      return null;
+    }
+    String signingInput = parts[0] + "." + parts[1];
+    String expected = ENC.encodeToString(hmac(key, signingInput.getBytes(StandardCharsets.UTF_8)));
+    if (!Digests.constantTimeEquals(expected, parts[2])) {
+      return null;
+    }
+    try {
+      return Json.parseObject(DEC.decode(parts[1]), TOKEN_LIMITS);
+    } catch (IllegalArgumentException | JsonException e) {
+      return null;
+    }
+  }
 
-    static byte[] hmac(byte[] k, byte[] msg) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(k, "HmacSHA256"));
-            return mac.doFinal(msg);
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("HmacSHA256 is required by every Java SE platform", e);
-        }
+  static byte[] hmac(byte[] k, byte[] msg) {
+    try {
+      Mac mac = Mac.getInstance("HmacSHA256");
+      mac.init(new SecretKeySpec(k, "HmacSHA256"));
+      return mac.doFinal(msg);
+    } catch (GeneralSecurityException e) {
+      throw new IllegalStateException("HmacSHA256 is required by every Java SE platform", e);
     }
+  }
 }

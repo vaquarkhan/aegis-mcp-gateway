@@ -19,47 +19,51 @@ import java.net.URI;
 
 /**
  * Late binding of the gateway's {@link EgressGuard} for outbound transports that are constructed
- * before the guard exists (sources are built first because their hosts join the allow list).
- * Until {@link #bind} is called every pin is denied, so a transport can never connect unchecked.
- * Bound once: a second bind is refused so a built gateway cannot be pointed at a weaker guard.
+ * before the guard exists (sources are built first because their hosts join the allow list). Until
+ * {@link #bind} is called every pin is denied, so a transport can never connect unchecked. Bound
+ * once: a second bind is refused so a built gateway cannot be pointed at a weaker guard.
  */
 public final class EgressBinding {
 
-    private volatile EgressGuard guard;
-    private volatile Object proxy;
+  private volatile EgressGuard guard;
+  private volatile Object proxy;
 
-    /** Binds the guard and an optional transport-specific forward proxy descriptor; may be called once. */
-    public synchronized void bind(EgressGuard g, Object forwardProxy) {
-        bind(g);
-        proxy = forwardProxy;
-    }
+  /**
+   * Binds the guard and an optional transport-specific forward proxy descriptor; may be called
+   * once.
+   */
+  public synchronized void bind(EgressGuard g, Object forwardProxy) {
+    bind(g);
+    proxy = forwardProxy;
+  }
 
-    /** The forward proxy descriptor bound with the guard, or null. */
-    public Object proxy() {
-        return proxy;
-    }
+  /** The forward proxy descriptor bound with the guard, or null. */
+  public Object proxy() {
+    return proxy;
+  }
 
-    /** Binds the guard; may be called once. */
-    public synchronized void bind(EgressGuard g) {
-        if (g == null) {
-            throw new IllegalArgumentException("egress guard is required");
-        }
-        if (guard != null && guard != g) {
-            throw new IllegalStateException("the egress guard is already bound");
-        }
-        guard = g;
+  /** Binds the guard; may be called once. */
+  public synchronized void bind(EgressGuard g) {
+    if (g == null) {
+      throw new IllegalArgumentException("egress guard is required");
     }
+    if (guard != null && guard != g) {
+      throw new IllegalStateException("the egress guard is already bound");
+    }
+    guard = g;
+  }
 
-    public boolean bound() {
-        return guard != null;
-    }
+  public boolean bound() {
+    return guard != null;
+  }
 
-    /** Resolve-and-check the target with the bound guard; denied while unbound. */
-    public EgressGuard.Pin pin(URI target) {
-        EgressGuard g = guard;
-        if (g == null) {
-            return new EgressGuard.Pin("egress guard is not initialised; outbound connection refused", null, null);
-        }
-        return g.pin(target);
+  /** Resolve-and-check the target with the bound guard; denied while unbound. */
+  public EgressGuard.Pin pin(URI target) {
+    EgressGuard g = guard;
+    if (g == null) {
+      return new EgressGuard.Pin(
+          "egress guard is not initialised; outbound connection refused", null, null);
     }
+    return g.pin(target);
+  }
 }

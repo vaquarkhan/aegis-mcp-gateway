@@ -26,33 +26,36 @@ import java.util.Map;
  */
 public record ToolResult(Map<String, Object> body) {
 
-    public ToolResult {
-        body = body == null ? Map.of() : body;
-    }
+  public ToolResult {
+    body = body == null ? Map.of() : body;
+  }
 
-    public static ToolResult text(String text, boolean isError) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("content", List.of(Map.of("type", "text", "text", text)));
-        m.put("isError", isError);
-        return new ToolResult(m);
-    }
+  public static ToolResult text(String text, boolean isError) {
+    Map<String, Object> m = new LinkedHashMap<>();
+    m.put("content", List.of(Map.of("type", "text", "text", text)));
+    m.put("isError", isError);
+    return new ToolResult(m);
+  }
 
-    public static ToolResult structured(String text, Object structured) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("content", List.of(Map.of("type", "text", "text", text)));
-        if (structured != null) {
-            m.put("structuredContent", structured);
-        }
-        m.put("isError", false);
-        return new ToolResult(m);
+  public static ToolResult structured(String text, Object structured) {
+    Map<String, Object> m = new LinkedHashMap<>();
+    m.put("content", List.of(Map.of("type", "text", "text", text)));
+    if (structured != null) {
+      m.put("structuredContent", structured);
     }
+    m.put("isError", false);
+    return new ToolResult(m);
+  }
 
-    public boolean isError() {
-        return Boolean.TRUE.equals(body.get("isError"));
-    }
+  public boolean isError() {
+    return Boolean.TRUE.equals(body.get("isError"));
+  }
 
-    /** True for an MRTR interim result; it is passed through, and the client's retry is governed again. */
-    public boolean inputRequired() {
-        return "input_required".equals(body.get("resultType"));
-    }
+  /**
+   * True for an MRTR interim result; it is passed through, and the client's retry is governed
+   * again.
+   */
+  public boolean inputRequired() {
+    return "input_required".equals(body.get("resultType"));
+  }
 }

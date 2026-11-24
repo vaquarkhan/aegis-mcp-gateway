@@ -22,14 +22,14 @@ import java.util.Locale;
  * approval, egress, VRP) are always enforcing and have no mode.
  */
 public enum ControlMode {
-    /** Deny on a match. */
-    ENFORCE,
-    /** Record the match in audit but allow the call. */
-    AUDIT,
-    /** Control is not evaluated. */
-    OFF;
+  /** Deny on a match. */
+  ENFORCE,
+  /** Record the match in audit but allow the call. */
+  AUDIT,
+  /** Control is not evaluated. */
+  OFF;
 
-    public static ControlMode parse(String s) {
-        return valueOf(s.trim().toUpperCase(Locale.ROOT));
-    }
+  public static ControlMode parse(String s) {
+    return valueOf(s.trim().toUpperCase(Locale.ROOT));
+  }
 }

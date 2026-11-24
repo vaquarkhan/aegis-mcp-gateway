@@ -29,48 +29,59 @@ import java.util.Map;
  * token is never passed through (MCP security best practice: no token passthrough).
  *
  * <p>Per-caller delegation (for example RFC 8693 token exchange through an identity provider or
- * Apache Knox) is a different {@link CredentialProvider} implementation; this one does not claim it.
+ * Apache Knox) is a different {@link CredentialProvider} implementation; this one does not claim
+ * it.
  */
 public final class StaticCredentialProvider implements CredentialProvider {
 
-    /** Credential kinds a source may declare. */
-    public enum Kind { NONE, BEARER, BASIC, HEADER }
+  /** Credential kinds a source may declare. */
+  public enum Kind {
+    NONE,
+    BEARER,
+    BASIC,
+    HEADER
+  }
 
-    public record Spec(Kind kind, String header, String value, String username, String password) {
-        @Override
-        public String toString() {
-            return "Spec[kind=" + kind + ", header=" + header + "]"; // never print secrets
-        }
-    }
-
-    private final Map<String, Map<String, String>> headersBySource;
-
-    public StaticCredentialProvider(Map<String, Spec> specs) {
-        Map<String, Map<String, String>> m = new LinkedHashMap<>();
-        for (Map.Entry<String, Spec> e : specs.entrySet()) {
-            m.put(e.getKey(), headersFor(e.getValue()));
-        }
-        this.headersBySource = Map.copyOf(m);
-    }
-
-    public static Map<String, String> headersFor(Spec s) {
-        return switch (s.kind()) {
-            case NONE -> Map.of();
-            case BEARER -> Map.of("Authorization", "Bearer " + s.value());
-            case BASIC -> Map.of("Authorization", "Basic " + Base64.getEncoder()
-                    .encodeToString((s.username() + ":" + s.password()).getBytes(StandardCharsets.UTF_8)));
-            case HEADER -> Map.of(s.header(), s.value());
-        };
-    }
-
-    @Override
-    public Map<String, String> credentialsFor(String sourceId, CallerIdentity caller) {
-        Map<String, String> h = headersBySource.get(sourceId);
-        return h == null ? Map.of() : h;
-    }
-
+  public record Spec(Kind kind, String header, String value, String username, String password) {
     @Override
     public String toString() {
-        return "StaticCredentialProvider" + headersBySource.keySet();
+      return "Spec[kind=" + kind + ", header=" + header + "]"; // never print secrets
     }
+  }
+
+  private final Map<String, Map<String, String>> headersBySource;
+
+  public StaticCredentialProvider(Map<String, Spec> specs) {
+    Map<String, Map<String, String>> m = new LinkedHashMap<>();
+    for (Map.Entry<String, Spec> e : specs.entrySet()) {
+      m.put(e.getKey(), headersFor(e.getValue()));
+    }
+    this.headersBySource = Map.copyOf(m);
+  }
+
+  public static Map<String, String> headersFor(Spec s) {
+    return switch (s.kind()) {
+      case NONE -> Map.of();
+      case BEARER -> Map.of("Authorization", "Bearer " + s.value());
+      case BASIC ->
+          Map.of(
+              "Authorization",
+              "Basic "
+                  + Base64.getEncoder()
+                      .encodeToString(
+                          (s.username() + ":" + s.password()).getBytes(StandardCharsets.UTF_8)));
+      case HEADER -> Map.of(s.header(), s.value());
+    };
+  }
+
+  @Override
+  public Map<String, String> credentialsFor(String sourceId, CallerIdentity caller) {
+    Map<String, String> h = headersBySource.get(sourceId);
+    return h == null ? Map.of() : h;
+  }
+
+  @Override
+  public String toString() {
+    return "StaticCredentialProvider" + headersBySource.keySet();
+  }
 }

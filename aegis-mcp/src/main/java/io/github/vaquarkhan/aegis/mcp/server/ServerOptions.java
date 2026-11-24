@@ -22,42 +22,47 @@ import java.util.Set;
 /**
  * MCP server-side options for the gateway endpoint.
  *
- * @param serverName      advertised serverInfo.name
- * @param serverVersion   advertised serverInfo.version
+ * @param serverName advertised serverInfo.name
+ * @param serverVersion advertised serverInfo.version
  * @param enabledVersions protocol revisions accepted (default: all four)
- * @param legacySessions  issue and require Mcp-Session-Id for 2025-era clients (stateful mode);
- *                        false serves 2025-era clients without sessions (stateless legacy)
- * @param allowedOrigins  browser Origins accepted; any other present Origin gets 403 (DNS-rebinding defence)
- * @param toolsListTtlMs  ttlMs advertised on 2026 tools/list results (cacheScope is always "private",
- *                        because the list is filtered per caller)
- * @param instructions    optional server instructions
- * @param limits          inbound JSON limits
+ * @param legacySessions issue and require Mcp-Session-Id for 2025-era clients (stateful mode);
+ *     false serves 2025-era clients without sessions (stateless legacy)
+ * @param allowedOrigins browser Origins accepted; any other present Origin gets 403 (DNS-rebinding
+ *     defence)
+ * @param toolsListTtlMs ttlMs advertised on 2026 tools/list results (cacheScope is always
+ *     "private", because the list is filtered per caller)
+ * @param instructions optional server instructions
+ * @param limits inbound JSON limits
  */
 public record ServerOptions(
-        String serverName,
-        String serverVersion,
-        Set<String> enabledVersions,
-        boolean legacySessions,
-        Set<String> allowedOrigins,
-        long toolsListTtlMs,
-        String instructions,
-        JsonLimits limits) {
+    String serverName,
+    String serverVersion,
+    Set<String> enabledVersions,
+    boolean legacySessions,
+    Set<String> allowedOrigins,
+    long toolsListTtlMs,
+    String instructions,
+    JsonLimits limits) {
 
-    public ServerOptions {
-        serverName = serverName == null ? "aegis-gateway" : serverName;
-        serverVersion = serverVersion == null ? "2.0.0-SNAPSHOT" : serverVersion;
-        enabledVersions = enabledVersions == null || enabledVersions.isEmpty() ? McpVersions.ALL : Set.copyOf(enabledVersions);
-        for (String v : enabledVersions) {
-            if (!McpVersions.ALL.contains(v)) {
-                throw new IllegalArgumentException("unsupported MCP protocol version in configuration: " + v);
-            }
-        }
-        allowedOrigins = allowedOrigins == null ? Set.of() : Set.copyOf(allowedOrigins);
-        limits = limits == null ? JsonLimits.DEFAULT : limits;
-        toolsListTtlMs = Math.max(0, toolsListTtlMs);
+  public ServerOptions {
+    serverName = serverName == null ? "aegis-gateway" : serverName;
+    serverVersion = serverVersion == null ? "2.0.0-SNAPSHOT" : serverVersion;
+    enabledVersions =
+        enabledVersions == null || enabledVersions.isEmpty()
+            ? McpVersions.ALL
+            : Set.copyOf(enabledVersions);
+    for (String v : enabledVersions) {
+      if (!McpVersions.ALL.contains(v)) {
+        throw new IllegalArgumentException(
+            "unsupported MCP protocol version in configuration: " + v);
+      }
     }
+    allowedOrigins = allowedOrigins == null ? Set.of() : Set.copyOf(allowedOrigins);
+    limits = limits == null ? JsonLimits.DEFAULT : limits;
+    toolsListTtlMs = Math.max(0, toolsListTtlMs);
+  }
 
-    public static ServerOptions defaults() {
-        return new ServerOptions(null, null, null, true, null, 0, null, null);
-    }
+  public static ServerOptions defaults() {
+    return new ServerOptions(null, null, null, true, null, 0, null, null);
+  }
 }
