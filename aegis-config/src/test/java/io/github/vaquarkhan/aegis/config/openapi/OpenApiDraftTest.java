@@ -39,6 +39,7 @@ import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -138,7 +139,7 @@ class OpenApiDraftTest {
             assertEquals(DenyCodes.READONLY_CALLER, o.decision().code(), "no access groups are generated");
         }
         // Even after an operator grants write and destructive access, the deny-all rule still holds.
-        Map<String, Object> granted = new java.util.LinkedHashMap<>(ConfigLoader.parseYaml(d.yaml(), "draft"));
+        Map<String, Object> granted = new LinkedHashMap<>(ConfigLoader.parseYaml(d.yaml(), "draft"));
         granted.put("access", Map.of("writeGroups", List.of("admins"), "destructiveGroups", List.of("admins")));
         try (Gateway g = GatewayFactory.build(granted, BuildContext.defaults(dir))) {
             CallOutcome o = g.engine().call(CallerIdentity.of("u", Set.of("admins"), "idp", "jwt"),
@@ -154,7 +155,7 @@ class OpenApiDraftTest {
         Map<String, Object> source = JsonValues.asObject(JsonValues.asList(cfg.get("sources")).get(0));
         assertEquals("http://127.0.0.1:1/api", source.get("baseUrl"));
         List<Object> tools = JsonValues.asList(source.get("tools"));
-        Map<String, Map<String, Object>> byName = new java.util.LinkedHashMap<>();
+        Map<String, Map<String, Object>> byName = new LinkedHashMap<>();
         for (Object t : tools) {
             Map<String, Object> m = JsonValues.asObject(t);
             byName.put((String) m.get("name"), m);

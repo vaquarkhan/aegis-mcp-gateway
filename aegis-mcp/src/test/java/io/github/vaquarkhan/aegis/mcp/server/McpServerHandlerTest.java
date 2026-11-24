@@ -34,6 +34,8 @@ import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpResponse;
 import io.github.vaquarkhan.aegis.mcp.protocol.HeaderValues;
 import io.github.vaquarkhan.aegis.mcp.testing.TestEngines;
+
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.LinkedHashMap;
@@ -51,7 +53,7 @@ class McpServerHandlerTest {
     void setUp() throws Exception {
         ToolExecutor echo = new ToolExecutor() {
             @Override
-            public List<java.net.URI> egressTargets(Map<String, Object> a) {
+            public List<URI> egressTargets(Map<String, Object> a) {
                 return List.of();
             }
 

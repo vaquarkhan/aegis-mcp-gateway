@@ -40,6 +40,7 @@ import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.model.DenyCodes;
 import io.github.vaquarkhan.aegis.engine.model.ToolCall;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
+import io.github.vaquarkhan.aegis.engine.model.ToolResult;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import java.time.Duration;
 import java.util.EnumSet;
@@ -51,7 +52,7 @@ import org.junit.jupiter.api.Test;
 
 class ThreatModelClosureEngineTest {
 
-    @org.junit.jupiter.api.Test
+    @Test
     void scanO1_homoglyphAndOtherLanguageInjectionPhrasesAreCaught() {
         InjectionScreen screen = InjectionScreen.defaults();
         // Cyrillic i and o, Greek omicron: NFKC leaves them alone; the confusables fold catches them.
@@ -230,6 +231,6 @@ class ThreatModelClosureEngineTest {
         OutputGuard d = OutputGuard.defaults();
         assertEquals(ControlMode.OFF, d.resultScreenMode());
         assertFalse(d.redactHighEntropy());
-        assertNotNull(d.apply(io.github.vaquarkhan.aegis.engine.model.ToolResult.text("plain", false)).result());
+        assertNotNull(d.apply(ToolResult.text("plain", false)).result());
     }
 }

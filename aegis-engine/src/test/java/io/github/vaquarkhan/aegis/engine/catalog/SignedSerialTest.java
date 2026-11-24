@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -62,7 +63,7 @@ class SignedSerialTest {
     @Test
     void anUnreadableRecordRefusesTheDocument() {
         InMemoryStateStore store = new InMemoryStateStore(Clock.systemUTC(), 1000);
-        String key = SignedSerial.PREFIX + "k:" + java.util.HexFormat.of().formatHex("gw".getBytes(StandardCharsets.UTF_8));
+        String key = SignedSerial.PREFIX + "k:" + HexFormat.of().formatHex("gw".getBytes(StandardCharsets.UTF_8));
         store.put(key, "not-a-number", null);
         IOException e = assertThrows(IOException.class, () -> SignedSerial.accept(store, "k", "gw", 7, "doc"));
         assertTrue(e.getMessage().contains("unreadable serial"), e.getMessage());

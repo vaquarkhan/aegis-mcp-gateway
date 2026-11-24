@@ -40,6 +40,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -290,7 +291,7 @@ class GatewayFactoryTest {
 
     @Test
     void unknownKeysAnywhereFailStartup() throws Exception {
-        Map<String, Object> cfg = new java.util.LinkedHashMap<>(Json.parseObject("""
+        Map<String, Object> cfg = new LinkedHashMap<>(Json.parseObject("""
                 {"access":{"writeGrups":["ops"]},
                  "policy":{"rules":[{"id":"r","groups":["*"]}]},
                  "audit":{"file":"a.jsonl"},
@@ -425,13 +426,13 @@ class GatewayFactoryTest {
     }
 
     private static McpHttpRequest modernPost(String method, Map<String, Object> params, String name) {
-        Map<String, Object> p = new java.util.LinkedHashMap<>(params);
+        Map<String, Object> p = new LinkedHashMap<>(params);
         p.put("_meta", Map.of("io.modelcontextprotocol/protocolVersion", "2026-07-28"));
-        Map<String, java.util.List<String>> h = new java.util.LinkedHashMap<>();
-        h.put("MCP-Protocol-Version", java.util.List.of("2026-07-28"));
-        h.put("Mcp-Method", java.util.List.of(method));
+        Map<String, List<String>> h = new LinkedHashMap<>();
+        h.put("MCP-Protocol-Version", List.of("2026-07-28"));
+        h.put("Mcp-Method", List.of(method));
         if (name != null) {
-            h.put("Mcp-Name", java.util.List.of(name));
+            h.put("Mcp-Name", List.of(name));
         }
         return new McpHttpRequest("POST", "", h, Json.writeBytes(Map.of("jsonrpc", "2.0", "id", 1L, "method", method, "params", p)));
     }

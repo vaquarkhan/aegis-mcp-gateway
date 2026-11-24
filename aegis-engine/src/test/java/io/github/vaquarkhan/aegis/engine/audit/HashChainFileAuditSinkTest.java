@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -83,13 +84,13 @@ class HashChainFileAuditSinkTest {
             }
         }
         List<String> lines = Files.readAllLines(f);
-        List<String> edited = new java.util.ArrayList<>(lines);
+        List<String> edited = new ArrayList<>(lines);
         edited.set(1, lines.get(1).replace("DENIED:POLICY_DENIED:step3", "ALLOWED"));
         Path g = dir.resolve("edited.jsonl");
         Files.write(g, edited);
         assertFalse(AuditChainVerifier.verify(g).ok());
 
-        List<String> deleted = new java.util.ArrayList<>(lines);
+        List<String> deleted = new ArrayList<>(lines);
         deleted.remove(2);
         Path h = dir.resolve("deleted.jsonl");
         Files.write(h, deleted);

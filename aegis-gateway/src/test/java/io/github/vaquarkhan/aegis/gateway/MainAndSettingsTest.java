@@ -37,6 +37,9 @@ import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -143,7 +146,7 @@ class MainAndSettingsTest {
         Run bad = run("", "--verify-audit", journal.toString(), "--checkpoints", cps.toString());
         assertEquals(Main.BROKEN, bad.code(), bad.out());
         assertTrue(bad.out().contains("truncated or replaced"), bad.out());
-        Exception refused = org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
+        Exception refused = Assertions.assertThrows(Exception.class,
                 () -> run("", "--config", cfg.toString()));
         assertTrue(String.valueOf(refused.getCause()).contains("truncated or replaced")
                 || String.valueOf(refused.getMessage()).contains("audit journal"), String.valueOf(refused));
@@ -161,7 +164,7 @@ class MainAndSettingsTest {
             Path cfg = config(STATIC);
             Files.writeString(cfg, Files.readString(cfg).replace("\"audit\": {\"file\": \"audit.jsonl\"}",
                     "\"audit\": {\"file\": \"audit.jsonl\", \"checkpoint\": " + cp + "}"));
-            Exception e = org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () -> run("", "--config", cfg.toString()));
+            Exception e = Assertions.assertThrows(Exception.class, () -> run("", "--config", cfg.toString()));
             assertTrue(String.valueOf(e.getMessage()).contains("audit.checkpoint"), cp + " -> " + e.getMessage());
         }
     }
@@ -170,7 +173,7 @@ class MainAndSettingsTest {
     void hostSectionIsStrict() {
         OwnServerSecuritySettings st = OwnServerSecuritySettings.parse(Json.parseObject(STATIC), dir, ENV::get, Clock.systemUTC());
         assertEquals("/prom", st.metricsPath());
-        assertEquals(java.util.Set.of("ops"), st.metricsGroups());
+        assertEquals(Set.of("ops"), st.metricsGroups());
         assertEquals("local", st.stdioIdentity().actor());
 
         List<String> bad = List.of(

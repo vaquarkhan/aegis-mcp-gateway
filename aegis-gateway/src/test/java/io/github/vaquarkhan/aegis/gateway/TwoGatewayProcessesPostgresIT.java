@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.sun.net.httpserver.HttpServer;
 import io.github.vaquarkhan.aegis.engine.audit.AuditChainVerifier;
 import io.github.vaquarkhan.aegis.engine.json.Json;
+
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.URI;
@@ -239,7 +241,7 @@ class TwoGatewayProcessesPostgresIT {
                         HttpResponse.BodyHandlers.discarding()).statusCode() == 200) {
                     return port;
                 }
-            } catch (java.io.IOException notYet) {
+            } catch (IOException notYet) {
                 // still starting
             }
             Thread.sleep(300);

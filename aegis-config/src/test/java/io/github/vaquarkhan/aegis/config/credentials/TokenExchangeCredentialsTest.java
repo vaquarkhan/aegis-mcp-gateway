@@ -36,6 +36,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Base64;
@@ -220,7 +221,7 @@ class TokenExchangeCredentialsTest {
             }
             assertEquals(List.of("Bearer " + jwt("user-1")), backendAuth, "the backend got the exchanged token, never the inbound one");
         }
-        String journal = java.nio.file.Files.readString(dir.resolve("audit.jsonl"));
+        String journal = Files.readString(dir.resolve("audit.jsonl"));
         assertFalse(journal.contains("inbound-token-of-alice") || journal.contains(jwt("user-1")), "no token in the audit journal");
     }
 

@@ -27,20 +27,29 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.vaquarkhan.aegis.engine.catalog.OutputPolicy;
 import io.github.vaquarkhan.aegis.engine.control.ResultHandleStore;
 import io.github.vaquarkhan.aegis.engine.control.TokenRevocations;
+import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
+import io.github.vaquarkhan.aegis.engine.model.ToolResult;
 import io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpResponse;
 import io.github.vaquarkhan.aegis.mcp.testing.TestEngines;
+
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 class AdminApiGapTest {
 
@@ -116,9 +125,9 @@ class AdminApiGapTest {
         assertFalse(handles.put(handle, "list_things", "req-2", TestEngines.BOB, Map.of("x", "other")),
                 "an existing handle is never overwritten (its producer stays bound)");
         // Handles are per call: two calls with byte-identical results get different handles.
-        io.github.vaquarkhan.aegis.engine.model.ToolResult same = io.github.vaquarkhan.aegis.engine.model.ToolResult.text("same", false);
-        String h1 = io.github.vaquarkhan.aegis.engine.catalog.OutputPolicy.HANDLE_ONLY.release(same, "req-a").handle();
-        String h2 = io.github.vaquarkhan.aegis.engine.catalog.OutputPolicy.HANDLE_ONLY.release(same, "req-b").handle();
+        ToolResult same = ToolResult.text("same", false);
+        String h1 = OutputPolicy.HANDLE_ONLY.release(same, "req-a").handle();
+        String h2 = OutputPolicy.HANDLE_ONLY.release(same, "req-b").handle();
         assertTrue(h1.matches("result:[0-9a-f]{64}") && !h1.equals(h2), h1 + " " + h2);
         AdminApi api = new AdminApi(b.engine, Set.of("approvers"), Set.of()).withResultRelease(Set.of("reviewers", "analysts"));
 
@@ -132,7 +141,7 @@ class AdminApiGapTest {
 
         McpHttpResponse released = api.handle(post("/results/" + handle + "/release", Map.of()), RITA);
         assertEquals(200, released.status());
-        assertTrue(new String(released.body(), java.nio.charset.StandardCharsets.UTF_8).contains("withheld value"));
+        assertTrue(new String(released.body(), StandardCharsets.UTF_8).contains("withheld value"));
         assertEquals(404, api.handle(post("/results/" + handle + "/release", Map.of()), RITA).status(), "take-once");
         assertEquals(404, api.handle(post("/results/not-a-handle/release", Map.of()), RITA).status());
         assertTrue(handles.take("bad").isEmpty());
@@ -142,8 +151,8 @@ class AdminApiGapTest {
                 .handle(post("/results/" + handle + "/release", Map.of()), RITA).status());
         // P-8: with an AES key the stored value is ciphertext; release still returns the plaintext body.
         byte[] raw = new byte[32];
-        new java.security.SecureRandom().nextBytes(raw);
-        javax.crypto.SecretKey aes = new javax.crypto.spec.SecretKeySpec(raw, "AES");
+        new SecureRandom().nextBytes(raw);
+        SecretKey aes = new SecretKeySpec(raw, "AES");
         InMemoryStateStore encStoreBacking = new InMemoryStateStore();
         ResultHandleStore encrypted = new ResultHandleStore(encStoreBacking, Clock.systemUTC(), Duration.ofMinutes(5), 4096, aes);
         assertTrue(encrypted.encrypted());
@@ -155,17 +164,17 @@ class AdminApiGapTest {
         assertFalse(atRest.contains("top-secret-body"), "plaintext is not in the store");
         assertEquals("t", encrypted.producer(encHandle).isPresent() ? "t" : "t"); // producer read decrypts
         var taken = encrypted.take(encHandle).orElseThrow();
-        assertTrue(io.github.vaquarkhan.aegis.engine.json.Json.write(taken.body()).contains("top-secret-body"));
+        assertTrue(Json.write(taken.body()).contains("top-secret-body"));
         // A different key cannot read it.
         byte[] raw2 = new byte[32];
-        new java.security.SecureRandom().nextBytes(raw2);
+        new SecureRandom().nextBytes(raw2);
         ResultHandleStore wrongKey = new ResultHandleStore(encStoreBacking, Clock.systemUTC(), Duration.ofMinutes(5), 4096,
-                new javax.crypto.spec.SecretKeySpec(raw2, "AES"));
+                new SecretKeySpec(raw2, "AES"));
         wrongKey.put(encHandle, "t", "r2", TestEngines.ALICE, Map.of("x", "y"));
         assertThrows(IllegalStateException.class, () -> new ResultHandleStore(encStoreBacking, Clock.systemUTC(),
-                Duration.ofMinutes(5), 4096, new javax.crypto.spec.SecretKeySpec(raw, "AES")).take(encHandle));
+                Duration.ofMinutes(5), 4096, new SecretKeySpec(raw, "AES")).take(encHandle));
         assertThrows(IllegalArgumentException.class, () -> new ResultHandleStore(encStoreBacking, Clock.systemUTC(),
-                Duration.ofMinutes(5), 4096, new javax.crypto.spec.SecretKeySpec(new byte[16], "HmacSHA256")));
+                Duration.ofMinutes(5), 4096, new SecretKeySpec(new byte[16], "HmacSHA256")));
         System.out.println("THREATMODEL|SCAN-P8|AI scanner readiness P-8|ResultHandleStore AES-256-GCM|FIXED|"
                 + "retained HANDLE_ONLY bodies stored as enc:nonce||ciphertext; wrong key cannot read; release returns plaintext");
 

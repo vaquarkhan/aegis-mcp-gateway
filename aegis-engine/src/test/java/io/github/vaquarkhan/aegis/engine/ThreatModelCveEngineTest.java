@@ -34,16 +34,28 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.vaquarkhan.aegis.engine.approval.ApprovalService;
+import io.github.vaquarkhan.aegis.engine.approval.VrpService;
 import io.github.vaquarkhan.aegis.engine.audit.AuditChainVerifier;
 import io.github.vaquarkhan.aegis.engine.audit.HashChainFileAuditSink;
+import io.github.vaquarkhan.aegis.engine.control.CircuitBreakers;
+import io.github.vaquarkhan.aegis.engine.control.ControlMode;
+import io.github.vaquarkhan.aegis.engine.control.HookBinding;
+import io.github.vaquarkhan.aegis.engine.control.OutputGuard;
 import io.github.vaquarkhan.aegis.engine.control.RateLimiter;
+import io.github.vaquarkhan.aegis.engine.control.RulePolicy;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.model.ControlTokens;
+import io.github.vaquarkhan.aegis.engine.model.Decision;
 import io.github.vaquarkhan.aegis.engine.model.DenyCodes;
 import io.github.vaquarkhan.aegis.engine.model.RoundTrip;
 import io.github.vaquarkhan.aegis.engine.model.ToolCall;
+import io.github.vaquarkhan.aegis.engine.model.ToolClass;
+import io.github.vaquarkhan.aegis.engine.spi.GovernanceHook;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore;
+
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -51,8 +63,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 import org.junit.jupiter.api.Test;
 
 class ThreatModelCveEngineTest {
@@ -119,7 +134,7 @@ class ThreatModelCveEngineTest {
     @Test
     void tm02_ssrfToCloudMetadata_isDenied() throws Exception {
         EngineFixture f = new EngineFixture();
-        f.executor.target = java.net.URI.create("http://169.254.169.254/latest/meta-data/iam/security-credentials/");
+        f.executor.target = URI.create("http://169.254.169.254/latest/meta-data/iam/security-credentials/");
         CallOutcome o = f.engine.call(ANALYST, call("fetch_url", "{\"url\":\"http://169.254.169.254/latest/meta-data/\"}"));
         assertEquals(DenyCodes.EGRESS_DENIED, o.decision().code(), o.decision().toString());
         assertEquals(0, f.executor.calls.size());
@@ -131,7 +146,7 @@ class ThreatModelCveEngineTest {
     void tm02b_dnsRebindingOfAllowedHostToPrivateAddress_isDenied() throws Exception {
         EngineFixture f = new EngineFixture();
         // *.corp.example.com is allow-listed, but this name resolves to 10.0.0.5.
-        f.executor.target = java.net.URI.create("https://internal.corp.example.com/admin");
+        f.executor.target = URI.create("https://internal.corp.example.com/admin");
         CallOutcome o = f.engine.call(ANALYST, call("fetch_url", "{}"));
         assertEquals(DenyCodes.EGRESS_DENIED, o.decision().code(), o.decision().toString());
         assertTrue(o.decision().reason().contains("PRIVATE"), o.decision().reason());
@@ -404,20 +419,20 @@ class ThreatModelCveEngineTest {
 
     @Test
     void open01_hookThatNeverAnswers_isDeniedWithinItsBudget() throws Exception {
-        io.github.vaquarkhan.aegis.engine.spi.GovernanceHook stuck = new io.github.vaquarkhan.aegis.engine.spi.GovernanceHook() {
+        GovernanceHook stuck = new GovernanceHook() {
             @Override
             public String name() {
                 return "stuck-dlp";
             }
 
             @Override
-            public io.github.vaquarkhan.aegis.engine.model.Decision before(Context c) throws Exception {
+            public Decision before(Context c) throws Exception {
                 Thread.sleep(30_000);
-                return io.github.vaquarkhan.aegis.engine.model.Decision.allow();
+                return Decision.allow();
             }
         };
-        io.github.vaquarkhan.aegis.engine.control.HookBinding enforce = new io.github.vaquarkhan.aegis.engine.control.HookBinding(
-                stuck, io.github.vaquarkhan.aegis.engine.control.ControlMode.ENFORCE, null, null, null, null, Duration.ofMillis(300));
+        HookBinding enforce = new HookBinding(
+                stuck, ControlMode.ENFORCE, null, null, null, null, Duration.ofMillis(300));
         EngineFixture f = new EngineFixture(List.of(enforce), RateLimiter.DISABLED, 3);
         long t0 = System.nanoTime();
         CallOutcome o = f.engine.call(ANALYST, call("list_topics", "{\"prefix\":\"a\"}"));
@@ -428,8 +443,8 @@ class ThreatModelCveEngineTest {
         assertEquals(0, f.executor.calls.size());
         // The breaker permit was released: the next call to the same source is not BREAKER_OPEN.
         f.engine.close();
-        EngineFixture advisory = new EngineFixture(List.of(new io.github.vaquarkhan.aegis.engine.control.HookBinding(
-                stuck, io.github.vaquarkhan.aegis.engine.control.ControlMode.AUDIT, null, null, null, null, Duration.ofMillis(300))),
+        EngineFixture advisory = new EngineFixture(List.of(new HookBinding(
+                stuck, ControlMode.AUDIT, null, null, null, null, Duration.ofMillis(300))),
                 RateLimiter.DISABLED, 3);
         CallOutcome a = advisory.engine.call(ANALYST, call("list_topics", "{\"prefix\":\"a\"}"));
         assertTrue(a.allowed(), "AUDIT mode records the timeout and continues: " + a.decision());
@@ -442,19 +457,19 @@ class ThreatModelCveEngineTest {
     void open04_approvalTokenLifetime_isCapped() {
         EngineFixture.MutableClock clock = new EngineFixture.MutableClock();
         InMemoryStateStore state = new InMemoryStateStore(clock, 100);
-        assertThrows(IllegalArgumentException.class, () -> new io.github.vaquarkhan.aegis.engine.approval.ApprovalService(
-                EngineFixture.KEY, state, java.util.Set.of("approvers"), Duration.ofMinutes(30), Duration.ofHours(2), clock));
-        assertThrows(IllegalArgumentException.class, () -> new io.github.vaquarkhan.aegis.engine.approval.ApprovalService(
-                EngineFixture.KEY, state, java.util.Set.of("approvers"), Duration.ofMinutes(30), Duration.ZERO, clock));
-        new io.github.vaquarkhan.aegis.engine.approval.ApprovalService(EngineFixture.KEY, state, java.util.Set.of("approvers"),
-                Duration.ofMinutes(30), io.github.vaquarkhan.aegis.engine.approval.ApprovalService.MAX_TOKEN_TTL, clock);
+        assertThrows(IllegalArgumentException.class, () -> new ApprovalService(
+                EngineFixture.KEY, state, Set.of("approvers"), Duration.ofMinutes(30), Duration.ofHours(2), clock));
+        assertThrows(IllegalArgumentException.class, () -> new ApprovalService(
+                EngineFixture.KEY, state, Set.of("approvers"), Duration.ofMinutes(30), Duration.ZERO, clock));
+        new ApprovalService(EngineFixture.KEY, state, Set.of("approvers"),
+                Duration.ofMinutes(30), ApprovalService.MAX_TOKEN_TTL, clock);
         verdict("OPEN-04", "review finding (approver group checked only at decide time)", "stale approver's decision stays valid for the token TTL",
                 "FIXED", "token TTL capped at 15 minutes in ApprovalService and in configuration (approval.tokenTtlSeconds)");
     }
 
     @Test
     void open08_pemRedactionIsLinearUnderMarkerFlood() {
-        io.github.vaquarkhan.aegis.engine.control.OutputGuard guard = io.github.vaquarkhan.aegis.engine.control.OutputGuard.defaults();
+        OutputGuard guard = OutputGuard.defaults();
         // Real key: still redacted.
         String real = "a -----BEGIN RSA PRIVATE KEY-----\nMIIEow\n-----END RSA PRIVATE KEY----- b -----BEGIN PRIVATE KEY-----x-----END PRIVATE KEY----- c";
         String out = String.valueOf(guard.redactAll(real).value());
@@ -502,20 +517,20 @@ class ThreatModelCveEngineTest {
         GovernanceSettings verbose = new GovernanceSettings(s.gatewayName(), s.writeGroups(), s.destructiveGroups(), s.approvalRequiredFor(),
                 s.vrpEnabled(), s.scopes(), s.rateLimiter(), s.argumentScreen(), s.outputGuard(), s.egressGuard(), s.hooks(),
                 s.advertiseControlArguments(), true, s.listeners());
-        io.github.vaquarkhan.aegis.engine.control.RulePolicy policy = new io.github.vaquarkhan.aegis.engine.control.RulePolicy(List.of(
-                new io.github.vaquarkhan.aegis.engine.control.RulePolicy.Rule("operators-write",
-                        io.github.vaquarkhan.aegis.engine.control.RulePolicy.Effect.ALLOW, java.util.Set.of("operators"), java.util.Set.of(),
-                        List.of(), java.util.EnumSet.of(io.github.vaquarkhan.aegis.engine.model.ToolClass.MUTATE), List.of("kafka:topic:*"))));
-        io.github.vaquarkhan.aegis.engine.approval.VrpService vrp = new io.github.vaquarkhan.aegis.engine.approval.VrpService(
+        RulePolicy policy = new RulePolicy(List.of(
+                new RulePolicy.Rule("operators-write",
+                        RulePolicy.Effect.ALLOW, Set.of("operators"), Set.of(),
+                        List.of(), EnumSet.of(ToolClass.MUTATE), List.of("kafka:topic:*"))));
+        VrpService vrp = new VrpService(
                 EngineFixture.KEY, f.state, Duration.ofMinutes(15), f.clock);
         GovernanceEngine engine = new GovernanceEngine(verbose, f.catalog, policy, f.approvals, vrp,
-                f.state, f.audit, (src, c) -> Map.of(), new io.github.vaquarkhan.aegis.engine.control.CircuitBreakers(3, 30_000, f.clock), f.clock, true);
+                f.state, f.audit, (src, c) -> Map.of(), new CircuitBreakers(3, 30_000, f.clock), f.clock, true);
         CallOutcome need = engine.call(OPERATOR, call("create_topic", "{\"topic\":\"orders\",\"partitions\":3}"));
         String rid = (String) need.decision().data().get("approvalRequestId");
         f.approvals.decide(rid, APPROVER, true);
         String token = (String) f.approvals.get(rid, OPERATOR).get("token");
         // Legacy 0.1 carrier puts the token in the arguments; the call is rate-limited? No: egress-denied so the token stays live.
-        f.executor.target = java.net.URI.create("https://not-allowed.example/");
+        f.executor.target = URI.create("https://not-allowed.example/");
         CallOutcome denied = engine.call(OPERATOR, call("create_topic",
                 "{\"topic\":\"orders\",\"partitions\":3,\"approvalToken\":\"" + token + "\",\"note\":\"AKIAIOSFODNN7EXAMPLE\"}"));
         assertEquals(DenyCodes.EGRESS_DENIED, denied.decision().code(), denied.decision().toString());

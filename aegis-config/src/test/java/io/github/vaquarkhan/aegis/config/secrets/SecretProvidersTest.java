@@ -30,6 +30,7 @@ import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.ToolCall;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -169,7 +170,7 @@ class SecretProvidersTest {
     void anUnreachableOrMisconfiguredVaultStopsTheGatewayFromStarting() throws Exception {
         Files.writeString(dir.resolve("token"), "s.local-test-token\n");
         int closed;
-        try (java.net.ServerSocket s = new java.net.ServerSocket(0)) {
+        try (ServerSocket s = new ServerSocket(0)) {
             closed = s.getLocalPort();
         }
         BuildContext ctx = BuildContext.defaults(dir).withEnv(ENV::get);

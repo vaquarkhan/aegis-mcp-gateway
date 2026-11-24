@@ -28,21 +28,32 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
+import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.model.ToolDescriptor;
 import io.github.vaquarkhan.aegis.engine.model.ToolResult;
 import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
+import io.github.vaquarkhan.aegis.mcp.admin.AdminApi;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpResponse;
 import io.github.vaquarkhan.aegis.mcp.testing.TestEngines;
+
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiFunction;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -60,7 +71,7 @@ class ThreatModelCveTransportTest {
     void setUp() throws Exception {
         ToolExecutor echo = new ToolExecutor() {
             @Override
-            public List<java.net.URI> egressTargets(Map<String, Object> a) {
+            public List<URI> egressTargets(Map<String, Object> a) {
                 return List.of();
             }
 
@@ -228,8 +239,8 @@ class ThreatModelCveTransportTest {
         // Re-examination of the "admin API shares the MCP listener" finding: with adminGroups unset the
         // perimeter admits any authenticated caller to the admin PATH, so every ROUTE must carry its own gate.
         TestEngines.Built b = TestEngines.build(List.of(), Map.of());
-        io.github.vaquarkhan.aegis.mcp.admin.AdminApi api = new io.github.vaquarkhan.aegis.mcp.admin.AdminApi(b.engine, Set.of("approvers"), Set.of());
-        java.util.function.BiFunction<String, String, McpHttpResponse> as = (method, path) ->
+        AdminApi api = new AdminApi(b.engine, Set.of("approvers"), Set.of());
+        BiFunction<String, String, McpHttpResponse> as = (method, path) ->
                 api.handle(new McpHttpRequest(method, path, Map.of(), new byte[0]), ALICE); // analyst, not an approver
         assertEquals(403, as.apply("GET", "/approvals").status(), "listing pending approvals needs an approver group");
         assertEquals(404, as.apply("GET", "/approvals/apr_00000000000000000000000000000000").status(), "a stranger cannot read a request");
@@ -246,25 +257,25 @@ class ThreatModelCveTransportTest {
 
     @Test
     void open07_fullSessionTable_evictsLeastRecentInsteadOfLockingEveryoneOut() {
-        io.github.vaquarkhan.aegis.engine.model.CallerIdentity[] principals = new io.github.vaquarkhan.aegis.engine.model.CallerIdentity[5];
+        CallerIdentity[] principals = new CallerIdentity[5];
         for (int i = 0; i < principals.length; i++) {
-            principals[i] = io.github.vaquarkhan.aegis.engine.model.CallerIdentity.of("p" + i, Set.of("analysts"), "test", "test");
+            principals[i] = CallerIdentity.of("p" + i, Set.of("analysts"), "test", "test");
         }
-        java.util.concurrent.atomic.AtomicLong now = new java.util.concurrent.atomic.AtomicLong(1_000_000L);
+        AtomicLong now = new AtomicLong(1_000_000L);
         Clock ticking = new Clock() {
             @Override
-            public java.time.ZoneId getZone() {
-                return java.time.ZoneOffset.UTC;
+            public ZoneId getZone() {
+                return ZoneOffset.UTC;
             }
 
             @Override
-            public Clock withZone(java.time.ZoneId zone) {
+            public Clock withZone(ZoneId zone) {
                 return this;
             }
 
             @Override
-            public java.time.Instant instant() {
-                return java.time.Instant.ofEpochMilli(now.getAndAdd(1_000));
+            public Instant instant() {
+                return Instant.ofEpochMilli(now.getAndAdd(1_000));
             }
         };
         SessionRegistry registry = new SessionRegistry(ticking, 3_600_000, 4);
@@ -274,7 +285,7 @@ class ThreatModelCveTransportTest {
         }
         assertEquals(4, registry.size());
         // BEFORE the fix: table full, nothing idle, fifth principal refused (503) for the whole idle TTL.
-        java.util.Optional<SessionRegistry.Session> fifth = registry.create(principals[4], "2025-06-18");
+        Optional<SessionRegistry.Session> fifth = registry.create(principals[4], "2025-06-18");
         assertTrue(fifth.isPresent(), "a new principal must be admitted when the table is full");
         assertEquals(4, registry.size());
         assertTrue(registry.find(first, principals[0]).isEmpty(), "the least recently used session was evicted");

@@ -37,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
+import java.security.cert.CertificateFactory;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
@@ -149,7 +150,7 @@ class SpiffeMutualTlsTest {
         KeyStore trust = KeyStore.getInstance("PKCS12");
         trust.load(null, null);
         try (InputStream in = Files.newInputStream(dir.resolve("ca.pem"))) {
-            trust.setCertificateEntry("ca", java.security.cert.CertificateFactory.getInstance("X.509").generateCertificate(in));
+            trust.setCertificateEntry("ca", CertificateFactory.getInstance("X.509").generateCertificate(in));
         }
         TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         tmf.init(trust);

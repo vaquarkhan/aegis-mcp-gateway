@@ -22,7 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.vaquarkhan.aegis.config.BuildContext;
 import io.github.vaquarkhan.aegis.config.ConfigNode;
+import io.github.vaquarkhan.aegis.engine.catalog.SignedSerial;
 import io.github.vaquarkhan.aegis.engine.spi.StateStore;
+
+import java.io.IOException;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -164,12 +168,12 @@ class PostgresStateStoreIT {
     @Test
     void signedSerialAdvancesAtomicallyAndRefusesRollbackAcrossConnections() throws Exception {
         try (PostgresStateStore first = open(); PostgresStateStore second = open()) {
-            assertEquals(9, io.github.vaquarkhan.aegis.engine.catalog.SignedSerial.accept(first,
+            assertEquals(9, SignedSerial.accept(first,
                     "catalog", "gw", 9, "catalog"));
-            assertEquals(10, io.github.vaquarkhan.aegis.engine.catalog.SignedSerial.accept(second,
+            assertEquals(10, SignedSerial.accept(second,
                     "catalog", "gw", 10, "catalog"));
-            java.io.IOException rollback = assertThrows(java.io.IOException.class,
-                    () -> io.github.vaquarkhan.aegis.engine.catalog.SignedSerial.accept(first,
+            IOException rollback = assertThrows(IOException.class,
+                    () -> SignedSerial.accept(first,
                             "catalog", "gw", 9, "catalog"));
             assertTrue(rollback.getMessage().contains("already accepted serial 10"), rollback.getMessage());
         }
@@ -184,7 +188,7 @@ class PostgresStateStoreIT {
                 "jdbcUrl", url, "usernameEnv", "PG_USER", "passwordEnv", "PG_PASSWORD",
                 "namespace", namespace, "connectTimeoutSeconds", 10L));
         try (PostgresStateStore store = (PostgresStateStore) factory.create(settings,
-                BuildContext.defaults(java.nio.file.Path.of(".")).withEnv(env::get))) {
+                BuildContext.defaults(Path.of(".")).withEnv(env::get))) {
             assertTrue(store.putIfAbsent("receipt", "ok", NOW.plusSeconds(60)));
         }
     }

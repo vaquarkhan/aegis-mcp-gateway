@@ -36,6 +36,7 @@ import io.github.vaquarkhan.aegis.engine.control.RateLimiter;
 import io.github.vaquarkhan.aegis.engine.control.RulePolicy;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
+import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.DenyCodes;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
@@ -140,7 +141,7 @@ class ContentGovernanceTest {
     }
 
     private static McpHttpResponse modern(McpServerHandler h, String method, Map<String, Object> params, String name,
-                                          io.github.vaquarkhan.aegis.engine.model.CallerIdentity caller) {
+                                          CallerIdentity caller) {
         Map<String, Object> p = new LinkedHashMap<>(params);
         p.put("_meta", Map.of("io.modelcontextprotocol/protocolVersion", "2026-07-28",
                 "io.modelcontextprotocol/clientCapabilities", Map.of()));

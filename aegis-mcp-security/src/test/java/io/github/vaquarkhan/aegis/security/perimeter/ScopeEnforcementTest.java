@@ -30,6 +30,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
@@ -89,10 +90,10 @@ class ScopeEnforcementTest {
         assertTrue(ok.allowed());
         assertEquals("alice", ok.caller().actor());
         // The admitted caller carries the verified grants so the engine can enforce per-tool action scopes.
-        assertEquals(java.util.Set.of("mcp.read", "mcp.write"), ok.caller().scopes());
+        assertEquals(Set.of("mcp.read", "mcp.write"), ok.caller().scopes());
         OwnServerPerimeter.Admission scp = p.admit(OwnServerPerimeter.RouteGroup.MCP, token(Map.of("scp", List.of("mcp.read"))));
         assertTrue(scp.allowed(), "the scp array form some identity providers use is read when scope is absent");
-        assertEquals(java.util.Set.of("mcp.read"), scp.caller().scopes());
+        assertEquals(Set.of("mcp.read"), scp.caller().scopes());
     }
 
     @Test

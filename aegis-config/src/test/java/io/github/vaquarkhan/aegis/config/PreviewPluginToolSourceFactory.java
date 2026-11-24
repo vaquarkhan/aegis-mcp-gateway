@@ -25,6 +25,7 @@ import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -40,7 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class PreviewPluginToolSourceFactory implements ToolSourceFactory {
 
     /** Calls per tool name, across every instance, so a test can read them after the gateway closes. */
-    public static final Map<String, AtomicInteger> CALLS = new java.util.concurrent.ConcurrentHashMap<>();
+    public static final Map<String, AtomicInteger> CALLS = new ConcurrentHashMap<>();
 
     public static int calls(String tool) {
         AtomicInteger c = CALLS.get(tool);

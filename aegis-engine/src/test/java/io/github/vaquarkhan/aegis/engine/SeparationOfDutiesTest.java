@@ -31,14 +31,18 @@ import io.github.vaquarkhan.aegis.engine.model.Action;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.ControlTokens;
 import io.github.vaquarkhan.aegis.engine.model.DenyCodes;
+import io.github.vaquarkhan.aegis.engine.model.Digests;
 import io.github.vaquarkhan.aegis.engine.model.ToolCall;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore;
+
+import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -184,7 +188,7 @@ class SeparationOfDutiesTest {
         assertEquals(new Action("t", ToolClass.READ, "s", List.of(), "a", List.of("b", "a")).binding("g", "d"),
                 new Action("t", ToolClass.READ, "s", List.of(), "a", List.of("a", "b")).binding("g", "d"));
         // Unscoped tools keep the pre-action-scope binding shape, so upgrade does not void live approvals.
-        java.util.Map<String, Object> legacy = new java.util.LinkedHashMap<>();
+        Map<String, Object> legacy = new LinkedHashMap<>();
         legacy.put("gateway", "staging");
         legacy.put("tool", "delete_topic");
         legacy.put("class", "DESTRUCTIVE");
@@ -192,7 +196,7 @@ class SeparationOfDutiesTest {
         legacy.put("resources", List.of("kafka:topic:orders"));
         legacy.put("args", "sha256:args");
         legacy.put("definition", "sha256:def");
-        assertEquals(io.github.vaquarkhan.aegis.engine.model.Digests.canonicalSha256(legacy), staging);
+        assertEquals(Digests.canonicalSha256(legacy), staging);
     }
 
     @Test
@@ -231,7 +235,7 @@ class SeparationOfDutiesTest {
         AtomicBoolean down = new AtomicBoolean(true);
         AuditSink flaky = r -> {
             if (down.get()) {
-                throw new java.io.IOException("disk full");
+                throw new IOException("disk full");
             }
         };
         InMemoryStateStore state = new InMemoryStateStore();

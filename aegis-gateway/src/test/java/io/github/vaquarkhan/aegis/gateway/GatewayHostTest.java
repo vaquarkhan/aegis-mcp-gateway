@@ -50,6 +50,7 @@ import java.security.Signature;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -60,6 +61,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -403,7 +406,7 @@ class GatewayHostTest {
         Gateway gw = GatewayFactory.build(cfg, BuildContext.defaults(dir).withEnv(ENV::get));
         OwnServerSecuritySettings st = OwnServerSecuritySettings.parse(gw.hostSection("host"), dir, ENV::get, Clock.systemUTC());
         try {
-            IllegalArgumentException e = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+            IllegalArgumentException e = Assertions.assertThrows(IllegalArgumentException.class,
                     () -> new AegisServer(gw, st));
             assertTrue(e.getMessage().contains("subset"), e.getMessage());
         } finally {
@@ -510,7 +513,7 @@ class GatewayHostTest {
 
     static byte[] unsigned(BigInteger v) {
         byte[] b = v.toByteArray();
-        return b[0] == 0 ? java.util.Arrays.copyOfRange(b, 1, b.length) : b;
+        return b[0] == 0 ? Arrays.copyOfRange(b, 1, b.length) : b;
     }
 
     static String rs256(String kid, KeyPair kp, Map<String, Object> claims) throws Exception {

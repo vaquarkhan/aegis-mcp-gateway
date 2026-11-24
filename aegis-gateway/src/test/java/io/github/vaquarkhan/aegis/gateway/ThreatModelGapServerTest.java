@@ -32,6 +32,7 @@ import io.github.vaquarkhan.aegis.config.ConfigException;
 import io.github.vaquarkhan.aegis.config.Gateway;
 import io.github.vaquarkhan.aegis.config.GatewayFactory;
 import io.github.vaquarkhan.aegis.engine.json.Json;
+import io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore;
 import io.github.vaquarkhan.aegis.security.perimeter.OwnServerSecuritySettings;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -123,7 +124,7 @@ class ThreatModelGapServerTest {
         assertTrue(volatileState.getMessage().contains("durable"), volatileState.getMessage());
         memoryOnly.close();
         BuildContext hostStore = new BuildContext(GatewayHostTest.ENV::get, dir, null, null, null, null, null,
-                new io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore());
+                new InMemoryStateStore());
         Gateway gw = GatewayFactory.build(cfg, hostStore);
         OwnServerSecuritySettings st2 = OwnServerSecuritySettings.parse(gw.hostSection("host"), dir, GatewayHostTest.ENV::get,
                 Clock.systemUTC());

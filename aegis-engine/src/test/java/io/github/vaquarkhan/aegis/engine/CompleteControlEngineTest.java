@@ -39,9 +39,13 @@ import io.github.vaquarkhan.aegis.engine.model.ToolCall;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.model.ToolDescriptor;
 import io.github.vaquarkhan.aegis.engine.model.ToolResult;
+import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
+
+import java.net.URI;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +61,7 @@ class CompleteControlEngineTest {
             """);
 
     private static final class Recorder implements ToolExecutor {
-        final List<io.github.vaquarkhan.aegis.engine.spi.ExecutionContext> calls = new java.util.ArrayList<>();
+        final List<ExecutionContext> calls = new ArrayList<>();
         final ToolResult backend;
 
         Recorder(ToolResult backend) {
@@ -65,12 +69,12 @@ class CompleteControlEngineTest {
         }
 
         @Override
-        public List<java.net.URI> egressTargets(Map<String, Object> args) {
-            return List.of(java.net.URI.create("https://engine.example.com/api"));
+        public List<URI> egressTargets(Map<String, Object> args) {
+            return List.of(URI.create("https://engine.example.com/api"));
         }
 
         @Override
-        public ToolResult execute(io.github.vaquarkhan.aegis.engine.spi.ExecutionContext ctx) {
+        public ToolResult execute(ExecutionContext ctx) {
             calls.add(ctx);
             return backend;
         }

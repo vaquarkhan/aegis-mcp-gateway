@@ -22,7 +22,16 @@ package io.github.vaquarkhan.aegis.config.hooks;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import io.github.vaquarkhan.aegis.engine.model.Action;
+import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
+import io.github.vaquarkhan.aegis.engine.model.ToolClass;
+import io.github.vaquarkhan.aegis.engine.spi.GovernanceHook;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class ThreatModelCveSqlTest {
@@ -115,12 +124,12 @@ class ThreatModelCveSqlTest {
         assertNull(problem(udf), "baseline: an unknown UDF passes the deny list");
         assertNull(problem(vendor), "baseline: an unknown vendor function passes the deny list");
 
-        java.util.Set<String> allowed = new java.util.HashSet<>(SqlReadOnlyHook.DEFAULT_ALLOWED_FUNCTIONS);
+        Set<String> allowed = new HashSet<>(SqlReadOnlyHook.DEFAULT_ALLOWED_FUNCTIONS);
         allowed.add("MY_SAFE_FN");
         assertNotNull(SqlReadOnlyHook.firstProblem(udf, 8192, allowed), "DENY_UNLISTED refuses the UDF");
         assertNotNull(SqlReadOnlyHook.firstProblem(vendor, 8192, allowed), "qualified name resolves to its last segment");
         String why = SqlReadOnlyHook.firstProblem(udf, 8192, allowed);
-        org.junit.jupiter.api.Assertions.assertTrue(why.contains("WRITE_TO_S3") && why.contains("DENY_UNLISTED"), why);
+        Assertions.assertTrue(why.contains("WRITE_TO_S3") && why.contains("DENY_UNLISTED"), why);
 
         // Ordinary analytics still pass: aggregates, casts, dates, window functions, IN (...) and WITH ... AS (...).
         List<String> benign = List.of(
@@ -133,16 +142,16 @@ class ThreatModelCveSqlTest {
             assertNull(SqlReadOnlyHook.firstProblem(sql, 8192, allowed), "should pass: " + sql);
         }
         // The allow list cannot re-admit a known side-effecting function.
-        SqlReadOnlyHook hook = new SqlReadOnlyHook("sql-readonly", java.util.Set.of("sql"), 8192, java.util.Set.of("PG_SLEEP", "COUNT"));
-        org.junit.jupiter.api.Assertions.assertTrue(hook.deniesUnlistedFunctions());
-        io.github.vaquarkhan.aegis.engine.model.Action action = new io.github.vaquarkhan.aegis.engine.model.Action(
-                "query_sql", io.github.vaquarkhan.aegis.engine.model.ToolClass.READ, "src", List.of(), "sha256:ab");
-        io.github.vaquarkhan.aegis.engine.spi.GovernanceHook.Context ctx = new io.github.vaquarkhan.aegis.engine.spi.GovernanceHook.Context(
+        SqlReadOnlyHook hook = new SqlReadOnlyHook("sql-readonly", Set.of("sql"), 8192, Set.of("PG_SLEEP", "COUNT"));
+        Assertions.assertTrue(hook.deniesUnlistedFunctions());
+        Action action = new Action(
+                "query_sql", ToolClass.READ, "src", List.of(), "sha256:ab");
+        GovernanceHook.Context ctx = new GovernanceHook.Context(
                 "req_1", "4bf92f3577b34da6a3ce929d0e0e4736",
-                io.github.vaquarkhan.aegis.engine.model.CallerIdentity.of("a", java.util.Set.of("analysts"), "idp", "jwt"),
-                io.github.vaquarkhan.aegis.engine.spi.GovernanceHook.Operation.TOOL_CALL, "query_sql", null, "src", action,
-                java.util.Map.of("sql", "SELECT pg_sleep(30)"), false);
-        org.junit.jupiter.api.Assertions.assertFalse(hook.before(ctx).allowed(), "PG_SLEEP stays denied even when listed");
+                CallerIdentity.of("a", Set.of("analysts"), "idp", "jwt"),
+                GovernanceHook.Operation.TOOL_CALL, "query_sql", null, "src", action,
+                Map.of("sql", "SELECT pg_sleep(30)"), false);
+        Assertions.assertFalse(hook.before(ctx).allowed(), "PG_SLEEP stays denied even when listed");
         verdict("CLOSE-02", "CVE-2025-66335 / CVE-2026-49257 class (side effects through a READ SQL tool); THREAT-MODEL 4.1 PARTIAL row",
                 "SELECT that calls an unknown or user-defined function", "FIXED",
                 "functions: DENY_UNLISTED refuses every call not on DEFAULT_ALLOWED_FUNCTIONS + allowFunctions; deny list still applies");

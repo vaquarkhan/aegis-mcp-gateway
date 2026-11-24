@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -133,7 +134,7 @@ class OtlpSpanExporterTest {
                         new DecisionListener.Span(SPAN, null, 1L))), "aegis"));
         for (String mustNotAppear : new String[] {"actor", "caller", "subject", "arguments", "issuer", "result",
                 "authorization", "token"}) {
-            assertFalse(json.toLowerCase(java.util.Locale.ROOT).contains(mustNotAppear), mustNotAppear + " in " + json);
+            assertFalse(json.toLowerCase(Locale.ROOT).contains(mustNotAppear), mustNotAppear + " in " + json);
         }
         // A root span (no traceparent from the caller) omits parentSpanId rather than sending an empty one.
         assertNull(firstSpan(OtlpSpanExporter.document(List.of(

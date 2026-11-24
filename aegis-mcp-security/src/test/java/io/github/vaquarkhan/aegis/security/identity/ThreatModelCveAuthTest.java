@@ -23,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.github.vaquarkhan.aegis.engine.json.Json;
+
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPublicKey;
@@ -70,7 +72,7 @@ class ThreatModelCveAuthTest {
         var kp = KeyPairGenerator.getInstance("RSA").generateKeyPair();
         byte[] pub = ((RSAPublicKey) kp.getPublic()).getEncoded();
         JwtVerifier rsOnly = new JwtVerifier(new JwtVerifier.Settings("https://idp.test", "aegis", Set.of("RS256"), null,
-                java.net.URI.create("https://idp.test/jwks"), null, null, 60, 3600, 30), clock);
+                URI.create("https://idp.test/jwks"), null, null, 60, 3600, 30), clock);
         String confused = JwtVerifierTest.sign(Map.of("alg", "HS256"), admin, pub);
         assertThrows(IllegalArgumentException.class, () -> rsOnly.verify(confused));
         // Control: a correctly signed token is accepted with its groups.
@@ -78,9 +80,9 @@ class ThreatModelCveAuthTest {
 
         // 7. Hardening added by this review: a plaintext JWKS URL (key substitution by an on-path attacker) is refused at config time.
         assertThrows(IllegalArgumentException.class, () -> new JwtVerifier.Settings("https://idp.test", "aegis", Set.of("RS256"), null,
-                java.net.URI.create("http://idp.internal/jwks"), null, null, 60, 3600, 30));
+                URI.create("http://idp.internal/jwks"), null, null, 60, 3600, 30));
         new JwtVerifier.Settings("https://idp.test", "aegis", Set.of("RS256"), null,
-                java.net.URI.create("http://127.0.0.1:8443/jwks"), null, null, 60, 3600, 30); // loopback stays allowed for tests
+                URI.create("http://127.0.0.1:8443/jwks"), null, null, 60, 3600, 30); // loopback stays allowed for tests
 
         verdict("TM-18", "OWASP MCP07 (insufficient authn); CVE-2025-6514 class (trusting attacker-controlled auth metadata); JWT alg-confusion CVE family",
                 "JWT forgery: alg=none, wrong key, alg not allowed, aud replay, expiry, RSA/HMAC confusion", "BLOCKED",

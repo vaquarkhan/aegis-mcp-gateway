@@ -27,6 +27,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -171,7 +172,7 @@ class PolicyTestCommandTest {
         Map<String, Object> source = Map.of("id", "rest", "type", "http", "baseUrl", "http://127.0.0.1:1",
                 "credentials", credentials, "tools", List.of(Map.of("name", "list", "description", "List.",
                         "class", "READ", "request", Map.of("method", "GET", "path", "/"))));
-        Map<String, Object> raw = new java.util.LinkedHashMap<>();
+        Map<String, Object> raw = new LinkedHashMap<>();
         raw.put("sources", List.of(source));
         raw.put("serverCatalog", Map.of("file", "servers.json", "publicKeyFile", "servers.pub"));
         raw.put("catalog", Map.of("pinFile", "operator-pins.json"));

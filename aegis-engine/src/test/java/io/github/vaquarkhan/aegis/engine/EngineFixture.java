@@ -25,6 +25,7 @@ import io.github.vaquarkhan.aegis.engine.catalog.ResourceRule;
 import io.github.vaquarkhan.aegis.engine.catalog.ToolCatalog;
 import io.github.vaquarkhan.aegis.engine.control.CircuitBreakers;
 import io.github.vaquarkhan.aegis.engine.control.EgressGuard;
+import io.github.vaquarkhan.aegis.engine.control.HookBinding;
 import io.github.vaquarkhan.aegis.engine.control.InjectionScreen;
 import io.github.vaquarkhan.aegis.engine.control.OutputGuard;
 import io.github.vaquarkhan.aegis.engine.control.RateLimiter;
@@ -36,17 +37,21 @@ import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.model.ToolDescriptor;
 import io.github.vaquarkhan.aegis.engine.model.ToolResult;
+import io.github.vaquarkhan.aegis.engine.observe.DecisionMetrics;
 import io.github.vaquarkhan.aegis.engine.spi.CredentialProvider;
+import io.github.vaquarkhan.aegis.engine.spi.DecisionListener;
 import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -54,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** Deterministic in-process engine for tests: fixed clock, scripted DNS answers and recording executor. */
@@ -75,7 +81,7 @@ final class EngineFixture {
         }
 
         @Override
-        public Clock withZone(java.time.ZoneId zone) {
+        public Clock withZone(ZoneId zone) {
             return this;
         }
 
@@ -137,9 +143,9 @@ final class EngineFixture {
     final InMemoryAuditSink audit = new InMemoryAuditSink();
     final RecordingExecutor executor = new RecordingExecutor();
     final AtomicInteger credentialLookups = new AtomicInteger();
-    final List<io.github.vaquarkhan.aegis.engine.spi.DecisionListener.Event> decisions =
-            new java.util.concurrent.CopyOnWriteArrayList<>();
-    final io.github.vaquarkhan.aegis.engine.observe.DecisionMetrics metrics = new io.github.vaquarkhan.aegis.engine.observe.DecisionMetrics();
+    final List<DecisionListener.Event> decisions =
+            new CopyOnWriteArrayList<>();
+    final DecisionMetrics metrics = new DecisionMetrics();
     final MutableSource source;
     final ToolCatalog catalog;
     final GovernanceEngine engine;
@@ -149,7 +155,7 @@ final class EngineFixture {
         this(List.of(), RateLimiter.DISABLED, 3);
     }
 
-    EngineFixture(List<io.github.vaquarkhan.aegis.engine.control.HookBinding> hooks, RateLimiter rate,
+    EngineFixture(List<HookBinding> hooks, RateLimiter rate,
                   int breakerThreshold) throws Exception {
         source = new MutableSource("engine", defaultTools());
         CatalogIntegrity integrity = new CatalogIntegrity(CatalogIntegrity.Mode.TOFU, Map.of(), null);
@@ -163,7 +169,7 @@ final class EngineFixture {
                 host -> switch (host) {
                     case "engine.example.com" -> new InetAddress[] {InetAddress.getByAddress(host, new byte[] {93, (byte) 184, (byte) 216, 34})};
                     case "internal.corp.example.com" -> new InetAddress[] {InetAddress.getByAddress(host, new byte[] {10, 0, 0, 5})};
-                    default -> throw new java.net.UnknownHostException(host);
+                    default -> throw new UnknownHostException(host);
                 });
         RulePolicy policy = new RulePolicy(List.of(
                 new RulePolicy.Rule("analysts-read", RulePolicy.Effect.ALLOW, Set.of("analysts"), Set.of(), List.of(),

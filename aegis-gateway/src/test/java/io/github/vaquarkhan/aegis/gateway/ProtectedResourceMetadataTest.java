@@ -31,13 +31,21 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * OAuth 2.0 Protected Resource Metadata (RFC 9728) as the MCP authorization specification requires:
@@ -152,13 +160,13 @@ class ProtectedResourceMetadataTest {
     }
 
     private static String hs256(Map<String, Object> claims) throws Exception {
-        java.util.Base64.Encoder b64 = java.util.Base64.getUrlEncoder().withoutPadding();
+        Base64.Encoder b64 = Base64.getUrlEncoder().withoutPadding();
         String input = b64.encodeToString(Json.writeBytes(Map.of("alg", "HS256", "typ", "JWT"))) + "."
                 + b64.encodeToString(Json.writeBytes(claims));
-        javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
-        mac.init(new javax.crypto.spec.SecretKeySpec(ENV.get("JWT_SECRET").getBytes(java.nio.charset.StandardCharsets.UTF_8),
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(ENV.get("JWT_SECRET").getBytes(StandardCharsets.UTF_8),
                 "HmacSHA256"));
-        return input + "." + b64.encodeToString(mac.doFinal(input.getBytes(java.nio.charset.StandardCharsets.US_ASCII)));
+        return input + "." + b64.encodeToString(mac.doFinal(input.getBytes(StandardCharsets.US_ASCII)));
     }
 
     @Test
@@ -172,7 +180,7 @@ class ProtectedResourceMetadataTest {
             server.start();
             HttpClient http = HttpClient.newHttpClient();
             long now = Clock.systemUTC().instant().getEpochSecond();
-            Map<String, Object> claims = new java.util.LinkedHashMap<>(Map.of("iss", "https://idp.test",
+            Map<String, Object> claims = new LinkedHashMap<>(Map.of("iss", "https://idp.test",
                     "aud", "http://127.0.0.1:8080/mcp", "sub", "alice", "groups", List.of("analysts"), "exp", now + 300));
             HttpResponse<String> noScope = http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.port() + "/mcp"))
                     .header("Authorization", "Bearer " + hs256(claims))
@@ -204,13 +212,13 @@ class ProtectedResourceMetadataTest {
             server.start();
             HttpClient http = HttpClient.newHttpClient();
             long now = Clock.systemUTC().instant().getEpochSecond();
-            Map<String, Object> claims = new java.util.LinkedHashMap<>(Map.of("iss", "https://idp.test",
+            Map<String, Object> claims = new LinkedHashMap<>(Map.of("iss", "https://idp.test",
                     "aud", "http://127.0.0.1:8080/mcp", "sub", "alice", "groups", List.of("analysts"), "exp", now + 300,
                     "scope", "mcp.read"));
             String call = Json.write(Map.of("jsonrpc", "2.0", "id", 1L, "method", "tools/call", "params", Map.of("name", "ping",
                     "arguments", Map.of(), "_meta", Map.of("io.modelcontextprotocol/protocolVersion", "2026-07-28",
                             "io.modelcontextprotocol/clientCapabilities", Map.of()))));
-            java.util.function.Function<String, HttpRequest> request = token -> HttpRequest.newBuilder(
+            Function<String, HttpRequest> request = token -> HttpRequest.newBuilder(
                             URI.create("http://127.0.0.1:" + server.port() + "/mcp"))
                     .header("Authorization", "Bearer " + token).header("Content-Type", "application/json")
                     .header("MCP-Protocol-Version", "2026-07-28").header("Mcp-Method", "tools/call").header("Mcp-Name", "ping")

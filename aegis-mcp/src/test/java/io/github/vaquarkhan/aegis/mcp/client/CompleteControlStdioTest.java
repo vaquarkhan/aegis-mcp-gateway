@@ -25,6 +25,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.Test;
 
 class CompleteControlStdioTest {
@@ -86,7 +88,7 @@ class CompleteControlStdioTest {
             McpClient.McpCallException timeout = assertThrows(McpClient.McpCallException.class,
                     () -> client.callTool("hang", Map.of(), Map.of(), 100));
             assertTrue(timeout.timeout(), timeout.getMessage());
-            first.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+            first.waitFor(5, TimeUnit.SECONDS);
             assertFalse(first.isAlive(), "timed-out child must be gone before another call");
 
             Map<String, Object> echo = client.callTool("echo", Map.of("text", "after"), Map.of(), 5_000);

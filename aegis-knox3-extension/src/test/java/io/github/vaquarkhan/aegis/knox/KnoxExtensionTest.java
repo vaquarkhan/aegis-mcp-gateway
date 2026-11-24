@@ -34,9 +34,11 @@ import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Vector;
 import javax.security.auth.Subject;
 import javax.servlet.ServletContext;
+import javax.servlet.ServletContextEvent;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Response;
 import org.apache.knox.gateway.security.ActorChainPrincipal;
@@ -97,7 +99,7 @@ class KnoxExtensionTest {
                 subject("guest", "alice", List.of("analysts", "operators"), List.of("agent-7")), "sandbox");
         assertEquals("guest", id.actor());
         assertEquals("alice", id.effectiveSubject());
-        assertEquals(java.util.Set.of("analysts", "operators"), id.groups());
+        assertEquals(Set.of("analysts", "operators"), id.groups());
         assertEquals("knox:sandbox", id.issuer());
         assertEquals(List.of("agent-7"), id.actorChain());
         assertNull(KnoxIdentityBridge.fromSubject(new Subject(), "sandbox"), "no principal: not authenticated");
@@ -186,7 +188,7 @@ class KnoxExtensionTest {
                 assertTrue(post.getStatus() >= 400, "unknown approval");
                 assertEquals(200, resource(sc, Map.of()).health().getStatus());
             } finally {
-                new AegisKnoxLifecycle().contextDestroyed(new javax.servlet.ServletContextEvent(sc));
+                new AegisKnoxLifecycle().contextDestroyed(new ServletContextEvent(sc));
             }
         }
     }

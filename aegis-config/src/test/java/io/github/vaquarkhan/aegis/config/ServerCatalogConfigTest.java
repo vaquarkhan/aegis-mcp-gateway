@@ -26,14 +26,22 @@ import io.github.vaquarkhan.aegis.engine.catalog.SignedServerCatalog;
 import io.github.vaquarkhan.aegis.engine.catalog.SignedServerCatalog.Server;
 import io.github.vaquarkhan.aegis.engine.catalog.SignedServerCatalog.State;
 import io.github.vaquarkhan.aegis.engine.catalog.ToolCatalog;
+
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Function;
+
+import io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -66,7 +74,7 @@ class ServerCatalogConfigTest {
     }
 
     static Map<String, Object> source(String id, String url, String... tools) {
-        List<Object> t = new java.util.ArrayList<>();
+        List<Object> t = new ArrayList<>();
         for (String name : tools) {
             t.add(Map.of("name", name, "description", name + ".", "class", "READ"));
         }
@@ -185,8 +193,8 @@ class ServerCatalogConfigTest {
 
         // Key order inside the block does not matter; the digest is canonical.
         Map<String, Object> reordered = new LinkedHashMap<>();
-        List<String> keys = new java.util.ArrayList<>(sourceS().keySet());
-        java.util.Collections.reverse(keys);
+        List<String> keys = new ArrayList<>(sourceS().keySet());
+        Collections.reverse(keys);
         for (String k : keys) {
             reordered.put(k, sourceS().get(k));
         }
@@ -371,12 +379,12 @@ class ServerCatalogConfigTest {
     @Test
     void anOlderSignedCatalogOrOrderIsRefusedOnceANewerOneWasAccepted() throws Exception {
         // One store shared by successive builds stands for durable state across restarts.
-        io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore store =
-                new io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore(java.time.Clock.systemUTC(), 1000);
+        InMemoryStateStore store =
+                new InMemoryStateStore(Clock.systemUTC(), 1000);
         BuildContext durable = new BuildContext(ENV::get, dir, null, null, null, null, null, store);
         Map<String, Server> servers = new TreeMap<>(Map.of("s", active("s", sourceS(), "ping"), "t", active("t", sourceT(), "zap")));
         List<Map<String, Object>> both = List.of(sourceS(), sourceT());
-        java.util.function.Function<Long, byte[]> version = n -> SignedServerCatalog.create(servers, "gw-sc", n);
+        Function<Long, byte[]> version = n -> SignedServerCatalog.create(servers, "gw-sc", n);
 
         // An unnumbered catalog starts as before and records nothing.
         sign("servers.json", version.apply(0L), "review");
@@ -401,7 +409,7 @@ class ServerCatalogConfigTest {
 
         // Break-glass orders keep their own record, separate from the catalog's.
         Instant now = Instant.now();
-        java.util.function.Function<Long, byte[]> order = n -> BreakGlassContainment.create("INC-9",
+        Function<Long, byte[]> order = n -> BreakGlassContainment.create("INC-9",
                 now.minus(Duration.ofMinutes(5)), now.plus(Duration.ofHours(1)), Map.of("t", State.QUARANTINED), "gw-sc", n);
         sign("order.json", order.apply(5L), "incident");
         GatewayFactory.build(config(both, null, withBreakGlass("incident")), durable).close();
@@ -412,7 +420,7 @@ class ServerCatalogConfigTest {
                 && olderOrder.getMessage().contains("already accepted serial 5"), olderOrder.getMessage());
 
         // A signed serial must be a positive whole number.
-        Files.writeString(dir.resolve("servers.json"), new String(version.apply(3L), java.nio.charset.StandardCharsets.UTF_8)
+        Files.writeString(dir.resolve("servers.json"), new String(version.apply(3L), StandardCharsets.UTF_8)
                 .replaceFirst("\"serial\"\\s*:\\s*3", "\"serial\":0"));
         sign("servers.json", Files.readAllBytes(dir.resolve("servers.json")), "review");
         ConfigException zero = assertThrows(ConfigException.class, () -> GatewayFactory.build(

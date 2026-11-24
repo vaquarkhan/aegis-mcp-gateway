@@ -32,6 +32,7 @@ import io.github.vaquarkhan.aegis.engine.control.RateLimiter;
 import io.github.vaquarkhan.aegis.engine.control.RulePolicy;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
+import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore;
 import java.nio.charset.StandardCharsets;
@@ -70,11 +71,11 @@ public final class TestEngines {
 
     /** @param journal audit sink the engine writes to; null uses a fresh in-memory journal */
     public static Built build(List<ToolSource> sources, Map<String, ToolClass> classes,
-                              io.github.vaquarkhan.aegis.engine.spi.AuditSink journal) throws Exception {
+                              AuditSink journal) throws Exception {
         Clock clock = Clock.systemUTC();
         InMemoryStateStore state = new InMemoryStateStore();
         InMemoryAuditSink audit = new InMemoryAuditSink();
-        io.github.vaquarkhan.aegis.engine.spi.AuditSink sink = journal == null ? audit : journal;
+        AuditSink sink = journal == null ? audit : journal;
         byte[] key = ("test-signing-key-" + "0123456789abcdef-xyz").getBytes(StandardCharsets.UTF_8);
         ToolCatalog catalog = new ToolCatalog(sources, (sourceId, st) -> Optional.of(new GovernedTool(
                 st.descriptor().name(), sourceId, st.descriptor(),

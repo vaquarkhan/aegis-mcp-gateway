@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.PublicKey;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -109,7 +110,7 @@ class SignedServerCatalogTest {
     @Test
     void anAlreadyLoadedReviewKeyCannotBeSwappedBeforeVerification() throws Exception {
         signed(SignedServerCatalog.create(two(), "gw"));
-        java.security.PublicKey anchored = SignedCatalogManifest.readPublicKey(pub);
+        PublicKey anchored = SignedCatalogManifest.readPublicKey(pub);
         // Simulate a configuration-directory attacker replacing the configured PEM after the host
         // anchored it. Verification with immutable key material remains bound to the host's key.
         Files.writeString(pub, SignedCatalogManifest.generateKeyPair()[1]);

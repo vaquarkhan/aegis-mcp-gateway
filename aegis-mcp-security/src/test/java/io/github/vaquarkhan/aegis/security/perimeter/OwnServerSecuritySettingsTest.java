@@ -29,6 +29,8 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -91,7 +93,7 @@ class OwnServerSecuritySettingsTest {
         String inert = host.replace("\"resource\":\"https://aegis.example/mcp\",", "");
         ConfigException e = assertThrows(ConfigException.class,
                 () -> OwnServerSecuritySettings.parse(Json.parseObject(inert), dir, ENV::get, Clock.systemUTC()));
-        org.junit.jupiter.api.Assertions.assertTrue(
+        Assertions.assertTrue(
                 e.getMessage().contains("config.host.oauth.authorizationServers has no effect without config.host.oauth.resource"),
                 e.getMessage());
     }

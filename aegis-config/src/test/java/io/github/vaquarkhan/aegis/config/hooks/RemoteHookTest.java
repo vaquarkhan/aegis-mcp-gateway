@@ -38,6 +38,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,7 @@ import org.junit.jupiter.api.io.TempDir;
 class RemoteHookTest {
 
     @TempDir
-    java.nio.file.Path dir;
+    Path dir;
 
     static final CallerIdentity ANA = CallerIdentity.of("ana", Set.of("users"), "idp", "jwt");
     static final Map<String, String> ENV = Map.of("HOOK_TOKEN", "hook-token-abc", "AEGIS_SIGNING_KEY", "k".repeat(40));

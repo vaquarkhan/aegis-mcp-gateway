@@ -23,14 +23,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.vaquarkhan.aegis.config.BuildContext;
 import io.github.vaquarkhan.aegis.config.ConfigException;
 import io.github.vaquarkhan.aegis.config.ConfigNode;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import io.github.vaquarkhan.aegis.engine.catalog.SignedSerial;
+import io.github.vaquarkhan.aegis.engine.catalog.SignedServerCatalog;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -48,15 +56,15 @@ class DerbyStateStoreTest {
 
     @Test
     void theAcceptedSignedSerialSurvivesARestartSoAnOlderFileIsRefused() throws Exception {
-        String kind = io.github.vaquarkhan.aegis.engine.catalog.SignedServerCatalog.KIND;
+        String kind = SignedServerCatalog.KIND;
         try (DerbyStateStore store = open()) {
-            io.github.vaquarkhan.aegis.engine.catalog.SignedSerial.accept(store, kind, "gw", 4, "catalog");
+            SignedSerial.accept(store, kind, "gw", 4, "catalog");
         }
         try (DerbyStateStore reopened = open()) {
-            java.io.IOException older = assertThrows(java.io.IOException.class,
-                    () -> io.github.vaquarkhan.aegis.engine.catalog.SignedSerial.accept(reopened, kind, "gw", 3, "catalog"));
+            IOException older = assertThrows(IOException.class,
+                    () -> SignedSerial.accept(reopened, kind, "gw", 3, "catalog"));
             assertTrue(older.getMessage().contains("already accepted serial 4"), older.getMessage());
-            assertEquals(4, io.github.vaquarkhan.aegis.engine.catalog.SignedSerial.accept(reopened, kind, "gw", 4, "catalog"));
+            assertEquals(4, SignedSerial.accept(reopened, kind, "gw", 4, "catalog"));
         }
     }
 
@@ -136,12 +144,12 @@ class DerbyStateStoreTest {
     /** Runs {@link DerbyLockProbe} in a separate JVM against {@code path}; returns exit code and output. */
     private static String[] secondProcess(Path path) throws Exception {
         Path javaBin = Path.of(System.getProperty("java.home"), "bin", "java");
-        java.util.List<String> cmd = java.util.List.of(javaBin.toString(), "-cp", System.getProperty("java.class.path"),
+        List<String> cmd = List.of(javaBin.toString(), "-cp", System.getProperty("java.class.path"),
                 "-Dderby.stream.error.file=" + path.resolveSibling("probe-derby.log"),
                 DerbyLockProbe.class.getName(), path.toString());
         Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
-        String out = new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();
-        assertTrue(p.waitFor(120, java.util.concurrent.TimeUnit.SECONDS), "probe JVM did not finish");
+        String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+        assertTrue(p.waitFor(120, TimeUnit.SECONDS), "probe JVM did not finish");
         return new String[] {Integer.toString(p.exitValue()), out};
     }
 

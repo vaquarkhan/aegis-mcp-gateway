@@ -24,8 +24,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.ToolResult;
 import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
+import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
+
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +40,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -130,7 +135,7 @@ class ZooKeeperToolSourceTest {
     @Test
     void anEnsembleThatCannotBeReachedIsABackendAvailabilityFailure() throws Exception {
         int closedPort;
-        try (java.net.ServerSocket probe = new java.net.ServerSocket(0)) {
+        try (ServerSocket probe = new ServerSocket(0)) {
             closedPort = probe.getLocalPort();
         }
         String unreachable = "127.0.0.1:" + closedPort;
@@ -139,8 +144,8 @@ class ZooKeeperToolSourceTest {
         try {
             ToolSource.SourcedTool list = down.discover().stream()
                     .filter(t -> t.descriptor().name().equals("zookeeper_list_children")).findFirst().orElseThrow();
-            io.github.vaquarkhan.aegis.engine.spi.ToolExecutor.ExecutionException e = org.junit.jupiter.api.Assertions.assertThrows(
-                    io.github.vaquarkhan.aegis.engine.spi.ToolExecutor.ExecutionException.class,
+            ToolExecutor.ExecutionException e = Assertions.assertThrows(
+                    ToolExecutor.ExecutionException.class,
                     () -> list.executor().execute(new ExecutionContext("req-2", "zookeeper_list_children",
                             Map.of("path", "/aegis"), CallerIdentity.of("ana", Set.of("analysts"), "idp", "jwt"),
                             Map.of(), 30_000, false)));
@@ -204,7 +209,7 @@ class ZooKeeperToolSourceTest {
         Map<String, Object> b = body(r);
         assertEquals("base64", b.get("encoding"),
                 "invalid UTF-8 must not be handed to a model as text");
-        assertEquals(java.util.Base64.getEncoder().encodeToString(notUtf8), b.get("data"));
+        assertEquals(Base64.getEncoder().encodeToString(notUtf8), b.get("data"));
     }
 
     @Test

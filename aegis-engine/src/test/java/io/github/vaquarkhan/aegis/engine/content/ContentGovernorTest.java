@@ -26,6 +26,7 @@ import io.github.vaquarkhan.aegis.engine.catalog.CatalogIntegrity;
 import io.github.vaquarkhan.aegis.engine.control.CircuitBreakers;
 import io.github.vaquarkhan.aegis.engine.control.ControlMode;
 import io.github.vaquarkhan.aegis.engine.control.EgressGuard;
+import io.github.vaquarkhan.aegis.engine.control.HookBinding;
 import io.github.vaquarkhan.aegis.engine.control.InjectionScreen;
 import io.github.vaquarkhan.aegis.engine.control.OutputGuard;
 import io.github.vaquarkhan.aegis.engine.control.RateLimiter;
@@ -43,6 +44,7 @@ import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor.ExecutionException;
 import io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -161,7 +163,7 @@ class ContentGovernorTest {
         ControlMode contentMode = ControlMode.ENFORCE;
         boolean failOnSourceError = true;
         boolean acceptNew = false;
-        List<io.github.vaquarkhan.aegis.engine.control.HookBinding> hooks = List.of();
+        List<HookBinding> hooks = List.of();
         CatalogIntegrity integrity;
         CircuitBreakers breakers = new CircuitBreakers(2, 60_000, Clock.systemUTC());
 
@@ -181,7 +183,7 @@ class ContentGovernorTest {
                         if (host.equals("docs.example.com")) {
                             return new InetAddress[] {InetAddress.getByAddress(host, new byte[] {93, (byte) 184, (byte) 216, 34})};
                         }
-                        throw new java.net.UnknownHostException(host);
+                        throw new UnknownHostException(host);
                     });
             GovernanceSettings gs = new GovernanceSettings("t", Set.of(), Set.of(), null, true, scopes, rate,
                     InjectionScreen.defaults(), new OutputGuard(maxBytes, OutputGuard.DEFAULT_REDACTIONS), egress, hooks, true, false);

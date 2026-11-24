@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.vaquarkhan.aegis.engine.CallOutcome;
 import io.github.vaquarkhan.aegis.engine.GovernanceSettings;
+import io.github.vaquarkhan.aegis.engine.audit.AuditChainVerifier;
 import io.github.vaquarkhan.aegis.engine.audit.InMemoryAuditSink;
 import io.github.vaquarkhan.aegis.engine.audit.HashChainFileAuditSink;
 import io.github.vaquarkhan.aegis.engine.catalog.CatalogIntegrity;
@@ -37,11 +38,13 @@ import io.github.vaquarkhan.aegis.engine.control.RateLimiter;
 import io.github.vaquarkhan.aegis.engine.control.RulePolicy;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
+import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.DenyCodes;
 import io.github.vaquarkhan.aegis.engine.model.ToolCall;
 import io.github.vaquarkhan.aegis.engine.model.ToolClass;
 import io.github.vaquarkhan.aegis.engine.model.ToolDescriptor;
 import io.github.vaquarkhan.aegis.engine.model.ToolResult;
+import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
 import io.github.vaquarkhan.aegis.engine.spi.ExecutionContext;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
@@ -52,6 +55,8 @@ import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
 import io.github.vaquarkhan.aegis.mcp.http.McpHttpResponse;
 import io.github.vaquarkhan.aegis.mcp.testing.TestMcpServer;
 import io.github.vaquarkhan.aegis.mcp.testing.TestEngines;
+
+import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -61,6 +66,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -160,8 +167,8 @@ class AdminApiTest {
             sink.append(Map.of("event", "ALLOW_INTENT", "tool", "list_things"));
             AdminApi api = new AdminApi(b.engine, null, Set.of("approvers"), Set.of("audit-verifiers"),
                     () -> sink.verify().ok(), Set.of("https://console.example"));
-            io.github.vaquarkhan.aegis.engine.model.CallerIdentity verifier =
-                    io.github.vaquarkhan.aegis.engine.model.CallerIdentity.of("vera", Set.of("audit-verifiers"), "idp", "jwt");
+            CallerIdentity verifier =
+                    CallerIdentity.of("vera", Set.of("audit-verifiers"), "idp", "jwt");
 
             assertEquals(401, api.handle(req("GET", "/audit/verify", null), null).status());
             assertEquals(403, api.handle(req("GET", "/audit/verify", "https://evil.example"), verifier).status());
@@ -176,9 +183,9 @@ class AdminApiTest {
         String text = Files.readString(journal, StandardCharsets.UTF_8);
         Files.writeString(journal, text.replace("ALLOW_INTENT", "ALLOW_DENIED"), StandardCharsets.UTF_8);
         AdminApi broken = new AdminApi(b.engine, null, Set.of("approvers"), Set.of("audit-verifiers"),
-                () -> io.github.vaquarkhan.aegis.engine.audit.AuditChainVerifier.verify(journal).ok(), Set.of());
-        io.github.vaquarkhan.aegis.engine.model.CallerIdentity verifier =
-                io.github.vaquarkhan.aegis.engine.model.CallerIdentity.of("vera", Set.of("audit-verifiers"), "idp", "jwt");
+                () -> AuditChainVerifier.verify(journal).ok(), Set.of());
+        CallerIdentity verifier =
+                CallerIdentity.of("vera", Set.of("audit-verifiers"), "idp", "jwt");
         McpHttpResponse conflict = broken.handle(req("GET", "/audit/verify", null), verifier);
         assertEquals(409, conflict.status(), conflict.bodyText());
         assertEquals(Map.of("verified", false), body(conflict));
@@ -224,7 +231,7 @@ class AdminApiTest {
         assertEquals(428, api.handle(req("POST", "/catalog/list_things/accept", null), BOB).status(), "acceptance needs the reviewed digest");
         assertEquals(403, api.handle(acceptReq("/catalog/list_things/accept", reviewedDigest), ALICE).status());
         // An agent acting for an approver cannot re-trust a changed definition: that is a human decision.
-        io.github.vaquarkhan.aegis.engine.model.CallerIdentity agentForBob = new io.github.vaquarkhan.aegis.engine.model.CallerIdentity(
+        CallerIdentity agentForBob = new CallerIdentity(
                 "agent-9", "bob", Set.of("approvers"), BOB.issuer(), "jwt", List.of("agent-9"));
         assertEquals(403, api.handle(acceptReq("/catalog/list_things/accept", reviewedDigest), agentForBob).status());
         assertEquals(DenyCodes.CATALOG_INTEGRITY, b.engine.call(ALICE, new ToolCall("1", "list_things", Map.of(), Map.of(), "")).decision().code(),
@@ -253,11 +260,11 @@ class AdminApiTest {
     @Test
     void aDefinitionChangeTheJournalCannotRecordIsNotAccepted() throws Exception {
         Source src = new Source();
-        java.util.concurrent.atomic.AtomicBoolean down = new java.util.concurrent.atomic.AtomicBoolean();
+        AtomicBoolean down = new AtomicBoolean();
         InMemoryAuditSink inner = new InMemoryAuditSink();
-        io.github.vaquarkhan.aegis.engine.spi.AuditSink flaky = r -> {
+        AuditSink flaky = r -> {
             if (down.get() && String.valueOf(r.get("event")).startsWith("CATALOG_ACCEPT")) {
-                throw new java.io.IOException("disk full");
+                throw new IOException("disk full");
             }
             inner.append(r);
         };

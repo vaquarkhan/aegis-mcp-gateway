@@ -29,6 +29,7 @@ import io.github.vaquarkhan.aegis.config.Gateway;
 import io.github.vaquarkhan.aegis.config.GatewayFactory;
 import io.github.vaquarkhan.aegis.engine.CallOutcome;
 import io.github.vaquarkhan.aegis.engine.json.Json;
+import io.github.vaquarkhan.aegis.engine.json.JsonLimits;
 import io.github.vaquarkhan.aegis.engine.json.JsonValues;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.DenyCodes;
@@ -40,6 +41,7 @@ import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
 import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
@@ -80,7 +82,7 @@ class A2aToolSourceTest {
             ex.close();
         });
         server.createContext("/rpc", ex -> {
-            requests.add(Json.parseObject(ex.getRequestBody().readAllBytes(), io.github.vaquarkhan.aegis.engine.json.JsonLimits.DEFAULT));
+            requests.add(Json.parseObject(ex.getRequestBody().readAllBytes(), JsonLimits.DEFAULT));
             headers.add(Map.copyOf(ex.getRequestHeaders()));
             byte[] b = reply.getBytes(StandardCharsets.UTF_8);
             ex.getResponseHeaders().add("Content-Type", "application/json");
@@ -129,7 +131,7 @@ class A2aToolSourceTest {
                 && d.contains("[Reserve stock]") && d.contains("Calls go to " + base + "/rpc."), d);
         assertEquals(List.of("text"), t.descriptor().inputSchema().get("required"));
         assertEquals(Boolean.FALSE, t.descriptor().inputSchema().get("additionalProperties"));
-        assertEquals(List.of(java.net.URI.create(base + "/rpc")), t.executor().egressTargets(Map.of()));
+        assertEquals(List.of(URI.create(base + "/rpc")), t.executor().egressTargets(Map.of()));
     }
 
     @Test

@@ -27,13 +27,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.vaquarkhan.aegis.config.spi.AuditSinkFactory;
 import io.github.vaquarkhan.aegis.engine.CallOutcome;
+import io.github.vaquarkhan.aegis.engine.audit.AuditCheckpointVerifier;
+import io.github.vaquarkhan.aegis.engine.catalog.SignedCatalogManifest;
 import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.DenyCodes;
 import io.github.vaquarkhan.aegis.engine.model.ToolCall;
 import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
 import io.github.vaquarkhan.aegis.mcp.testing.TestMcpServer;
+
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.PublicKey;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,7 +66,7 @@ public class ThreatModelGapConfigTest {
             String index = settings.string("index", "aegis");
             return record -> {
                 if (FAILING.get()) {
-                    throw new java.io.IOException("SIEM unreachable");
+                    throw new IOException("SIEM unreachable");
                 }
                 RECEIVED.add(Map.of("index", index, "record", record));
             };
@@ -144,9 +150,9 @@ public class ThreatModelGapConfigTest {
 
     @Test
     void signedCheckpointsDetectARegeneratedCheckpointFile() throws Exception {
-        String[] keys = io.github.vaquarkhan.aegis.engine.catalog.SignedCatalogManifest.generateKeyPair();
-        java.nio.file.Files.writeString(dir.resolve("cp.key"), keys[0]);
-        java.nio.file.Files.writeString(dir.resolve("cp.pub"), keys[1]);
+        String[] keys = SignedCatalogManifest.generateKeyPair();
+        Files.writeString(dir.resolve("cp.key"), keys[0]);
+        Files.writeString(dir.resolve("cp.pub"), keys[1]);
         try (TestMcpServer mcp = new TestMcpServer(TestMcpServer.Mode.MODERN)) {
             mcp.tool("ping", "Ping.", Map.of("type", "object"), a -> TestMcpServer.textResult("pong"));
             Map<String, Object> cfg = Json.parseObject("""
@@ -158,16 +164,16 @@ public class ThreatModelGapConfigTest {
             try (Gateway g = GatewayFactory.build(cfg, ctx())) {
                 assertTrue(g.engine().call(alice, call("ping")).allowed());
             }
-            java.security.PublicKey pub = io.github.vaquarkhan.aegis.engine.catalog.SignedCatalogManifest.readPublicKey(dir.resolve("cp.pub"));
-            var ok = io.github.vaquarkhan.aegis.engine.audit.AuditCheckpointVerifier.verify(dir.resolve("c.jsonl"), dir.resolve("c.ckpt"), pub);
+            PublicKey pub = SignedCatalogManifest.readPublicKey(dir.resolve("cp.pub"));
+            var ok = AuditCheckpointVerifier.verify(dir.resolve("c.jsonl"), dir.resolve("c.ckpt"), pub);
             assertTrue(ok.ok(), String.valueOf(ok.error()));
-            assertTrue(java.nio.file.Files.readString(dir.resolve("c.ckpt")).contains("\"signature\""));
+            assertTrue(Files.readString(dir.resolve("c.ckpt")).contains("\"signature\""));
             // An attacker who rewrites the journal must also regenerate the checkpoint file; without the
             // signing key the regenerated lines carry no valid signature.
-            java.util.List<String> lines = java.nio.file.Files.readAllLines(dir.resolve("c.ckpt"));
+            List<String> lines = Files.readAllLines(dir.resolve("c.ckpt"));
             String forged = lines.get(lines.size() - 1).replaceAll("\"signature\":\"[^\"]*\"", "\"signature\":\"AAAA\"");
-            java.nio.file.Files.writeString(dir.resolve("c.ckpt"), String.join("\n", lines.subList(0, lines.size() - 1)) + "\n" + forged + "\n");
-            var broken = io.github.vaquarkhan.aegis.engine.audit.AuditCheckpointVerifier.verify(dir.resolve("c.jsonl"), dir.resolve("c.ckpt"), pub);
+            Files.writeString(dir.resolve("c.ckpt"), String.join("\n", lines.subList(0, lines.size() - 1)) + "\n" + forged + "\n");
+            var broken = AuditCheckpointVerifier.verify(dir.resolve("c.jsonl"), dir.resolve("c.ckpt"), pub);
             assertFalse(broken.ok());
             assertTrue(broken.error().contains("signature"), broken.error());
             assertThrows(ConfigException.class, () -> GatewayFactory.build(Json.parseObject("""

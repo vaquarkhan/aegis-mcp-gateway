@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +39,7 @@ import javax.security.auth.Subject;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
 import javax.servlet.ServletContext;
+import javax.servlet.ServletContextEvent;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Response;
@@ -125,7 +127,7 @@ class KnoxAclRouteScopeTest {
                 }
                 assertEquals(List.of("list_jobs"), executed,
                         "the destructive call Knox admitted never reached the backend");
-                Set<String> credentials = new java.util.HashSet<>();
+                Set<String> credentials = new HashSet<>();
                 synchronized (backend.receivedHeaders) {
                     for (Map<String, String> h : backend.receivedHeaders) {
                         credentials.add(String.valueOf(h.get("authorization")));
@@ -135,7 +137,7 @@ class KnoxAclRouteScopeTest {
                         "every backend request carried the gateway's service credential and never the Knox user's Basic credential");
             } finally {
                 acl.destroy();
-                new AegisKnoxLifecycle().contextDestroyed(new javax.servlet.ServletContextEvent(sc));
+                new AegisKnoxLifecycle().contextDestroyed(new ServletContextEvent(sc));
             }
         }
     }

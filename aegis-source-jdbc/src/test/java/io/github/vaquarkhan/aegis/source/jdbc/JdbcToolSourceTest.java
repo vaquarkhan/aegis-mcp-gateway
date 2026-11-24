@@ -37,9 +37,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -74,7 +76,7 @@ class JdbcToolSourceTest {
      * it is loaded explicitly. This is the same thing an operator does with {@code driverClass} in the
      * configuration, and it is why that setting exists.
      */
-    @org.junit.jupiter.api.BeforeAll
+    @BeforeAll
     static void loadRealDriver() throws Exception {
         // Read out of derby-10.17.1.0.jar's own META-INF/services/java.sql.Driver, not guessed: the old
         // org.apache.derby.jdbc.EmbeddedDriver no longer exists in this line. Finding that out is the
@@ -322,7 +324,7 @@ class JdbcToolSourceTest {
                 "jdbc:sqlserver://h:1433;databaseName=sales;user=svc;password=S3cret!",
                 null, null, null, 10, 100, 5, false);
         assertFalse(sqlServer.safeUrl().contains("S3cret"), sqlServer.safeUrl());
-        assertFalse(sqlServer.safeUrl().toLowerCase(java.util.Locale.ROOT).contains("svc"), sqlServer.safeUrl());
+        assertFalse(sqlServer.safeUrl().toLowerCase(Locale.ROOT).contains("svc"), sqlServer.safeUrl());
         assertTrue(sqlServer.safeUrl().contains("databaseName=sales"), sqlServer.safeUrl());
 
         JdbcSettings hive = new JdbcSettings(

@@ -53,6 +53,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -262,7 +263,7 @@ class PinnedHttpTest {
                     }
                 }
                 for (String line : head.toString().split("\r\n")) {
-                    if (line.toLowerCase(java.util.Locale.ROOT).startsWith("proxy-authorization:")) {
+                    if (line.toLowerCase(Locale.ROOT).startsWith("proxy-authorization:")) {
                         proxyAuth.add(line.substring(line.indexOf(':') + 1).trim());
                     }
                 }

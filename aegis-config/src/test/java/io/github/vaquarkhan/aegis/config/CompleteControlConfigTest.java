@@ -30,12 +30,20 @@ import io.github.vaquarkhan.aegis.engine.json.Json;
 import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.ToolCall;
 import io.github.vaquarkhan.aegis.engine.model.ToolDescriptor;
+import io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore;
+import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
+import io.github.vaquarkhan.aegis.mcp.http.McpHttpResponse;
 import io.github.vaquarkhan.aegis.mcp.testing.TestMcpServer;
+
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,8 +80,8 @@ class CompleteControlConfigTest {
     }
 
     /** One shared, host-provided store per test class: complete control refuses the built-in memory store (O-3 A). */
-    private final io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore hostStore =
-            new io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore(Clock.fixed(NOW, ZoneOffset.UTC), 10_000);
+    private final InMemoryStateStore hostStore =
+            new InMemoryStateStore(Clock.fixed(NOW, ZoneOffset.UTC), 10_000);
 
     private BuildContext context(Map<String, String> env) {
         return new BuildContext(env::get, dir, Clock.fixed(NOW, ZoneOffset.UTC), null, null, null, null, hostStore);
@@ -103,7 +111,7 @@ class CompleteControlConfigTest {
 
             // O-4 B: a plugin list needs the host-anchored digest.
             Path jar = Files.writeString(dir.resolve("plugin.jar"), "not really a jar");
-            String sha = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+            String sha = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(Files.readAllBytes(jar)));
             List<Object> artifacts = List.of(Map.of("path", "plugin.jar", "sha256", sha, "role", "plugin"));
             Map<String, Object> withPlugins = config(source, true, true);
@@ -250,8 +258,8 @@ class CompleteControlConfigTest {
         }
     }
 
-    private static io.github.vaquarkhan.aegis.mcp.http.McpHttpResponse release(Gateway g, String handle, CallerIdentity who) {
-        return g.admin().handle(new io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest("POST", "/results/" + handle + "/release",
+    private static McpHttpResponse release(Gateway g, String handle, CallerIdentity who) {
+        return g.admin().handle(new McpHttpRequest("POST", "/results/" + handle + "/release",
                 Map.of(), new byte[0], List.of()), who);
     }
 
@@ -279,7 +287,7 @@ class CompleteControlConfigTest {
                 assertEquals(403, release(gateway, handle, producerInGroup).status(), "the producer cannot release its own handle");
                 var released = release(gateway, handle, reviewer);
                 assertEquals(200, released.status());
-                String body = new String(released.body(), java.nio.charset.StandardCharsets.UTF_8);
+                String body = new String(released.body(), StandardCharsets.UTF_8);
                 assertTrue(body.contains("quarterly total 42"), body);
                 assertFalse(body.contains("jane.doe@example.com"), "stored redacted (redactPii defaults on): " + body);
                 assertEquals(404, release(gateway, handle, reviewer).status(), "take-once: no second release");
@@ -293,13 +301,13 @@ class CompleteControlConfigTest {
                     "handleEncryptionKeyEnv", "AEGIS_HANDLE_KEY"));
             encCfg.put("access", Map.of("resultReleaseGroups", List.of("reviewers")));
             byte[] rawKey = new byte[32];
-            new java.security.SecureRandom().nextBytes(rawKey);
+            new SecureRandom().nextBytes(rawKey);
             Map<String, String> encEnv = new LinkedHashMap<>(Map.of("AEGIS_SIGNING_KEY", "k".repeat(48),
                     GatewayFactory.REQUIRED_CATALOG_KEY, key.toString(),
                     GatewayFactory.REQUIRED_ATTESTATION_KEY, dir.resolve("admission.pub").toAbsolutePath().toString(),
-                    "AEGIS_HANDLE_KEY", java.util.HexFormat.of().formatHex(rawKey)));
-            io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore encState =
-                    new io.github.vaquarkhan.aegis.engine.state.InMemoryStateStore(Clock.fixed(NOW, ZoneOffset.UTC), 10_000);
+                    "AEGIS_HANDLE_KEY", HexFormat.of().formatHex(rawKey)));
+            InMemoryStateStore encState =
+                    new InMemoryStateStore(Clock.fixed(NOW, ZoneOffset.UTC), 10_000);
             try (Gateway g = GatewayFactory.build(encCfg, new BuildContext(encEnv::get, dir, Clock.fixed(NOW, ZoneOffset.UTC),
                     null, null, null, null, encState))) {
                 assertTrue(g.engine().resultHandles().encrypted());
@@ -310,7 +318,7 @@ class CompleteControlConfigTest {
                 assertFalse(anyClear, "retained body is encrypted at rest");
                 var released = release(g, handle, reviewer);
                 assertEquals(200, released.status());
-                assertTrue(new String(released.body(), java.nio.charset.StandardCharsets.UTF_8).contains("quarterly total 42"));
+                assertTrue(new String(released.body(), StandardCharsets.UTF_8).contains("quarterly total 42"));
             }
             System.out.println("THREATMODEL|SCAN-P8e|AI scanner readiness P-8 end to end|completeControl.handleEncryptionKeyEnv|FIXED|"
                     + "retained HANDLE_ONLY body is enc: at rest in the state store; release decrypts for the reviewer");
