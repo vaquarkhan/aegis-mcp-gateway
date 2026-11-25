@@ -18,18 +18,22 @@ package io.github.vaquarkhan.aegis.validation.frontdoor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Reads the relative {@code audit.file} out of an adopter YAML, so the journal can be kept with the transcript. */
+/**
+ * Reads the relative {@code audit.file} out of an adopter YAML, so the journal can be kept with the
+ * transcript.
+ */
 final class AuditPath {
 
-    private static final Pattern FILE = Pattern.compile("(?m)^audit:\\s*\\R(?:[ \\t]+.*\\R)*?[ \\t]+file:\\s*([^\\s#]+)");
+  private static final Pattern FILE =
+      Pattern.compile("(?m)^audit:\\s*\\R(?:[ \\t]+.*\\R)*?[ \\t]+file:\\s*([^\\s#]+)");
 
-    private AuditPath() {}
+  private AuditPath() {}
 
-    static String of(String yaml) {
-        Matcher m = FILE.matcher(yaml);
-        if (!m.find()) {
-            throw new IllegalArgumentException("adopter YAML has no audit.file");
-        }
-        return m.group(1);
+  static String of(String yaml) {
+    Matcher m = FILE.matcher(yaml);
+    if (!m.find()) {
+      throw new IllegalArgumentException("adopter YAML has no audit.file");
     }
+    return m.group(1);
+  }
 }

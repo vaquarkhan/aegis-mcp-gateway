@@ -46,90 +46,113 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class CouchdbFrontDoorsTest {
 
-    private static final String USER = "aegis";
-    private static final String PASS = "aegis-validation-couchdb";
-    private static final HttpClient HTTP = HttpClient.newHttpClient();
+  private static final String USER = "aegis";
+  private static final String PASS = "aegis-validation-couchdb";
+  private static final HttpClient HTTP = HttpClient.newHttpClient();
 
-    private static DockerContainer couch;
-    private static int port;
+  private static DockerContainer couch;
+  private static int port;
 
-    @TempDir
-    Path dir;
+  @TempDir Path dir;
 
-    @BeforeAll
-    static void startCouch() throws Exception {
-        DockerContainer.requireDocker();
-        port = JavaServer.freePort();
-        Path log = Path.of("target", "couchdb-server", "docker.log").toAbsolutePath();
-        couch = DockerContainer.start("aegis-val-couchdb", "couchdb:3.4.2",
-                List.of("-p", "127.0.0.1:" + port + ":5984",
-                        "-e", "COUCHDB_USER=" + USER,
-                        "-e", "COUCHDB_PASSWORD=" + PASS),
-                log);
-        couch.awaitReady(() -> {
-            HttpResponse<String> r = HTTP.send(request("GET", "/_up", null), HttpResponse.BodyHandlers.ofString());
-            return r.statusCode() == 200;
-        }, Duration.ofMinutes(2), "CouchDB 3.4.2");
-        // Seed: a stable database the READ tools can see, outside Aegis.
-        HttpResponse<String> orders = putDb("orders");
-        assertTrue(orders.statusCode() == 201 || orders.statusCode() == 412, orders.body());
+  @BeforeAll
+  static void startCouch() throws Exception {
+    DockerContainer.requireDocker();
+    port = JavaServer.freePort();
+    Path log = Path.of("target", "couchdb-server", "docker.log").toAbsolutePath();
+    couch =
+        DockerContainer.start(
+            "aegis-val-couchdb",
+            "couchdb:3.4.2",
+            List.of(
+                "-p", "127.0.0.1:" + port + ":5984",
+                "-e", "COUCHDB_USER=" + USER,
+                "-e", "COUCHDB_PASSWORD=" + PASS),
+            log);
+    couch.awaitReady(
+        () -> {
+          HttpResponse<String> r =
+              HTTP.send(request("GET", "/_up", null), HttpResponse.BodyHandlers.ofString());
+          return r.statusCode() == 200;
+        },
+        Duration.ofMinutes(2),
+        "CouchDB 3.4.2");
+    // Seed: a stable database the READ tools can see, outside Aegis.
+    HttpResponse<String> orders = putDb("orders");
+    assertTrue(orders.statusCode() == 201 || orders.statusCode() == 412, orders.body());
+  }
+
+  @AfterAll
+  static void stopCouch() throws Exception {
+    if (couch != null) {
+      couch.close();
     }
+  }
 
-    @AfterAll
-    static void stopCouch() throws Exception {
-        if (couch != null) {
-            couch.close();
-        }
+  @ParameterizedTest(name = "couchdb through {0}")
+  @ValueSource(strings = {FrontDoor.OWN_HOST, FrontDoor.KNOX})
+  void governsARealCouchDb(String door) throws Exception {
+    String scratch = "scratch_" + door.replace("-", "");
+    HttpResponse<String> created = putDb(scratch);
+    assertTrue(created.statusCode() == 201 || created.statusCode() == 412, created.body());
+
+    String url = "http://127.0.0.1:" + port;
+    AdopterScenario scenario =
+        AdopterScenario.of(
+            "couchdb",
+            AdopterScenario.canonical("adapters", "couchdb", "couchdb.yaml"),
+            yaml ->
+                yaml.replace("http://couchdb:5984", url)
+                    .replace("allowCidrs: [10.0.0.0/8]", "allowCidrs: [127.0.0.0/8]"),
+            Map.of(
+                Persona.READER,
+                List.of("couchdb-users"),
+                Persona.OPERATOR,
+                List.of("couchdb-operators"),
+                Persona.APPROVER,
+                List.of("couchdb-approvers")),
+            Map.of("COUCHDB_USER", USER, "COUCHDB_PASSWORD", PASS));
+
+    try (FrontDoor d = FrontDoor.open(door, scenario, dir)) {
+      d.note("official couchdb:3.4.2 on " + url + "; seeded databases orders and " + scratch);
+      GovernedFlow.read(d, "couchdb_list_dbs", Map.of(), "orders");
+      GovernedFlow.read(d, "couchdb_get_db", Map.of("db", "orders"), "\"db_name\":\"orders\"");
+      GovernedFlow.destructive(
+          d,
+          "couchdb_delete_db",
+          Map.of("db", scratch),
+          () -> assertTrue(listDbs().contains("\"" + scratch + "\""), scratch + " still listed"),
+          () -> {
+            assertFalse(listDbs().contains("\"" + scratch + "\""), scratch + " deleted");
+            assertTrue(listDbs().contains("\"orders\""), "orders untouched");
+            d.note("CouchDB no longer has " + scratch + " and still has orders");
+          });
     }
+  }
 
-    @ParameterizedTest(name = "couchdb through {0}")
-    @ValueSource(strings = {FrontDoor.OWN_HOST, FrontDoor.KNOX})
-    void governsARealCouchDb(String door) throws Exception {
-        String scratch = "scratch_" + door.replace("-", "");
-        HttpResponse<String> created = putDb(scratch);
-        assertTrue(created.statusCode() == 201 || created.statusCode() == 412, created.body());
+  private static HttpResponse<String> putDb(String db) throws Exception {
+    return HTTP.send(request("PUT", "/" + db, ""), HttpResponse.BodyHandlers.ofString());
+  }
 
-        String url = "http://127.0.0.1:" + port;
-        AdopterScenario scenario = AdopterScenario.of("couchdb",
-                AdopterScenario.canonical("adapters", "couchdb", "couchdb.yaml"),
-                yaml -> yaml.replace("http://couchdb:5984", url)
-                        .replace("allowCidrs: [10.0.0.0/8]", "allowCidrs: [127.0.0.0/8]"),
-                Map.of(Persona.READER, List.of("couchdb-users"),
-                        Persona.OPERATOR, List.of("couchdb-operators"),
-                        Persona.APPROVER, List.of("couchdb-approvers")),
-                Map.of("COUCHDB_USER", USER, "COUCHDB_PASSWORD", PASS));
+  private static String listDbs() throws Exception {
+    return HTTP.send(request("GET", "/_all_dbs", null), HttpResponse.BodyHandlers.ofString())
+        .body();
+  }
 
-        try (FrontDoor d = FrontDoor.open(door, scenario, dir)) {
-            d.note("official couchdb:3.4.2 on " + url + "; seeded databases orders and " + scratch);
-            GovernedFlow.read(d, "couchdb_list_dbs", Map.of(), "orders");
-            GovernedFlow.read(d, "couchdb_get_db", Map.of("db", "orders"), "\"db_name\":\"orders\"");
-            GovernedFlow.destructive(d, "couchdb_delete_db", Map.of("db", scratch),
-                    () -> assertTrue(listDbs().contains("\"" + scratch + "\""), scratch + " still listed"),
-                    () -> {
-                        assertFalse(listDbs().contains("\"" + scratch + "\""), scratch + " deleted");
-                        assertTrue(listDbs().contains("\"orders\""), "orders untouched");
-                        d.note("CouchDB no longer has " + scratch + " and still has orders");
-                    });
-        }
-    }
-
-    private static HttpResponse<String> putDb(String db) throws Exception {
-        return HTTP.send(request("PUT", "/" + db, ""), HttpResponse.BodyHandlers.ofString());
-    }
-
-    private static String listDbs() throws Exception {
-        return HTTP.send(request("GET", "/_all_dbs", null), HttpResponse.BodyHandlers.ofString()).body();
-    }
-
-    private static HttpRequest request(String method, String path, String body) {
-        HttpRequest.Builder b = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
-                .header("Authorization", "Basic " + Base64.getEncoder()
+  private static HttpRequest request(String method, String path, String body) {
+    HttpRequest.Builder b =
+        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+            .header(
+                "Authorization",
+                "Basic "
+                    + Base64.getEncoder()
                         .encodeToString((USER + ":" + PASS).getBytes(StandardCharsets.UTF_8)))
-                .timeout(Duration.ofSeconds(10));
-        if (body == null) {
-            return b.method(method, HttpRequest.BodyPublishers.noBody()).build();
-        }
-        return b.header("Content-Type", "application/json")
-                .method(method, HttpRequest.BodyPublishers.ofString(body)).build();
+            .timeout(Duration.ofSeconds(10));
+    if (body == null) {
+      return b.method(method, HttpRequest.BodyPublishers.noBody()).build();
     }
+    return b.header("Content-Type", "application/json")
+        .method(method, HttpRequest.BodyPublishers.ofString(body))
+        .build();
+  }
 }
