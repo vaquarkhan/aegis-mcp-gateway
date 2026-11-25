@@ -32,54 +32,62 @@ import java.nio.file.StandardOpenOption;
  */
 final class OpenApiDraftCommand {
 
-    private static final String USAGE =
-            "--openapi-draft <openapi.yaml|openapi.json> <draft.yaml> [--source-id <id>] [--base-url <url>]";
+  private static final String USAGE =
+      "--openapi-draft <openapi.yaml|openapi.json> <draft.yaml> [--source-id <id>] [--base-url <url>]";
 
-    private OpenApiDraftCommand() {}
+  private OpenApiDraftCommand() {}
 
-    static int run(String[] a, PrintStream out, PrintStream err) {
-        if (a.length < 2) {
-            return usage(err);
-        }
-        String sourceId = null;
-        String baseUrl = null;
-        for (int i = 2; i < a.length; i++) {
-            if (i + 1 >= a.length) {
-                return usage(err);
-            }
-            switch (a[i]) {
-                case "--source-id" -> sourceId = a[++i];
-                case "--base-url" -> baseUrl = a[++i];
-                default -> {
-                    return usage(err);
-                }
-            }
-        }
-        Path spec = Path.of(a[0]);
-        Path target = Path.of(a[1]);
-        if (Files.exists(target)) {
-            err.println("refusing to overwrite " + target);
-            return Main.USAGE;
-        }
-        try {
-            OpenApiDraft.Draft d = OpenApiDraft.generate(OpenApiDraft.read(spec), new OpenApiDraft.Options(sourceId, baseUrl));
-            // The draft must load as Aegis YAML before it is written.
-            ConfigLoader.parseYaml(d.yaml(), target.toString());
-            Files.writeString(target, d.yaml(), StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
-            out.println("wrote " + target + " with " + d.tools() + " tools, all DESTRUCTIVE and denied by policy until reviewed; "
-                    + d.warnings().size() + " warnings (listed at the top of the file)");
-            return Main.OK;
-        } catch (FileAlreadyExistsException e) {
-            err.println("refusing to overwrite " + e.getFile());
-            return Main.USAGE;
-        } catch (IOException | RuntimeException e) {
-            err.println("BROKEN " + e.getMessage());
-            return Main.BROKEN;
-        }
+  static int run(String[] a, PrintStream out, PrintStream err) {
+    if (a.length < 2) {
+      return usage(err);
     }
-
-    private static int usage(PrintStream err) {
-        err.println("usage: " + USAGE);
-        return Main.USAGE;
+    String sourceId = null;
+    String baseUrl = null;
+    for (int i = 2; i < a.length; i++) {
+      if (i + 1 >= a.length) {
+        return usage(err);
+      }
+      switch (a[i]) {
+        case "--source-id" -> sourceId = a[++i];
+        case "--base-url" -> baseUrl = a[++i];
+        default -> {
+          return usage(err);
+        }
+      }
     }
+    Path spec = Path.of(a[0]);
+    Path target = Path.of(a[1]);
+    if (Files.exists(target)) {
+      err.println("refusing to overwrite " + target);
+      return Main.USAGE;
+    }
+    try {
+      OpenApiDraft.Draft d =
+          OpenApiDraft.generate(
+              OpenApiDraft.read(spec), new OpenApiDraft.Options(sourceId, baseUrl));
+      // The draft must load as Aegis YAML before it is written.
+      ConfigLoader.parseYaml(d.yaml(), target.toString());
+      Files.writeString(target, d.yaml(), StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
+      out.println(
+          "wrote "
+              + target
+              + " with "
+              + d.tools()
+              + " tools, all DESTRUCTIVE and denied by policy until reviewed; "
+              + d.warnings().size()
+              + " warnings (listed at the top of the file)");
+      return Main.OK;
+    } catch (FileAlreadyExistsException e) {
+      err.println("refusing to overwrite " + e.getFile());
+      return Main.USAGE;
+    } catch (IOException | RuntimeException e) {
+      err.println("BROKEN " + e.getMessage());
+      return Main.BROKEN;
+    }
+  }
+
+  private static int usage(PrintStream err) {
+    err.println("usage: " + USAGE);
+    return Main.USAGE;
+  }
 }

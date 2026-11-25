@@ -23,36 +23,41 @@ import org.apache.hadoop.fs.permission.FsPermission;
 
 /**
  * Hadoop's local file system, unchanged except that on Windows it does not try to apply POSIX
- * permissions or ownership. Hadoop does that through a native {@code winutils.exe} that Apache Hadoop
- * releases do not include, so without it every directory or file Iceberg creates fails with
- * "HADOOP_HOME and hadoop.home.dir are unset". Reads, writes, renames and deletes are Hadoop's own code,
- * on the real local disk.
+ * permissions or ownership. Hadoop does that through a native {@code winutils.exe} that Apache
+ * Hadoop releases do not include, so without it every directory or file Iceberg creates fails with
+ * "HADOOP_HOME and hadoop.home.dir are unset". Reads, writes, renames and deletes are Hadoop's own
+ * code, on the real local disk.
  *
- * <p>Enable with {@code fs.file.impl=io.github.vaquarkhan.aegis.examples.localfs.WindowsLocalFileSystem}
- * (Spark: {@code spark.hadoop.fs.file.impl}; other Hadoop clients: {@code core-site.xml}). On Linux and
- * macOS it behaves exactly like {@link RawLocalFileSystem}. Tutorials only; not for production.
+ * <p>Enable with {@code
+ * fs.file.impl=io.github.vaquarkhan.aegis.examples.localfs.WindowsLocalFileSystem} (Spark: {@code
+ * spark.hadoop.fs.file.impl}; other Hadoop clients: {@code core-site.xml}). On Linux and macOS it
+ * behaves exactly like {@link RawLocalFileSystem}. Tutorials only; not for production.
  */
 public class WindowsLocalFileSystem extends RawLocalFileSystem {
 
-    static final boolean WINDOWS = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
+  static final boolean WINDOWS =
+      System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
 
-    /** {@link RawLocalFileSystem} leaves this to its {@code LocalFileSystem} wrapper; readers ask for it. */
-    @Override
-    public String getScheme() {
-        return "file";
-    }
+  /**
+   * {@link RawLocalFileSystem} leaves this to its {@code LocalFileSystem} wrapper; readers ask for
+   * it.
+   */
+  @Override
+  public String getScheme() {
+    return "file";
+  }
 
-    @Override
-    public void setPermission(Path p, FsPermission permission) throws IOException {
-        if (!WINDOWS) {
-            super.setPermission(p, permission);
-        }
+  @Override
+  public void setPermission(Path p, FsPermission permission) throws IOException {
+    if (!WINDOWS) {
+      super.setPermission(p, permission);
     }
+  }
 
-    @Override
-    public void setOwner(Path p, String username, String groupname) throws IOException {
-        if (!WINDOWS) {
-            super.setOwner(p, username, groupname);
-        }
+  @Override
+  public void setOwner(Path p, String username, String groupname) throws IOException {
+    if (!WINDOWS) {
+      super.setOwner(p, username, groupname);
     }
+  }
 }

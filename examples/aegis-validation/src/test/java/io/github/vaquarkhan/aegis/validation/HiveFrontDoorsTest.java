@@ -42,95 +42,127 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * examples/adopters/hive: the canonical {@code adopters/configurations/adapters/hive/hive.yaml}
  * against a real Apache Hive 4.0.1 HiveServer2 (official {@code apache/hive} image) through both
- * front doors. The profile is JDBC and read-only. The governed story is a metadata read and a
- * SHOW that HiveServer2 answers, plus a write smuggled into the read tool that Aegis refuses.
+ * front doors. The profile is JDBC and read-only. The governed story is a metadata read and a SHOW
+ * that HiveServer2 answers, plus a write smuggled into the read tool that Aegis refuses.
  */
 class HiveFrontDoorsTest {
 
-    private static final String USER = "hive";
-    private static final String PASSWORD = "hive";
+  private static final String USER = "hive";
+  private static final String PASSWORD = "hive";
 
-    private static DockerContainer hive;
-    private static int port;
+  private static DockerContainer hive;
+  private static int port;
 
-    @TempDir
-    Path dir;
+  @TempDir Path dir;
 
-    @BeforeAll
-    static void startHive() throws Exception {
-        DockerContainer.requireDocker();
-        port = JavaServer.freePort();
-        Path log = Path.of("target", "hive-server", "docker.log").toAbsolutePath();
-        hive = DockerContainer.start("aegis-val-hive", "apache/hive:4.0.1",
-                List.of("-p", "127.0.0.1:" + port + ":10000",
-                        "-e", "SERVICE_NAME=hiveserver2"),
-                log);
-        Class.forName("org.apache.hive.jdbc.HiveDriver");
-        hive.awaitReady(() -> "default".equals(currentDatabase()), Duration.ofMinutes(4), "HiveServer2 4.0.1");
-        try (Connection c = open(); Statement s = c.createStatement()) {
-            s.execute("CREATE TABLE IF NOT EXISTS aegis_orders (id int, item string) STORED AS TEXTFILE");
+  @BeforeAll
+  static void startHive() throws Exception {
+    DockerContainer.requireDocker();
+    port = JavaServer.freePort();
+    Path log = Path.of("target", "hive-server", "docker.log").toAbsolutePath();
+    hive =
+        DockerContainer.start(
+            "aegis-val-hive",
+            "apache/hive:4.0.1",
+            List.of("-p", "127.0.0.1:" + port + ":10000", "-e", "SERVICE_NAME=hiveserver2"),
+            log);
+    Class.forName("org.apache.hive.jdbc.HiveDriver");
+    hive.awaitReady(
+        () -> "default".equals(currentDatabase()), Duration.ofMinutes(4), "HiveServer2 4.0.1");
+    try (Connection c = open();
+        Statement s = c.createStatement()) {
+      s.execute("CREATE TABLE IF NOT EXISTS aegis_orders (id int, item string) STORED AS TEXTFILE");
+    }
+  }
+
+  @AfterAll
+  static void stopHive() throws Exception {
+    if (hive != null) {
+      hive.close();
+    }
+  }
+
+  /** Asks HiveServer2 directly, outside Aegis. */
+  static String currentDatabase() throws Exception {
+    try (Connection c = open();
+        Statement s = c.createStatement();
+        ResultSet rs = s.executeQuery("SELECT current_database()")) {
+      assertTrue(rs.next());
+      return rs.getString(1);
+    }
+  }
+
+  static boolean tableExists() throws Exception {
+    try (Connection c = open();
+        Statement s = c.createStatement();
+        ResultSet rs = s.executeQuery("SHOW TABLES")) {
+      while (rs.next()) {
+        if ("aegis_orders".equalsIgnoreCase(rs.getString(1))) {
+          return true;
         }
+      }
+      return false;
     }
+  }
 
-    @AfterAll
-    static void stopHive() throws Exception {
-        if (hive != null) {
-            hive.close();
-        }
-    }
+  private static Connection open() throws Exception {
+    Properties p = new Properties();
+    p.setProperty("user", USER);
+    p.setProperty("password", PASSWORD);
+    return DriverManager.getConnection("jdbc:hive2://127.0.0.1:" + port + "/default", p);
+  }
 
-    /** Asks HiveServer2 directly, outside Aegis. */
-    static String currentDatabase() throws Exception {
-        try (Connection c = open(); Statement s = c.createStatement(); ResultSet rs = s.executeQuery("SELECT current_database()")) {
-            assertTrue(rs.next());
-            return rs.getString(1);
-        }
-    }
-
-    static boolean tableExists() throws Exception {
-        try (Connection c = open(); Statement s = c.createStatement();
-             ResultSet rs = s.executeQuery("SHOW TABLES")) {
-            while (rs.next()) {
-                if ("aegis_orders".equalsIgnoreCase(rs.getString(1))) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
-    private static Connection open() throws Exception {
-        Properties p = new Properties();
-        p.setProperty("user", USER);
-        p.setProperty("password", PASSWORD);
-        return DriverManager.getConnection("jdbc:hive2://127.0.0.1:" + port + "/default", p);
-    }
-
-    @ParameterizedTest(name = "hive through {0}")
-    @ValueSource(strings = {FrontDoor.OWN_HOST, FrontDoor.KNOX})
-    void governsRealHiveServer(String door) throws Exception {
-        AdopterScenario scenario = AdopterScenario.of("hive",
+  @ParameterizedTest(name = "hive through {0}")
+  @ValueSource(strings = {FrontDoor.OWN_HOST, FrontDoor.KNOX})
+  void governsRealHiveServer(String door) throws Exception {
+    AdopterScenario scenario =
+        AdopterScenario.of(
+                "hive",
                 AdopterScenario.canonical("adapters", "hive", "hive.yaml"),
-                yaml -> yaml.replace("jdbc:hive2://hiveserver2:10000/default", "jdbc:hive2://127.0.0.1:" + port + "/default")
+                yaml ->
+                    yaml.replace(
+                            "jdbc:hive2://hiveserver2:10000/default",
+                            "jdbc:hive2://127.0.0.1:" + port + "/default")
                         .replace("allowCidrs: [10.0.0.0/8]", "allowCidrs: [127.0.0.0/8]"),
-                Map.of(Persona.READER, List.of("hive-users"),
-                        Persona.OPERATOR, List.of("hive-operators"),
-                        Persona.APPROVER, List.of("hive-approvers")),
+                Map.of(
+                    Persona.READER,
+                    List.of("hive-users"),
+                    Persona.OPERATOR,
+                    List.of("hive-operators"),
+                    Persona.APPROVER,
+                    List.of("hive-approvers")),
                 Map.of("HIVE_USER", USER, "HIVE_PASSWORD", PASSWORD))
-                .withKnoxPlugin(List.of(Path.of(System.getProperty("aegis.jdbc.pluginJar")),
-                        Path.of(System.getProperty("aegis.hive.driverJar"))), List.of());
+            .withKnoxPlugin(
+                List.of(
+                    Path.of(System.getProperty("aegis.jdbc.pluginJar")),
+                    Path.of(System.getProperty("aegis.hive.driverJar"))),
+                List.of());
 
-        try (FrontDoor d = FrontDoor.open(door, scenario, dir)) {
-            d.note("real HiveServer2 4.0.1 on 127.0.0.1:" + port + "; current database " + currentDatabase());
-            GovernedFlow.read(d, "jdbc_list_schemas", Map.of(), "default");
-            GovernedFlow.read(d, "jdbc_list_tables", Map.of("schema", "default"), "aegis_orders");
-            GovernedFlow.read(d, "jdbc_run_query", Map.of("sql", "SHOW TABLES"), "aegis_orders");
-            GovernedFlow.refused(d, "write smuggled into the read-only SQL tool", Persona.OPERATOR, "jdbc_run_query",
-                    Map.of("sql", "DROP TABLE aegis_orders"), "INVALID_INPUT",
-                    () -> assertTrue(tableExists(), "Hive still has aegis_orders"));
-            GovernedFlow.refused(d, "write hidden after a comment", Persona.OPERATOR, "jdbc_run_query",
-                    Map.of("sql", "/* report */ DROP TABLE aegis_orders"), "INVALID_INPUT",
-                    () -> assertEquals("default", currentDatabase()));
-        }
+    try (FrontDoor d = FrontDoor.open(door, scenario, dir)) {
+      d.note(
+          "real HiveServer2 4.0.1 on 127.0.0.1:"
+              + port
+              + "; current database "
+              + currentDatabase());
+      GovernedFlow.read(d, "jdbc_list_schemas", Map.of(), "default");
+      GovernedFlow.read(d, "jdbc_list_tables", Map.of("schema", "default"), "aegis_orders");
+      GovernedFlow.read(d, "jdbc_run_query", Map.of("sql", "SHOW TABLES"), "aegis_orders");
+      GovernedFlow.refused(
+          d,
+          "write smuggled into the read-only SQL tool",
+          Persona.OPERATOR,
+          "jdbc_run_query",
+          Map.of("sql", "DROP TABLE aegis_orders"),
+          "INVALID_INPUT",
+          () -> assertTrue(tableExists(), "Hive still has aegis_orders"));
+      GovernedFlow.refused(
+          d,
+          "write hidden after a comment",
+          Persona.OPERATOR,
+          "jdbc_run_query",
+          Map.of("sql", "/* report */ DROP TABLE aegis_orders"),
+          "INVALID_INPUT",
+          () -> assertEquals("default", currentDatabase()));
     }
+  }
 }

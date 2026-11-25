@@ -16,41 +16,42 @@
 package io.github.vaquarkhan.aegis.validation.frontdoor;
 
 /**
- * The four callers every adopter scenario uses. The user names and passwords are the stock Apache Knox
- * demo LDAP accounts ({@code conf/users.ldif}), so the same people exist behind both front doors.
- * Groups are not fixed here: each scenario maps a persona to the groups its adopter configuration uses.
+ * The four callers every adopter scenario uses. The user names and passwords are the stock Apache
+ * Knox demo LDAP accounts ({@code conf/users.ldif}), so the same people exist behind both front
+ * doors. Groups are not fixed here: each scenario maps a persona to the groups its adopter
+ * configuration uses.
  */
 public enum Persona {
-    /** May read; must be refused any write. */
-    READER("guest"),
-    /** May request writes; needs an independent approval for each one. */
-    OPERATOR("sam"),
-    /** Approves other people's requests; never executes tools in the scenario. */
-    APPROVER("tom"),
-    /** Authenticated, but in no adopter group, and outside the Knox route ACL. */
-    OUTSIDER("admin");
+  /** May read; must be refused any write. */
+  READER("guest"),
+  /** May request writes; needs an independent approval for each one. */
+  OPERATOR("sam"),
+  /** Approves other people's requests; never executes tools in the scenario. */
+  APPROVER("tom"),
+  /** Authenticated, but in no adopter group, and outside the Knox route ACL. */
+  OUTSIDER("admin");
 
-    private final String user;
+  private final String user;
 
-    Persona(String user) {
-        this.user = user;
-    }
+  Persona(String user) {
+    this.user = user;
+  }
 
-    public String user() {
-        return user;
-    }
+  public String user() {
+    return user;
+  }
 
-    /** Stock Knox demo LDAP derives its local test password from the persona name. */
-    String password() {
-        return user + "-" + "password";
-    }
+  /** Stock Knox demo LDAP derives its local test password from the persona name. */
+  String password() {
+    return user + "-" + "password";
+  }
 
-    /** Own-host static bearer token (at least 16 characters, as the static identity requires). */
-    String ownHostToken() {
-        return "aegis-validation-token-" + user;
-    }
+  /** Own-host static bearer token (at least 16 characters, as the static identity requires). */
+  String ownHostToken() {
+    return "aegis-validation-token-" + user;
+  }
 
-    String tokenEnv() {
-        return "AEGIS_VALIDATION_TOKEN_" + name();
-    }
+  String tokenEnv() {
+    return "AEGIS_VALIDATION_TOKEN_" + name();
+  }
 }

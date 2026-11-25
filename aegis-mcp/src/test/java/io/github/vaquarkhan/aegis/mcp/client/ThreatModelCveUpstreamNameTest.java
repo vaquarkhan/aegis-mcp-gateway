@@ -27,24 +27,38 @@ import org.junit.jupiter.api.Test;
 
 class ThreatModelCveUpstreamNameTest {
 
-    static void verdict(String id, String refs, String cls, String verdict, String detail) {
-        System.out.println("THREATMODEL|" + id + "|" + refs + "|" + cls + "|" + verdict + "|" + detail);
-    }
+  static void verdict(String id, String refs, String cls, String verdict, String detail) {
+    System.out.println("THREATMODEL|" + id + "|" + refs + "|" + cls + "|" + verdict + "|" + detail);
+  }
 
-    private static Map<String, Object> tool(String name) {
-        return Map.of("name", name, "description", "x", "inputSchema", Map.of("type", "object"));
-    }
+  private static Map<String, Object> tool(String name) {
+    return Map.of("name", name, "description", "x", "inputSchema", Map.of("type", "object"));
+  }
 
-    @Test
-    void tm20_hostileUpstreamToolNames_areDropped() {
-        for (String bad : List.of("../admin", "list/accept", "wipe\u0000", "a\tb", "list\u200bTopics", " list_topics", "x".repeat(129), "back\\slash")) {
-            assertFalse(ClientSupport.validTool(tool(bad)), "should be dropped: " + bad.replace("\u0000", "<NUL>"));
-        }
-        for (String ok : List.of("list_topics", "kafka.describe-topic", "résumé", "ListTopics_v2")) {
-            assertTrue(ClientSupport.validTool(tool(ok)), ok);
-        }
-        verdict("TM-20", "MCP03 tool poisoning (metadata); CSA hidden-Unicode instruction injection 2026-03; admin-path confusion",
-                "downstream server chooses hostile tool names (path separators, control/format chars, oversized)", "FIXED",
-                "ClientSupport.validTool now rejects '/', '\\\\', control and format characters, surrounding whitespace, >128 chars");
+  @Test
+  void tm20_hostileUpstreamToolNames_areDropped() {
+    for (String bad :
+        List.of(
+            "../admin",
+            "list/accept",
+            "wipe\u0000",
+            "a\tb",
+            "list\u200bTopics",
+            " list_topics",
+            "x".repeat(129),
+            "back\\slash")) {
+      assertFalse(
+          ClientSupport.validTool(tool(bad)),
+          "should be dropped: " + bad.replace("\u0000", "<NUL>"));
     }
+    for (String ok : List.of("list_topics", "kafka.describe-topic", "résumé", "ListTopics_v2")) {
+      assertTrue(ClientSupport.validTool(tool(ok)), ok);
+    }
+    verdict(
+        "TM-20",
+        "MCP03 tool poisoning (metadata); CSA hidden-Unicode instruction injection 2026-03; admin-path confusion",
+        "downstream server chooses hostile tool names (path separators, control/format chars, oversized)",
+        "FIXED",
+        "ClientSupport.validTool now rejects '/', '\\\\', control and format characters, surrounding whitespace, >128 chars");
+  }
 }

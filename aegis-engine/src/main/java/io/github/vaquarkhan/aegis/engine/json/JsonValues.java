@@ -22,50 +22,50 @@ import java.util.Map;
 /** Typed accessors over the {@link Json} value model. Nothing here coerces types silently. */
 public final class JsonValues {
 
-    private JsonValues() {}
+  private JsonValues() {}
 
-    @SuppressWarnings("unchecked")
-    public static Map<String, Object> asObject(Object v) {
-        return v instanceof Map ? (Map<String, Object>) v : null;
-    }
+  @SuppressWarnings("unchecked")
+  public static Map<String, Object> asObject(Object v) {
+    return v instanceof Map ? (Map<String, Object>) v : null;
+  }
 
-    @SuppressWarnings("unchecked")
-    public static List<Object> asList(Object v) {
-        return v instanceof List ? (List<Object>) v : null;
-    }
+  @SuppressWarnings("unchecked")
+  public static List<Object> asList(Object v) {
+    return v instanceof List ? (List<Object>) v : null;
+  }
 
-    public static Map<String, Object> object(Map<String, Object> m, String key) {
-        Object v = m == null ? null : m.get(key);
-        return asObject(v);
-    }
+  public static Map<String, Object> object(Map<String, Object> m, String key) {
+    Object v = m == null ? null : m.get(key);
+    return asObject(v);
+  }
 
-    public static Map<String, Object> objectOrEmpty(Map<String, Object> m, String key) {
-        Map<String, Object> o = object(m, key);
-        return o == null ? Collections.emptyMap() : o;
-    }
+  public static Map<String, Object> objectOrEmpty(Map<String, Object> m, String key) {
+    Map<String, Object> o = object(m, key);
+    return o == null ? Collections.emptyMap() : o;
+  }
 
-    public static String string(Map<String, Object> m, String key) {
-        Object v = m == null ? null : m.get(key);
-        return v instanceof String s ? s : null;
-    }
+  public static String string(Map<String, Object> m, String key) {
+    Object v = m == null ? null : m.get(key);
+    return v instanceof String s ? s : null;
+  }
 
-    public static boolean isString(Object v) {
-        return v instanceof String;
-    }
+  public static boolean isString(Object v) {
+    return v instanceof String;
+  }
 
-    /** Returns true only for a JSON boolean {@code true}; strings like "true" do not count. */
-    public static boolean isTrue(Object v) {
-        return Boolean.TRUE.equals(v);
-    }
+  /** Returns true only for a JSON boolean {@code true}; strings like "true" do not count. */
+  public static boolean isTrue(Object v) {
+    return Boolean.TRUE.equals(v);
+  }
 
-    /** Integral JSON number as long, or null when absent or not integral. */
-    public static Long integral(Object v) {
-        if (v instanceof Long l) {
-            return l;
-        }
-        if (v instanceof Integer i) {
-            return i.longValue();
-        }
-        return null;
+  /** Integral JSON number as long, or null when absent or not integral. */
+  public static Long integral(Object v) {
+    if (v instanceof Long l) {
+      return l;
     }
+    if (v instanceof Integer i) {
+      return i.longValue();
+    }
+    return null;
+  }
 }

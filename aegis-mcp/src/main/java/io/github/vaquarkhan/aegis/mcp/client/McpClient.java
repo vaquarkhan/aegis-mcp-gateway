@@ -26,50 +26,57 @@ import java.util.Map;
  */
 public interface McpClient extends AutoCloseable {
 
-    /** HTTP endpoint for egress checks; null for stdio subprocess servers. */
-    URI endpoint();
+  /** HTTP endpoint for egress checks; null for stdio subprocess servers. */
+  URI endpoint();
 
-    /** All tools (pagination followed, bounded). */
-    List<Map<String, Object>> listTools(Map<String, String> headers, long timeoutMillis) throws McpCallException;
+  /** All tools (pagination followed, bounded). */
+  List<Map<String, Object>> listTools(Map<String, String> headers, long timeoutMillis)
+      throws McpCallException;
 
-    /**
-     * Generic request (resources, prompts, completion). The client adds era-specific metadata and
-     * the mirrored headers; {@code mcpName} is the value for {@code Mcp-Name} (name or URI) or null.
-     *
-     * @return the JSON-RPC {@code result} object
-     */
-    Map<String, Object> call(String method, Map<String, Object> params, String mcpName, Map<String, String> headers,
-                             long timeoutMillis) throws McpCallException;
+  /**
+   * Generic request (resources, prompts, completion). The client adds era-specific metadata and the
+   * mirrored headers; {@code mcpName} is the value for {@code Mcp-Name} (name or URI) or null.
+   *
+   * @return the JSON-RPC {@code result} object
+   */
+  Map<String, Object> call(
+      String method,
+      Map<String, Object> params,
+      String mcpName,
+      Map<String, String> headers,
+      long timeoutMillis)
+      throws McpCallException;
 
-    /** Calls a tool and returns the MCP result object. */
-    Map<String, Object> callTool(String name, Map<String, Object> arguments, Map<String, String> headers, long timeoutMillis)
-            throws McpCallException;
+  /** Calls a tool and returns the MCP result object. */
+  Map<String, Object> callTool(
+      String name, Map<String, Object> arguments, Map<String, String> headers, long timeoutMillis)
+      throws McpCallException;
 
-    @Override
-    void close();
+  @Override
+  void close();
 
-    /** Downstream failure. {@code rpcCode} is set when the server returned a JSON-RPC error. */
-    final class McpCallException extends Exception {
-        private static final long serialVersionUID = 1L;
-        private final Integer rpcCode;
-        private final boolean timeout;
+  /** Downstream failure. {@code rpcCode} is set when the server returned a JSON-RPC error. */
+  final class McpCallException extends Exception {
+    private static final long serialVersionUID = 1L;
+    private final Integer rpcCode;
+    private final boolean timeout;
 
-        public McpCallException(String message, Integer rpcCode, boolean timeout, Throwable cause) {
-            super(message, cause);
-            this.rpcCode = rpcCode;
-            this.timeout = timeout;
-        }
-
-        public McpCallException(String message) {
-            this(message, null, false, null);
-        }
-
-        public Integer rpcCode() {
-            return rpcCode;
-        }
-
-        public boolean timeout() {
-            return timeout;
-        }
+    public McpCallException(String message, Integer rpcCode, boolean timeout, Throwable cause) {
+      super(message, cause);
+      this.rpcCode = rpcCode;
+      this.timeout = timeout;
     }
+
+    public McpCallException(String message) {
+      this(message, null, false, null);
+    }
+
+    public Integer rpcCode() {
+      return rpcCode;
+    }
+
+    public boolean timeout() {
+      return timeout;
+    }
+  }
 }

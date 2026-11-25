@@ -29,36 +29,39 @@ import java.util.Set;
  */
 public final class McpVersions {
 
-    private McpVersions() {}
+  private McpVersions() {}
 
-    public static final String V2026_07_28 = "2026-07-28";
-    public static final String V2025_11_25 = "2025-11-25";
-    public static final String V2025_06_18 = "2025-06-18";
-    public static final String V2025_03_26 = "2025-03-26";
+  public static final String V2026_07_28 = "2026-07-28";
+  public static final String V2025_11_25 = "2025-11-25";
+  public static final String V2025_06_18 = "2025-06-18";
+  public static final String V2025_03_26 = "2025-03-26";
 
-    public static final List<String> MODERN = List.of(V2026_07_28);
-    /** Newest first. */
-    public static final List<String> LEGACY = List.of(V2025_11_25, V2025_06_18, V2025_03_26);
-    public static final Set<String> ALL = Set.of(V2026_07_28, V2025_11_25, V2025_06_18, V2025_03_26);
+  public static final List<String> MODERN = List.of(V2026_07_28);
 
-    /** Spec: a request without MCP-Protocol-Version MAY be treated as 2025-03-26. */
-    public static final String ASSUMED_WHEN_HEADER_MISSING = V2025_03_26;
+  /** Newest first. */
+  public static final List<String> LEGACY = List.of(V2025_11_25, V2025_06_18, V2025_03_26);
 
-    public static final String META_PROTOCOL_VERSION = "io.modelcontextprotocol/protocolVersion";
-    public static final String META_CLIENT_CAPABILITIES = "io.modelcontextprotocol/clientCapabilities";
-    public static final String META_CLIENT_INFO = "io.modelcontextprotocol/clientInfo";
-    public static final String META_SERVER_INFO = "io.modelcontextprotocol/serverInfo";
+  public static final Set<String> ALL = Set.of(V2026_07_28, V2025_11_25, V2025_06_18, V2025_03_26);
 
-    public static final String HEADER_PROTOCOL_VERSION = "MCP-Protocol-Version";
-    public static final String HEADER_SESSION_ID = "Mcp-Session-Id";
-    public static final String HEADER_METHOD = "Mcp-Method";
-    public static final String HEADER_NAME = "Mcp-Name";
+  /** Spec: a request without MCP-Protocol-Version MAY be treated as 2025-03-26. */
+  public static final String ASSUMED_WHEN_HEADER_MISSING = V2025_03_26;
 
-    public static boolean isModern(String v) {
-        return MODERN.contains(v);
-    }
+  public static final String META_PROTOCOL_VERSION = "io.modelcontextprotocol/protocolVersion";
+  public static final String META_CLIENT_CAPABILITIES =
+      "io.modelcontextprotocol/clientCapabilities";
+  public static final String META_CLIENT_INFO = "io.modelcontextprotocol/clientInfo";
+  public static final String META_SERVER_INFO = "io.modelcontextprotocol/serverInfo";
 
-    public static boolean isLegacy(String v) {
-        return LEGACY.contains(v);
-    }
+  public static final String HEADER_PROTOCOL_VERSION = "MCP-Protocol-Version";
+  public static final String HEADER_SESSION_ID = "Mcp-Session-Id";
+  public static final String HEADER_METHOD = "Mcp-Method";
+  public static final String HEADER_NAME = "Mcp-Name";
+
+  public static boolean isModern(String v) {
+    return MODERN.contains(v);
+  }
+
+  public static boolean isLegacy(String v) {
+    return LEGACY.contains(v);
+  }
 }

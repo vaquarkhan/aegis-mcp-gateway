@@ -23,22 +23,24 @@ import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
  * Pluggable additional audit destination (a SIEM, a message bus, a cloud log service), selected in
  * configuration as {@code audit.sinks: [{type: <type>, settings: {...}}]}. Every configured sink
  * receives every record AFTER the hash-chained journal accepted it, and a failure of any sink fails
- * the call closed (the same rule as the journal: no unrecorded governed call). The journal stays the
- * source of truth; a sink never replaces it.
+ * the call closed (the same rule as the journal: no unrecorded governed call). The journal stays
+ * the source of truth; a sink never replaces it.
  *
- * <p>Network sinks should send through {@link BuildContext#outbound} so their connections are pinned to
- * addresses the egress control approved. In complete control a provider JAR must be listed in
- * {@code completeControl.artifacts} with role {@code plugin}.
+ * <p>Network sinks should send through {@link BuildContext#outbound} so their connections are
+ * pinned to addresses the egress control approved. In complete control a provider JAR must be
+ * listed in {@code completeControl.artifacts} with role {@code plugin}.
  *
  * <p>Register in {@code META-INF/services/io.github.vaquarkhan.aegis.config.spi.AuditSinkFactory}.
  */
 public interface AuditSinkFactory {
-    /** Value of {@code type} in configuration. */
-    String type();
+  /** Value of {@code type} in configuration. */
+  String type();
 
-    /**
-     * @param settings the sink's {@code settings:} object; read every key you support (unknown keys fail startup)
-     * @param context  host services (secrets via {@code context.env()}, pinned transport via {@code context.outbound})
-     */
-    AuditSink create(ConfigNode settings, BuildContext context) throws Exception;
+  /**
+   * @param settings the sink's {@code settings:} object; read every key you support (unknown keys
+   *     fail startup)
+   * @param context host services (secrets via {@code context.env()}, pinned transport via {@code
+   *     context.outbound})
+   */
+  AuditSink create(ConfigNode settings, BuildContext context) throws Exception;
 }

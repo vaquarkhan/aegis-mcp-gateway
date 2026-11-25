@@ -28,39 +28,42 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * stdio front door: the gateway runs as the MCP server a desktop client launches. The identity is
- * the one configured under {@code host.stdio} (the OS user that launched the process owns
- * the pipe; there is no bearer token on stdio). Logs go to stderr only; stdout carries protocol.
+ * the one configured under {@code host.stdio} (the OS user that launched the process owns the pipe;
+ * there is no bearer token on stdio). Logs go to stderr only; stdout carries protocol.
  */
 public final class StdioHost {
 
-    private static final int MAX_LINE = 1 << 20;
+  private static final int MAX_LINE = 1 << 20;
 
-    private StdioHost() {}
+  private StdioHost() {}
 
-    public static void run(Gateway gateway, CallerIdentity identity, InputStream in, OutputStream out) throws IOException {
-        McpServerHandler.StdioConnection conn = gateway.mcp().stdio(identity);
-        PrintStream ps = new PrintStream(out, true, StandardCharsets.UTF_8);
-        BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8), 64 * 1024);
-        StringBuilder line = new StringBuilder();
-        int c;
-        boolean overflow = false;
-        while ((c = r.read()) >= 0) {
-            if (c == '\n') {
-                if (overflow) {
-                    ps.println("{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"message too large\"}}");
-                } else if (!line.toString().isBlank()) {
-                    String resp = conn.handleLine(line.toString());
-                    if (resp != null) {
-                        ps.println(resp);
-                    }
-                }
-                line.setLength(0);
-                overflow = false;
-            } else if (line.length() < MAX_LINE) {
-                line.append((char) c);
-            } else {
-                overflow = true;
-            }
+  public static void run(Gateway gateway, CallerIdentity identity, InputStream in, OutputStream out)
+      throws IOException {
+    McpServerHandler.StdioConnection conn = gateway.mcp().stdio(identity);
+    PrintStream ps = new PrintStream(out, true, StandardCharsets.UTF_8);
+    BufferedReader r =
+        new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8), 64 * 1024);
+    StringBuilder line = new StringBuilder();
+    int c;
+    boolean overflow = false;
+    while ((c = r.read()) >= 0) {
+      if (c == '\n') {
+        if (overflow) {
+          ps.println(
+              "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"message too large\"}}");
+        } else if (!line.toString().isBlank()) {
+          String resp = conn.handleLine(line.toString());
+          if (resp != null) {
+            ps.println(resp);
+          }
         }
+        line.setLength(0);
+        overflow = false;
+      } else if (line.length() < MAX_LINE) {
+        line.append((char) c);
+      } else {
+        overflow = true;
+      }
     }
+  }
 }
