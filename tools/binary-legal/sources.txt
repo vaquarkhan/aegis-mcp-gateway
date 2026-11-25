@@ -2,6 +2,7 @@
 # https://www.apache.org/licenses/LICENSE-2.0
 # Sources for upstream legal text supplements. No implementation source is copied.
 # Animal Sniffer: license comment only, without Java comment delimiters.
+# xxHash: license comment only, without C comment delimiters (native code inside lz4-java).
 # Checker Qual: copyright and MIT section only, as expressly applicable to checker-qual.
 # NOTICE-spark-connect concatenates the seven original META-INF/NOTICE files listed below.
 # spark-connect.txt is an Aegis-authored inventory based on the following published artifacts and shade configuration.
@@ -12,6 +13,7 @@ upstream/minlog-LICENSE|https://raw.githubusercontent.com/EsotericSoftware/minlo
 upstream/paranamer-LICENSE|https://raw.githubusercontent.com/paul-hammant/paranamer/paranamer-parent-2.8/LICENSE.txt
 upstream/zstd-jni-LICENSE|https://raw.githubusercontent.com/luben/zstd-jni/76acf0fe88613c68ae1a8f4f0d8b2280f22a5f63/LICENSE
 upstream/lz4-LICENSE|https://raw.githubusercontent.com/lz4/lz4/d44371841a2f1728a3f36839fd4b7e872d0927d3/lib/LICENSE
+upstream/xxhash-LICENSE|https://raw.githubusercontent.com/lz4/lz4/d44371841a2f1728a3f36839fd4b7e872d0927d3/lib/xxhash.c
 upstream/icu-LICENSE|https://raw.githubusercontent.com/unicode-org/icu/release-76-1/LICENSE
 upstream/antlr-LICENSE|https://raw.githubusercontent.com/antlr/antlr4/4.13.1/LICENSE.txt
 upstream/jline-LICENSE|https://raw.githubusercontent.com/jline/jline3/jline-3.27.1/LICENSE.txt

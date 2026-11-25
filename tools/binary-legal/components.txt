@@ -45,7 +45,7 @@ org.json4s:json4s-core_2.13:4.0.7|Apache-2.0|
 org.json4s:json4s-jackson_2.13:4.0.7|Apache-2.0|
 org.json4s:json4s-jackson-core_2.13:4.0.7|Apache-2.0|
 org.json4s:json4s-scalap_2.13:4.0.7|Apache-2.0|
-org.lz4:lz4-java:1.8.0|Apache-2.0 AND BSD-2-Clause|upstream/lz4-LICENSE|net.jpountz.lz4 and net.jpountz.xxhash Java bindings (Apache-2.0); native LZ4 and xxHash under net/jpountz/util (BSD-2-Clause), source revision d44371841a2f1728a3f36839fd4b7e872d0927d3.
+org.lz4:lz4-java:1.8.0|Apache-2.0 AND BSD-2-Clause|upstream/lz4-LICENSE,upstream/xxhash-LICENSE|net.jpountz.lz4 and net.jpountz.xxhash Java bindings (Apache-2.0); native LZ4 and xxHash under net/jpountz/util (BSD-2-Clause), source revision d44371841a2f1728a3f36839fd4b7e872d0927d3.
 org.objenesis:objenesis:3.3|Apache-2.0|
 org.postgresql:postgresql:42.7.12|BSD-2-Clause||Embeds com.ongres.scram:scram-client:3.2 and scram-common:3.2, com.ongres.stringprep:saslprep:2.2 and stringprep:2.2 (BSD-2-Clause). Original com.ongres.* is relocated to org.postgresql.shaded.com.ongres.*. Full texts follow from the upstream jar's nested META-INF/licenses entries.
 org.scala-lang:scala-compiler:2.13.16|Apache-2.0|

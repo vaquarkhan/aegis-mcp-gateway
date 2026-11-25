@@ -93,8 +93,10 @@ The plugin is built in the same reactor. To build one bundle, keep `-am` (for ex
 `mvn -B -pl aegis-gateway -am verify`), or install `aegis-build-tools` first.
 The plugin locates the reviewed inventory in an ancestor of the Maven invocation root, so
 the examples reactor used by both `run-example` launchers is supported. CI verifies both
-example bundles through `mvn -B -f examples/pom.xml -Preal-engines -pl aegis-gateway-kafka,aegis-gateway-spark -am -DskipTests verify`
-after installing the root reactor.
+example bundles through `mvn -B -f examples/pom.xml "-Dmaven.multiModuleProjectDirectory=${GITHUB_WORKSPACE}" -Preal-engines -pl aegis-gateway-kafka,aegis-gateway-spark -am -DskipTests verify`
+after installing the root reactor. The explicit multi-module directory matters on Linux and macOS: without a
+`.mvn` directory, `mvn -f examples/pom.xml` would otherwise treat `examples/` as the root, and the inherited
+SpotBugs exclude file would not be found. Run it locally with the repository root in place of `${GITHUB_WORKSPACE}`.
 
 The ordinary `verify` phase, including existing CI jobs, checks the actual shaded archive: exactly one
 LICENSE and NOTICE, byte-for-byte equality with freshly assembled legal content, no additional root or

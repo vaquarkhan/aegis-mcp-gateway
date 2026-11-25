@@ -61,10 +61,13 @@ esac
 # Build the profile-specific artifacts through the lifecycle that creates plugin.classpath files. Then clean
 # only the selected validation module, preserving dependency artifacts needed by the test lifecycle.
 # These commands stay under set -e: a preparation failure must not continue into the test.
-mvn -B -q -f "$root/examples/pom.xml" -Preal-engines -DskipTests install
-mvn -B -q -f "$root/examples/pom.xml" -Preal-engines -pl "$module" clean
+# bin/mvn would otherwise use examples/ as the multi-module root (no .mvn directory), so inherited
+# root-relative paths such as spotbugs-exclude.xml would not resolve during install.
+mmroot="-Dmaven.multiModuleProjectDirectory=$root"
+mvn -B -q -f "$root/examples/pom.xml" "$mmroot" -Preal-engines -DskipTests install
+mvn -B -q -f "$root/examples/pom.xml" "$mmroot" -Preal-engines -pl "$module" clean
 set +e
-mvn -B -f "$root/examples/pom.xml" -Preal-engines -pl "$module" -am test "-Dtest=$test" -Dsurefire.failIfNoSpecifiedTests=false
+mvn -B -f "$root/examples/pom.xml" "$mmroot" -Preal-engines -pl "$module" -am test "-Dtest=$test" -Dsurefire.failIfNoSpecifiedTests=false
 status=$?
 set -e
 if [ "$keep" = "--keep" ]; then
