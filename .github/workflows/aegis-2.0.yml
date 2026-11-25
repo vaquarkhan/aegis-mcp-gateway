@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Builds and tests Aegis 2.0 from the repository root. Action SHAs are pinned.
+# Builds and tests Aegis 2.0 from the repository root. Every action is pinned to a full commit SHA
+# (ASF infrastructure-actions policy; enforced by workflow-security.yml); see docs/DEVELOPER.md, "GitHub Actions policy".
 name: Aegis 2.0 build
 
 on:
@@ -20,14 +21,23 @@ on:
   pull_request:
 permissions:
   contents: read
+
+# Superseded runs of the same ref are cancelled, except on main so every push there completes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       matrix:
         java: [ '17', '21' ]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
@@ -51,8 +61,11 @@ jobs:
   # reference hook services. Every check reads the backend log or the audit journal for its evidence.
   live-e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           java-version: '17'
@@ -70,6 +83,7 @@ jobs:
   # The container image and the Helm chart. Tool versions are pinned and their checksums verified.
   image-and-chart:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     env:
       HELM_VERSION: v4.3.0
       KUBECONFORM_VERSION: v0.8.0
@@ -77,6 +91,8 @@ jobs:
       HADOLINT_SHA256: c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install helm, kubeconform and hadolint
         run: |
           set -euo pipefail
@@ -125,7 +141,7 @@ jobs:
           docker run -d --name aegis --read-only --tmpfs /tmp --tmpfs /var/lib/aegis:uid=10001,gid=10001 \
             -e AEGIS_SIGNING_KEY="$(openssl rand -hex 32)" -e CATALOG_TOKEN=ci-token \
             -v "$PWD/aegis.yaml:/etc/aegis/aegis.yaml:ro" -p 18080:8080 aegis-gateway:ci
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:18080/readyz; then echo; docker exec aegis id; exit 0; fi
             sleep 2
           done
