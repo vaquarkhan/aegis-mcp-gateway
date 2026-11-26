@@ -38,6 +38,7 @@
   </licenses>
 
   <modules>
+    <module>aegis-build-tools</module>
     <!-- The gateway itself: engine, protocol, configuration, and the two front doors. -->
     <module>aegis-engine</module>
     <module>aegis-mcp</module>
@@ -143,6 +144,24 @@
     <pluginManagement>
       <plugins>
         <plugin>
+          <groupId>io.github.vaquarkhan.aegis</groupId>
+          <artifactId>aegis-build-tools</artifactId>
+          <version>${project.version}</version>
+          <executions>
+            <execution>
+              <id>assemble-binary-legal</id>
+              <phase>prepare-package</phase>
+              <goals><goal>bundle-legal</goal></goals>
+            </execution>
+            <execution>
+              <id>verify-binary-legal</id>
+              <phase>verify</phase>
+              <goals><goal>bundle-legal</goal></goals>
+              <configuration><verify>true</verify></configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.13.0</version>
@@ -241,6 +260,8 @@
           <consoleOutput>true</consoleOutput>
           <excludes>
             <exclude>**/target/**</exclude>
+            <!-- Unmodified upstream legal texts, not Aegis source and not relicensed. -->
+            <exclude>tools/binary-legal/upstream/**</exclude>
             <exclude>**/*.json</exclude>
             <exclude>**/*.jsonl</exclude>
             <exclude>docs/evidence/**/*.log</exclude>

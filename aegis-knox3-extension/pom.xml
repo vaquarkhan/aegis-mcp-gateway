@@ -91,6 +91,10 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>io.github.vaquarkhan.aegis</groupId>
+        <artifactId>aegis-build-tools</artifactId>
+      </plugin>
       <!-- Knox builds the gateway from the process environment, as in production: the test backend's
            service credential is provided the same way. -->
       <plugin>
@@ -133,8 +137,30 @@
                 </includes>
               </artifactSet>
               <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                  <resource>META-INF/LICENSE</resource>
+                  <file>${project.build.directory}/binary-legal/LICENSE</file>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                  <resource>META-INF/NOTICE</resource>
+                  <file>${project.build.directory}/binary-legal/NOTICE</file>
+                </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
               </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/LICENSE*</exclude>
+                    <exclude>META-INF/NOTICE*</exclude>
+                    <exclude>LICENSE*</exclude>
+                    <exclude>NOTICE*</exclude>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
             </configuration>
           </execution>
         </executions>

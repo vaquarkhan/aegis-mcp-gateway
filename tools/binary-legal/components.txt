@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: Apache-2.0
+# https://www.apache.org/licenses/LICENSE-2.0
+# Runtime coordinates (including classifier) | license expression | supplemental paths | optional embedded-component notes
+# Upstream archive LICENSE/NOTICE variants and nested license files are always included.
+com.esotericsoftware:kryo-shaded:4.0.3|BSD-3-Clause|upstream/kryo-LICENSE,upstream/reflectasm-LICENSE,upstream/asm-LICENSE|Embeds com.esotericsoftware:reflectasm:1.11.3 (BSD-3-Clause) in com.esotericsoftware.reflectasm, with ASM relocated from org.objectweb.asm to com.esotericsoftware.reflectasm.shaded.org.objectweb.asm.
+com.esotericsoftware:minlog:1.3.0|BSD-3-Clause|upstream/minlog-LICENSE
+com.fasterxml.jackson.core:jackson-annotations:2.18.2|Apache-2.0|
+com.fasterxml.jackson.core:jackson-core:2.18.2|Apache-2.0|
+com.fasterxml.jackson.core:jackson-databind:2.18.2|Apache-2.0|
+com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2|Apache-2.0|
+com.fasterxml.jackson.module:jackson-module-scala_2.13:2.18.2|Apache-2.0|
+com.github.luben:zstd-jni:1.5.6-4|BSD-2-Clause AND BSD-3-Clause|upstream/zstd-jni-LICENSE,upstream/zstd-LICENSE|com.github.luben.zstd Java/JNI bindings (BSD-2-Clause), with native Zstandard 1.5.6 (BSD-3-Clause elected instead of GPL-2.0).
+com.google.code.findbugs:jsr305:3.0.0|Apache-2.0|
+com.ibm.icu:icu4j:76.1|Unicode-3.0|upstream/icu-LICENSE
+com.thoughtworks.paranamer:paranamer:2.8|BSD-3-Clause|upstream/paranamer-LICENSE
+com.twitter:chill_2.13:0.10.0|Apache-2.0|
+com.twitter:chill-java:0.10.0|Apache-2.0|
+commons-codec:commons-codec:1.17.2|Apache-2.0|
+commons-io:commons-io:2.18.0|Apache-2.0|
+io.github.java-diff-utils:java-diff-utils:4.15|Apache-2.0|
+org.antlr:antlr4-runtime:4.13.1|BSD-3-Clause|upstream/antlr-LICENSE
+org.apache.commons:commons-lang3:3.17.0|Apache-2.0|
+org.apache.commons:commons-text:1.13.0|Apache-2.0|
+org.apache.derby:derby:10.16.1.1|Apache-2.0|
+org.apache.derby:derbyshared:10.16.1.1|Apache-2.0|
+org.apache.ivy:ivy:2.5.3|Apache-2.0|
+org.apache.kafka:kafka-clients:3.9.1|Apache-2.0|
+org.apache.logging.log4j:log4j-1.2-api:2.24.3|Apache-2.0|
+org.apache.logging.log4j:log4j-api:2.24.3|Apache-2.0|
+org.apache.logging.log4j:log4j-core:2.24.3|Apache-2.0|
+org.apache.logging.log4j:log4j-layout-template-json:2.24.3|Apache-2.0|
+org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3|Apache-2.0|
+org.apache.spark:spark-common-utils_2.13:4.0.1|Apache-2.0|
+org.apache.spark:spark-connect-client-jvm_2.13:4.0.1|Apache-2.0 AND MIT AND BSD-3-Clause AND public-domain|spark-connect.txt,upstream/protobuf-LICENSE,upstream/animal-sniffer-LICENSE,upstream/checker-qual-LICENSE,upstream/NOTICE-spark-connect,upstream/NOTICE-grpc,upstream/NOTICE-netty,upstream/NOTICE-harmony,upstream/netty-LICENSE.jsr166y,upstream/netty-LICENSE.base64,upstream/netty-LICENSE.webbit,upstream/netty-LICENSE.slf4j,upstream/netty-LICENSE.jbzip2,upstream/netty-LICENSE.libdivsufsort,upstream/netty-LICENSE.jfastlz,upstream/netty-LICENSE.protobuf,upstream/netty-LICENSE.hyper-hpack,upstream/netty-LICENSE.nghttp2-hpack
+org.apache.spark:spark-connect-shims_2.13:4.0.1|Apache-2.0|
+org.apache.spark:spark-sketch_2.13:4.0.1|Apache-2.0|
+org.apache.spark:spark-tags_2.13:4.0.1|Apache-2.0|
+org.apache.spark:spark-unsafe_2.13:4.0.1|Apache-2.0|
+org.apache.spark:spark-variant_2.13:4.0.1|Apache-2.0|
+org.apache.tomcat:annotations-api:6.0.53|Apache-2.0|
+org.apache.xbean:xbean-asm9-shaded:4.26|Apache-2.0 AND BSD-3-Clause|upstream/asm-LICENSE|Embeds org.ow2.asm:asm, asm-commons and asm-tree:9.7.1 (BSD-3-Clause); org.objectweb.asm is relocated to org.apache.xbean.asm9.
+org.jline:jline:3.27.1:jdk8|BSD-3-Clause|upstream/jline-LICENSE
+org.json4s:json4s-ast_2.13:4.0.7|Apache-2.0|
+org.json4s:json4s-core_2.13:4.0.7|Apache-2.0|
+org.json4s:json4s-jackson_2.13:4.0.7|Apache-2.0|
+org.json4s:json4s-jackson-core_2.13:4.0.7|Apache-2.0|
+org.json4s:json4s-scalap_2.13:4.0.7|Apache-2.0|
+org.lz4:lz4-java:1.8.0|Apache-2.0 AND BSD-2-Clause|upstream/lz4-LICENSE,upstream/xxhash-LICENSE|net.jpountz.lz4 and net.jpountz.xxhash Java bindings (Apache-2.0); native LZ4 and xxHash under net/jpountz/util (BSD-2-Clause), source revision d44371841a2f1728a3f36839fd4b7e872d0927d3.
+org.objenesis:objenesis:3.3|Apache-2.0|
+org.postgresql:postgresql:42.7.12|BSD-2-Clause||Embeds com.ongres.scram:scram-client:3.2 and scram-common:3.2, com.ongres.stringprep:saslprep:2.2 and stringprep:2.2 (BSD-2-Clause). Original com.ongres.* is relocated to org.postgresql.shaded.com.ongres.*. Full texts follow from the upstream jar's nested META-INF/licenses entries.
+org.scala-lang:scala-compiler:2.13.16|Apache-2.0|
+org.scala-lang:scala-library:2.13.16|Apache-2.0|
+org.scala-lang:scala-reflect:2.13.16|Apache-2.0|
+org.scala-lang.modules:scala-parser-combinators_2.13:2.4.0|Apache-2.0|
+org.scala-lang.modules:scala-xml_2.13:2.3.0|Apache-2.0|
+org.slf4j:jcl-over-slf4j:2.0.16|Apache-2.0 AND MIT|
+org.slf4j:jul-to-slf4j:2.0.16|MIT|
+org.slf4j:slf4j-api:1.7.36|MIT|upstream/slf4j-LICENSE
+org.slf4j:slf4j-api:2.0.16|MIT|
+org.spark-project.spark:unused:1.0.0|Apache-2.0|
+org.xerial.snappy:snappy-java:1.1.10.5|Apache-2.0 AND BSD-3-Clause AND MIT AND (GPL-3.0-or-later WITH GCC-exception-3.1)|upstream/snappy-COPYING,upstream/bitshuffle-LICENSE,upstream/NOTICE-snappy,upstream/gcc-COPYING3,upstream/gcc-COPYING.RUNTIME|org.xerial.snappy Java/JNI bindings (Apache-2.0) with Google Snappy 1.1.10 (BSD-3-Clause) and Bitshuffle 0.3.4 (MIT) under org/xerial/snappy/native. Upstream NOTICE reports statically linked libstdc++; GPLv3 and GCC Runtime Library Exception 3.1 texts are included, not an LGPL election.
+org.yaml:snakeyaml:2.4|Apache-2.0|
+oro:oro:2.0.8|Apache-1.1|
