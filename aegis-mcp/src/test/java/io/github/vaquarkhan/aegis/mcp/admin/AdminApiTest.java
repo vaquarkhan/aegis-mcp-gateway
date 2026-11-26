@@ -18,6 +18,7 @@ package io.github.vaquarkhan.aegis.mcp.admin;
 import static io.github.vaquarkhan.aegis.mcp.testing.TestEngines.ALICE;
 import static io.github.vaquarkhan.aegis.mcp.testing.TestEngines.BOB;
 import static io.github.vaquarkhan.aegis.mcp.testing.TestEngines.OLGA;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -490,5 +491,16 @@ class AdminApiTest {
               .get("status"));
       assertTrue(JsonValues.asList(body(list).get("prompts")).size() == 1);
     }
+  }
+
+  @Test
+  void pathSegmentsStripSlashesWithoutRegex() {
+    assertArrayEquals(new String[0], AdminApi.pathSegments(null));
+    assertArrayEquals(new String[0], AdminApi.pathSegments(""));
+    assertArrayEquals(new String[0], AdminApi.pathSegments("///"));
+    assertArrayEquals(new String[] {"approvals"}, AdminApi.pathSegments("/approvals/"));
+    assertArrayEquals(
+        new String[] {"approvals", "id-1", "approve"},
+        AdminApi.pathSegments("///approvals/id-1/approve///"));
   }
 }

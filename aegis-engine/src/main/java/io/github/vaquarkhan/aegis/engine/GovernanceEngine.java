@@ -52,6 +52,7 @@ import io.github.vaquarkhan.aegis.engine.spi.PolicyDecisionPoint;
 import io.github.vaquarkhan.aegis.engine.spi.ScopeChallenge;
 import io.github.vaquarkhan.aegis.engine.spi.StateStore;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor;
+import io.github.vaquarkhan.aegis.engine.util.LogSafe;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -251,7 +252,7 @@ public final class GovernanceEngine implements AutoCloseable {
       return govern(trace);
     } catch (RuntimeException e) {
       // Defensive: any unexpected failure inside a control is a denial.
-      LOG.log(System.Logger.Level.ERROR, "governance control failed for " + rid, e);
+      LOG.log(System.Logger.Level.ERROR, "governance control failed for " + LogSafe.token(rid), e);
       return deny(
           trace,
           Decision.deny(
@@ -580,7 +581,10 @@ public final class GovernanceEngine implements AutoCloseable {
     try {
       audit.append(record(t, "ALLOW_INTENT", Decision.allow()));
     } catch (Exception e) {
-      LOG.log(System.Logger.Level.ERROR, "audit journal unavailable; denying " + t.requestId, e);
+      LOG.log(
+          System.Logger.Level.ERROR,
+          "audit journal unavailable; denying " + LogSafe.token(t.requestId),
+          e);
       Map<String, Object> recovery = new LinkedHashMap<>();
       if (approvalConsumed) {
         recovery.put("freshApprovalRequired", true);
@@ -902,7 +906,10 @@ public final class GovernanceEngine implements AutoCloseable {
       // (above) is the record that gates execution, so a broken journal still stops new calls.
       LOG.log(
           System.Logger.Level.ERROR,
-          "audit journal unavailable for " + rec.get("event") + " " + rec.get("requestId"),
+          "audit journal unavailable for "
+              + LogSafe.token(rec.get("event"))
+              + " "
+              + LogSafe.token(rec.get("requestId")),
           e);
     }
   }

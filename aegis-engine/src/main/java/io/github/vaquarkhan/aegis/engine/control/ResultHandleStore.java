@@ -106,7 +106,7 @@ public final class ResultHandleStore {
       Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
       c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_BITS, nonce));
       byte[] ct = c.doFinal(json.getBytes(StandardCharsets.UTF_8));
-      byte[] out = new byte[nonce.length + ct.length];
+      byte[] out = new byte[Math.addExact(nonce.length, ct.length)];
       System.arraycopy(nonce, 0, out, 0, nonce.length);
       System.arraycopy(ct, 0, out, nonce.length, ct.length);
       return ENC + Base64.getEncoder().encodeToString(out);
