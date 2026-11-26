@@ -30,14 +30,15 @@ import org.junit.jupiter.api.io.TempDir;
 
 class ConfigComposerTest {
 
-    @TempDir
-    Path tempDir;
+  @TempDir Path tempDir;
 
-    @Test
-    void preservesHttpAndVaultPathsWhileResolvingFilesystemPaths() throws Exception {
-        Path gateway = tempDir.resolve("config/aegis.yaml");
-        Files.createDirectories(gateway.getParent());
-        Files.writeString(gateway, """
+  @Test
+  void preservesHttpAndVaultPathsWhileResolvingFilesystemPaths() throws Exception {
+    Path gateway = tempDir.resolve("config/aegis.yaml");
+    Files.createDirectories(gateway.getParent());
+    Files.writeString(
+        gateway,
+        """
                 audit:
                   file: ../logs/audit.jsonl
                 secrets:
@@ -52,15 +53,18 @@ class ConfigComposerTest {
                       classes: [READ]
                 """);
 
-        Path adopter = tempDir.resolve("adopters/demo.yaml");
-        Path pluginJar = tempDir.resolve("adopters/plugins/demo.jar");
-        Files.createDirectories(pluginJar.getParent());
-        byte[] jarBytes = "demo-plugin-content".getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        Files.write(pluginJar, jarBytes);
-        String jarSha256 = java.util.HexFormat.of().formatHex(
-                java.security.MessageDigest.getInstance("SHA-256").digest(jarBytes));
+    Path adopter = tempDir.resolve("adopters/demo.yaml");
+    Path pluginJar = tempDir.resolve("adopters/plugins/demo.jar");
+    Files.createDirectories(pluginJar.getParent());
+    byte[] jarBytes = "demo-plugin-content".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    Files.write(pluginJar, jarBytes);
+    String jarSha256 =
+        java.util.HexFormat.of()
+            .formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(jarBytes));
 
-        Files.writeString(adopter, """
+    Files.writeString(
+        adopter,
+        """
                 id: demo
                 type: http
                 baseUrl: https://demo.internal:8443
@@ -74,10 +78,13 @@ class ConfigComposerTest {
                     request:
                       method: GET
                       path: /api/v1/health
-                """.formatted(jarSha256));
+                """
+            .formatted(jarSha256));
 
-        Path stdioAdopter = tempDir.resolve("adopters/stdio.yaml");
-        Files.writeString(stdioAdopter, """
+    Path stdioAdopter = tempDir.resolve("adopters/stdio.yaml");
+    Files.writeString(
+        stdioAdopter,
+        """
                 id: demo-stdio
                 type: mcp
                 transport: stdio
@@ -86,44 +93,46 @@ class ConfigComposerTest {
                   - --flag
                 """);
 
-        Path outDir = tempDir.resolve("dist");
-        ConfigComposer.ComposedConfig composed =
-                new ConfigComposer().compose(gateway, List.of(adopter, stdioAdopter), outDir);
+    Path outDir = tempDir.resolve("dist");
+    ConfigComposer.ComposedConfig composed =
+        new ConfigComposer().compose(gateway, List.of(adopter, stdioAdopter), outDir);
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> secrets = (Map<String, Object>) composed.effectiveMap().get("secrets");
-        @SuppressWarnings("unchecked")
-        Map<String, Object> vaultSettings = (Map<String, Object>) secrets.get("settings");
-        assertEquals("aegis/prod", vaultSettings.get("path"));
+    @SuppressWarnings("unchecked")
+    Map<String, Object> secrets = (Map<String, Object>) composed.effectiveMap().get("secrets");
+    @SuppressWarnings("unchecked")
+    Map<String, Object> vaultSettings = (Map<String, Object>) secrets.get("settings");
+    assertEquals("aegis/prod", vaultSettings.get("path"));
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> audit = (Map<String, Object>) composed.effectiveMap().get("audit");
-        assertEquals("../logs/audit.jsonl", audit.get("file"));
+    @SuppressWarnings("unchecked")
+    Map<String, Object> audit = (Map<String, Object>) composed.effectiveMap().get("audit");
+    assertEquals("../logs/audit.jsonl", audit.get("file"));
 
-        List<?> sources = (List<?>) composed.effectiveMap().get("sources");
-        Map<?, ?> source = (Map<?, ?>) sources.get(0);
+    List<?> sources = (List<?>) composed.effectiveMap().get("sources");
+    Map<?, ?> source = (Map<?, ?>) sources.get(0);
 
-        List<?> tools = (List<?>) source.get("tools");
-        Map<?, ?> firstTool = (Map<?, ?>) tools.get(0);
-        Map<?, ?> request = (Map<?, ?>) firstTool.get("request");
-        assertEquals("/api/v1/health", request.get("path"));
+    List<?> tools = (List<?>) source.get("tools");
+    Map<?, ?> firstTool = (Map<?, ?>) tools.get(0);
+    Map<?, ?> request = (Map<?, ?>) firstTool.get("request");
+    assertEquals("/api/v1/health", request.get("path"));
 
-        List<?> artifacts = (List<?>) source.get("artifacts");
-        Map<?, ?> firstArtifact = (Map<?, ?>) artifacts.get(0);
-        assertEquals("../adopters/plugins/demo.jar", firstArtifact.get("path"));
+    List<?> artifacts = (List<?>) source.get("artifacts");
+    Map<?, ?> firstArtifact = (Map<?, ?>) artifacts.get(0);
+    assertEquals("../adopters/plugins/demo.jar", firstArtifact.get("path"));
 
-        Map<?, ?> stdioSource = (Map<?, ?>) sources.get(1);
-        @SuppressWarnings("unchecked")
-        List<String> command = (List<String>) stdioSource.get("command");
-        assertEquals("../adopters/bin/helper.sh", command.get(0));
-        assertEquals("--flag", command.get(1));
-    }
+    Map<?, ?> stdioSource = (Map<?, ?>) sources.get(1);
+    @SuppressWarnings("unchecked")
+    List<String> command = (List<String>) stdioSource.get("command");
+    assertEquals("../adopters/bin/helper.sh", command.get(0));
+    assertEquals("--flag", command.get(1));
+  }
 
-    @Test
-    void doesNotRewriteProviderSettingsHttpPayloadsOrWorkingDirRelativeCommands() throws Exception {
-        Path gateway = tempDir.resolve("config/aegis.yaml");
-        Files.createDirectories(gateway.getParent());
-        Files.writeString(gateway, """
+  @Test
+  void doesNotRewriteProviderSettingsHttpPayloadsOrWorkingDirRelativeCommands() throws Exception {
+    Path gateway = tempDir.resolve("config/aegis.yaml");
+    Files.createDirectories(gateway.getParent());
+    Files.writeString(
+        gateway,
+        """
                 audit:
                   file: audit.jsonl
                 policy:
@@ -131,9 +140,11 @@ class ConfigComposerTest {
                     - {id: r, groups: ["*"], classes: [READ]}
                 """);
 
-        Path httpAdopter = tempDir.resolve("adopters/http-payload.yaml");
-        Files.createDirectories(httpAdopter.getParent());
-        Files.writeString(httpAdopter, """
+    Path httpAdopter = tempDir.resolve("adopters/http-payload.yaml");
+    Files.createDirectories(httpAdopter.getParent());
+    Files.writeString(
+        httpAdopter,
+        """
                 id: files-api
                 type: http
                 baseUrl: https://files.internal
@@ -151,8 +162,10 @@ class ConfigComposerTest {
                         directory: ./reports
                 """);
 
-        Path stdioAdopter = tempDir.resolve("adopters/stdio-svc.yaml");
-        Files.writeString(stdioAdopter, """
+    Path stdioAdopter = tempDir.resolve("adopters/stdio-svc.yaml");
+    Files.writeString(
+        stdioAdopter,
+        """
                 id: svc
                 type: mcp
                 transport: stdio
@@ -162,8 +175,10 @@ class ConfigComposerTest {
                   - ./scripts/worker.py
                 """);
 
-        Path pluginAdopter = tempDir.resolve("adopters/plugin-settings.yaml");
-        Files.writeString(pluginAdopter, """
+    Path pluginAdopter = tempDir.resolve("adopters/plugin-settings.yaml");
+    Files.writeString(
+        pluginAdopter,
+        """
                 id: warehouse
                 type: jdbc
                 settings:
@@ -171,30 +186,33 @@ class ConfigComposerTest {
                   directory: ./provider-dir
                 """);
 
-        Path outDir = tempDir.resolve("dist");
-        ConfigComposer.ComposedConfig composed =
-                new ConfigComposer().compose(gateway, List.of(httpAdopter, stdioAdopter, pluginAdopter), outDir);
+    Path outDir = tempDir.resolve("dist");
+    ConfigComposer.ComposedConfig composed =
+        new ConfigComposer()
+            .compose(gateway, List.of(httpAdopter, stdioAdopter, pluginAdopter), outDir);
 
-        List<?> sources = (List<?>) composed.effectiveMap().get("sources");
+    List<?> sources = (List<?>) composed.effectiveMap().get("sources");
 
-        Map<?, ?> httpSource = (Map<?, ?>) sources.get(0);
-        List<?> tools = (List<?>) httpSource.get("tools");
-        Map<?, ?> uploadTool = (Map<?, ?>) tools.get(0);
-        Map<?, ?> request = (Map<?, ?>) uploadTool.get("request");
-        assertEquals("./incoming", ((Map<?, ?>) request.get("query")).get("directory"));
-        assertEquals("./report.csv", ((Map<?, ?>) request.get("body")).get("file"));
-        assertEquals("./reports", ((Map<?, ?>) request.get("body")).get("directory"));
+    Map<?, ?> httpSource = (Map<?, ?>) sources.get(0);
+    List<?> tools = (List<?>) httpSource.get("tools");
+    Map<?, ?> uploadTool = (Map<?, ?>) tools.get(0);
+    Map<?, ?> request = (Map<?, ?>) uploadTool.get("request");
+    assertEquals("./incoming", ((Map<?, ?>) request.get("query")).get("directory"));
+    assertEquals("./report.csv", ((Map<?, ?>) request.get("body")).get("file"));
+    assertEquals("./reports", ((Map<?, ?>) request.get("body")).get("directory"));
 
-        Map<?, ?> pluginSource = (Map<?, ?>) sources.get(2);
-        Map<?, ?> providerSettings = (Map<?, ?>) pluginSource.get("settings");
-        assertEquals("./provider-config.json", providerSettings.get("file"));
-        assertEquals("./provider-dir", providerSettings.get("directory"));
-    }
+    Map<?, ?> pluginSource = (Map<?, ?>) sources.get(2);
+    Map<?, ?> providerSettings = (Map<?, ?>) pluginSource.get("settings");
+    assertEquals("./provider-config.json", providerSettings.get("file"));
+    assertEquals("./provider-dir", providerSettings.get("directory"));
+  }
 
-    @Test
-    void rejectsMalformedOrGlobalHooksAndAdopterScopes() throws Exception {
-        Path gateway = tempDir.resolve("aegis.yaml");
-        Files.writeString(gateway, """
+  @Test
+  void rejectsMalformedOrGlobalHooksAndAdopterScopes() throws Exception {
+    Path gateway = tempDir.resolve("aegis.yaml");
+    Files.writeString(
+        gateway,
+        """
                 audit:
                   file: audit.jsonl
                 policy:
@@ -202,19 +220,23 @@ class ConfigComposerTest {
                     - {id: r, groups: ["*"], classes: [READ]}
                 """);
 
-        Path nonListHooks = tempDir.resolve("non-list-hooks.yaml");
-        Files.writeString(nonListHooks, """
+    Path nonListHooks = tempDir.resolve("non-list-hooks.yaml");
+    Files.writeString(
+        nonListHooks,
+        """
                 id: s1
                 type: http
                 baseUrl: https://example.internal
                 hooks:
                   type: sql-readonly
                 """);
-        assertThrows(ConfigException.class,
-                () -> new ConfigComposer().compose(gateway, List.of(nonListHooks)));
+    assertThrows(
+        ConfigException.class, () -> new ConfigComposer().compose(gateway, List.of(nonListHooks)));
 
-        Path adopterScopes = tempDir.resolve("adopter-scopes.yaml");
-        Files.writeString(adopterScopes, """
+    Path adopterScopes = tempDir.resolve("adopter-scopes.yaml");
+    Files.writeString(
+        adopterScopes,
+        """
                 id: s2
                 type: http
                 baseUrl: https://example.internal
@@ -222,12 +244,16 @@ class ConfigComposerTest {
                   - groups: [users]
                     resources: ["http:*"]
                 """);
-        ConfigException scopeEx = assertThrows(ConfigException.class,
-                () -> new ConfigComposer().compose(gateway, List.of(adopterScopes)));
-        assertTrue(scopeEx.getMessage().contains("gateway-owned section 'scopes'"));
+    ConfigException scopeEx =
+        assertThrows(
+            ConfigException.class,
+            () -> new ConfigComposer().compose(gateway, List.of(adopterScopes)));
+    assertTrue(scopeEx.getMessage().contains("gateway-owned section 'scopes'"));
 
-        Path emptyHookSources = tempDir.resolve("empty-hook-sources.yaml");
-        Files.writeString(emptyHookSources, """
+    Path emptyHookSources = tempDir.resolve("empty-hook-sources.yaml");
+    Files.writeString(
+        emptyHookSources,
+        """
                 id: s2b
                 type: http
                 baseUrl: https://example.internal
@@ -235,12 +261,16 @@ class ConfigComposerTest {
                   - type: sql-readonly
                     sources: []
                 """);
-        ConfigException emptySourcesEx = assertThrows(ConfigException.class,
-                () -> new ConfigComposer().compose(gateway, List.of(emptyHookSources)));
-        assertTrue(emptySourcesEx.getMessage().contains("cannot be empty"));
+    ConfigException emptySourcesEx =
+        assertThrows(
+            ConfigException.class,
+            () -> new ConfigComposer().compose(gateway, List.of(emptyHookSources)));
+    assertTrue(emptySourcesEx.getMessage().contains("cannot be empty"));
 
-        Path invalidHookSources = tempDir.resolve("bad-hook-sources.yaml");
-        Files.writeString(invalidHookSources, """
+    Path invalidHookSources = tempDir.resolve("bad-hook-sources.yaml");
+    Files.writeString(
+        invalidHookSources,
+        """
                 id: s3
                 type: http
                 baseUrl: https://example.internal
@@ -248,11 +278,14 @@ class ConfigComposerTest {
                   - type: sql-readonly
                     sources: s3
                 """);
-        assertThrows(ConfigException.class,
-                () -> new ConfigComposer().compose(gateway, List.of(invalidHookSources)));
+    assertThrows(
+        ConfigException.class,
+        () -> new ConfigComposer().compose(gateway, List.of(invalidHookSources)));
 
-        Path externalHookSource = tempDir.resolve("ext-hook-source.yaml");
-        Files.writeString(externalHookSource, """
+    Path externalHookSource = tempDir.resolve("ext-hook-source.yaml");
+    Files.writeString(
+        externalHookSource,
+        """
                 id: s4
                 type: http
                 baseUrl: https://example.internal
@@ -260,14 +293,17 @@ class ConfigComposerTest {
                   - type: sql-readonly
                     sources: [other-source]
                 """);
-        assertThrows(ConfigException.class,
-                () -> new ConfigComposer().compose(gateway, List.of(externalHookSource)));
-    }
+    assertThrows(
+        ConfigException.class,
+        () -> new ConfigComposer().compose(gateway, List.of(externalHookSource)));
+  }
 
-    @Test
-    void detectsCrossFileHookAndToolCollisions() throws Exception {
-        Path gateway = tempDir.resolve("aegis.yaml");
-        Files.writeString(gateway, """
+  @Test
+  void detectsCrossFileHookAndToolCollisions() throws Exception {
+    Path gateway = tempDir.resolve("aegis.yaml");
+    Files.writeString(
+        gateway,
+        """
                 audit:
                   file: audit.jsonl
                 policy:
@@ -279,8 +315,10 @@ class ConfigComposerTest {
                       name: shared-guard
                 """);
 
-        Path adopterHookClash = tempDir.resolve("adopter1.yaml");
-        Files.writeString(adopterHookClash, """
+    Path adopterHookClash = tempDir.resolve("adopter1.yaml");
+    Files.writeString(
+        adopterHookClash,
+        """
                 id: a1
                 type: http
                 baseUrl: https://a1.internal
@@ -289,63 +327,78 @@ class ConfigComposerTest {
                     settings:
                       name: shared-guard
                 """);
-        ConfigException hookEx = assertThrows(ConfigException.class,
-                () -> new ConfigComposer().compose(gateway, List.of(adopterHookClash)));
-        assertTrue(hookEx.getMessage().contains("duplicate hook"));
+    ConfigException hookEx =
+        assertThrows(
+            ConfigException.class,
+            () -> new ConfigComposer().compose(gateway, List.of(adopterHookClash)));
+    assertTrue(hookEx.getMessage().contains("duplicate hook"));
 
-        Path adopterA = tempDir.resolve("adopterA.yaml");
-        Files.writeString(adopterA, """
+    Path adopterA = tempDir.resolve("adopterA.yaml");
+    Files.writeString(
+        adopterA,
+        """
                 id: a
                 type: jdbc
                 tools:
                   ping: {class: READ}
                 """);
-        Path adopterB = tempDir.resolve("adopterB.yaml");
-        Files.writeString(adopterB, """
+    Path adopterB = tempDir.resolve("adopterB.yaml");
+    Files.writeString(
+        adopterB,
+        """
                 id: b
                 type: jdbc
                 tools:
                   ping: {class: READ}
                 """);
-        ConfigException toolEx = assertThrows(ConfigException.class,
-                () -> new ConfigComposer().compose(gateway, List.of(adopterA, adopterB)));
-        assertTrue(toolEx.getMessage().contains("duplicate exposed tool 'ping'"));
-    }
+    ConfigException toolEx =
+        assertThrows(
+            ConfigException.class,
+            () -> new ConfigComposer().compose(gateway, List.of(adopterA, adopterB)));
+    assertTrue(toolEx.getMessage().contains("duplicate exposed tool 'ping'"));
+  }
 
-    @Test
-    void validatesMissingInputsAndSchemaBoundaries() throws Exception {
-        ConfigComposer composer = new ConfigComposer();
-        assertThrows(ConfigException.class, () -> composer.compose(null, List.of()));
-        assertThrows(ConfigException.class, () -> composer.compose(tempDir.resolve("missing.yaml"), List.of()));
+  @Test
+  void validatesMissingInputsAndSchemaBoundaries() throws Exception {
+    ConfigComposer composer = new ConfigComposer();
+    assertThrows(ConfigException.class, () -> composer.compose(null, List.of()));
+    assertThrows(
+        ConfigException.class, () -> composer.compose(tempDir.resolve("missing.yaml"), List.of()));
 
-        Path gateway = tempDir.resolve("aegis.yaml");
-        Files.writeString(gateway, "audit:\n  file: audit.jsonl\n");
-        assertThrows(ConfigException.class, () -> composer.compose(gateway, List.of()));
-        assertThrows(ConfigException.class, () -> composer.compose(gateway, List.of(tempDir.resolve("nope.yaml"))));
+    Path gateway = tempDir.resolve("aegis.yaml");
+    Files.writeString(gateway, "audit:\n  file: audit.jsonl\n");
+    assertThrows(ConfigException.class, () -> composer.compose(gateway, List.of()));
+    assertThrows(
+        ConfigException.class,
+        () -> composer.compose(gateway, List.of(tempDir.resolve("nope.yaml"))));
 
-        Path gatewayWithSources = tempDir.resolve("bad-gw.yaml");
-        Files.writeString(gatewayWithSources, "sources: []\n");
-        Path validAdopter = tempDir.resolve("valid.yaml");
-        Files.writeString(validAdopter, "id: ok\ntype: http\nbaseUrl: https://ok.internal\n");
-        assertThrows(ConfigException.class, () -> composer.compose(gatewayWithSources, List.of(validAdopter)));
+    Path gatewayWithSources = tempDir.resolve("bad-gw.yaml");
+    Files.writeString(gatewayWithSources, "sources: []\n");
+    Path validAdopter = tempDir.resolve("valid.yaml");
+    Files.writeString(validAdopter, "id: ok\ntype: http\nbaseUrl: https://ok.internal\n");
+    assertThrows(
+        ConfigException.class, () -> composer.compose(gatewayWithSources, List.of(validAdopter)));
 
-        Path unknownKeyAdopter = tempDir.resolve("unknown.yaml");
-        Files.writeString(unknownKeyAdopter, "id: bad\ntype: http\nunknownField: 1\n");
-        assertThrows(ConfigException.class, () -> composer.compose(gateway, List.of(unknownKeyAdopter)));
+    Path unknownKeyAdopter = tempDir.resolve("unknown.yaml");
+    Files.writeString(unknownKeyAdopter, "id: bad\ntype: http\nunknownField: 1\n");
+    assertThrows(
+        ConfigException.class, () -> composer.compose(gateway, List.of(unknownKeyAdopter)));
 
-        Path blankIdAdopter = tempDir.resolve("blank-id.yaml");
-        Files.writeString(blankIdAdopter, "id: \"\"\ntype: http\n");
-        assertThrows(ConfigException.class, () -> composer.compose(gateway, List.of(blankIdAdopter)));
+    Path blankIdAdopter = tempDir.resolve("blank-id.yaml");
+    Files.writeString(blankIdAdopter, "id: \"\"\ntype: http\n");
+    assertThrows(ConfigException.class, () -> composer.compose(gateway, List.of(blankIdAdopter)));
 
-        Path blankTypeAdopter = tempDir.resolve("blank-type.yaml");
-        Files.writeString(blankTypeAdopter, "id: x\ntype: \"\"\n");
-        assertThrows(ConfigException.class, () -> composer.compose(gateway, List.of(blankTypeAdopter)));
-    }
+    Path blankTypeAdopter = tempDir.resolve("blank-type.yaml");
+    Files.writeString(blankTypeAdopter, "id: x\ntype: \"\"\n");
+    assertThrows(ConfigException.class, () -> composer.compose(gateway, List.of(blankTypeAdopter)));
+  }
 
-    @Test
-    void mergesScopesAndHooksAndProducesDeterministicHash() throws Exception {
-        Path gateway = tempDir.resolve("aegis.yaml");
-        Files.writeString(gateway, """
+  @Test
+  void mergesScopesAndHooksAndProducesDeterministicHash() throws Exception {
+    Path gateway = tempDir.resolve("aegis.yaml");
+    Files.writeString(
+        gateway,
+        """
                 gateway:
                   name: aegis-hive
                 access:
@@ -371,8 +424,10 @@ class ConfigComposerTest {
                     resources: ["hive:schema:*"]
                 """);
 
-        Path adopter = tempDir.resolve("hive-adopter.yaml");
-        Files.writeString(adopter, """
+    Path adopter = tempDir.resolve("hive-adopter.yaml");
+    Files.writeString(
+        adopter,
+        """
                 id: hive
                 type: jdbc
                 settings:
@@ -404,41 +459,47 @@ class ConfigComposerTest {
                     resources: [{type: "hive:table", pointer: /table}]
                   jdbc_run_query: {class: READ}
                 """);
+  }
+
+  @Test
+  void hiveCompositionIsSemanticallyEqualToReferenceHiveProfile() throws Exception {
+    Path repoRoot = Path.of("").toAbsolutePath().normalize();
+    while (repoRoot != null && !Files.isDirectory(repoRoot.resolve("adopters"))) {
+      repoRoot = repoRoot.getParent();
     }
+    assertNotNull(repoRoot, "repository root not found");
 
-    @Test
-    void hiveCompositionIsSemanticallyEqualToReferenceHiveProfile() throws Exception {
-        Path repoRoot = Path.of("").toAbsolutePath().normalize();
-        while (repoRoot != null && !Files.isDirectory(repoRoot.resolve("adopters"))) {
-            repoRoot = repoRoot.getParent();
-        }
-        assertNotNull(repoRoot, "repository root not found");
+    Path hiveLayersDir = repoRoot.resolve("examples/adopters/hive/aegis");
+    Path hiveOutputDir = repoRoot.resolve("adopters/configurations/adapters/hive");
+    Path gatewayLayer = hiveLayersDir.resolve("gateway.yaml");
+    Path adopterLayer = hiveLayersDir.resolve("adopter.yaml");
+    Path referenceHive = hiveOutputDir.resolve("hive.yaml");
+    Path canonicalHive = hiveLayersDir.resolve("canonical.yaml");
 
-        Path hiveLayersDir = repoRoot.resolve("examples/adopters/hive/aegis");
-        Path hiveOutputDir = repoRoot.resolve("adopters/configurations/adapters/hive");
-        Path gatewayLayer = hiveLayersDir.resolve("gateway.yaml");
-        Path adopterLayer = hiveLayersDir.resolve("adopter.yaml");
-        Path referenceHive = hiveOutputDir.resolve("hive.yaml");
-        Path canonicalHive = hiveLayersDir.resolve("canonical.yaml");
+    assertTrue(Files.isRegularFile(gatewayLayer), "missing gateway layer fixture: " + gatewayLayer);
+    assertTrue(Files.isRegularFile(adopterLayer), "missing adopter layer fixture: " + adopterLayer);
+    assertTrue(
+        Files.isRegularFile(referenceHive), "missing approved reference profile: " + referenceHive);
+    assertTrue(
+        Files.isRegularFile(canonicalHive), "missing canonical snapshot fixture: " + canonicalHive);
 
-        assertTrue(Files.isRegularFile(gatewayLayer), "missing gateway layer fixture: " + gatewayLayer);
-        assertTrue(Files.isRegularFile(adopterLayer), "missing adopter layer fixture: " + adopterLayer);
-        assertTrue(Files.isRegularFile(referenceHive), "missing approved reference profile: " + referenceHive);
-        assertTrue(Files.isRegularFile(canonicalHive), "missing canonical snapshot fixture: " + canonicalHive);
+    ConfigComposer.ComposedConfig composed =
+        new ConfigComposer().compose(gatewayLayer, List.of(adopterLayer), hiveOutputDir);
 
-        ConfigComposer.ComposedConfig composed =
-                new ConfigComposer().compose(gatewayLayer, List.of(adopterLayer), hiveOutputDir);
+    Map<String, Object> expected = ConfigLoader.load(referenceHive);
+    assertEquals(expected, composed.effectiveMap());
+    String referenceText = Files.readString(referenceHive).replace("\r\n", "\n");
+    String canonicalText = Files.readString(canonicalHive).replace("\r\n", "\n");
+    assertEquals(referenceText, composed.effectiveYaml());
+    assertEquals(referenceText, canonicalText);
+  }
 
-        Map<String, Object> expected = ConfigLoader.load(referenceHive);
-        assertEquals(expected, composed.effectiveMap());
-        assertEquals(Files.readString(referenceHive), composed.effectiveYaml());
-        assertEquals(Files.readString(referenceHive), Files.readString(canonicalHive));
-    }
-
-    @Test
-    void rejectsComposedConfigThatFailsRuntimeGatewaySchema() throws Exception {
-        Path gateway = tempDir.resolve("aegis.yaml");
-        Files.writeString(gateway, """
+  @Test
+  void rejectsComposedConfigThatFailsRuntimeGatewaySchema() throws Exception {
+    Path gateway = tempDir.resolve("aegis.yaml");
+    Files.writeString(
+        gateway,
+        """
                 audit:
                   file: audit.jsonl
                 policy:
@@ -446,8 +507,10 @@ class ConfigComposerTest {
                     - {id: r, groups: ["*"], classes: [NOT_A_REAL_TOOL_CLASS]}
                 """);
 
-        Path adopter = tempDir.resolve("adopter.yaml");
-        Files.writeString(adopter, """
+    Path adopter = tempDir.resolve("adopter.yaml");
+    Files.writeString(
+        adopter,
+        """
                 id: demo
                 type: http
                 baseUrl: https://api.internal
@@ -457,10 +520,12 @@ class ConfigComposerTest {
                     request: {method: GET, path: /ping}
                 """);
 
-        Path outDir = tempDir.resolve("dist");
-        ConfigException ex = assertThrows(ConfigException.class,
-                () -> new ConfigComposer().compose(gateway, List.of(adopter), outDir));
-        assertNotNull(ex.getMessage());
-        assertFalse(ex.getMessage().isBlank());
-    }
+    Path outDir = tempDir.resolve("dist");
+    ConfigException ex =
+        assertThrows(
+            ConfigException.class,
+            () -> new ConfigComposer().compose(gateway, List.of(adopter), outDir));
+    assertNotNull(ex.getMessage());
+    assertFalse(ex.getMessage().isBlank());
+  }
 }
