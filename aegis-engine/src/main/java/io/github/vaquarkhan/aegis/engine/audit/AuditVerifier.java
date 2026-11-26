@@ -20,12 +20,15 @@ import java.io.IOException;
 /**
  * Verifies the one audit journal already selected by trusted gateway configuration.
  *
- * <p>The verifier accepts no path or caller input. This lets an authenticated administrative endpoint
- * answer whether its configured journal is intact without becoming a filesystem-reading API.
+ * <p>The verifier accepts no path or caller input. This lets an authenticated administrative
+ * endpoint answer whether its configured journal is intact without becoming a filesystem-reading
+ * API.
  */
 @FunctionalInterface
 public interface AuditVerifier {
 
-    /** @return true when the configured audit chain is intact; throws when verification is unavailable */
-    boolean verify() throws IOException;
+  /**
+   * @return true when the configured audit chain is intact; throws when verification is unavailable
+   */
+  boolean verify() throws IOException;
 }

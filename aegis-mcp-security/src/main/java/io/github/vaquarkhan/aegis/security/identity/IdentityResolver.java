@@ -20,48 +20,47 @@ import io.github.vaquarkhan.aegis.mcp.http.McpHttpRequest;
 import java.util.Set;
 
 /**
- * Authenticates an inbound request when the gateway serves its own front door. (In Knox mode
- * this is Knox's provider
- * chain; Aegis only reads the resulting Subject.) Returns null when the request is not
- * authenticated; the reason is logged by the implementation, never returned to the client.
+ * Authenticates an inbound request when the gateway serves its own front door. (In Knox mode this
+ * is Knox's provider chain; Aegis only reads the resulting Subject.) Returns null when the request
+ * is not authenticated; the reason is logged by the implementation, never returned to the client.
  */
 @FunctionalInterface
 public interface IdentityResolver {
 
-    /**
-     * A verified caller plus route-admission scopes. The immutable scope set also lives on
-     * {@link CallerIdentity} so the governance engine can enforce trusted action scopes without
-     * carrying raw tokens or claim material.
-     */
-    record Authenticated(CallerIdentity caller, Set<String> scopes) {
-        public Authenticated {
-            scopes = scopes == null ? Set.of() : Set.copyOf(scopes);
-        }
+  /**
+   * A verified caller plus route-admission scopes. The immutable scope set also lives on {@link
+   * CallerIdentity} so the governance engine can enforce trusted action scopes without carrying raw
+   * tokens or claim material.
+   */
+  record Authenticated(CallerIdentity caller, Set<String> scopes) {
+    public Authenticated {
+      scopes = scopes == null ? Set.of() : Set.copyOf(scopes);
     }
+  }
 
-    CallerIdentity resolve(McpHttpRequest request);
+  CallerIdentity resolve(McpHttpRequest request);
 
-    /** Authenticates and returns the granted scopes; resolvers without scopes return an empty set. */
-    default Authenticated authenticate(McpHttpRequest request) {
-        CallerIdentity caller = resolve(request);
-        return caller == null ? null : new Authenticated(caller, Set.of());
+  /** Authenticates and returns the granted scopes; resolvers without scopes return an empty set. */
+  default Authenticated authenticate(McpHttpRequest request) {
+    CallerIdentity caller = resolve(request);
+    return caller == null ? null : new Authenticated(caller, Set.of());
+  }
+
+  /** True when {@link #authenticate} can report granted scopes (an OAuth access token). */
+  default boolean carriesScopes() {
+    return false;
+  }
+
+  /** Extracts a bearer token, or null. */
+  static String bearer(McpHttpRequest request) {
+    if (request.headerCount("Authorization") != 1) {
+      return null;
     }
-
-    /** True when {@link #authenticate} can report granted scopes (an OAuth access token). */
-    default boolean carriesScopes() {
-        return false;
+    String h = request.header("Authorization");
+    if (h == null || h.length() < 8 || !h.regionMatches(true, 0, "Bearer ", 0, 7)) {
+      return null;
     }
-
-    /** Extracts a bearer token, or null. */
-    static String bearer(McpHttpRequest request) {
-        if (request.headerCount("Authorization") != 1) {
-            return null;
-        }
-        String h = request.header("Authorization");
-        if (h == null || h.length() < 8 || !h.regionMatches(true, 0, "Bearer ", 0, 7)) {
-            return null;
-        }
-        String t = h.substring(7).trim();
-        return t.isEmpty() ? null : t;
-    }
+    String t = h.substring(7).trim();
+    return t.isEmpty() ? null : t;
+  }
 }

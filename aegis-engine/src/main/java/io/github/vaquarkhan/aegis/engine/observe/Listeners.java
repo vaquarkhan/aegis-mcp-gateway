@@ -27,23 +27,27 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class Listeners {
 
-    private static final System.Logger LOG = System.getLogger(Listeners.class.getName());
-    private static final Set<Class<?>> WARNED = ConcurrentHashMap.newKeySet();
+  private static final System.Logger LOG = System.getLogger(Listeners.class.getName());
+  private static final Set<Class<?>> WARNED = ConcurrentHashMap.newKeySet();
 
-    private Listeners() {}
+  private Listeners() {}
 
-    public static void notify(List<DecisionListener> listeners, DecisionListener.Event event) {
-        for (DecisionListener l : listeners) {
-            try {
-                l.onDecision(event);
-            } catch (RuntimeException e) {
-                if (WARNED.add(l.getClass())) {
-                    LOG.log(System.Logger.Level.WARNING, "decision listener " + l.getClass().getName()
-                            + " failed; ignored (further failures are logged at DEBUG)", e);
-                } else {
-                    LOG.log(System.Logger.Level.DEBUG, "decision listener failed again: " + e);
-                }
-            }
+  public static void notify(List<DecisionListener> listeners, DecisionListener.Event event) {
+    for (DecisionListener l : listeners) {
+      try {
+        l.onDecision(event);
+      } catch (RuntimeException e) {
+        if (WARNED.add(l.getClass())) {
+          LOG.log(
+              System.Logger.Level.WARNING,
+              "decision listener "
+                  + l.getClass().getName()
+                  + " failed; ignored (further failures are logged at DEBUG)",
+              e);
+        } else {
+          LOG.log(System.Logger.Level.DEBUG, "decision listener failed again: " + e);
         }
+      }
     }
+  }
 }

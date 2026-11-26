@@ -29,45 +29,56 @@ import org.junit.jupiter.api.Test;
 /** Binary tool output is refused by default and, when allowed, passes byte-for-byte. */
 class OutputGuardTest {
 
-    /** Base64 that happens to contain a JWT-shaped run, so a string redactor would corrupt it. */
-    static final String DATA = "eyJhbGciOi" + "JIUzI1NiJ9.eyJzdWIiOiJ4eHh4eHgifQ.c2lnbmF0dXJlMTIz";
+  /** Base64 that happens to contain a JWT-shaped run, so a string redactor would corrupt it. */
+  static final String DATA = "eyJhbGciOi" + "JIUzI1NiJ9.eyJzdWIiOiJ4eHh4eHgifQ.c2lnbmF0dXJlMTIz";
 
-    static ToolResult imageResult() {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("content", List.of(
-                Map.of("type", "text", "text", "chart for Bearer abcdefghijklmnopqrstuvwxyz0123"),
-                Map.of("type", "image", "mimeType", "image/png", "data", DATA)));
-        body.put("isError", false);
-        return new ToolResult(body);
-    }
+  static ToolResult imageResult() {
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put(
+        "content",
+        List.of(
+            Map.of("type", "text", "text", "chart for Bearer abcdefghijklmnopqrstuvwxyz0123"),
+            Map.of("type", "image", "mimeType", "image/png", "data", DATA)));
+    body.put("isError", false);
+    return new ToolResult(body);
+  }
 
-    @Test
-    void binaryToolOutputIsWithheldByDefault() {
-        OutputGuard.Guarded g = OutputGuard.defaults().apply(imageResult());
-        assertTrue(g.binaryRefused());
-        assertTrue(g.result().isError());
-        assertFalse(Json.write(g.result().body()).contains(DATA), "the binary payload is not passed on");
-        // An embedded resource blob is binary too.
-        ToolResult blob = new ToolResult(Map.of("content", List.of(Map.of("type", "resource",
-                "resource", Map.of("uri", "file:///a.bin", "blob", "AAAA")))));
-        assertTrue(OutputGuard.defaults().apply(blob).binaryRefused());
-    }
+  @Test
+  void binaryToolOutputIsWithheldByDefault() {
+    OutputGuard.Guarded g = OutputGuard.defaults().apply(imageResult());
+    assertTrue(g.binaryRefused());
+    assertTrue(g.result().isError());
+    assertFalse(
+        Json.write(g.result().body()).contains(DATA), "the binary payload is not passed on");
+    // An embedded resource blob is binary too.
+    ToolResult blob =
+        new ToolResult(
+            Map.of(
+                "content",
+                List.of(
+                    Map.of(
+                        "type",
+                        "resource",
+                        "resource",
+                        Map.of("uri", "file:///a.bin", "blob", "AAAA")))));
+    assertTrue(OutputGuard.defaults().apply(blob).binaryRefused());
+  }
 
-    @Test
-    void allowedBinaryPassesUnchangedWhileTextIsStillRedacted() {
-        OutputGuard guard = new OutputGuard(1 << 20, OutputGuard.DEFAULT_REDACTIONS, true);
-        OutputGuard.Guarded g = guard.apply(imageResult());
-        assertFalse(g.binaryRefused());
-        String out = Json.write(g.result().body());
-        assertTrue(out.contains(DATA), "binary data is copied byte-for-byte, never regex-rewritten");
-        assertFalse(out.contains("abcdefghijklmnopqrstuvwxyz0123"), "text parts are still redacted");
-        assertEquals(1, g.redactions());
-    }
+  @Test
+  void allowedBinaryPassesUnchangedWhileTextIsStillRedacted() {
+    OutputGuard guard = new OutputGuard(1 << 20, OutputGuard.DEFAULT_REDACTIONS, true);
+    OutputGuard.Guarded g = guard.apply(imageResult());
+    assertFalse(g.binaryRefused());
+    String out = Json.write(g.result().body());
+    assertTrue(out.contains(DATA), "binary data is copied byte-for-byte, never regex-rewritten");
+    assertFalse(out.contains("abcdefghijklmnopqrstuvwxyz0123"), "text parts are still redacted");
+    assertEquals(1, g.redactions());
+  }
 
-    @Test
-    void textOnlyOutputIsUnaffected() {
-        OutputGuard.Guarded g = OutputGuard.defaults().apply(ToolResult.text("plain", false));
-        assertFalse(g.binaryRefused());
-        assertFalse(g.result().isError());
-    }
+  @Test
+  void textOnlyOutputIsUnaffected() {
+    OutputGuard.Guarded g = OutputGuard.defaults().apply(ToolResult.text("plain", false));
+    assertFalse(g.binaryRefused());
+    assertFalse(g.result().isError());
+  }
 }

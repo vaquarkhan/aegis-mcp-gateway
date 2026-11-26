@@ -27,16 +27,19 @@ import java.util.Map;
  */
 public interface PolicyDecisionPoint {
 
-    Result decide(CallerIdentity caller, Action action, Map<String, Object> backendArguments) throws Exception;
+  Result decide(CallerIdentity caller, Action action, Map<String, Object> backendArguments)
+      throws Exception;
 
-    /** @param allow decision; @param reason operator-facing reason (no argument values) */
-    record Result(boolean allow, String reason) {
-        public static Result allow(String reason) {
-            return new Result(true, reason);
-        }
-
-        public static Result deny(String reason) {
-            return new Result(false, reason);
-        }
+  /**
+   * @param allow decision; @param reason operator-facing reason (no argument values)
+   */
+  record Result(boolean allow, String reason) {
+    public static Result allow(String reason) {
+      return new Result(true, reason);
     }
+
+    public static Result deny(String reason) {
+      return new Result(false, reason);
+    }
+  }
 }

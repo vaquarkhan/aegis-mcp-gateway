@@ -32,31 +32,40 @@ import org.junit.jupiter.api.io.TempDir;
 /** Keeps the illustrative project-governance profile a valid, safe configuration artifact. */
 class ApacheProjectGovernanceProfileTest {
 
-    @TempDir
-    Path dir;
+  @TempDir Path dir;
 
-    @Test
-    void exampleIsClearlyLabelledAndBuildsWithDurableStateOutsideTheSourceTree() throws Exception {
-        Path source = Path.of("..", "..", "adopters", "profiles", "apache-project-governance.example.yaml");
-        String text = Files.readString(source);
-        assertTrue(text.contains("ILLUSTRATIVE ONLY"));
-        assertTrue(text.contains("not an ASF policy"));
-        assertTrue(text.contains("project-admin.invalid"), "the sample must not name a live service");
+  @Test
+  void exampleIsClearlyLabelledAndBuildsWithDurableStateOutsideTheSourceTree() throws Exception {
+    Path source =
+        Path.of("..", "..", "adopters", "profiles", "apache-project-governance.example.yaml");
+    String text = Files.readString(source);
+    assertTrue(text.contains("ILLUSTRATIVE ONLY"));
+    assertTrue(text.contains("not an ASF policy"));
+    assertTrue(text.contains("project-admin.invalid"), "the sample must not name a live service");
 
-        Path copy = dir.resolve("apache-project-governance.example.yaml");
-        Files.writeString(copy, text);
-        Map<String, String> env = Map.of("AEGIS_SIGNING_KEY", "e".repeat(48));
-        try (Gateway gateway = GatewayFactory.build(copy, BuildContext.defaults(dir).withEnv(env::get))) {
-            CallerIdentity contributor = CallerIdentity.of("c", java.util.Set.of("project-contributors"), "example", "test");
-            CallerIdentity maintainer = CallerIdentity.of("m", java.util.Set.of("project-maintainers"), "example", "test");
-            List<String> contributorTools = gateway.engine().listTools(contributor).stream()
-                    .map(t -> String.valueOf(t.get("name"))).toList();
-            List<String> maintainerTools = gateway.engine().listTools(maintainer).stream()
-                    .map(t -> String.valueOf(t.get("name"))).toList();
-            assertTrue(contributorTools.contains("project_get_evidence"));
-            assertFalse(contributorTools.contains("project_update_configuration"));
-            assertTrue(maintainerTools.contains("project_update_configuration"));
-        }
-        assertTrue(Files.isDirectory(dir.resolve("state").resolve("project-governance")), "Derby state belongs beside the copied profile");
+    Path copy = dir.resolve("apache-project-governance.example.yaml");
+    Files.writeString(copy, text);
+    Map<String, String> env = Map.of("AEGIS_SIGNING_KEY", "e".repeat(48));
+    try (Gateway gateway =
+        GatewayFactory.build(copy, BuildContext.defaults(dir).withEnv(env::get))) {
+      CallerIdentity contributor =
+          CallerIdentity.of("c", java.util.Set.of("project-contributors"), "example", "test");
+      CallerIdentity maintainer =
+          CallerIdentity.of("m", java.util.Set.of("project-maintainers"), "example", "test");
+      List<String> contributorTools =
+          gateway.engine().listTools(contributor).stream()
+              .map(t -> String.valueOf(t.get("name")))
+              .toList();
+      List<String> maintainerTools =
+          gateway.engine().listTools(maintainer).stream()
+              .map(t -> String.valueOf(t.get("name")))
+              .toList();
+      assertTrue(contributorTools.contains("project_get_evidence"));
+      assertFalse(contributorTools.contains("project_update_configuration"));
+      assertTrue(maintainerTools.contains("project_update_configuration"));
     }
+    assertTrue(
+        Files.isDirectory(dir.resolve("state").resolve("project-governance")),
+        "Derby state belongs beside the copied profile");
+  }
 }

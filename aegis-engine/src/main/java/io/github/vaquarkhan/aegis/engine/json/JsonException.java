@@ -18,21 +18,21 @@ package io.github.vaquarkhan.aegis.engine.json;
 /** Raised for malformed, ambiguous or over-limit JSON. The message never echoes input content. */
 public final class JsonException extends RuntimeException {
 
-    private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-    private final boolean limitExceeded;
+  private final boolean limitExceeded;
 
-    public JsonException(String message) {
-        this(message, false);
-    }
+  public JsonException(String message) {
+    this(message, false);
+  }
 
-    public JsonException(String message, boolean limitExceeded) {
-        super(message);
-        this.limitExceeded = limitExceeded;
-    }
+  public JsonException(String message, boolean limitExceeded) {
+    super(message);
+    this.limitExceeded = limitExceeded;
+  }
 
-    /** True when the document was rejected for exceeding a {@link JsonLimits} bound. */
-    public boolean limitExceeded() {
-        return limitExceeded;
-    }
+  /** True when the document was rejected for exceeding a {@link JsonLimits} bound. */
+  public boolean limitExceeded() {
+    return limitExceeded;
+  }
 }

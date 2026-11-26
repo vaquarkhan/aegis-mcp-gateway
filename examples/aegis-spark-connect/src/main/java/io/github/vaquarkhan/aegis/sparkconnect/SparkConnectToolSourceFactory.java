@@ -24,6 +24,7 @@ import java.util.function.Function;
 
 /**
  * {@code type: spark-connect} source. Settings:
+ *
  * <pre>
  * settings:
  *   host: spark-connect.internal       # Spark Connect server (start-connect-server.sh)
@@ -34,42 +35,51 @@ import java.util.function.Function;
  *   maxRows: 100                       # hard cap for preview_table and spark_sql results
  *   threads: 8                         # concurrent Spark Connect operations
  * </pre>
+ *
  * The caller's own credentials never reach Spark: Spark sees the gateway's service identity, and
  * who asked is in the Aegis audit record (correlated by trace id).
  */
 public final class SparkConnectToolSourceFactory implements ToolSourceFactory {
 
-    @Override
-    public String type() {
-        return "spark-connect";
-    }
+  @Override
+  public String type() {
+    return "spark-connect";
+  }
 
-    @Override
-    public ToolSource create(String id, ConfigNode s) {
-        // Compatibility path for a direct factory caller. GatewayFactory uses the BuildContext overload.
-        return create(id, s, System::getenv);
-    }
+  @Override
+  public ToolSource create(String id, ConfigNode s) {
+    // Compatibility path for a direct factory caller. GatewayFactory uses the BuildContext
+    // overload.
+    return create(id, s, System::getenv);
+  }
 
-    @Override
-    public ToolSource create(String id, ConfigNode s, BuildContext context) {
-        return create(id, s, context.env());
-    }
+  @Override
+  public ToolSource create(String id, ConfigNode s, BuildContext context) {
+    return create(id, s, context.env());
+  }
 
-    private ToolSource create(String id, ConfigNode s, Function<String, String> environment) {
-        String token = null;
-        String tokenEnv = s.string("tokenEnv", null);
-        if (tokenEnv != null) {
-            token = environment.apply(tokenEnv);
-            if (token == null || token.isEmpty()) {
-                throw new ConfigException(s.path() + ".tokenEnv names " + tokenEnv + " which is not set");
-            }
-        }
-        try {
-            return new SparkConnectToolSource(id, new SparkConnectSettings(s.requiredString("host"), (int) s.integer("port", 15002),
-                    s.bool("useSsl", false), token, s.string("userId", null), (int) s.integer("maxRows", 100),
-                    (int) s.integer("threads", 8)));
-        } catch (IllegalArgumentException e) {
-            throw new ConfigException(s.path() + ": " + e.getMessage());
-        }
+  private ToolSource create(String id, ConfigNode s, Function<String, String> environment) {
+    String token = null;
+    String tokenEnv = s.string("tokenEnv", null);
+    if (tokenEnv != null) {
+      token = environment.apply(tokenEnv);
+      if (token == null || token.isEmpty()) {
+        throw new ConfigException(s.path() + ".tokenEnv names " + tokenEnv + " which is not set");
+      }
     }
+    try {
+      return new SparkConnectToolSource(
+          id,
+          new SparkConnectSettings(
+              s.requiredString("host"),
+              (int) s.integer("port", 15002),
+              s.bool("useSsl", false),
+              token,
+              s.string("userId", null),
+              (int) s.integer("maxRows", 100),
+              (int) s.integer("threads", 8)));
+    } catch (IllegalArgumentException e) {
+      throw new ConfigException(s.path() + ": " + e.getMessage());
+    }
+  }
 }

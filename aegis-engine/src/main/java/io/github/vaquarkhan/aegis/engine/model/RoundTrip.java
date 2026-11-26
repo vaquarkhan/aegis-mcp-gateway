@@ -31,66 +31,80 @@ import java.util.Map;
  * integrity protection of it is the backend's job (the MCP specification requires it), and Aegis
  * only bounds its size.
  *
- * @param inputResponses     the client's answers, keyed like the backend's {@code inputRequests}; empty if none
- * @param requestState       the echoed opaque state, or null
- * @param clientCapabilities the client's declared {@code elicitation} / {@code sampling} / {@code roots}
- *                           capabilities, forwarded so a compliant backend knows what it may ask for
+ * @param inputResponses the client's answers, keyed like the backend's {@code inputRequests}; empty
+ *     if none
+ * @param requestState the echoed opaque state, or null
+ * @param clientCapabilities the client's declared {@code elicitation} / {@code sampling} / {@code
+ *     roots} capabilities, forwarded so a compliant backend knows what it may ask for
  */
-public record RoundTrip(Map<String, Object> inputResponses, String requestState, Map<String, Object> clientCapabilities) {
+public record RoundTrip(
+    Map<String, Object> inputResponses,
+    String requestState,
+    Map<String, Object> clientCapabilities) {
 
-    public static final RoundTrip NONE = new RoundTrip(Map.of(), null, Map.of());
-    /** Upper bound on the opaque state a client may echo (it is server-minted, so large values are suspicious). */
-    public static final int MAX_REQUEST_STATE_CHARS = 64 * 1024;
+  public static final RoundTrip NONE = new RoundTrip(Map.of(), null, Map.of());
 
-    public RoundTrip {
-        inputResponses = inputResponses == null ? Map.of() : inputResponses;
-        clientCapabilities = clientCapabilities == null ? Map.of() : clientCapabilities;
+  /**
+   * Upper bound on the opaque state a client may echo (it is server-minted, so large values are
+   * suspicious).
+   */
+  public static final int MAX_REQUEST_STATE_CHARS = 64 * 1024;
+
+  public RoundTrip {
+    inputResponses = inputResponses == null ? Map.of() : inputResponses;
+    clientCapabilities = clientCapabilities == null ? Map.of() : clientCapabilities;
+  }
+
+  /** True when this request is an MRTR retry. */
+  public boolean isRetry() {
+    return !inputResponses.isEmpty() || requestState != null;
+  }
+
+  /**
+   * Reads the MRTR fields of a request's params.
+   *
+   * @throws IllegalArgumentException when {@code inputResponses} is not an object or {@code
+   *     requestState} is not a string of bounded size
+   */
+  public static RoundTrip fromParams(Map<String, Object> params, Map<String, Object> meta) {
+    Object ir = params.get("inputResponses");
+    Object rs = params.get("requestState");
+    if (ir != null && !(ir instanceof Map)) {
+      throw new IllegalArgumentException("inputResponses must be an object");
     }
-
-    /** True when this request is an MRTR retry. */
-    public boolean isRetry() {
-        return !inputResponses.isEmpty() || requestState != null;
+    if (rs != null
+        && (!(rs instanceof String s) || s.isEmpty() || s.length() > MAX_REQUEST_STATE_CHARS)) {
+      throw new IllegalArgumentException(
+          "requestState must be a non-empty string of at most "
+              + MAX_REQUEST_STATE_CHARS
+              + " characters");
     }
-
-    /**
-     * Reads the MRTR fields of a request's params.
-     *
-     * @throws IllegalArgumentException when {@code inputResponses} is not an object or {@code requestState}
-     *                                  is not a string of bounded size
-     */
-    public static RoundTrip fromParams(Map<String, Object> params, Map<String, Object> meta) {
-        Object ir = params.get("inputResponses");
-        Object rs = params.get("requestState");
-        if (ir != null && !(ir instanceof Map)) {
-            throw new IllegalArgumentException("inputResponses must be an object");
+    Map<String, Object> caps = new LinkedHashMap<>();
+    Object declared = meta == null ? null : meta.get("io.modelcontextprotocol/clientCapabilities");
+    if (declared instanceof Map<?, ?> m) {
+      for (String k : new String[] {"elicitation", "sampling", "roots"}) {
+        if (m.get(k) instanceof Map<?, ?> v) {
+          caps.put(k, v);
         }
-        if (rs != null && (!(rs instanceof String s) || s.isEmpty() || s.length() > MAX_REQUEST_STATE_CHARS)) {
-            throw new IllegalArgumentException("requestState must be a non-empty string of at most " + MAX_REQUEST_STATE_CHARS + " characters");
-        }
-        Map<String, Object> caps = new LinkedHashMap<>();
-        Object declared = meta == null ? null : meta.get("io.modelcontextprotocol/clientCapabilities");
-        if (declared instanceof Map<?, ?> m) {
-            for (String k : new String[] {"elicitation", "sampling", "roots"}) {
-                if (m.get(k) instanceof Map<?, ?> v) {
-                    caps.put(k, v);
-                }
-            }
-        }
-        @SuppressWarnings("unchecked")
-        Map<String, Object> irm = ir == null ? Map.of() : (Map<String, Object>) ir;
-        if (irm.isEmpty() && rs == null && caps.isEmpty()) {
-            return NONE;
-        }
-        return new RoundTrip(irm, (String) rs, caps);
+      }
     }
-
-    /** Adds the retry fields to downstream params (the capabilities go into {@code _meta} separately). */
-    public void addTo(Map<String, Object> params) {
-        if (!inputResponses.isEmpty()) {
-            params.put("inputResponses", inputResponses);
-        }
-        if (requestState != null) {
-            params.put("requestState", requestState);
-        }
+    @SuppressWarnings("unchecked")
+    Map<String, Object> irm = ir == null ? Map.of() : (Map<String, Object>) ir;
+    if (irm.isEmpty() && rs == null && caps.isEmpty()) {
+      return NONE;
     }
+    return new RoundTrip(irm, (String) rs, caps);
+  }
+
+  /**
+   * Adds the retry fields to downstream params (the capabilities go into {@code _meta} separately).
+   */
+  public void addTo(Map<String, Object> params) {
+    if (!inputResponses.isEmpty()) {
+      params.put("inputResponses", inputResponses);
+    }
+    if (requestState != null) {
+      params.put("requestState", requestState);
+    }
+  }
 }

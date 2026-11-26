@@ -35,32 +35,51 @@ import org.junit.jupiter.api.Test;
 
 class KnoxRevocationTest {
 
-    @Test
-    void revokedSubjectActorOrDelegateIsRefusedOnTheKnoxPath() {
-        TokenRevocations revs = new TokenRevocations(new InMemoryStateStore(), Clock.systemUTC());
-        CallerIdentity alice = new CallerIdentity("alice", "alice", Set.of("analysts"), "knox:sandbox", "knox", List.of());
-        CallerIdentity delegated = new CallerIdentity("agent-7", "bob", Set.of("analysts"), "knox:sandbox", "knox",
-                List.of("agent-7", "agent-root"));
+  @Test
+  void revokedSubjectActorOrDelegateIsRefusedOnTheKnoxPath() {
+    TokenRevocations revs = new TokenRevocations(new InMemoryStateStore(), Clock.systemUTC());
+    CallerIdentity alice =
+        new CallerIdentity("alice", "alice", Set.of("analysts"), "knox:sandbox", "knox", List.of());
+    CallerIdentity delegated =
+        new CallerIdentity(
+            "agent-7",
+            "bob",
+            Set.of("analysts"),
+            "knox:sandbox",
+            "knox",
+            List.of("agent-7", "agent-root"));
 
-        assertSame(alice, KnoxIdentityBridge.unlessRevoked(alice, revs), "nothing revoked");
-        assertSame(alice, KnoxIdentityBridge.unlessRevoked(alice, null), "no list bound: pass through");
-        assertNull(KnoxIdentityBridge.unlessRevoked(null, revs), "no Knox subject stays null");
-        assertTrue(revs.acceptsIssuer("knox:sandbox"), "the Knox issuer is registered so admin revocations under it are accepted");
+    assertSame(alice, KnoxIdentityBridge.unlessRevoked(alice, revs), "nothing revoked");
+    assertSame(alice, KnoxIdentityBridge.unlessRevoked(alice, null), "no list bound: pass through");
+    assertNull(KnoxIdentityBridge.unlessRevoked(null, revs), "no Knox subject stays null");
+    assertTrue(
+        revs.acceptsIssuer("knox:sandbox"),
+        "the Knox issuer is registered so admin revocations under it are accepted");
 
-        revs.revokeSubject("knox:sandbox", "alice", Duration.ofHours(1));
-        assertNull(KnoxIdentityBridge.unlessRevoked(alice, revs), "effective subject revoked");
-        assertSame(delegated, KnoxIdentityBridge.unlessRevoked(delegated, revs), "other callers unaffected");
+    revs.revokeSubject("knox:sandbox", "alice", Duration.ofHours(1));
+    assertNull(KnoxIdentityBridge.unlessRevoked(alice, revs), "effective subject revoked");
+    assertSame(
+        delegated, KnoxIdentityBridge.unlessRevoked(delegated, revs), "other callers unaffected");
 
-        revs.revokeSubject("knox:sandbox", "agent-root", Duration.ofHours(1));
-        assertNull(KnoxIdentityBridge.unlessRevoked(delegated, revs), "a revoked actor deep in the chain refuses the request");
+    revs.revokeSubject("knox:sandbox", "agent-root", Duration.ofHours(1));
+    assertNull(
+        KnoxIdentityBridge.unlessRevoked(delegated, revs),
+        "a revoked actor deep in the chain refuses the request");
 
-        CallerIdentity primaryOnly = new CallerIdentity("svc", "carol", Set.of(), "knox:sandbox", "knox", List.of());
-        revs.revokeSubject("knox:sandbox", "svc", Duration.ofHours(1));
-        assertNull(KnoxIdentityBridge.unlessRevoked(primaryOnly, revs), "the primary actor is checked too");
+    CallerIdentity primaryOnly =
+        new CallerIdentity("svc", "carol", Set.of(), "knox:sandbox", "knox", List.of());
+    revs.revokeSubject("knox:sandbox", "svc", Duration.ofHours(1));
+    assertNull(
+        KnoxIdentityBridge.unlessRevoked(primaryOnly, revs), "the primary actor is checked too");
 
-        CallerIdentity otherTopology = new CallerIdentity("alice", "alice", Set.of(), "knox:prod", "knox", List.of());
-        assertEquals(otherTopology, KnoxIdentityBridge.unlessRevoked(otherTopology, revs), "issuer-scoped: another topology is unaffected");
-        System.out.println("THREATMODEL|SCAN-O6|AI scanner readiness O-6|KnoxIdentityBridge.unlessRevoked|FIXED|"
-                + "subject, primary actor and delegation chain checked against the shared revocation list on the Knox path");
-    }
+    CallerIdentity otherTopology =
+        new CallerIdentity("alice", "alice", Set.of(), "knox:prod", "knox", List.of());
+    assertEquals(
+        otherTopology,
+        KnoxIdentityBridge.unlessRevoked(otherTopology, revs),
+        "issuer-scoped: another topology is unaffected");
+    System.out.println(
+        "THREATMODEL|SCAN-O6|AI scanner readiness O-6|KnoxIdentityBridge.unlessRevoked|FIXED|"
+            + "subject, primary actor and delegation chain checked against the shared revocation list on the Knox path");
+  }
 }

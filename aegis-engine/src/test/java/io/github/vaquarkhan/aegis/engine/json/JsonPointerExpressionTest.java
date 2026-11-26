@@ -26,34 +26,37 @@ import org.junit.jupiter.api.Test;
 /**
  * Regression for a bug class reported against other MCP gateways: a response filter written in an
  * expression language (jq) could read the gateway's own environment ({@code env}, {@code $ENV}) and
- * return credentials to the model. Aegis selects response parts with RFC 6901 JSON Pointer only, which
- * names a path and has no functions, variables or pipes.
+ * return credentials to the model. Aegis selects response parts with RFC 6901 JSON Pointer only,
+ * which names a path and has no functions, variables or pipes.
  */
 class JsonPointerExpressionTest {
 
-    @Test
-    void jqExpressionsAreRejectedAtParse() {
-        for (String jq : new String[] {".token", "env", "$ENV", ".data | env.AWS_SECRET_ACCESS_KEY", "..", ".[] | select(.a)"}) {
-            assertThrows(IllegalArgumentException.class, () -> JsonPointer.parse(jq), jq);
-        }
+  @Test
+  void jqExpressionsAreRejectedAtParse() {
+    for (String jq :
+        new String[] {
+          ".token", "env", "$ENV", ".data | env.AWS_SECRET_ACCESS_KEY", "..", ".[] | select(.a)"
+        }) {
+      assertThrows(IllegalArgumentException.class, () -> JsonPointer.parse(jq), jq);
     }
+  }
 
-    @Test
-    void expressionTextInsideAPointerIsALiteralKeyNotCode() {
-        Map<String, Object> body = Json.parseObject("{\"data\":{\"rows\":[1]}}");
-        assertEquals(Optional.empty(), JsonPointer.parse("/$ENV").resolve(body));
-        assertEquals(Optional.empty(), JsonPointer.parse("/data | env").resolve(body));
-        assertEquals(Optional.empty(), JsonPointer.parse("/env/HOME").resolve(body));
-        Map<String, Object> literal = Json.parseObject("{\"$ENV\":\"just a key\"}");
-        assertEquals(Optional.of("just a key"), JsonPointer.parse("/$ENV").resolve(literal));
-    }
+  @Test
+  void expressionTextInsideAPointerIsALiteralKeyNotCode() {
+    Map<String, Object> body = Json.parseObject("{\"data\":{\"rows\":[1]}}");
+    assertEquals(Optional.empty(), JsonPointer.parse("/$ENV").resolve(body));
+    assertEquals(Optional.empty(), JsonPointer.parse("/data | env").resolve(body));
+    assertEquals(Optional.empty(), JsonPointer.parse("/env/HOME").resolve(body));
+    Map<String, Object> literal = Json.parseObject("{\"$ENV\":\"just a key\"}");
+    assertEquals(Optional.of("just a key"), JsonPointer.parse("/$ENV").resolve(literal));
+  }
 
-    @Test
-    void aPointerOnlyEverReturnsPartsOfTheDocumentItWasGiven() {
-        Map<String, Object> body = Json.parseObject("{\"a\":{\"b\":\"c\"}}");
-        String home = System.getenv("PATH");
-        Optional<Object> whole = JsonPointer.parse("").resolve(body);
-        assertEquals(Optional.of(body), whole);
-        assertTrue(home == null || !Json.write(whole.orElseThrow()).contains(home));
-    }
+  @Test
+  void aPointerOnlyEverReturnsPartsOfTheDocumentItWasGiven() {
+    Map<String, Object> body = Json.parseObject("{\"a\":{\"b\":\"c\"}}");
+    String home = System.getenv("PATH");
+    Optional<Object> whole = JsonPointer.parse("").resolve(body);
+    assertEquals(Optional.of(body), whole);
+    assertTrue(home == null || !Json.write(whole.orElseThrow()).contains(home));
+  }
 }

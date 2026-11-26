@@ -20,32 +20,36 @@ import java.util.Map;
 /**
  * A {@code tools/call} as received from the client, before governance.
  *
- * @param requestId  JSON-RPC id rendered as text (for audit correlation)
- * @param toolName   {@code params.name}
- * @param arguments  {@code params.arguments} exactly as sent (may contain 0.1 control arguments)
- * @param meta       {@code params._meta} (may carry 2.0 control values)
+ * @param requestId JSON-RPC id rendered as text (for audit correlation)
+ * @param toolName {@code params.name}
+ * @param arguments {@code params.arguments} exactly as sent (may contain 0.1 control arguments)
+ * @param meta {@code params._meta} (may carry 2.0 control values)
  * @param protocolVersion MCP protocol version the client is speaking for this request
- * @param roundTrip  2026-07-28 Multi Round-Trip retry fields ({@code inputResponses},
- *                   {@code requestState}) and the client's declared capabilities; empty otherwise
+ * @param roundTrip 2026-07-28 Multi Round-Trip retry fields ({@code inputResponses}, {@code
+ *     requestState}) and the client's declared capabilities; empty otherwise
  */
 public record ToolCall(
-        String requestId,
-        String toolName,
-        Map<String, Object> arguments,
-        Map<String, Object> meta,
-        String protocolVersion,
-        RoundTrip roundTrip) {
+    String requestId,
+    String toolName,
+    Map<String, Object> arguments,
+    Map<String, Object> meta,
+    String protocolVersion,
+    RoundTrip roundTrip) {
 
-    public ToolCall(String requestId, String toolName, Map<String, Object> arguments, Map<String, Object> meta,
-                    String protocolVersion) {
-        this(requestId, toolName, arguments, meta, protocolVersion, RoundTrip.NONE);
-    }
+  public ToolCall(
+      String requestId,
+      String toolName,
+      Map<String, Object> arguments,
+      Map<String, Object> meta,
+      String protocolVersion) {
+    this(requestId, toolName, arguments, meta, protocolVersion, RoundTrip.NONE);
+  }
 
-    public ToolCall {
-        requestId = requestId == null ? "" : requestId;
-        arguments = arguments == null ? Map.of() : arguments;
-        meta = meta == null ? Map.of() : meta;
-        protocolVersion = protocolVersion == null ? "" : protocolVersion;
-        roundTrip = roundTrip == null ? RoundTrip.NONE : roundTrip;
-    }
+  public ToolCall {
+    requestId = requestId == null ? "" : requestId;
+    arguments = arguments == null ? Map.of() : arguments;
+    meta = meta == null ? Map.of() : meta;
+    protocolVersion = protocolVersion == null ? "" : protocolVersion;
+    roundTrip = roundTrip == null ? RoundTrip.NONE : roundTrip;
+  }
 }

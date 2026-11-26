@@ -25,19 +25,20 @@ import java.nio.file.Path;
 /** {@code state.type: derby-local}, a no-server-install durable store for one Aegis process. */
 public final class DerbyStateStoreFactory implements StateStoreFactory {
 
-    @Override
-    public String type() {
-        return "derby-local";
-    }
+  @Override
+  public String type() {
+    return "derby-local";
+  }
 
-    @Override
-    public StateStore create(ConfigNode settings, BuildContext context) throws Exception {
-        String pathText = settings.requiredString("path");
-        Path base = context.baseDir().toAbsolutePath().normalize();
-        Path path = base.resolve(pathText).normalize();
-        if (!path.startsWith(base)) {
-            throw new ConfigException(settings.path() + ".path must stay under the configuration directory");
-        }
-        return new DerbyStateStore(path, context.clock());
+  @Override
+  public StateStore create(ConfigNode settings, BuildContext context) throws Exception {
+    String pathText = settings.requiredString("path");
+    Path base = context.baseDir().toAbsolutePath().normalize();
+    Path path = base.resolve(pathText).normalize();
+    if (!path.startsWith(base)) {
+      throw new ConfigException(
+          settings.path() + ".path must stay under the configuration directory");
     }
+    return new DerbyStateStore(path, context.clock());
+  }
 }

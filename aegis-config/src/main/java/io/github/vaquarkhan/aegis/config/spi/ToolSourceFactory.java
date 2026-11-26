@@ -29,21 +29,22 @@ import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
  */
 public interface ToolSourceFactory {
 
-    /** Value of {@code type} in configuration, e.g. {@code kafka-admin}. Must not be mcp or http. */
-    String type();
+  /** Value of {@code type} in configuration, e.g. {@code kafka-admin}. Must not be mcp or http. */
+  String type();
 
-    /**
-     * @param id       source id
-     * @param settings the source's {@code settings:} object; read every key you support (unknown keys fail startup)
-     */
-    ToolSource create(String id, ConfigNode settings) throws Exception;
+  /**
+   * @param id source id
+   * @param settings the source's {@code settings:} object; read every key you support (unknown keys
+   *     fail startup)
+   */
+  ToolSource create(String id, ConfigNode settings) throws Exception;
 
-    /**
-     * Context-aware construction for providers that resolve names of credentials or other host services.
-     * The default retains source and binary compatibility for existing providers: they receive the same
-     * two-argument call until they deliberately opt into context-aware behavior.
-     */
-    default ToolSource create(String id, ConfigNode settings, BuildContext context) throws Exception {
-        return create(id, settings);
-    }
+  /**
+   * Context-aware construction for providers that resolve names of credentials or other host
+   * services. The default retains source and binary compatibility for existing providers: they
+   * receive the same two-argument call until they deliberately opt into context-aware behavior.
+   */
+  default ToolSource create(String id, ConfigNode settings, BuildContext context) throws Exception {
+    return create(id, settings);
+  }
 }

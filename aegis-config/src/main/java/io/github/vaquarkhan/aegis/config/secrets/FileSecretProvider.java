@@ -35,50 +35,53 @@ import java.util.regex.Pattern;
  */
 public final class FileSecretProvider implements Function<String, String> {
 
-    private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}");
-    static final int MAX_BYTES = 64 * 1024;
+  private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}");
+  static final int MAX_BYTES = 64 * 1024;
 
-    private final Path directory;
+  private final Path directory;
 
-    public FileSecretProvider(Path directory) {
-        Path real;
-        try {
-            real = directory.toRealPath();
-        } catch (IOException e) {
-            throw new ConfigException("config.secrets.settings.directory " + directory + " does not exist");
-        }
-        if (!Files.isDirectory(real)) {
-            throw new ConfigException("config.secrets.settings.directory " + directory + " is not a directory");
-        }
-        this.directory = real;
+  public FileSecretProvider(Path directory) {
+    Path real;
+    try {
+      real = directory.toRealPath();
+    } catch (IOException e) {
+      throw new ConfigException(
+          "config.secrets.settings.directory " + directory + " does not exist");
     }
-
-    @Override
-    public String apply(String name) {
-        if (name == null || !NAME.matcher(name).matches() || name.contains("..")) {
-            return null;
-        }
-        Path f = directory.resolve(name);
-        if (!Files.isRegularFile(f)) {
-            return null;
-        }
-        try {
-            Path real = f.toRealPath();
-            if (!real.startsWith(directory)) {
-                throw new ConfigException("config.secrets: " + name + " resolves outside " + directory);
-            }
-            if (Files.size(real) > MAX_BYTES) {
-                throw new ConfigException("config.secrets: " + name + " is larger than " + MAX_BYTES + " bytes");
-            }
-            String v = Files.readString(real, StandardCharsets.UTF_8);
-            if (v.endsWith("\r\n")) {
-                v = v.substring(0, v.length() - 2);
-            } else if (v.endsWith("\n")) {
-                v = v.substring(0, v.length() - 1);
-            }
-            return v.isEmpty() ? null : v;
-        } catch (IOException e) {
-            throw new UncheckedIOException("config.secrets: " + name + " could not be read", e);
-        }
+    if (!Files.isDirectory(real)) {
+      throw new ConfigException(
+          "config.secrets.settings.directory " + directory + " is not a directory");
     }
+    this.directory = real;
+  }
+
+  @Override
+  public String apply(String name) {
+    if (name == null || !NAME.matcher(name).matches() || name.contains("..")) {
+      return null;
+    }
+    Path f = directory.resolve(name);
+    if (!Files.isRegularFile(f)) {
+      return null;
+    }
+    try {
+      Path real = f.toRealPath();
+      if (!real.startsWith(directory)) {
+        throw new ConfigException("config.secrets: " + name + " resolves outside " + directory);
+      }
+      if (Files.size(real) > MAX_BYTES) {
+        throw new ConfigException(
+            "config.secrets: " + name + " is larger than " + MAX_BYTES + " bytes");
+      }
+      String v = Files.readString(real, StandardCharsets.UTF_8);
+      if (v.endsWith("\r\n")) {
+        v = v.substring(0, v.length() - 2);
+      } else if (v.endsWith("\n")) {
+        v = v.substring(0, v.length() - 1);
+      }
+      return v.isEmpty() ? null : v;
+    } catch (IOException e) {
+      throw new UncheckedIOException("config.secrets: " + name + " could not be read", e);
+    }
+  }
 }
