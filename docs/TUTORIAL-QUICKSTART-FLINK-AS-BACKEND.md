@@ -67,7 +67,7 @@ Aegis governs the **Apache Flink JobManager REST API** (`flink_list_jobs`, `flin
 docker run -d --name flink-jobmanager \
   -p 127.0.0.1:18081:8081 \
   -e FLINK_PROPERTIES="jobmanager.rpc.address: localhost" \
-  apache/flink:1.18.0 jobmanager
+  apache/flink:1.20.1 jobmanager
 ```
 
 Verify that the Flink JobManager REST API is reachable before starting Aegis:
@@ -75,13 +75,13 @@ Verify that the Flink JobManager REST API is reachable before starting Aegis:
 ### Windows (PowerShell)
 
 ```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:18081/overview"
+Invoke-RestMethod -Uri "[http://127.0.0.1:18081/overview](http://127.0.0.1:18081/overview)"
 ```
 
 ### Linux / macOS (Bash)
 
 ```bash
-curl -s http://127.0.0.1:18081/overview
+curl -s [http://127.0.0.1:18081/overview](http://127.0.0.1:18081/overview)
 ```
 
 > **Note:** A TaskManager container is not required to test cluster inspection (`READ`) tools or governance policies. For production deployments targeting the default JobManager port `8081` directly, see [adopters/configurations/flink/flink.yaml](../adopters/configurations/flink/flink.yaml).
@@ -108,34 +108,55 @@ Rather than duplicating configuration blocks, this quickstart uses [adopters/tut
 
 ---
 
-## 4. Start the Aegis MCP Gateway
+## 4. Build and Start the Aegis MCP Gateway
 
-From the repository root, export the identity tokens expected by [adopters/tutorials/flink/aegis-flink-tutorial.yaml](../adopters/tutorials/flink/aegis-flink-tutorial.yaml) and launch the gateway JAR:
+Change into `adopters/tutorials/flink` first so the relative `work/audit/aegis-flink-tutorial.jsonl` path in [aegis-flink-tutorial.yaml](../adopters/tutorials/flink/aegis-flink-tutorial.yaml) resolves inside the tutorial folder (matching `start-gateway.ps1` / `start-gateway.sh`), then export the identity tokens and launch the gateway JAR:
 
-### Windows (PowerShell)
+
+### 4.1 Build the Gateway JAR
+
+From the repository root, build the Aegis Gateway and its required modules using Maven:
+
+```bash
+mvn -pl aegis-gateway -am package -DskipTests
+```
+
+This generates the gateway executable JAR:
+
+```bash
+aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar
+```
+
+### 4.2 Start the Gateway JAR
+
+#### Windows (PowerShell)
 
 ```powershell
+Set-Location .\adopters\tutorials\flink
+
 $env:ANALYST_TOKEN = "test-analyst-token"
 $env:OPERATOR_TOKEN = "test-operator-token"
 $env:APPROVER_TOKEN = "test-approver-token"
 
-java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config adopters/tutorials/flink/aegis-flink-tutorial.yaml
+java -jar ..\..\..\aegis-gateway\target\aegis-gateway-2.0.0-SNAPSHOT-all.jar --config .\aegis-flink-tutorial.yaml
 ```
 
-### Linux / macOS (Bash)
+#### Linux / macOS (Bash)
 
 ```bash
+cd adopters/tutorials/flink
+
 export ANALYST_TOKEN=test-analyst-token
 export OPERATOR_TOKEN=test-operator-token
 export APPROVER_TOKEN=test-approver-token
 
-java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config adopters/tutorials/flink/aegis-flink-tutorial.yaml
+java -jar ../../../aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar --config ./aegis-flink-tutorial.yaml
 ```
 
 **Expected Startup Output:**
 
 ```text
-INFO: Aegis gateway listening on http://127.0.0.1:8080/mcp
+INFO: Aegis gateway listening on [http://127.0.0.1:8080/mcp](http://127.0.0.1:8080/mcp)
 ```
 
 ---
@@ -150,7 +171,7 @@ Open a second terminal window to send MCP JSON-RPC requests through the gateway.
 $env:ANALYST_TOKEN = "test-analyst-token"
 
 # 1. Initialize MCP session
-$init = Invoke-WebRequest -Method Post -Uri "http://127.0.0.1:8080/mcp" `
+$init = Invoke-WebRequest -Method Post -Uri "[http://127.0.0.1:8080/mcp](http://127.0.0.1:8080/mcp)" `
   -Headers @{
     "Authorization" = "Bearer $env:ANALYST_TOKEN"
     "Accept" = "application/json, text/event-stream"
@@ -162,7 +183,7 @@ $init = Invoke-WebRequest -Method Post -Uri "http://127.0.0.1:8080/mcp" `
 $sessionId = $init.Headers["Mcp-Session-Id"]
 
 # 2. Call flink_list_jobs through Aegis
-$resp = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8080/mcp" `
+$resp = Invoke-RestMethod -Method Post -Uri "[http://127.0.0.1:8080/mcp](http://127.0.0.1:8080/mcp)" `
   -Headers @{
     "Authorization" = "Bearer $env:ANALYST_TOKEN"
     "Accept" = "application/json, text/event-stream"
@@ -181,10 +202,10 @@ $resp | ConvertTo-Json -Depth 5
 export ANALYST_TOKEN=test-analyst-token
 
 # 1. Verify GET returns 405 Method Not Allowed (POST is required)
-curl -i -H "Authorization: Bearer $ANALYST_TOKEN" http://127.0.0.1:8080/mcp
+curl -i -H "Authorization: Bearer $ANALYST_TOKEN" [http://127.0.0.1:8080/mcp](http://127.0.0.1:8080/mcp)
 
 # 2. Initialize MCP session (copy the returned Mcp-Session-Id header)
-curl -i -X POST http://127.0.0.1:8080/mcp \
+curl -i -X POST [http://127.0.0.1:8080/mcp](http://127.0.0.1:8080/mcp) \
   -H "Authorization: Bearer $ANALYST_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
@@ -192,7 +213,7 @@ curl -i -X POST http://127.0.0.1:8080/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test-client","version":"1.0"}}}'
 
 # 3. Call flink_list_jobs through Aegis (replace <session-id>)
-curl -i -X POST http://127.0.0.1:8080/mcp \
+curl -i -X POST [http://127.0.0.1:8080/mcp](http://127.0.0.1:8080/mcp) \
   -H "Authorization: Bearer $ANALYST_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
@@ -205,18 +226,20 @@ curl -i -X POST http://127.0.0.1:8080/mcp \
 
 ## 6. Verify the Hash-Chained Audit Log
 
-Aegis writes structured, hash-chained audit events (`ALLOW_INTENT` and `EXECUTION_RESULT`) to the JSONL audit file configured in `adopters/tutorials/flink/aegis-flink-tutorial.yaml` rather than printing per-request logs to stdout.
+Aegis writes structured, hash-chained audit events (`ALLOW_INTENT` and `EXECUTION_RESULT`) to `work/audit/aegis-flink-tutorial.jsonl` inside the `adopters/tutorials/flink` working directory rather than printing per-request logs to stdout.
 
 ### Windows (PowerShell)
 
 ```powershell
-Get-Content adopters/tutorials/flink/work/audit/aegis-flink-tutorial.jsonl -Tail 5
+# From adopters/tutorials/flink (or prefix with adopters/tutorials/flink/ from repo root)
+Get-Content work/audit/aegis-flink-tutorial.jsonl -Tail 5
 ```
 
 ### Linux / macOS (Bash)
 
 ```bash
-tail -n 5 adopters/tutorials/flink/work/audit/aegis-flink-tutorial.jsonl
+# From adopters/tutorials/flink (or prefix with adopters/tutorials/flink/ from repo root)
+tail -n 5 work/audit/aegis-flink-tutorial.jsonl
 ```
 
 ---
