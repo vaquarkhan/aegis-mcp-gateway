@@ -17,6 +17,11 @@
 
 ## 2.0.0 (unreleased)
 
+- Source NOTICE now contains project attribution only; trademark guidance is in the README.
+  All four shaded bundles assemble binary-specific LICENSE/NOTICE files without resource collisions,
+  retain upstream and nested legal texts, and verify their legal content and dependency inventory
+  during `mvn verify`. The source LICENSE contains only Apache-2.0; pgJDBC and OnGres terms
+  appear in generated binary legal files. Version-pinned reviews include native and pre-shaded components.
 - CodeQL hygiene: ERROR audit-path logs sanitize request ids via `LogSafe`; result-handle ciphertext
   buffers use `Math.addExact`; admin path splitting no longer uses anchored slash `replaceAll`; the
   JWT weak-RSA test documents an intentional 1024-bit key; the JDBC flood test uses a prepared
