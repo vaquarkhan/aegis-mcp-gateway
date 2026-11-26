@@ -44,6 +44,7 @@ import io.github.vaquarkhan.aegis.engine.spi.GovernanceHook;
 import io.github.vaquarkhan.aegis.engine.spi.PolicyDecisionPoint;
 import io.github.vaquarkhan.aegis.engine.spi.StateStore;
 import io.github.vaquarkhan.aegis.engine.spi.ToolExecutor.ExecutionException;
+import io.github.vaquarkhan.aegis.engine.util.LogSafe;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -1046,7 +1047,10 @@ public final class ContentGovernor {
     try {
       audit.append(record(t, "ALLOW_INTENT", Decision.allow()));
     } catch (Exception e) {
-      LOG.log(System.Logger.Level.ERROR, "audit journal unavailable; denying " + t.requestId, e);
+      LOG.log(
+          System.Logger.Level.ERROR,
+          "audit journal unavailable; denying " + LogSafe.token(t.requestId),
+          e);
       return deny(
           t,
           Decision.deny(
@@ -1442,7 +1446,8 @@ public final class ContentGovernor {
   }
 
   private Outcome internal(Trace t, RuntimeException e) {
-    LOG.log(System.Logger.Level.ERROR, "content governance failed for " + t.requestId, e);
+    LOG.log(
+        System.Logger.Level.ERROR, "content governance failed for " + LogSafe.token(t.requestId), e);
     return deny(
         t,
         Decision.deny(DenyCodes.POLICY_DENIED, DenyCodes.STEP_POLICY, "internal governance error"));
@@ -1482,7 +1487,10 @@ public final class ContentGovernor {
     } catch (Exception e) {
       LOG.log(
           System.Logger.Level.ERROR,
-          "audit journal unavailable for " + rec.get("event") + " " + rec.get("requestId"),
+          "audit journal unavailable for "
+              + LogSafe.token(rec.get("event"))
+              + " "
+              + LogSafe.token(rec.get("requestId")),
           e);
     }
   }

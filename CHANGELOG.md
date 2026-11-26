@@ -17,6 +17,10 @@
 
 ## 2.0.0 (unreleased)
 
+- CodeQL hygiene: ERROR audit-path logs sanitize request ids via `LogSafe`; result-handle ciphertext
+  buffers use `Math.addExact`; admin path splitting no longer uses anchored slash `replaceAll`; the
+  JWT weak-RSA test documents an intentional 1024-bit key; the JDBC flood test uses a prepared
+  statement. The SBOM aggregate job continues on Maven Central 429 flakes (tracked with #49).
 - SkyWalking 9.7.0 now has a retained two-door run. `SkyWalkingFrontDoorsTest` starts the official
   OAP image with H2 storage, governs the three GraphQL reads through the own host and Knox, and
   asserts structured GraphQL data lists and the retained audit chains; the OAP has no reporting

@@ -197,7 +197,7 @@ public final class AdminApi {
     if (caller == null) {
       return McpHttpResponse.json(401, Map.of("error", "authentication required"));
     }
-    String[] parts = req.path().replaceAll("^/+", "").replaceAll("/+$", "").split("/");
+    String[] parts = pathSegments(req.path());
     ApprovalService approvals = engine.approvals();
     try {
       if (parts.length >= 1 && "approvals".equals(parts[0])) {
@@ -514,5 +514,40 @@ public final class AdminApi {
     return ok
         ? McpHttpResponse.json(200, Map.of("accepted", name))
         : McpHttpResponse.json(409, Map.of("error", conflict));
+  }
+
+  /**
+   * Split a request path into non-empty segments without a regex. Avoids {@code replaceAll} on
+   * hostile paths that CodeQL flags as polynomial ReDoS on anchored slash patterns.
+   */
+  static String[] pathSegments(String path) {
+    if (path == null || path.isEmpty()) {
+      return new String[0];
+    }
+    int start = 0;
+    int end = path.length();
+    while (start < end && path.charAt(start) == '/') {
+      start++;
+    }
+    while (end > start && path.charAt(end - 1) == '/') {
+      end--;
+    }
+    if (start >= end) {
+      return new String[0];
+    }
+    List<String> parts = new ArrayList<>();
+    int i = start;
+    while (i < end) {
+      int slash = path.indexOf('/', i);
+      if (slash < 0 || slash >= end) {
+        parts.add(path.substring(i, end));
+        break;
+      }
+      if (slash > i) {
+        parts.add(path.substring(i, slash));
+      }
+      i = slash + 1;
+    }
+    return parts.toArray(new String[0]);
   }
 }

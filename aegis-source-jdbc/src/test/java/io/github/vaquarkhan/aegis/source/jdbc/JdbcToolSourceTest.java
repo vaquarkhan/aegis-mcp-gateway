@@ -32,6 +32,7 @@ import io.github.vaquarkhan.aegis.engine.spi.ToolSource;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -271,8 +272,10 @@ class JdbcToolSourceTest {
   @Test
   void oneWideValueCannotFloodTheContext() throws Exception {
     try (Connection c = DriverManager.getConnection(URL);
-        Statement st = c.createStatement()) {
-      st.executeUpdate("update orders set note = '" + "x".repeat(500) + "' where id = 1");
+        PreparedStatement ps = c.prepareStatement("update orders set note = ? where id = ?")) {
+      ps.setString(1, "x".repeat(500));
+      ps.setLong(2, 1L);
+      ps.executeUpdate();
     }
     ToolResult r =
         call(

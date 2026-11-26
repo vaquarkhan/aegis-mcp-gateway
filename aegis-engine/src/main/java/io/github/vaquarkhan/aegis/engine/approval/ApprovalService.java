@@ -22,6 +22,7 @@ import io.github.vaquarkhan.aegis.engine.model.CallerIdentity;
 import io.github.vaquarkhan.aegis.engine.model.Digests;
 import io.github.vaquarkhan.aegis.engine.spi.AuditSink;
 import io.github.vaquarkhan.aegis.engine.spi.StateStore;
+import io.github.vaquarkhan.aegis.engine.util.LogSafe;
 import java.security.SecureRandom;
 import java.text.Normalizer;
 import java.time.Clock;
@@ -350,7 +351,7 @@ public final class ApprovalService {
         store.take(DECIDED + id);
         LOG.log(
             System.Logger.Level.ERROR,
-            "audit journal unavailable; approval decision " + id + " refused",
+            "audit journal unavailable; approval decision " + LogSafe.token(id) + " refused",
             e);
         throw new ApprovalException(
             503, "the audit journal could not record this decision, so it was not made");
@@ -427,7 +428,7 @@ public final class ApprovalService {
       } catch (Exception e) {
         LOG.log(
             System.Logger.Level.ERROR,
-            "audit journal unavailable for refused approval attempt on " + id,
+            "audit journal unavailable for refused approval attempt on " + LogSafe.token(id),
             e);
       }
     }
