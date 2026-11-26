@@ -1,0 +1,74 @@
+# Copyright 2026 Viquar Khan and the Aegis MCP Gateway contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Audits the workflows themselves: every action pinned to a full commit SHA (tools/check-actions-pinned.py),
+# actionlint for syntax and expression errors, zizmor for security findings (template injection, excessive
+# permissions, persisted credentials, unpinned or impostor actions). Any finding fails the build.
+name: Workflow security audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/**'
+      - 'tools/check-actions-pinned.py'
+      - 'tools/test_check_actions_pinned.py'
+  pull_request:
+    paths:
+      - '.github/**'
+      - 'tools/check-actions-pinned.py'
+      - 'tools/test_check_actions_pinned.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  audit:
+    name: Pin check, actionlint, zizmor
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+      ZIZMOR_VERSION: 1.33.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Every action is pinned to a full commit SHA
+        run: |
+          python3 -m unittest -v tools/test_check_actions_pinned.py
+          python3 tools/check-actions-pinned.py
+      - name: actionlint
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" | sha256sum -c -
+          tar -xzf "actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" actionlint
+          cd "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/actionlint" -color
+      - name: zizmor
+        env:
+          # Read-only token for zizmor's online audits (known-vulnerable and impostor actions).
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/zizmor-venv"
+          "$RUNNER_TEMP/zizmor-venv/bin/pip" install --quiet "zizmor==${ZIZMOR_VERSION}"
+          "$RUNNER_TEMP/zizmor-venv/bin/zizmor" --format plain .github

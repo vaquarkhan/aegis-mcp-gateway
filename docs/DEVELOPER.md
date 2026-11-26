@@ -170,6 +170,18 @@ rely on being called for every request.
   and `charts/aegis/ci` (helm lint, kubeconform, `start_rendered.py`). CI runs both and also builds and
   starts the container image.
 
+### GitHub Actions policy
+
+Workflows follow the ASF [infrastructure-actions](https://github.com/apache/infrastructure-actions) guidance.
+
+- Every `uses:` is pinned to a full 40-character commit SHA with the release tag in a trailing comment.
+  `python3 tools/check-actions-pinned.py` enforces this in the workflow-security workflow (tests: `python3 -m unittest tools/test_check_actions_pinned.py`).
+- `.github/workflows/workflow-security.yml` also runs actionlint (pinned release, checksum verified) and zizmor (pinned pip version) and fails on any finding. Run them locally with `pip install zizmor actionlint-py`, then `actionlint` and `zizmor .github`.
+- `permissions` is read-only at the top of each workflow; a job widens it only where needed (CodeQL: `security-events: write`).
+- `actions/checkout` sets `persist-credentials: false`; every job has a `timeout-minutes`; superseded runs on the same ref are cancelled (never on `main`).
+- `.github/dependabot.yml` proposes weekly updates for pinned actions, with a 7-day cooldown on new releases. Review the new SHA against the upstream release before merging.
+- Before adding an action from outside `actions/`, `github/` or `apache/`, check it against the ASF approved-actions list.
+
 ## 9. Conventions (from AGENTS.md)
 
 - Fail closed. If a control cannot decide, deny.
