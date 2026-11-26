@@ -1447,7 +1447,9 @@ public final class ContentGovernor {
 
   private Outcome internal(Trace t, RuntimeException e) {
     LOG.log(
-        System.Logger.Level.ERROR, "content governance failed for " + LogSafe.token(t.requestId), e);
+        System.Logger.Level.ERROR,
+        "content governance failed for " + LogSafe.token(t.requestId),
+        e);
     return deny(
         t,
         Decision.deny(DenyCodes.POLICY_DENIED, DenyCodes.STEP_POLICY, "internal governance error"));

@@ -240,7 +240,8 @@ class JwtVerifierTest {
     ecGen.initialize(new ECGenParameterSpec("secp256r1"));
     KeyPair ec = ecGen.generateKeyPair();
     KeyPairGenerator rsaGen = KeyPairGenerator.getInstance("RSA");
-    // codeql[java/insufficient-key-size]: intentional 1024-bit RSA so the verifier ignores weak JWKS entries
+    // codeql[java/insufficient-key-size]: intentional 1024-bit RSA so the verifier ignores weak
+    // JWKS entries
     rsaGen.initialize(1024);
     KeyPair weak = rsaGen.generateKeyPair();
     ECPublicKey ecPub = (ECPublicKey) ec.getPublic();

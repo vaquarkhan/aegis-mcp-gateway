@@ -30,13 +30,14 @@ import org.junit.jupiter.api.io.TempDir;
 
 class ComposeCommandTest {
 
-    @TempDir
-    Path tempDir;
+  @TempDir Path tempDir;
 
-    @Test
-    void composesChecksDriftAndRunsPolicyTestAgainstEffectiveConfig() throws Exception {
-        Path gatewayFile = tempDir.resolve("aegis.yaml");
-        Files.writeString(gatewayFile, """
+  @Test
+  void composesChecksDriftAndRunsPolicyTestAgainstEffectiveConfig() throws Exception {
+    Path gatewayFile = tempDir.resolve("aegis.yaml");
+    Files.writeString(
+        gatewayFile,
+        """
                 gateway:
                   name: aegis-test
                 audit:
@@ -49,9 +50,11 @@ class ComposeCommandTest {
                       classes: [READ]
                 """);
 
-        Path adopterFile = tempDir.resolve("adopters/hive.yaml");
-        Files.createDirectories(adopterFile.getParent());
-        Files.writeString(adopterFile, """
+    Path adopterFile = tempDir.resolve("adopters/hive.yaml");
+    Files.createDirectories(adopterFile.getParent());
+    Files.writeString(
+        adopterFile,
+        """
                 id: hive-analytics
                 type: http
                 baseUrl: https://hive.internal:10001
@@ -70,70 +73,88 @@ class ComposeCommandTest {
                       path: /drop
                 """);
 
-        Path effectiveFile = tempDir.resolve("out/effective-aegis.yaml");
+    Path effectiveFile = tempDir.resolve("out/effective-aegis.yaml");
 
-        // 1. --check fails before materialization
-        int missingCheckExit = runMain(
-                "--compose",
-                "--gateway-config", gatewayFile.toString(),
-                "--adopter", adopterFile.toString(),
-                "--out", effectiveFile.toString(),
-                "--check"
-        );
-        assertEquals(Main.USAGE, missingCheckExit);
+    // 1. --check fails before materialization
+    int missingCheckExit =
+        runMain(
+            "--compose",
+            "--gateway-config",
+            gatewayFile.toString(),
+            "--adopter",
+            adopterFile.toString(),
+            "--out",
+            effectiveFile.toString(),
+            "--check");
+    assertEquals(Main.USAGE, missingCheckExit);
 
-        // 2. Materialize effective config
-        ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
-        ByteArrayOutputStream errBuf = new ByteArrayOutputStream();
-        int composeExit = Main.run(
-                new String[]{
-                        "--compose",
-                        "--gateway-config", gatewayFile.toString(),
-                        "--adopter", adopterFile.toString(),
-                        "--out", effectiveFile.toString()
-                },
-                new ByteArrayInputStream(new byte[0]),
-                new PrintStream(outBuf, true, StandardCharsets.UTF_8),
-                new PrintStream(errBuf, true, StandardCharsets.UTF_8),
-                Map.<String, String>of()::get,
-                false
-        );
+    // 2. Materialize effective config
+    ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
+    ByteArrayOutputStream errBuf = new ByteArrayOutputStream();
+    int composeExit =
+        Main.run(
+            new String[] {
+              "--compose",
+              "--gateway-config",
+              gatewayFile.toString(),
+              "--adopter",
+              adopterFile.toString(),
+              "--out",
+              effectiveFile.toString()
+            },
+            new ByteArrayInputStream(new byte[0]),
+            new PrintStream(outBuf, true, StandardCharsets.UTF_8),
+            new PrintStream(errBuf, true, StandardCharsets.UTF_8),
+            Map.<String, String>of()::get,
+            false);
 
-        assertEquals(Main.OK, composeExit, () -> "stderr: " + errBuf.toString(StandardCharsets.UTF_8));
-        assertTrue(Files.isRegularFile(effectiveFile));
-        assertTrue(outBuf.toString(StandardCharsets.UTF_8).contains("sha256:"));
+    assertEquals(Main.OK, composeExit, () -> "stderr: " + errBuf.toString(StandardCharsets.UTF_8));
+    assertTrue(Files.isRegularFile(effectiveFile));
+    assertTrue(outBuf.toString(StandardCharsets.UTF_8).contains("sha256:"));
 
-        // 3. --check passes when up to date
-        int cleanCheckExit = runMain(
-                "--compose",
-                "--gateway-config", gatewayFile.toString(),
-                "--adopter", adopterFile.toString(),
-                "--out", effectiveFile.toString(),
-                "--check"
-        );
-        assertEquals(Main.OK, cleanCheckExit);
+    // 3. --check passes when up to date
+    int cleanCheckExit =
+        runMain(
+            "--compose",
+            "--gateway-config",
+            gatewayFile.toString(),
+            "--adopter",
+            adopterFile.toString(),
+            "--out",
+            effectiveFile.toString(),
+            "--check");
+    assertEquals(Main.OK, cleanCheckExit);
 
-        // 4. --check detects drift when output is modified
-        Files.writeString(effectiveFile, Files.readString(effectiveFile) + "\n# tampered\n");
-        int driftCheckExit = runMain(
-                "--compose",
-                "--gateway-config", gatewayFile.toString(),
-                "--adopter", adopterFile.toString(),
-                "--out", effectiveFile.toString(),
-                "--check"
-        );
-        assertEquals(Main.USAGE, driftCheckExit);
+    // 4. --check detects drift when output is modified
+    Files.writeString(effectiveFile, Files.readString(effectiveFile) + "\n# tampered\n");
+    int driftCheckExit =
+        runMain(
+            "--compose",
+            "--gateway-config",
+            gatewayFile.toString(),
+            "--adopter",
+            adopterFile.toString(),
+            "--out",
+            effectiveFile.toString(),
+            "--check");
+    assertEquals(Main.USAGE, driftCheckExit);
 
-        // Re-materialize clean file for --policy-test
-        assertEquals(Main.OK, runMain(
-                "--compose",
-                "--gateway-config", gatewayFile.toString(),
-                "--adopter", adopterFile.toString(),
-                "--out", effectiveFile.toString()
-        ));
+    // Re-materialize clean file for --policy-test
+    assertEquals(
+        Main.OK,
+        runMain(
+            "--compose",
+            "--gateway-config",
+            gatewayFile.toString(),
+            "--adopter",
+            adopterFile.toString(),
+            "--out",
+            effectiveFile.toString()));
 
-        Path casesFile = tempDir.resolve("cases.json");
-        Files.writeString(casesFile, """
+    Path casesFile = tempDir.resolve("cases.json");
+    Files.writeString(
+        casesFile,
+        """
                 {
                   "cases": [
                     {
@@ -154,57 +175,64 @@ class ComposeCommandTest {
                 }
                 """);
 
-        int policyExit = runMain("--policy-test", effectiveFile.toString(), casesFile.toString());
-        assertEquals(Main.OK, policyExit);
-    }
+    int policyExit = runMain("--policy-test", effectiveFile.toString(), casesFile.toString());
+    assertEquals(Main.OK, policyExit);
+  }
 
-    @Test
-    void refusesToOverwriteGatewayOrAdopterInputs() throws Exception {
-        Path gatewayFile = tempDir.resolve("aegis.yaml");
-        Files.writeString(gatewayFile, "audit:\n  file: audit.jsonl\n");
-        Path adopterFile = tempDir.resolve("adopter.yaml");
-        Files.writeString(adopterFile, "id: demo\ntype: http\nbaseUrl: https://demo.internal\n");
+  @Test
+  void refusesToOverwriteGatewayOrAdopterInputs() throws Exception {
+    Path gatewayFile = tempDir.resolve("aegis.yaml");
+    Files.writeString(gatewayFile, "audit:\n  file: audit.jsonl\n");
+    Path adopterFile = tempDir.resolve("adopter.yaml");
+    Files.writeString(adopterFile, "id: demo\ntype: http\nbaseUrl: https://demo.internal\n");
 
-        assertEquals(Main.USAGE, runMain(
-                "--compose",
-                "--gateway-config", gatewayFile.toString(),
-                "--adopter", adopterFile.toString(),
-                "--out", gatewayFile.toString()
-        ));
-        assertEquals(Main.USAGE, runMain(
-                "--compose",
-                "--gateway-config", gatewayFile.toString(),
-                "--adopter", adopterFile.toString(),
-                "--out", adopterFile.toString()
-        ));
-    }
+    assertEquals(
+        Main.USAGE,
+        runMain(
+            "--compose",
+            "--gateway-config",
+            gatewayFile.toString(),
+            "--adopter",
+            adopterFile.toString(),
+            "--out",
+            gatewayFile.toString()));
+    assertEquals(
+        Main.USAGE,
+        runMain(
+            "--compose",
+            "--gateway-config",
+            gatewayFile.toString(),
+            "--adopter",
+            adopterFile.toString(),
+            "--out",
+            adopterFile.toString()));
+  }
 
-    @Test
-    void returnsUsageWhenRequiredComposeFlagsAreMissing() throws Exception {
-        ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
-        ByteArrayOutputStream errBuf = new ByteArrayOutputStream();
+  @Test
+  void returnsUsageWhenRequiredComposeFlagsAreMissing() throws Exception {
+    ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
+    ByteArrayOutputStream errBuf = new ByteArrayOutputStream();
 
-        int exit = Main.run(
-                new String[]{"--compose", "--gateway-config", "aegis.yaml"},
-                new ByteArrayInputStream(new byte[0]),
-                new PrintStream(outBuf, true, StandardCharsets.UTF_8),
-                new PrintStream(errBuf, true, StandardCharsets.UTF_8),
-                Map.<String, String>of()::get,
-                false
-        );
+    int exit =
+        Main.run(
+            new String[] {"--compose", "--gateway-config", "aegis.yaml"},
+            new ByteArrayInputStream(new byte[0]),
+            new PrintStream(outBuf, true, StandardCharsets.UTF_8),
+            new PrintStream(errBuf, true, StandardCharsets.UTF_8),
+            Map.<String, String>of()::get,
+            false);
 
-        assertEquals(Main.USAGE, exit);
-        assertTrue(errBuf.toString(StandardCharsets.UTF_8).contains("usage: --compose"));
-    }
+    assertEquals(Main.USAGE, exit);
+    assertTrue(errBuf.toString(StandardCharsets.UTF_8).contains("usage: --compose"));
+  }
 
-    private int runMain(String... args) throws Exception {
-        return Main.run(
-                args,
-                new ByteArrayInputStream(new byte[0]),
-                new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
-                new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
-                Map.<String, String>of()::get,
-                false
-        );
-    }
+  private int runMain(String... args) throws Exception {
+    return Main.run(
+        args,
+        new ByteArrayInputStream(new byte[0]),
+        new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
+        new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
+        Map.<String, String>of()::get,
+        false);
+  }
 }
