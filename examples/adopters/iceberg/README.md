@@ -94,6 +94,8 @@ export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0     # from ../knox/install-knox.sh
 ../run-example.sh iceberg --keep
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 The first build downloads `iceberg-open-api-1.10.1.jar` (about 210 MB; it bundles the catalog server).
 
 ## Results

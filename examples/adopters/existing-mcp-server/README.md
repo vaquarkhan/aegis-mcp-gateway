@@ -109,6 +109,8 @@ export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0
 ../run-example.sh existing-mcp-server --keep
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 Without `AEGIS_MCP_PYTHON`, `AEGIS_NODE` and `AEGIS_MCP_FILESYSTEM_JS` the test is skipped, never passed.
 `run-example -Keep` copies the two-door results; the `legacy-2025/` and `engine-observed.jsonl` files in
 `results/` were copied by hand from the same run (`target/adopter-results/existing-mcp-server-legacy-2025/`

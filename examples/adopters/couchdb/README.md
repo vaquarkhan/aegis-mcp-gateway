@@ -46,6 +46,8 @@ $env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'
 ../run-example.ps1 couchdb -Keep
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 ## What the run proves
 
 List and get database (READ), outsider denial, destructive delete of a scratch database with independent

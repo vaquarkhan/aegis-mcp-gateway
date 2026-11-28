@@ -36,6 +36,8 @@ mvn -B -Preal-engines install -DskipTests
 mvn -B -Preal-engines -pl examples/aegis-validation verify -Dtest=A2aAgentFrontDoorsTest
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 Without `AEGIS_A2A_PYTHON` the test is skipped, and a skipped test is not a pass.
 
 ## What the run shows, for each front door

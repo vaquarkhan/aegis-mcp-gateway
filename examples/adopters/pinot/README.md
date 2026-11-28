@@ -34,6 +34,8 @@ $env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'
 ../run-example.ps1 pinot -Keep
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 ## What the run proves
 
 List tables/tenants (READ), outsider denial, destructive table delete with independent approval and dry-run

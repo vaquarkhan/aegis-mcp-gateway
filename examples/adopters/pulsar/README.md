@@ -89,6 +89,8 @@ export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0
 ../run-example.sh pulsar --keep
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 `-Keep` copies the exact Aegis YAML, Knox topology, engine configs, walkthrough and verified audit
 journals into this folder. Without `AEGIS_PULSAR_HOME` the test is skipped, never passed.
 

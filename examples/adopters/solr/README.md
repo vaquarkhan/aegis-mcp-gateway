@@ -95,6 +95,8 @@ export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0
 ../run-example.sh solr --keep
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 Without `AEGIS_SOLR_HOME` the test is skipped, never passed.
 
 ## Results
