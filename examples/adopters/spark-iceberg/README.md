@@ -69,3 +69,5 @@ $env:AEGIS_KNOX_HOME = 'C:\knox\knox-3.0.0'     # from ../knox/install-knox.ps1
 export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0
 ../run-example.sh spark-iceberg --keep
 ```
+
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.

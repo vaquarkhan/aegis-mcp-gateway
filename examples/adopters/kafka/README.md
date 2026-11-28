@@ -103,6 +103,8 @@ export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0     # from ../knox/install-knox.sh
 ../run-example.sh kafka --keep
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 ## Results
 
 | File | What it is |

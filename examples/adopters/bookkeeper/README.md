@@ -86,6 +86,8 @@ export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0     # from ../knox/install-knox.sh
 ../run-example.sh bookkeeper --keep
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 ## Findings from the real bookie
 
 - `DELETE /api/v1/ledger/delete?ledger_id=999` for a ledger that does not exist still answers HTTP 200

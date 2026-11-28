@@ -94,6 +94,8 @@ export AEGIS_KNOX_HOME=/opt/knox/knox-3.0.0
 ../run-example.sh burr --keep
 ```
 
+Without `AEGIS_KNOX_HOME` the Knox run is reported as skipped, never as passed.
+
 Without `AEGIS_BURR_PYTHON` the test is skipped, never passed.
 
 ## Findings from the real server
