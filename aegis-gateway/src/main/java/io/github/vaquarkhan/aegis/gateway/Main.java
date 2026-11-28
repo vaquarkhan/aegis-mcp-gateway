@@ -47,6 +47,9 @@ import java.util.function.Function;
  * [--base-url url]} (a reviewable draft configuration, see {@link OpenApiDraftCommand}) <br>
  * {@code java -jar aegis-gateway-all.jar --policy-test aegis.yaml cases.json} (evaluate calls
  * against a configuration without running them, see {@link PolicyTestCommand}) <br>
+ * {@code java -jar aegis-gateway-all.jar --compose --gateway-config gateway.yaml --adopter
+ * adopter.yaml --out effective.yaml [--check]} (compose gateway and adopter layers, see {@link
+ * ComposeCommand}) <br>
  * {@code --require-server-catalog <review.pub>} with {@code --config}: start only with a server
  * catalog signed by that key (same as {@code AEGIS_REQUIRE_SERVER_CATALOG_KEY})
  */
@@ -88,6 +91,9 @@ public final class Main {
     String requireCatalogKey = null;
     for (int i = 0; i < args.length; i++) {
       switch (args[i]) {
+        case "--compose" -> {
+          return ComposeCommand.run(Arrays.copyOfRange(args, i + 1, args.length), out, err);
+        }
         case "--config" -> {
           if (i + 1 >= args.length) {
             err.println("--config needs a file");
@@ -181,7 +187,8 @@ public final class Main {
               + " | --hash-token | --manifest-keygen|--manifest-create|--manifest-sign|--manifest-verify ..."
               + " | --server-catalog-create|--server-catalog-verify|--break-glass-create|--break-glass-verify ..."
               + " | --openapi-draft <openapi.yaml> <draft.yaml> [--source-id <id>] [--base-url <url>]"
-              + " | --policy-test <aegis.yaml> <cases.json>");
+              + " | --policy-test <aegis.yaml> <cases.json>"
+              + " | --compose --gateway-config <gateway.yaml> --adopter <adopter.yaml> --out <effective.yaml> [--check]");
       return USAGE;
     }
     AegisServer.applyServerTimeLimits(); // before any JDK HTTP server class initialises

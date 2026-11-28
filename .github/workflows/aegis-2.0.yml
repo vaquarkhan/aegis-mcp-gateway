@@ -52,6 +52,14 @@ jobs:
         run: mvn -B -f examples/pom.xml "-Dmaven.multiModuleProjectDirectory=${GITHUB_WORKSPACE}" -Preal-engines -pl aegis-gateway-kafka,aegis-gateway-spark -am -DskipTests verify
       - name: Check generated tutorial and IDE assets are current
         run: python3 tools/build-project-tutorials.py --check
+      - name: Check composed Hive configuration is current
+        run: |
+            java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
+              --compose \
+              --gateway-config examples/adopters/hive/aegis/gateway.yaml \
+              --adopter examples/adopters/hive/aegis/adopter.yaml \
+              --out adopters/configurations/adapters/hive/hive.yaml \
+              --check
       # Iceberg REST and Kafka validation need running servers (AEGIS_ICEBERG_REST_URL, AEGIS_KAFKA_*);
       # without them those two tests report as skipped. See docs/VALIDATION.md for the local recipe.
       - name: Real-engine validation (Flink MiniCluster, Spark local driver, Spark Connect server in its own JVM)
@@ -73,6 +81,14 @@ jobs:
           cache: maven
       - name: Build the gateway jar
         run: mvn -B -DskipTests -Djacoco.skip=true -pl aegis-gateway -am package
+      - name: Check composed Hive configuration is current
+        run: |
+          java -jar aegis-gateway/target/aegis-gateway-2.0.0-SNAPSHOT-all.jar \
+            --compose \
+            --gateway-config examples/adopters/hive/aegis/gateway.yaml \
+            --adopter examples/adopters/hive/aegis/adopter.yaml \
+            --out adopters/configurations/adapters/hive/hive.yaml \
+            --check
       - name: Reference hook unit tests
         working-directory: adopters/hooks
         run: python3 -m unittest -v test_hooks
